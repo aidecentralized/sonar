@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+service FederatedLearning {
+  rpc SendLocalAverage (AverageRequest) returns (AverageResponse) {}
+  rpc GetGlobalAverage (Empty) returns (AverageResponse) {}
+}
+
+message AverageRequest {
+  double local_average = 1;
+}
+
+message AverageResponse {
+  double global_average = 1;
+}
+
+message Empty {}
