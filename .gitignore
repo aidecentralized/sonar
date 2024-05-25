@@ -1,3 +1,11 @@
+# project specific folders
+expt_dump/
+expt_dump_old/
+di_test/
+imgs/
+notes.txt
+removeme*.png
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
