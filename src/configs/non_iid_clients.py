@@ -578,7 +578,7 @@ fedring = {
     "num_rep": 1,
     "load_existing": False,
     "dump_dir": "./expt_dump/",
-    "device_ids": get_device_ids(num_clients=fedring_client, num_client_per_gpu=10, available_gpus=[0,1,2,3]),
+    "device_ids": get_device_ids(num_clients=fedring_client, num_client_per_gpu=10, available_gpus=[1,2,3]),
 
     # Dataset params 
     "dset": get_domainnet_support(fedring_client),# get_fmow_support(fedran_client), # get_rxrx1_support(fedran_client), # get_domainnet_support(fedran_client), # get_camelyon17_support(fedran_client), 

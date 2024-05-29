@@ -37,8 +37,12 @@ class FedRingClient(BaseFedAvgClient):
             elif p_within_decay == "log_inc":
                 alpha = np.exp(1/within_community_sampling)-1
                 within_community_sampling = within_community_sampling * np.log2(1 + alpha * round / total_rounds)
-        
-        selected_ids = [(self.node_id + 1) % self.config["num_clients"]]
+
+        if((self.node_id + 1) % self.config["num_clients"] == 0):
+            selected_ids = [(self.node_id + 2) % self.config["num_clients"]]
+        else:
+            selected_ids = [(self.node_id + 1) % self.config["num_clients"]]
+
         # selected_ids  = [(node_id + i) % self.config["num_clients"] for i in range(-1, 2)]
         num_clients_to_select = self.config["num_clients_to_select"]
 
