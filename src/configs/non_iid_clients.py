@@ -568,9 +568,63 @@ fedran = {
     "exp_keys": []
 }
 
+# static
+
+fedring_client= 12
+fedring = {
+    "seed": 1,
+    "algo": "fedring",
+    "exp_id": "warmup_",
+    "num_rep": 1,
+    "load_existing": False,
+    "dump_dir": "./expt_dump/",
+    "device_ids": get_device_ids(num_clients=fedring_client, num_client_per_gpu=10, available_gpus=[0,1,2,3]),
+
+    # Dataset params 
+    "dset": get_domainnet_support(fedring_client),# get_fmow_support(fedran_client), # get_rxrx1_support(fedran_client), # get_domainnet_support(fedran_client), # get_camelyon17_support(fedran_client), 
+    "dpath": domainnet_dpath,
+    "train_label_distribution": "iid", # Either "iid", "non_iid" "support", 
+    "test_label_distribution": "iid", # Either "iid" "non_iid" "support", 
+    "samples_per_client": 32,
+    #"test_samples_per_class": 300,
+    #"test_samples_per_client": 400, # Only for non_iid test distribution
+    # "support" : get_sliding_window_support(num_clients=NUM_CLIENT, num_classes=10, num_classes_per_client=4),
+
+    # Clients selection
+    "num_clients": fedring_client,
+    "num_clients_to_select": 1,
+    "leader_mode": False,
+    "community_type": "dataset",
+    #"within_community_sampling": 0.1,
+    #"p_within_decay": "log_inc", #exp_inc, exp_dec, lin_inc, lin_dec
+    #"num_communities": len(cifar10_rotations), #len(domainnet_classes),
+    
+    # Learning setup
+    "rounds": 210, 
+    "epochs_per_round": 5,
+    "model": "resnet10",
+    "local_train_after_aggr" : True,
+    # "pretrained": True,
+    # "train_only_fc": True,
+    "model_lr": 1e-4, 
+    "batch_size": 16,
+    
+    # Knowledge transfer params
+    # "inter_commu_layer": "l2", # the layer until which the knowledge is transferred when collaborating outside community (within_community_sampling<1) [l1, l2, l3, l4, fc]
+    "average_last_layer": True,
+    "mask_finetune_last_layer": False,
+    #"own_aggr_weight": 0.3,
+    # "aggr_weight_strategy": "linear",
+
+    # params for model
+    "position": 0, 
+    "exp_keys": []
+}
+
+
 # current_config = fedcentral
 
-current_config = fedran
+current_config = fedring
 # current_config["test_param"] ="community_type"
 # current_config["test_values"] = ["dataset", None] 
 
