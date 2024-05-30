@@ -64,7 +64,7 @@ class FedGridClient(BaseFedAvgClient):
         # Force self node id to be selected, not removed before sampling to keep sampling identic across nodes (if same seed)
         selected_ids = [self.node_id] + selected_ids
 
-        print("Selected collabs:" + selected_ids)
+        print("Selected collabs:" + str(selected_ids))
        
         collab_weights = defaultdict(lambda: 0.0)
         for idx in selected_ids:
