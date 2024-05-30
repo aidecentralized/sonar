@@ -238,7 +238,7 @@ class FedRanServer(BaseFedAvgServer):
         self.log_utils.log_tb_round_stats(clients_round_stats, ["Collaborator weights"], self.round)
 
         self.log_utils.log_console(f"Round test acc before local training {[stats['test_acc_before_training'] for stats in clients_round_stats]}")
-        self.log_utils.log_console(f"Round test acc after loacl training {[stats['test_acc_after_training'] for stats in clients_round_stats]}")
+        self.log_utils.log_console(f"Round test acc after local training {[stats['test_acc_after_training'] for stats in clients_round_stats]}")
 
         return clients_round_stats
 
