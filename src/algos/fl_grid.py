@@ -4,8 +4,7 @@ import torch
 import torch.nn as nn
 import random
 import numpy as np
-import ceil from math
-
+from math import ceil
 
 from algos.base_class import BaseFedAvgClient, BaseFedAvgServer
 
