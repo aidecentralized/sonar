@@ -547,7 +547,7 @@ fedran = {
     #"num_communities": len(cifar10_rotations), #len(domainnet_classes),
     
     # Learning setup
-    "rounds": 210, 
+    "rounds": 20, 
     "epochs_per_round": 5,
     "model": "resnet10",
     "local_train_after_aggr" : True,
