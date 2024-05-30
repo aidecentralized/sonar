@@ -4,6 +4,7 @@ from algos.base_class import BaseNode
 from algos.fl import FedAvgClient, FedAvgServer
 from algos.isolated import IsolatedServer
 from algos.fl_random import FedRanClient, FedRanServer
+from algos.fl_grid import FedGridClient, FedGridServer
 from algos.fl_assigned import FedAssClient, FedAssServer
 from algos.fl_isolated import FedIsoClient, FedIsoServer
 from algos.fl_weight import FedWeightClient, FedWeightServer
@@ -27,6 +28,7 @@ algo_map = {
     "fedavg": [FedAvgServer, FedAvgClient],
     "isolated": [IsolatedServer],
     "fedran": [FedRanServer,FedRanClient],
+    "fedgrid": [FedGridServer,FedGridClient],
     "fedass": [FedAssServer, FedAssClient],
     "fediso": [FedIsoServer,FedIsoClient],
     "fedweight": [FedWeightServer,FedWeightClient],
