@@ -4,14 +4,14 @@ import torch
 import torch.nn as nn
 import random
 import numpy as np
-from math import ceil
+import math
 
 from algos.base_class import BaseFedAvgClient, BaseFedAvgServer
 
 from collections import defaultdict 
 from utils.stats_utils import from_round_stats_per_round_per_client_to_dict_arrays
 
-class FedGridClient(BaseFedAvgClient):
+class FedTorusClient(BaseFedAvgClient):
     def __init__(self, config) -> None:
         super().__init__(config)
         
@@ -39,32 +39,49 @@ class FedGridClient(BaseFedAvgClient):
                 alpha = np.exp(1/within_community_sampling)-1
                 within_community_sampling = within_community_sampling * np.log2(1 + alpha * round / total_rounds)
 
-        self.grid_size = int(self.config["num_clients"]**0.5)
-
+        self.grid_size = int(math.sqrt(self.config["num_clients"]))
         self.num_clients = self.config["num_clients"]
 
         selected_ids = []
+        num_rows = math.ceil(self.num_clients / self.grid_size)
 
         # Left
         if self.node_id % self.grid_size != 1:
             selected_ids.append(self.node_id - 1)
-        
+        elif math.ceil(self.node_id / self.grid_size) * self.grid_size <= self.num_clients:
+            selected_ids.append(self.node_id + self.grid_size - 1)
+
         # Right
         if self.node_id % self.grid_size != 0 and self.node_id < self.num_clients:
-            selected_ids.append(self.node_id + 1)
-        
+            right_id = self.node_id + 1
+        else:
+            node_row = math.ceil(self.node_id / self.grid_size)
+            right_id = 1 + self.grid_size * (node_row - 1)
+
+        selected_ids.append(right_id)
+
         # Top
         if self.node_id > self.grid_size:
-            selected_ids.append(self.node_id - self.grid_size)
-        
+            top_id = self.node_id - self.grid_size
+        else:
+            top_id = self.node_id + self.grid_size * (num_rows - 1)
+            if top_id > self.num_clients:
+                top_id = top_id - self.grid_size
+        selected_ids.append(top_id)
+
         # Bottom
         if self.node_id <= self.num_clients - self.grid_size:
-            selected_ids.append(self.node_id + self.grid_size)
+            bottom_id = self.node_id + self.grid_size
+        else:
+            bottom_id = self.node_id % self.grid_size
+            if bottom_id == 0:
+                bottom_id = self.grid_size
+        selected_ids.append(bottom_id)
 
-        # Force self node id to be selected, not removed before sampling to keep sampling identic across nodes (if same seed)
-        selected_ids = [self.node_id] + selected_ids
+        # Force self node id to be selected, not removed before sampling to keep sampling identical across nodes (if same seed)
+        selected_ids = list(set([self.node_id] + selected_ids))
 
-        print("Selected collabs:" + str(selected_ids))
+        print("Selected collabs: " + str(self.node_id) + str(selected_ids))
        
         collab_weights = defaultdict(lambda: 0.0)
         for idx in selected_ids:
@@ -206,7 +223,7 @@ class FedGridClient(BaseFedAvgClient):
 
             self.comm_utils.send_signal(dest=self.server_node, data=stats, tag=self.tag.ROUND_STATS)
 
-class FedGridServer(BaseFedAvgServer):
+class FedTorusServer(BaseFedAvgServer):
     def __init__(self, config) -> None:
         super().__init__(config)
         # self.set_parameters()
@@ -252,9 +269,8 @@ class FedGridServer(BaseFedAvgServer):
 
         # Log the round stats on tensorboard except the collab weights
         self.log_utils.log_tb_round_stats(clients_round_stats, ["Collaborator weights"], self.round)
-        
-        # for stats in clients_round_stats:
-        #     print(f"Collaborator weights: {stats['Collaborator weights']}")
+        for stats in clients_round_stats:
+            print(f"Collaborator weights: {stats['Collaborator weights']}")
 
         self.log_utils.log_console(f"Round test acc before local training {[stats['test_acc_before_training'] for stats in clients_round_stats]}")
         self.log_utils.log_console(f"Round test acc after local training {[stats['test_acc_after_training'] for stats in clients_round_stats]}")
