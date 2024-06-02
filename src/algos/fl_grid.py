@@ -4,13 +4,14 @@ import torch
 import torch.nn as nn
 import random
 import numpy as np
+from math import ceil
 
 from algos.base_class import BaseFedAvgClient, BaseFedAvgServer
 
 from collections import defaultdict 
 from utils.stats_utils import from_round_stats_per_round_per_client_to_dict_arrays
 
-class FedRanClient(BaseFedAvgClient):
+class FedGridClient(BaseFedAvgClient):
     def __init__(self, config) -> None:
         super().__init__(config)
         
@@ -37,18 +38,33 @@ class FedRanClient(BaseFedAvgClient):
             elif p_within_decay == "log_inc":
                 alpha = np.exp(1/within_community_sampling)-1
                 within_community_sampling = within_community_sampling * np.log2(1 + alpha * round / total_rounds)
+
+        self.grid_size = int(self.config["num_clients"]**0.5)
+
+        self.num_clients = self.config["num_clients"]
+
+        selected_ids = []
+
+        # Left
+        if self.node_id % self.grid_size != 1:
+            selected_ids.append(self.node_id - 1)
         
-        if  random.random() <= within_community_sampling or len(self.communities) == 1:
-            # Consider only neighbors (clients in the same community)
-            indices = [id for id in sorted(list(reprs_dict.keys())) if id in self.communities[self.node_id]]
-        else:
-            # Consider clients from other communities
-            indices = [id for id in sorted(list(reprs_dict.keys())) if id not in self.communities[self.node_id]]      
-              
-        num_clients_to_select = self.config[f"target_clients_{'before' if round < self.config['T_0'] else 'after'}_T_0"]
-        selected_ids = random.sample(indices, min(num_clients_to_select + 1, len(indices)))
+        # Right
+        if self.node_id % self.grid_size != 0 and self.node_id < self.num_clients:
+            selected_ids.append(self.node_id + 1)
+        
+        # Top
+        if self.node_id > self.grid_size:
+            selected_ids.append(self.node_id - self.grid_size)
+        
+        # Bottom
+        if self.node_id <= self.num_clients - self.grid_size:
+            selected_ids.append(self.node_id + self.grid_size)
+
         # Force self node id to be selected, not removed before sampling to keep sampling identic across nodes (if same seed)
-        selected_ids = [self.node_id] + [id for id in selected_ids if id != self.node_id][:num_clients_to_select]
+        selected_ids = [self.node_id] + selected_ids
+
+        print("Selected collabs:" + str(selected_ids))
        
         collab_weights = defaultdict(lambda: 0.0)
         for idx in selected_ids:
@@ -190,7 +206,7 @@ class FedRanClient(BaseFedAvgClient):
 
             self.comm_utils.send_signal(dest=self.server_node, data=stats, tag=self.tag.ROUND_STATS)
 
-class FedRanServer(BaseFedAvgServer):
+class FedGridServer(BaseFedAvgServer):
     def __init__(self, config) -> None:
         super().__init__(config)
         # self.set_parameters()
@@ -243,7 +259,7 @@ class FedRanServer(BaseFedAvgServer):
         return clients_round_stats
 
     def run_protocol(self):
-        self.log_utils.log_console("Starting random P2P collaboration")
+        self.log_utils.log_console("Starting static grid P2P collaboration")
         start_round = self.config.get("start_round", 0)
         total_round = self.config["rounds"]
 

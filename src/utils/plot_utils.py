@@ -149,7 +149,7 @@ class PlotUtils():
 
         plt.xlabel(x_label)
         plt.ylabel("Client")
-        plt.tight_layout()
+        # plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
         
         if self.with_title:
             fig.suptitle(f"{name} - {self.config['algo']}-{self.config['dset_name']}/samples per clients: {self.config['samples_per_client']}\nclients:{self.config['num_clients']}/label distribution: {self.config['train_label_distribution']}")

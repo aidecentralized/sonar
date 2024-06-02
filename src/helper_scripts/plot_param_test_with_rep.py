@@ -23,7 +23,7 @@ epx1_runs = []
 LEGEND_1 = "Intra domain, pretrained"
 for p in PARAMS_VALUE:
     epx1_runs.append({
-        "folder":f"domainnet_cli_rea_ske_12clients_{p}spc_fedran_iid_5epr_200r_intra_pretrained{p}_seed1",
+        "folder":f"domainnet_cli_rea_ske_12clients_{p}spc_fedring_iid_5epr_200r_intra_pretrained{p}_seed1",
         "param_value": p
     })
 exp_folders.append((epx1_runs, LEGEND_1))
@@ -32,7 +32,7 @@ epx2_runs = []
 LEGEND_2 = "Inter domain, pretrained"
 for p in PARAMS_VALUE:
     epx2_runs.append({
-         "folder":f"domainnet_cli_rea_ske_12clients_{p}spc_fedran_iid_5epr_200r_inter_pretrained{p}_seed1",
+         "folder":f"domainnet_cli_rea_ske_12clients_{p}spc_fedring_iid_5epr_200r_inter_pretrained{p}_seed1",
         "param_value": p
     })
 exp_folders.append((epx2_runs, LEGEND_2))
@@ -41,7 +41,7 @@ epx3_runs = []
 LEGEND_3 = "Intra domain"
 for p in PARAMS_VALUE:
     epx3_runs.append({
-        "folder":f"dom_dom_dom_12clients_{p}spc_fedran_iid_5epr_200r_intra_d{p}_seed0",
+        "folder":f"dom_dom_dom_12clients_{p}spc_fedring_iid_5epr_200r_intra_d{p}_seed0",
         "param_value": p
     })
 exp_folders.append((epx3_runs, LEGEND_3))
@@ -50,7 +50,7 @@ epx4_runs = []
 LEGEND_4 = "Inter domain"
 for p in PARAMS_VALUE:
     epx4_runs.append({
-        "folder":f"dom_dom_dom_12clients_{p}spc_fedran_iid_5epr_200r_inter_d{p}_seed0",
+        "folder":f"dom_dom_dom_12clients_{p}spc_fedring_iid_5epr_200r_inter_d{p}_seed0",
         "param_value": p
     })
     
