@@ -10,3 +10,4 @@ The application currently uses MPI and GRPC (experimental) to enable communicati
 - [ ] O3: Implement a few more collaborative learning algorithms.
 - [ ] O4: Write the GRPC module for the communication layer. Then we don't need to rely on MPI which requires ssh access to all the nodes.
 - [ ] O5: Improve telemetry and logging for visualization of the network.
+- [ ] 06: Fault tolerance and rogue clients simulation
