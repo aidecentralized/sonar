@@ -81,7 +81,8 @@ class FedTorusClient(BaseFedAvgClient):
         # Force self node id to be selected, not removed before sampling to keep sampling identical across nodes (if same seed)
         selected_ids = list(set(selected_ids))
 
-        selected_collabs = np.random.choice(selected_ids, size=self.config["num_clients_to_select"], replace=False)
+        num_clients_to_select = self.config["num_clients_to_select"]
+        selected_collabs = np.random.choice(selected_ids, size=num_clients_to_select, replace=False)
         selected_ids = list(selected_collabs) + [self.node_id] 
 
         print("Selected collabs: " + str(self.node_id) + str(selected_ids))
