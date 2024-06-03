@@ -282,7 +282,7 @@ class FedTorusServer(BaseFedAvgServer):
         return clients_round_stats
 
     def run_protocol(self):
-        self.log_utils.log_console("Starting static grid P2P collaboration")
+        self.log_utils.log_console("Starting static torus P2P collaboration")
         start_round = self.config.get("start_round", 0)
         total_round = self.config["rounds"]
 
