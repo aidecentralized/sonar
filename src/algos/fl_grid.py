@@ -62,7 +62,8 @@ class FedGridClient(BaseFedAvgClient):
             selected_ids.append(self.node_id + self.grid_size)
 
         # Force self node id to be selected, not removed before sampling to keep sampling identic across nodes (if same seed)
-        selected_ids = [self.node_id] + selected_ids
+        selected_collabs = np.random.choice(selected_ids, size=self.config["num_clients_to_select"], replace=False)
+        selected_ids = list(selected_collabs) + [self.node_id] 
 
         print("Selected collabs:" + str(selected_ids))
        
