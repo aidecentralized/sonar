@@ -643,6 +643,7 @@ fedgrid = {
 
     # Clients selection
     "num_clients": fedgrid_client,
+    "num_clients_to_select": 1,
     "leader_mode": False,
     "community_type": "dataset",
     #"within_community_sampling": 0.1,
@@ -693,6 +694,7 @@ fedtorus = {
 
     # Clients selection
     "num_clients": fedtorus_client,
+    "num_clients_to_select": 1,
     "leader_mode": False,
     "community_type": "dataset",
     #"within_community_sampling": 0.1,
@@ -723,7 +725,7 @@ fedtorus = {
 
 # current_config = fedcentral
 
-current_config = fedtorus
+current_config = fedgrid
 # current_config["test_param"] ="community_type"
 # current_config["test_values"] = ["dataset", None] 
 
