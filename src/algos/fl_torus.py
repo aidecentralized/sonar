@@ -82,7 +82,7 @@ class FedTorusClient(BaseFedAvgClient):
         selected_ids = list(set(selected_ids))
 
         num_clients_to_select = self.config["num_clients_to_select"]
-        selected_collabs = np.random.choice(selected_ids, size=num_clients_to_select, replace=False)
+        selected_collabs = np.random.choice(selected_ids, size=min(num_clients_to_select, len(selected_ids)), replace=False)
         selected_ids = list(selected_collabs) + [self.node_id] 
 
         print("Selected collabs: " + str(self.node_id) + str(selected_ids))
