@@ -90,7 +90,7 @@ class FedGridClient(BaseFedAvgClient):
             if idx == self.node_id:
                 collab_weights[idx] = own_aggr_weight
             else:
-                collab_weights[idx] = 1 - own_aggr_weight / (len(selected_ids) - 1)
+                collab_weights[idx] = (1 - own_aggr_weight) / (len(selected_ids) - 1)
             
         return collab_weights
     

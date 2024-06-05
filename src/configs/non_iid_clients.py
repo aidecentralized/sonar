@@ -515,7 +515,7 @@ fedwe = {
     "exp_keys": []
 }
 
-fedran_client= 39
+fedran_client= 12
 fedran = {
     "seed": 1,
     "algo": "fedran",
@@ -523,7 +523,7 @@ fedran = {
     "num_rep": 1,
     "load_existing": False,
     "dump_dir": "./expt_dump/",
-    "device_ids": get_device_ids(num_clients=fedran_client, num_client_per_gpu=10, available_gpus=[0,1,2,3]),
+    "device_ids": get_device_ids(num_clients=fedran_client, num_client_per_gpu=10, available_gpus=[1,2,3]),
 
     # Dataset params 
     "dset": get_domainnet_support(fedran_client),# get_fmow_support(fedran_client), # get_rxrx1_support(fedran_client), # get_domainnet_support(fedran_client), # get_camelyon17_support(fedran_client), 
@@ -547,7 +547,7 @@ fedran = {
     #"num_communities": len(cifar10_rotations), #len(domainnet_classes),
     
     # Learning setup
-    "rounds": 20, 
+    "rounds": 210, 
     "epochs_per_round": 5,
     "model": "resnet10",
     "local_train_after_aggr" : True,
