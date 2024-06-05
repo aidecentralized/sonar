@@ -61,8 +61,10 @@ class FedGridClient(BaseFedAvgClient):
         if self.node_id <= self.num_clients - self.grid_size:
             selected_ids.append(self.node_id + self.grid_size)
 
+        num_clients_to_select = self.config["num_clients_to_select"]
         # Force self node id to be selected, not removed before sampling to keep sampling identic across nodes (if same seed)
-        selected_ids = [self.node_id] + selected_ids
+        selected_collabs = np.random.choice(selected_ids, size=min(num_clients_to_select, len(selected_ids)), replace=False)
+        selected_ids = list(selected_collabs) + [self.node_id]
 
         print("Selected collabs:" + str(selected_ids))
        
@@ -88,7 +90,7 @@ class FedGridClient(BaseFedAvgClient):
             if idx == self.node_id:
                 collab_weights[idx] = own_aggr_weight
             else:
-                collab_weights[idx] = 1 - own_aggr_weight / (len(selected_ids) - 1)
+                collab_weights[idx] = (1 - own_aggr_weight) / (len(selected_ids) - 1)
             
         return collab_weights
     

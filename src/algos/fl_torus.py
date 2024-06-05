@@ -79,7 +79,11 @@ class FedTorusClient(BaseFedAvgClient):
         selected_ids.append(bottom_id)
 
         # Force self node id to be selected, not removed before sampling to keep sampling identical across nodes (if same seed)
-        selected_ids = list(set([self.node_id] + selected_ids))
+        selected_ids = list(set(selected_ids))
+
+        num_clients_to_select = self.config["num_clients_to_select"]
+        selected_collabs = np.random.choice(selected_ids, size=min(num_clients_to_select, len(selected_ids)), replace=False)
+        selected_ids = list(selected_collabs) + [self.node_id] 
 
         print("Selected collabs: " + str(self.node_id) + str(selected_ids))
        
@@ -105,7 +109,7 @@ class FedTorusClient(BaseFedAvgClient):
             if idx == self.node_id:
                 collab_weights[idx] = own_aggr_weight
             else:
-                collab_weights[idx] = 1 - own_aggr_weight / (len(selected_ids) - 1)
+                collab_weights[idx] = (1 - own_aggr_weight) / (len(selected_ids) - 1)
             
         return collab_weights
     
@@ -278,7 +282,7 @@ class FedTorusServer(BaseFedAvgServer):
         return clients_round_stats
 
     def run_protocol(self):
-        self.log_utils.log_console("Starting static grid P2P collaboration")
+        self.log_utils.log_console("Starting static torus P2P collaboration")
         start_round = self.config.get("start_round", 0)
         total_round = self.config["rounds"]
 
