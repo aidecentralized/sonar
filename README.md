@@ -12,3 +12,4 @@ The application currently uses MPI and GRPC (experimental) to enable communicati
 - [ ] O5: Improve telemetry and logging for visualization of the network.
 - [ ] 06: Fault tolerance and rogue clients simulation
 - [ ] 07: Comprehensive documentation - https://github.com/squidfunk/mkdocs-material
+- [ ] 08: Eliminate the need to add a BaseServer module, keep it backward compatible by instantiating the server as yet another node.
