@@ -13,3 +13,5 @@ The application currently uses MPI and GRPC (experimental) to enable communicati
 - [ ] 06: Fault tolerance and rogue clients simulation
 - [ ] 07: Comprehensive documentation - https://github.com/squidfunk/mkdocs-material
 - [ ] 08: Eliminate the need to add a BaseServer module, keep it backward compatible by instantiating the server as yet another node.
+- [ ] 09: Build testing suite
+- [ ] 10: Set up milestones for transition to full API like interface and then launch on `pip`
