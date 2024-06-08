@@ -10,7 +10,7 @@ from algos.base_class import BaseFedAvgClient, BaseFedAvgServer
 from collections import defaultdict 
 from utils.stats_utils import from_round_stats_per_round_per_client_to_dict_arrays
 
-class FedRanClient(BaseFedAvgClient):
+class FedRingClient(BaseFedAvgClient):
     def __init__(self, config) -> None:
         super().__init__(config)
         
@@ -37,16 +37,15 @@ class FedRanClient(BaseFedAvgClient):
             elif p_within_decay == "log_inc":
                 alpha = np.exp(1/within_community_sampling)-1
                 within_community_sampling = within_community_sampling * np.log2(1 + alpha * round / total_rounds)
-        
-        if  random.random() <= within_community_sampling or len(self.communities) == 1:
-            # Consider only neighbors (clients in the same community)
-            indices = [id for id in sorted(list(reprs_dict.keys())) if id in self.communities[self.node_id]]
+
+        if((self.node_id + 1) % self.config["num_clients"] == 0):
+            selected_ids = [(self.node_id + 2) % self.config["num_clients"]]
         else:
-            # Consider clients from other communities
-            indices = [id for id in sorted(list(reprs_dict.keys())) if id not in self.communities[self.node_id]]      
-              
-        num_clients_to_select = self.config[f"target_clients_{'before' if round < self.config['T_0'] else 'after'}_T_0"]
-        selected_ids = random.sample(indices, min(num_clients_to_select + 1, len(indices)))
+            selected_ids = [(self.node_id + 1) % self.config["num_clients"]]
+
+        # selected_ids  = [(node_id + i) % self.config["num_clients"] for i in range(-1, 2)]
+        num_clients_to_select = self.config["num_clients_to_select"]
+
         # Force self node id to be selected, not removed before sampling to keep sampling identic across nodes (if same seed)
         selected_ids = [self.node_id] + [id for id in selected_ids if id != self.node_id][:num_clients_to_select]
        
@@ -190,7 +189,7 @@ class FedRanClient(BaseFedAvgClient):
 
             self.comm_utils.send_signal(dest=self.server_node, data=stats, tag=self.tag.ROUND_STATS)
 
-class FedRanServer(BaseFedAvgServer):
+class FedRingServer(BaseFedAvgServer):
     def __init__(self, config) -> None:
         super().__init__(config)
         # self.set_parameters()
@@ -243,7 +242,7 @@ class FedRanServer(BaseFedAvgServer):
         return clients_round_stats
 
     def run_protocol(self):
-        self.log_utils.log_console("Starting random P2P collaboration")
+        self.log_utils.log_console("Starting static ring P2P collaboration")
         start_round = self.config.get("start_round", 0)
         total_round = self.config["rounds"]
 
