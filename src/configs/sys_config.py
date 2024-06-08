@@ -4,7 +4,9 @@
 system_config = {
     "num_users": 4,
     "experiment_path": "./experiments/",
-    "dataset_path": "/data/unagi0/anakewat/imgs/",
+    "dset": "cifar10",
+    "dump_dir": "./expt_dump/",
+    "dpath": "/data/unagi0/anakewat/imgs/",
     "device_ids": {
         "iid_dispfl": {"node_0": [2], "node_1": [3], "node_2": [4], "node_3": [5], "node_4": [2]},
         "iid_defkt": {"node_0": [4], "node_1": [4], "node_2": [4], "node_3": [4]},
