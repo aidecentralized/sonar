@@ -62,7 +62,7 @@ class CentralizedCLient(BaseClient):
         """
         Share the model weights (on the cpu)
         """
-        return {k: v.cpu() for k, v in  self.model.module.state_dict().items()}
+        return {k: v.cpu() for k, v in  self.model.state_dict().items()}
     
     def set_model_weights(self, model_wts: OrderedDict[str, Tensor], keys_to_ignore=[]):
         """
@@ -72,12 +72,13 @@ class CentralizedCLient(BaseClient):
         
         if len(keys_to_ignore) > 0:
             for key in keys_to_ignore:
-                model_wts.pop(key)
+                if key in model_wts.keys():
+                    model_wts.pop(key)
             
         for key in model_wts.keys():
             model_wts[key] = model_wts[key].to(self.device)
         
-        self.model.module.load_state_dict(model_wts, strict= len(keys_to_ignore) == 0)
+        self.model.load_state_dict(model_wts, strict= len(keys_to_ignore) == 0)
         
     def mask_last_layer(self):
         wts = self.get_model_weights()
@@ -85,18 +86,18 @@ class CentralizedCLient(BaseClient):
         key = [k for k in keys if "weight" in k][0]
         weight = torch.zeros_like(wts[key])
         weight[self.classes_of_interest] = wts[key][self.classes_of_interest]
-        self.model.module.load_state_dict({key: weight.to(self.device)}, strict=False)
+        self.model.load_state_dict({key: weight.to(self.device)}, strict=False)
 
     def freeze_model_except_last_layer(self):
         wts = self.get_model_weights()
         keys = self.model_utils.get_last_layer_keys(wts)
         
-        for name, param in self.model.module.named_parameters():
+        for name, param in self.model.named_parameters():
             if name not in keys:
                 param.requires_grad = False
                
     def unfreeze_model(self):
-        for param in self.model.module.parameters():
+        for param in self.model.parameters():
             param.requires_grad = True 
 
     def run_protocol(self):                    
