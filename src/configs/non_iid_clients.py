@@ -174,18 +174,18 @@ fediso_client = 12
 fediso = {
     "seed": 1,
     "algo": "fediso",
-    "exp_id": "",
+    "exp_id": "warmup_",
     "num_rep": 1,
     "load_existing": False,
     "dump_dir": "./expt_dump/",
-    "device_ids": get_device_ids(num_clients=fediso_client, num_client_per_gpu=9, available_gpus=[0,1]),
+    "device_ids": get_device_ids(num_clients=fediso_client, num_client_per_gpu=10, available_gpus=[1, 2, 3]),
 
     # Dataset params 
     "dset": get_domainnet_support(fediso_client), 
     "dpath": domainnet_dpath, 
     "train_label_distribution": "iid", # Either "iid", "non_iid" "support", 
     "test_label_distribution": "iid", # Either "iid" "support", 
-    "samples_per_client": 256,
+    "samples_per_client": 32,
     #"test_samples_per_class": 300,
 
     #"support": get_sliding_window_support(num_clients=fediso_client, num_classes=10, num_classes_per_client=4), 
@@ -194,7 +194,7 @@ fediso = {
     "num_clients": fediso_client,
 
     # Learning setup
-    "rounds": 200, 
+    "rounds": 210, 
     "epochs_per_round": 5,
     "model": "resnet10",
     "model_lr": 1e-4, 
@@ -725,7 +725,7 @@ fedtorus = {
 
 # current_config = fedcentral
 
-current_config = fedgrid
+current_config = fediso
 # current_config["test_param"] ="community_type"
 # current_config["test_values"] = ["dataset", None] 
 
