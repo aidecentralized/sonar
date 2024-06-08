@@ -20,6 +20,7 @@ from algos.fl_data_repr import FedDataRepClient, FedDataRepServer
 from algos.fl_val import FedValClient, FedValServer
 from utils.log_utils import copy_source_code, check_and_create_path
 from utils.config_utils import load_config, process_config
+from configs.sys_config import get_device_ids
 import os
 
 # should be used as: algo_map[algo_name][rank>0](config)
@@ -54,11 +55,24 @@ class Scheduler:
     def __init__(self) -> None:
         pass
 
-    def assign_config_by_path(self, config_path) -> None:
-        self.config = load_config(config_path)
-
     def install_config(self) -> None:
         self.config = process_config(self.config)
+
+    def assign_config_by_path(self, sys_config_path, algo_config_path):
+        self.sys_config = load_config(sys_config_path)
+        self.algo_config = load_config(algo_config_path)
+        self.merge_configs()
+
+    def merge_configs(self):
+        self.config = self.algo_config.copy()
+        self.config.update({
+            "dset": "cifar10",
+            "dump_dir": "./expt_dump/",
+            "dpath": self.sys_config["dataset_path"] + "cifar10",
+            "num_clients": self.sys_config["dataset_splits"]["iid"]["num_clients"],
+            "samples_per_client": self.sys_config["dataset_splits"]["iid"]["samples_per_client"],
+            "device_ids": get_device_ids("iid_dispfl")
+        })
 
     def initialize(self, copy_souce_code=True) -> None:
         assert self.config is not None, "Config should be set when initializing"
