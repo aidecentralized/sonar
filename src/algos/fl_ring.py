@@ -84,18 +84,18 @@ class FedRingClient(BaseFedAvgClient):
         key = [k for k in keys if "weight" in k][0]
         weight = torch.zeros_like(wts[key])
         weight[self.classes_of_interest] = wts[key][self.classes_of_interest]
-        self.model.module.load_state_dict({key: weight.to(self.device)}, strict=False)
+        self.model.load_state_dict({key: weight.to(self.device)}, strict=False)
 
     def freeze_model_except_last_layer(self):
         wts = self.get_model_weights()
         keys = self.model_utils.get_last_layer_keys(wts)
         
-        for name, param in self.model.module.named_parameters():
+        for name, param in self.model.named_parameters():
             if name not in keys:
                 param.requires_grad = False
                
     def unfreeze_model(self):
-        for param in self.model.module.parameters():
+        for param in self.model.parameters():
             param.requires_grad = True 
             
     def flatten_repr(self,repr):

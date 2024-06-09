@@ -73,7 +73,7 @@ class DisPFLClient(BaseClient):
         
     def get_trainable_params(self):
         param_dict= {}
-        for name, param in self.model.module.named_parameters():
+        for name, param in self.model.named_parameters():
             param_dict[name] = param
         return param_dict
     
@@ -81,13 +81,13 @@ class DisPFLClient(BaseClient):
         """
         Share the model weights
         """
-        return self.model.module.state_dict()
+        return self.model.state_dict()
 
     def set_representation(self, representation: OrderedDict[str, Tensor]):
         """
         Set the model weights
         """
-        self.model.module.load_state_dict(representation)
+        self.model.load_state_dict(representation)
 
     def fire_mask(self,masks,round, total_round):
         weights = self.get_representation()
@@ -233,7 +233,7 @@ class DisPFLClient(BaseClient):
         loss = criterion(log_probs, labels.long())
         loss.backward()
         gradient={}
-        for name, param in self.model.module.named_parameters():
+        for name, param in self.model.named_parameters():
             gradient[name] = param.grad.to("cpu")
         
         return gradient
@@ -367,7 +367,7 @@ class DisPFLServer(BaseServer):
         """
         Share the model weights
         """
-        return self.model.module.state_dict()
+        return self.model.state_dict()
     
     def send_representations(self, representations):
         """
@@ -378,7 +378,7 @@ class DisPFLServer(BaseServer):
                                         representations,
                                         self.tag.UPDATES)
             self.log_utils.log_console("Server sent {} representations to node {}".format(len(representations),client_node))
-        #self.model.module.load_state_dict(representation)
+        #self.model.load_state_dict(representation)
 
     def test(self) -> float:
         """
@@ -410,7 +410,7 @@ class DisPFLServer(BaseServer):
     
     def get_trainable_params(self):
         param_dict= {}
-        for name, param in self.model.module.named_parameters():
+        for name, param in self.model.named_parameters():
             param_dict[name] = param
         return param_dict
     

@@ -58,13 +58,13 @@ class SWARMClient(BaseClient):
         """
         Share the model weights
         """
-        return self.model.module.state_dict()
+        return self.model.state_dict()
 
     def set_representation(self, representation: OrderedDict[str, Tensor]):
         """
         Set the model weights
         """
-        self.model.module.load_state_dict(representation)
+        self.model.load_state_dict(representation)
 
     def fed_avg(self, model_wts: List[OrderedDict[str, Tensor]]):
         # All models are sampled currently at every round
@@ -164,7 +164,7 @@ class SWARMServer(BaseServer):
                                         representations,
                                         self.tag.UPDATES)
             self.log_utils.log_console("Server sent {} representations to node {}".format(len(representations),client_node))
-        #self.model.module.load_state_dict(representation)
+        #self.model.load_state_dict(representation)
 
     def test(self) -> float:
         """
