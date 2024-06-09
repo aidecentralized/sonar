@@ -85,7 +85,7 @@ class L2CClient(BaseFedAvgClient):
             loss.backward()
             
             # Create dict params(layer) name -> gradiant
-            grad_dict = {k:v.grad for k,v in self.model.module.named_parameters()}
+            grad_dict = {k:v.grad for k,v in self.model.named_parameters()}
     
             # Compute grad for each alpha
             # Multiply weights and their corresponding grads and sum them by corresponding collaborator weights 
