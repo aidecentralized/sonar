@@ -59,7 +59,7 @@ class DefKTClient(BaseClient):
         Train the model locally
         """
         teacher_model = copy.deepcopy(self.model)
-        teacher_model.module.load_state_dict(teacher_repr)
+        teacher_model.load_state_dict(teacher_repr)
         print("Deep mutual learning at student Node {}".format(self.node_id))
         avg_loss,acc = self.model_utils.deep_mutual_train([self.model,teacher_model], 
                                                           self.optim, self.dloader, self.device)
@@ -68,13 +68,13 @@ class DefKTClient(BaseClient):
         """
         Share the model weights
         """
-        return self.model.module.state_dict()
+        return self.model.state_dict()
 
     def set_representation(self, representation: OrderedDict[str, Tensor]):
         """
         Set the model weights
         """
-        self.model.module.load_state_dict(representation)
+        self.model.load_state_dict(representation)
 
     def fed_avg(self, model_wts: List[OrderedDict[str, Tensor]]):
         # All models are sampled currently at every round
@@ -191,7 +191,7 @@ class DefKTServer(BaseServer):
                                         representations,
                                         self.tag.UPDATES)
             self.log_utils.log_console("Server sent {} representations to node {}".format(len(representations),client_node))
-        #self.model.module.load_state_dict(representation)
+        #self.model.load_state_dict(representation)
 
     def test(self) -> float:
         """

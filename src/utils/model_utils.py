@@ -170,7 +170,7 @@ class ModelUtils():
 
     def save_model(self, model, path):
         if type(model) == DataParallel:
-            model_ = model.module
+            model_ = model
         else:
             model_ = model
         torch.save(model_.state_dict(), path)

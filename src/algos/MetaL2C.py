@@ -121,7 +121,7 @@ class MetaL2CClient(BaseFedAvgClient):
             loss.backward()
             
             # Create dict params(layer) name -> gradiant
-            grad_dict = {k:v.grad for k,v in self.model.module.named_parameters()}
+            grad_dict = {k:v.grad for k,v in self.model.named_parameters()}
             
             for cw_id in collab_weights_tensor_dict.keys():
                 cw_grad = 0
