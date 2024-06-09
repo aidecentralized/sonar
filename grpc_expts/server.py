@@ -1,4 +1,5 @@
 from concurrent import futures
+import threading
 import grpc
 import fl_pb2
 import fl_pb2_grpc
@@ -6,13 +7,29 @@ import fl_pb2_grpc
 class FederatedLearningServicer(fl_pb2_grpc.FederatedLearningServicer):
     def __init__(self):
         self.local_averages = []
+        self.lock = threading.Lock()
+        self.condition = threading.Condition(self.lock)
+        self.num_clients = 0
+        self.target_clients = 4
 
     def SendLocalAverage(self, request, context):
-        self.local_averages.append(request.local_average)
-        return fl_pb2.AverageResponse(global_average=self._compute_global_average())
+        with self.lock:
+            self.local_averages.append(request.local_average)
+            self.num_clients += 1
+            if self.num_clients >= self.target_clients:
+                self.condition.notify_all()
+
+        with self.condition:
+            while self.num_clients < self.target_clients:
+                self.condition.wait()
+            global_average = self._compute_global_average()
+
+        return fl_pb2.AverageResponse(global_average=global_average)
 
     def GetGlobalAverage(self, request, context):
-        return fl_pb2.AverageResponse(global_average=self._compute_global_average())
+        with self.lock:
+            global_average = self._compute_global_average()
+        return fl_pb2.AverageResponse(global_average=global_average)
 
     def _compute_global_average(self):
         if not self.local_averages:

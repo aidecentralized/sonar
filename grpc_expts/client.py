@@ -12,7 +12,7 @@ def run_client():
     print(f"Local average: {local_average}")
 
     # Connect to server and send local average
-    with grpc.insecure_channel('localhost:50051') as channel:
+    with grpc.insecure_channel('matlaberp2.media.mit.edu:50051') as channel:
         stub = fl_pb2_grpc.FederatedLearningStub(channel)
         response = stub.SendLocalAverage(fl_pb2.AverageRequest(local_average=local_average))
         print(f"Global average from server: {response.global_average}")
