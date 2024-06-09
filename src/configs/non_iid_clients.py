@@ -207,36 +207,41 @@ fediso = {
     "exp_keys": []
 }
 
+l2c_client = 12
 L2C = {
     "seed": 1,
     "algo": "l2c",
     "sharing": "weights", #"weights"
     "exp_id": "",
     "load_existing": False,
-    "dset": "cifar10",
-    "dpath": "./imgs/cifar10",
-    "train_label_distribution": "support", # Either "iid", "shard" "support", 
+    
+    # Dataset params 
+    "dset": get_domainnet_support(l2c_client), 
+    "dpath": domainnet_dpath, 
+    "train_label_distribution": "iid", # Either "iid", "non_iid" "support", 
     "test_label_distribution": "iid", # Either "iid" "support", 
+    "samples_per_client": 32,
     "validation_prop": 0.05,
-    "support" : sliding_window_8c_4cpc_support,
-    "samples_per_client": 100,
     "dump_dir": "./expt_dump/",
 
     # Learning setup
-    "num_clients": 8,
-    "device_ids": device_ids_8c_gpu,
+    "num_clients": l2c_client,
+    "device_ids": get_device_ids(num_clients=fediso_client, num_client_per_gpu=10, available_gpus=[1, 2, 3]),
+
     #"target_clients_before_T_0": 7,
     "target_clients_after_T_0": 1,
     "T_0": 0,   # round after wich only target_clients_after_T_0 peers are kept
     "alpha_lr": 0.1, 
     "alpha_weight_decay": 0.01,
     
+    # Learning setup
+    "rounds": 210, 
     "epochs_per_round": 5,
-    "rounds": 30, 
-    "model": "resnet18",
+    "model": "resnet10",
+    "batch_size": 16,
+    "epochs_per_round": 5,
     "average_last_layer": False,
     "model_lr": 1e-4, #0.01, #1e-4, 
-    "batch_size": 64,
     "optimizer": "sgd",
     "weight_decay": 5e-4,
     
@@ -327,30 +332,30 @@ fedweight = {
     "exp_keys": []
 }
 
-fedcentral_client = 3
+fedcentral_client = 12
 fedcentral = {
     "seed": 1,
     "algo": "centralized",
     "exp_id": "c2",
     "load_existing": False,
     "dump_dir": "./expt_dump/",
-    "device_ids": get_device_ids(num_clients=fedcentral_client, num_client_per_gpu=6, available_gpus=[0, 1,2, 3, 4, 5, 6, 7]),
+    "device_ids": get_device_ids(num_clients=fedcentral_client, num_client_per_gpu=10, available_gpus=[1, 2, 3]),
 
     # Dataset params 
-    "dset": get_camelyon17_support(fedcentral_client),
-    "dpath": wilds_dpath,
-    "train_label_distribution": "iid", # Either "iid", "shard" "support", 
-    "test_label_distribution": "iid", # Either "iid" "support",     
-    "samples_per_client": 16,
+    "dset": get_domainnet_support(fediso_client), 
+    "dpath": domainnet_dpath, 
+    "train_label_distribution": "iid", # Either "iid", "non_iid" "support", 
+    "test_label_distribution": "iid", # Either "iid" "support", 
+    "samples_per_client": 32,
     
     #"support" : get_sliding_window_support(num_clients=fedcentral_client, num_classes=10, num_classes_per_client=4),
 
     "num_clients": fedcentral_client,
-    "central_client": 2,
+    "central_client": 1,
     "mask_last_layer": False,
     "fine_tune_last_layer": False,
     "epochs_per_round": 5,
-    "rounds": 100, 
+    "rounds": 210, 
     "model": "resnet10",
     "model_lr": 1e-4, 
     "batch_size": 16,
@@ -725,7 +730,7 @@ fedtorus = {
 
 # current_config = fedcentral
 
-current_config = fediso
+current_config = L2C
 # current_config["test_param"] ="community_type"
 # current_config["test_values"] = ["dataset", None] 
 
