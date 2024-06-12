@@ -227,9 +227,8 @@ L2C = {
     # Learning setup
     "num_clients": l2c_client,
     "device_ids": get_device_ids(num_clients=fediso_client, num_client_per_gpu=10, available_gpus=[1, 2, 3]),
-
     #"target_clients_before_T_0": 7,
-    "target_clients_after_T_0": 1,
+    "target_clients_after_T_0": 3,
     "T_0": 0,   # round after wich only target_clients_after_T_0 peers are kept
     "alpha_lr": 0.1, 
     "alpha_weight_decay": 0.01,
@@ -296,6 +295,45 @@ metaL2C_cifar10 = {
     "exp_keys": []
 }
 
+fedfomo_client = 12
+fedfomo = {
+    "seed": 1,
+    "algo": "fedfomo",
+    "exp_id": "warmup_",
+    "num_rep": 1,
+    "load_existing": False,
+    "dump_dir": "./expt_dump/",
+    "device_ids": get_device_ids(num_clients=fedfomo_client, num_client_per_gpu=10, available_gpus=[1, 2, 3]),
+
+    # Dataset params 
+    "dset": get_domainnet_support(fedfomo_client), 
+    "dpath": domainnet_dpath, 
+    "train_label_distribution": "iid", # Either "iid", "non_iid" "support", 
+    "test_label_distribution": "iid", # Either "iid" "support", 
+    "samples_per_client": 32,
+    #"test_samples_per_class": 300,
+
+    #"support": get_sliding_window_support(num_clients=fediso_client, num_classes=10, num_classes_per_client=4), 
+
+    # Clients 
+    "num_clients": fedfomo_client,
+
+    # Learning setup
+    "rounds": 210,
+    "epochs": 210,
+    "epochs_per_round": 5,
+    "model": "resnet10",
+    "model_lr": 1e-4, 
+    "batch_size": 16,
+
+    # params for model
+    "position": 0, 
+    "inp_shape": [128, 3, 32, 32],
+
+    "exp_keys": []
+}
+
+
 fedweight = {
     "seed": 1,
     "algo": "fedweight",
@@ -342,7 +380,7 @@ fedcentral = {
     "device_ids": get_device_ids(num_clients=fedcentral_client, num_client_per_gpu=10, available_gpus=[1, 2, 3]),
 
     # Dataset params 
-    "dset": get_domainnet_support(fediso_client), 
+    "dset": get_domainnet_support(fedcentral_client), 
     "dpath": domainnet_dpath, 
     "train_label_distribution": "iid", # Either "iid", "non_iid" "support", 
     "test_label_distribution": "iid", # Either "iid" "support", 
@@ -359,6 +397,43 @@ fedcentral = {
     "model": "resnet10",
     "model_lr": 1e-4, 
     "batch_size": 16,
+
+    # params for model
+    "position": 0, 
+    "inp_shape": [128, 3, 32, 32],
+    
+    "exp_keys": []
+}
+
+defkt_client = 12
+defkt = {
+    "seed": 1,
+    "algo": "defkt",
+    "exp_id": "expt_",
+    "load_existing": False,
+    "dump_dir": "./expt_dump/",
+    "device_ids": get_device_ids(num_clients=defkt_client, num_client_per_gpu=10, available_gpus=[1, 2, 3]),
+
+    # Dataset params 
+    "dset": get_domainnet_support(defkt_client), 
+    "dpath": domainnet_dpath, 
+    "train_label_distribution": "iid", # Either "iid", "non_iid" "support", 
+    "test_label_distribution": "iid", # Either "iid" "support", 
+    "samples_per_client": 32,
+    
+    #"support" : get_sliding_window_support(num_clients=fedcentral_client, num_classes=10, num_classes_per_client=4),
+
+    "num_clients": defkt_client,
+    "central_client": 1,
+    "mask_last_layer": False,
+    "fine_tune_last_layer": False,
+    "epochs_per_round": 5,
+    "rounds": 210, 
+    "epochs": 210,
+    "model": "resnet10",
+    "model_lr": 1e-4, 
+    "batch_size": 16,
+    "num_teachers": 5,
 
     # params for model
     "position": 0, 
@@ -479,7 +554,7 @@ fedwe = {
     "num_rep": 1,
     "load_existing": False,
     "dump_dir": "./expt_dump/",
-    "device_ids": get_device_ids(num_clients=fedwe_client, num_client_per_gpu=8, available_gpus=[7,6]),
+    "device_ids": get_device_ids(num_clients=fedwe_client, num_client_per_gpu=10, available_gpus=[1, 2, 3]),
 
     # Dataset params 
     "dset": get_domainnet_support(fedwe_client),
@@ -493,15 +568,64 @@ fedwe = {
 
     # Clients selection
     "num_clients": fedwe_client,
-    "target_clients": 1,
+    "target_clients": 3,
     "similarity": "CosineSimilarity", #"EuclideanDistance", "CosineSimilarity", 
     #"community_type": "dataset",
     "with_sim_consensus": True,
     
     # Learning setup
-    "rounds": 200, 
+    "rounds": 210, 
     "epochs_per_round": 5,
     "warmup_epochs": 50,
+    "model": "resnet10",
+    "local_train_after_aggr" : True,
+    # "pretrained": True,
+    # "train_only_fc": True,
+    "model_lr": 1e-4, 
+    "batch_size": 16,
+    
+    # Knowledge transfer params
+    "average_last_layer": True,
+    "mask_finetune_last_layer": False,
+    #"own_aggr_weight": 0.3,
+    #"aggr_weight_strategy": "linear",
+
+    # params for model
+    "position": 0, 
+    "exp_keys": []
+}
+
+swarm_client= 12
+swarm = {
+    "seed": 1,
+    "algo": "swarm",
+    "exp_id": "warmup_",
+    "num_rep": 1,
+    "load_existing": False,
+    "dump_dir": "./expt_dump/",
+    "device_ids": get_device_ids(num_clients=swarm_client, num_client_per_gpu=10, available_gpus=[1, 2, 3]),
+
+    # Dataset params 
+    "dset": get_domainnet_support(swarm_client),
+    "dpath": domainnet_dpath,
+    "train_label_distribution": "iid", # Either "iid", "non_iid" "support", 
+    "test_label_distribution": "iid", # Either "iid" "non_iid" "support", 
+    "samples_per_client": 32,
+    #"test_samples_per_class": 300,
+    #"test_samples_per_client": 400, # Only for non_iid test distribution
+    # "support" : get_sliding_window_support(num_clients=NUM_CLIENT, num_classes=10, num_classes_per_client=4),
+
+    # Clients selection
+    "num_clients": swarm_client,
+    "target_clients": 2,
+    "similarity": "CosineSimilarity", #"EuclideanDistance", "CosineSimilarity", 
+    #"community_type": "dataset",
+    "with_sim_consensus": True,
+    
+    # Learning setup
+    "epochs": 210, 
+    "rounds": 210, 
+    "epochs_per_round": 5,
     "model": "resnet10",
     "local_train_after_aggr" : True,
     # "pretrained": True,
@@ -699,7 +823,7 @@ fedtorus = {
 
     # Clients selection
     "num_clients": fedtorus_client,
-    "num_clients_to_select": 1,
+    "num_clients_to_select": 3,
     "leader_mode": False,
     "community_type": "dataset",
     #"within_community_sampling": 0.1,
@@ -730,7 +854,7 @@ fedtorus = {
 
 # current_config = fedcentral
 
-current_config = L2C
+current_config = swarm
 # current_config["test_param"] ="community_type"
 # current_config["test_values"] = ["dataset", None] 
 
