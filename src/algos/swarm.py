@@ -145,9 +145,9 @@ class SWARMClient(BaseClient):
             print("Node {} test_acc:{:.4f}".format(self.node_id, acc))
             self.comm_utils.send_signal(dest=0, data=acc, tag=self.tag.FINISH)
 
-            test_accs = np.array([self.node_id, acc])
+            test_accs = np.array([[self.node_id, acc]])
             existing_test_accs = np.load('./test_accs.npy') if os.path.exists('./test_accs.npy') else np.array([])
-            updated_test_accs = np.append(existing_test_accs, test_accs)
+            updated_test_accs = np.concatenate((existing_test_accs, test_accs), axis=0)
             np.save('./test_accs.npy', updated_test_accs)
 
 class SWARMServer(BaseServer):
