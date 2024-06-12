@@ -76,8 +76,8 @@ class Scheduler():
             "dset": "cifar10",
             "dump_dir": "./expt_dump/",
             "dpath": self.sys_config["dataset_path"] + "cifar10",
-            "num_clients": self.sys_config["dataset_splits"]["iid"]["num_clients"],
-            "samples_per_client": self.sys_config["dataset_splits"]["iid"]["samples_per_client"],
+            "num_users": self.sys_config["num_users"],
+            "samples_per_user": self.sys_config["dataset_splits"]["iid"]["samples_per_user"],
             "device_ids": get_device_ids("iid_dispfl")
         })
 
