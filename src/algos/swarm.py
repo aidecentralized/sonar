@@ -118,6 +118,8 @@ class SWARMClient(BaseClient):
     def run_protocol(self):
         start_epochs = self.config.get("start_epochs", 0)
         total_epochs = self.config["epochs"]
+        test_accs = np.empty((self.num_clients, total_epochs))  # Transpose the shape
+
         for round in range(start_epochs, total_epochs):
             #self.log_utils.logging.info("Client waiting for semaphore from {}".format(self.server_node))
             #print("Client waiting for semaphore from {}".format(self.server_node))
@@ -138,17 +140,12 @@ class SWARMClient(BaseClient):
                 print("Node {} waiting signal from node 1".format(self.node_id))
                 repr = self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.UPDATES)
                 
-
-            
             self.set_representation(repr)
             acc = self.local_test()
             print("Node {} test_acc:{:.4f}".format(self.node_id, acc))
             self.comm_utils.send_signal(dest=0, data=acc, tag=self.tag.FINISH)
-
-            test_accs = np.array([[self.node_id, acc]])
-            existing_test_accs = np.load('./test_accs.npy') if os.path.exists('./test_accs.npy') else np.array([])
-            updated_test_accs = np.concatenate((existing_test_accs, test_accs), axis=0)
-            np.save('./test_accs.npy', updated_test_accs)
+            test_accs[self.node_id-1, round] = acc
+            np.save('./test_accs.npy', test_accs)
 
 class SWARMServer(BaseServer):
     def __init__(self, config) -> None:
