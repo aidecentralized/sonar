@@ -3,8 +3,9 @@ from typing import Any, Dict, List
 from torch import Tensor,cat
 import torch.nn as nn
 import random
-
+import os
 from algos.base_class import BaseClient, BaseServer
+import numpy as np
 
 
 class CommProtocol(object):
@@ -28,7 +29,7 @@ class SWARMClient(BaseClient):
         if self.node_id ==1:
             self.num_clients = config["num_clients"]
             self.clients = list(range(2, self.num_clients+1))
-
+        
     def local_train(self):
         """
         Train the model locally
@@ -140,10 +141,14 @@ class SWARMClient(BaseClient):
 
             
             self.set_representation(repr)
-            #test updated model 
             acc = self.local_test()
             print("Node {} test_acc:{:.4f}".format(self.node_id, acc))
             self.comm_utils.send_signal(dest=0, data=acc, tag=self.tag.FINISH)
+
+            test_accs = np.array([self.node_id, acc])
+            existing_test_accs = np.load('./test_accs.npy') if os.path.exists('./test_accs.npy') else np.array([])
+            updated_test_accs = np.append(existing_test_accs, test_accs)
+            np.save('./test_accs.npy', updated_test_accs)
 
 class SWARMServer(BaseServer):
     def __init__(self, config) -> None:
@@ -196,6 +201,8 @@ class SWARMServer(BaseServer):
         self.log_utils.log_console("Starting iid clients federated averaging")
         start_epochs = self.config.get("start_epochs", 0)
         total_epochs = self.config["epochs"]
+        train_accs = np.zeros((12, 210))
+
         for round in range(start_epochs, total_epochs):
             self.round = round
             self.log_utils.log_console("Starting round {}".format(round))
@@ -203,3 +210,8 @@ class SWARMServer(BaseServer):
 
             accs = self.comm_utils.wait_for_all_clients(self.clients, self.tag.FINISH)
             self.log_utils.log_console("Round {} done; acc {}".format(round,accs))
+
+            for i, acc in enumerate(accs):
+                train_accs[i, round] = acc
+
+        np.save('./train_accs.npy', train_accs)
