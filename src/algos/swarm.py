@@ -37,7 +37,7 @@ class SWARMClient(BaseClient):
         avg_loss, acc = self.model_utils.train(self.model, self.optim,
                                           self.dloader, self.loss_fn,
                                           self.device)
-        print("Client {} finished training with loss {}".format(self.node_id, avg_loss))
+        # print("Client {} finished training with loss {}".format(self.node_id, avg_loss))
         return acc
         # self.log_utils.logger.log_tb(f"train_loss/client{client_num}", avg_loss, epoch)
     
@@ -119,25 +119,21 @@ class SWARMClient(BaseClient):
     def run_protocol(self):
         start_epochs = self.config.get("start_epochs", 0)
         total_epochs = self.config["epochs"]
-        train_accs = np.empty((self.num_clients, total_epochs))  # Transpose the shape
+        num_clients = self.config["num_clients"]
+        train_accs = np.zeros((num_clients, total_epochs))
 
         for round in range(start_epochs, total_epochs):
-            #self.log_utils.logging.info("Client waiting for semaphore from {}".format(self.server_node))
-            #print("Client waiting for semaphore from {}".format(self.server_node))
             self.comm_utils.wait_for_signal(src=0, tag=self.tag.START)
-            #print("semaphore received, start local training")
-            # self.log_utils.logging.info("Client received semaphore from {}".format(self.server_node))
             train_acc = self.local_train()
             train_accs[self.node_id-1, round] = train_acc
+            print("Node {} train_acc:{:.4f}".format(self.node_id, train_acc))
             np.save('./train_accs.npy', train_accs)
-            #self.local_test()
+            print(train_accs)
+            self.comm_utils.send_signal(dest=0, data=train_acc, tag=self.tag.FINISH)
+
             self_repr = self.get_representation()
-            # self.log_utils.logging.info("Client {} sending done signal to {}".format(self.node_id, self.server_node))
-            #print("sending signal to node {}".format(self.server_node))
             if self.node_id == 1:
                 repr = self.single_round(self_repr)
-            # self.log_utils.logging.info("Client {} waiting to get new model from {}".format(self.node_id, self.server_node))
-            #get all representation from server
             else:
                 self.comm_utils.send_signal(dest=self.server_node, data=self_repr, tag=self.tag.DONE)
                 print("Node {} waiting signal from node 1".format(self.node_id))
@@ -147,6 +143,9 @@ class SWARMClient(BaseClient):
             acc = self.local_test()
             print("Node {} test_acc:{:.4f}".format(self.node_id, acc))
             self.comm_utils.send_signal(dest=0, data=acc, tag=self.tag.FINISH)
+
+        # Save the train_accs array to a text file
+        np.savetxt('train_accs.txt', train_accs, delimiter=',')
 
 class SWARMServer(BaseServer):
     def __init__(self, config) -> None:
@@ -166,7 +165,7 @@ class SWARMServer(BaseServer):
             self.comm_utils.send_signal(client_node,
                                         representations,
                                         self.tag.UPDATES)
-            self.log_utils.log_console("Server sent {} representations to node {}".format(len(representations),client_node))
+            # self.log_utils.log_console("Server sent {} representations to node {}".format(len(representations),client_node))
         #self.model.load_state_dict(representation)
 
     def test(self) -> float:
@@ -188,8 +187,8 @@ class SWARMServer(BaseServer):
         Runs the whole training procedure
         """
         for client_node in self.clients:
-            self.log_utils.log_console("Server sending semaphore from {} to {}".format(self.node_id,
-                                                                                    client_node))
+            # self.log_utils.log_console("Server sending semaphore from {} to {}".format(self.node_id,
+                                                                                    # client_node))
             self.comm_utils.send_signal(dest=client_node, data=None, tag=self.tag.START)
         
 
@@ -199,17 +198,23 @@ class SWARMServer(BaseServer):
         self.log_utils.log_console("Starting iid clients federated averaging")
         start_epochs = self.config.get("start_epochs", 0)
         total_epochs = self.config["epochs"]
+        test_accs = np.zeros((12, 210))
         train_accs = np.zeros((12, 210))
 
         for round in range(start_epochs, total_epochs):
             self.round = round
             self.log_utils.log_console("Starting round {}".format(round))
             self.single_round()
+            train_acc = self.comm_utils.wait_for_all_clients(self.clients, self.tag.FINISH)
+            test_acc = self.comm_utils.wait_for_all_clients(self.clients, self.tag.FINISH)
+            self.log_utils.log_console("Round {} done; acc {}".format(round, train_acc))
+            self.log_utils.log_console("Round {} done; acc {}".format(round, test_acc))
 
-            accs = self.comm_utils.wait_for_all_clients(self.clients, self.tag.FINISH)
-            self.log_utils.log_console("Round {} done; acc {}".format(round,accs))
-
-            for i, acc in enumerate(accs):
+            for i, acc in enumerate(train_acc):
                 train_accs[i, round] = acc
 
-        np.save('./test_accs.npy', train_accs)
+            for i, acc in enumerate(test_acc):
+                test_accs[i, round] = acc            
+
+        np.save('./train_accs.npy', train_accs)
+        np.save('./test_accs.npy', test_accs)

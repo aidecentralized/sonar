@@ -433,7 +433,7 @@ defkt = {
     "model": "resnet10",
     "model_lr": 1e-4, 
     "batch_size": 16,
-    "num_teachers": 5,
+    "num_teachers": 1,
 
     # params for model
     "position": 0, 
@@ -617,7 +617,7 @@ swarm = {
 
     # Clients selection
     "num_clients": swarm_client,
-    "target_clients": 2,
+    "target_clients": 3,
     "similarity": "CosineSimilarity", #"EuclideanDistance", "CosineSimilarity", 
     #"community_type": "dataset",
     "with_sim_consensus": True,
@@ -854,7 +854,7 @@ fedtorus = {
 
 # current_config = fedcentral
 
-current_config = swarm
+current_config = defkt
 # current_config["test_param"] ="community_type"
 # current_config["test_values"] = ["dataset", None] 
 

@@ -49,36 +49,42 @@ class ModelUtils():
         model = model.to(device)
         return model
 
-    def train(self, model:nn.Module, optim, dloader, loss_fn, device: torch.device, test_loader=None, **kwargs) -> Tuple[float, float]:
-        """TODO: generate docstring
-        """
+    def train(self, model: nn.Module, optim, dloader, loss_fn, device: torch.device, test_loader=None, **kwargs) -> Tuple[float, float]:
         model.train()
         train_loss = 0
         correct = 0
+        total_samples = 0
+        
         for batch_idx, (data, target) in enumerate(dloader):
             data, target = data.to(device), target.to(device)
             optim.zero_grad()
             position = kwargs.get("position", 0)
             output = model(data, position=position)
             if kwargs.get("apply_softmax", False):
-                output = nn.functional.log_softmax(output, dim=1) # type: ignore
+                output = nn.functional.log_softmax(output, dim=1)
             loss = loss_fn(output, target)
             loss.backward()
             optim.step()
-            train_loss += loss.item()
+            
+            train_loss += loss.item() * data.size(0)
             pred = output.argmax(dim=1, keepdim=True)
-            # view_as() is used to make sure the shape of pred and target are the same
+            
+            # Convert multi-class target to correct shape
             if len(target.size()) > 1:
                 target = target.argmax(dim=1, keepdim=True)
-            correct += pred.eq(target.view_as(pred)).sum().item()  
+            
+            correct += pred.eq(target.view_as(pred)).sum().item()
+            total_samples += data.size(0)
             
             if test_loader is not None:
                 test_loss, test_acc = self.test(model, test_loader, loss_fn, device)
-                print(f"Train Loss: {train_loss/(batch_idx+1):.6f} | Train Acc: {correct/((batch_idx+1)*len(data)):.6f} | Test Loss: {test_loss:.6f} | Test Acc: {test_acc:.6f}")   
-                  
-        acc = correct / len(dloader.dataset)
-        return train_loss, acc
+                print(f"Train Loss: {train_loss/total_samples:.6f} | Train Acc: {correct/total_samples:.6f} | Test Loss:{test_loss:.6f} | Test Acc: {test_acc:.6f}")
+        
+        avg_loss = train_loss / total_samples
+        acc = correct / total_samples
+        return avg_loss, acc
     
+        
     def train_mask(self, model:nn.Module, mask,optim, dloader, loss_fn, device: torch.device, **kwargs) -> Tuple[float, float]:
         """TODO: generate docstring
         """
