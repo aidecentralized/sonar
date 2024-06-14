@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+service CommunicationServer {
+  rpc GetID (Empty) returns (ID) {}
+  rpc GetSize (Empty) returns (Size) {}
+  rpc GetModel (ID) returns (Model) {}
+  rpc GetMessage (Message) returns (Empty) {}
+  rpc GetTensor (ID) returns (Tensor) {}
+  rpc SendMessage (Message) returns (Empty) {}
+}
+
+message Empty {}
+
+message ID {
+  int32 num = 1;
+  string id = 2;
+}
+
+message Size {
+  int32 size = 1;
+}
+
+message Chunk {
+  bytes buffer = 1;
+}
+
+message Tensor {
+  int32 id = 1;
+  int32 size = 2;
+  bytes buffer = 3;
+}
+
+message Message {
+  string message = 1;
+  Model model = 2;
+}
+
+message Model {
+  bytes buffer = 1;
+}
