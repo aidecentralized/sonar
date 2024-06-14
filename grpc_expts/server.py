@@ -1,6 +1,5 @@
 import gc
 from concurrent import futures
-import io
 import threading
 from typing import List
 from typing import OrderedDict as OrderedDictType
@@ -14,7 +13,7 @@ import torch.nn as nn
 import sys
 
 sys.path.append('../src/')
-from grpc_utils import deserialize_model, serialize_model
+from grpc_utils import deserialize_model, serialize_model # type: ignore
 from utils.model_utils import ModelUtils
 
 class Constants:
@@ -58,7 +57,7 @@ class CommunicationServicer(comm_pb2_grpc.CommunicationServer):
         return comm_pb2.Size(size=len(self.user_ids.keys()))
 
     def GetModel(self, request, context):
-        return comm_pb2.Model(model=serialize_model(self.model))
+        return comm_pb2.Model(buffer=serialize_model(self.model))
 
     def SendMessage(self, request, context):
         with self.lock:
@@ -81,6 +80,7 @@ class CommunicationServicer(comm_pb2_grpc.CommunicationServer):
         return comm_pb2.Empty()
 
     def _compute_global_average(self):
+        device = 'cuda:1'
         if not self.local_averages:
             return None
 
@@ -90,9 +90,9 @@ class CommunicationServicer(comm_pb2_grpc.CommunicationServer):
         for state_dict in self.local_averages:
             for name, param in state_dict.items():
                 if name not in avg_state_dict:
-                    avg_state_dict[name] = param.clone()
+                    avg_state_dict[name] = param.clone().to(device)
                 else:
-                    avg_state_dict[name] += param
+                    avg_state_dict[name] += param.to(device)
         # Divide the summed parameters by the number of local models to get the average
         for name in avg_state_dict:
             try:

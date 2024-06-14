@@ -49,10 +49,10 @@ class CommunicationServerStub(object):
                 request_serializer=comm__pb2.Empty.SerializeToString,
                 response_deserializer=comm__pb2.Size.FromString,
                 _registered_method=True)
-        self.GetModel = channel.unary_stream(
+        self.GetModel = channel.unary_unary(
                 '/CommunicationServer/GetModel',
                 request_serializer=comm__pb2.ID.SerializeToString,
-                response_deserializer=comm__pb2.Chunk.FromString,
+                response_deserializer=comm__pb2.Model.FromString,
                 _registered_method=True)
         self.GetMessage = channel.unary_unary(
                 '/CommunicationServer/GetMessage',
@@ -123,10 +123,10 @@ def add_CommunicationServerServicer_to_server(servicer, server):
                     request_deserializer=comm__pb2.Empty.FromString,
                     response_serializer=comm__pb2.Size.SerializeToString,
             ),
-            'GetModel': grpc.unary_stream_rpc_method_handler(
+            'GetModel': grpc.unary_unary_rpc_method_handler(
                     servicer.GetModel,
                     request_deserializer=comm__pb2.ID.FromString,
-                    response_serializer=comm__pb2.Chunk.SerializeToString,
+                    response_serializer=comm__pb2.Model.SerializeToString,
             ),
             'GetMessage': grpc.unary_unary_rpc_method_handler(
                     servicer.GetMessage,
@@ -219,12 +219,12 @@ class CommunicationServer(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_stream(
+        return grpc.experimental.unary_unary(
             request,
             target,
             '/CommunicationServer/GetModel',
             comm__pb2.ID.SerializeToString,
-            comm__pb2.Chunk.FromString,
+            comm__pb2.Model.FromString,
             options,
             channel_credentials,
             insecure,
