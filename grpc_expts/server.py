@@ -28,8 +28,10 @@ class CommunicationServicer(comm_pb2_grpc.CommunicationServer):
         self.local_averages: List[OrderedDictType] = []
         self.lock = threading.Lock()
         self.condition = threading.Condition(self.lock)
-        self.target_clients = 4
-        self.model = ModelUtils().get_model("resnet18", "cifar10", "cuda:1", [1])
+        self.target_clients = 2
+        self.device = 'cpu'
+        self.state_dict = None
+        self.model = ModelUtils().get_model("resnet18", "cifar10", self.device, [])
         self.user_ids = {}
 
     def _generate_ID(self):
@@ -57,7 +59,11 @@ class CommunicationServicer(comm_pb2_grpc.CommunicationServer):
         return comm_pb2.Size(size=len(self.user_ids.keys()))
 
     def GetModel(self, request, context):
-        return comm_pb2.Model(buffer=serialize_model(self.model))
+        # self.state_dict is empty then return self.model.state_dict()
+        if not self.state_dict:
+            return comm_pb2.Model(buffer=serialize_model(self.model.state_dict()))
+        else:
+            return comm_pb2.Model(buffer=serialize_model(self.state_dict))
 
     def SendMessage(self, request, context):
         with self.lock:
@@ -70,8 +76,9 @@ class CommunicationServicer(comm_pb2_grpc.CommunicationServer):
             while self.num_clients < self.target_clients:
                 self.condition.wait()
 
-        self._compute_global_average()
-        self.local_averages: List[OrderedDictType] = []
+        with self.lock:
+            self._compute_global_average()
+            self.local_averages: List[OrderedDictType] = []
 
         # free up memory
         gc.collect()
@@ -89,22 +96,18 @@ class CommunicationServicer(comm_pb2_grpc.CommunicationServer):
         # Sum up the parameters from each local model's state dictionary
         for state_dict in self.local_averages:
             for name, param in state_dict.items():
+                if 'bn' in name:
+                    continue # Skip batch norm layers
                 if name not in avg_state_dict:
                     avg_state_dict[name] = param.clone().to(device)
                 else:
                     avg_state_dict[name] += param.to(device)
+
         # Divide the summed parameters by the number of local models to get the average
-        for name in avg_state_dict:
-            try:
-                avg_state_dict[name] /= float(len(self.local_averages))
-            except:
-                # BUG: This happens for batchnorm num_batches_tracked parameter
-                # which is a long tensor and cannot be divided by a float
-                # So we just skip it
-                # TODO: Adjust the client code to not send this parameter
-                pass
-        # Load the averaged state dictionary into the global model
-        self.model.load_state_dict(avg_state_dict)
+        for name, param in avg_state_dict.items():
+            avg_state_dict[name] = param / float(len(self.local_averages))
+
+        self.state_dict = avg_state_dict
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10), options=[

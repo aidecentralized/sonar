@@ -1,13 +1,14 @@
+from collections import OrderedDict
 import io
 import torch
 
-def serialize_model(model: torch.nn.Module) -> bytes:
+def serialize_model(state_dict: OrderedDict) -> bytes:
     buffer = io.BytesIO()
-    torch.save(model.state_dict(), buffer)
+    torch.save(state_dict, buffer)
     buffer.seek(0)
     return buffer.read()
 
-def deserialize_model(model_bytes: bytes) -> torch.nn.Module:
+def deserialize_model(model_bytes: bytes) -> OrderedDict:
     buffer = io.BytesIO(model_bytes)
     buffer.seek(0)
     model_wts = torch.load(buffer)

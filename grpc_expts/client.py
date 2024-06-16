@@ -49,18 +49,23 @@ def run_client():
         test_loader = DataLoader(test_dset, batch_size=64)
 
         model = model_utils.get_model("resnet18", "cifar10", device, [])
-        optim = torch.optim.SGD(model.parameters(), lr=0.01)
+        optim = torch.optim.Adam(model.parameters(), lr=3e-4)
+
+        g_model = stub.GetModel(comm_pb2.ID(id=user_id.id, num=user_id.num))
+        g_model = deserialize_model(g_model.buffer)
+        model.load_state_dict(g_model, strict=False)
+        print('received model from server')
 
         for i in range(100):
             tr_loss, tr_acc = model_utils.train(model, optim, dloader, loss_fn, device)
-            print(f'Epoch {i}, Node {user_id.num}, Loss: {tr_loss}, Acc: {tr_acc}')
-            model_bytes = serialize_model(model)
+            print(f'Epoch {i}, Node {user_id.num}, Loss: {tr_loss:1f}, Acc: {tr_acc:1f}')
+            model_bytes = serialize_model(model.state_dict())
             stub.SendMessage(comm_pb2.Message(model=comm_pb2.Model(buffer=model_bytes)))
             g_model = stub.GetModel(comm_pb2.ID(id=user_id.id, num=user_id.num))
             g_model = deserialize_model(g_model.buffer)
-            model.load_state_dict(g_model)
+            model.load_state_dict(g_model, strict=False)
             te_loss, te_acc = model_utils.test(model, test_loader, loss_fn, device)
-            print(f'Test Loss: {te_loss}, Test Acc: {te_acc}')
+            print(f'Test Loss: {te_loss:2f}, Test Acc: {te_acc:3f}')
         print('Got model')
 
 if __name__ == '__main__':

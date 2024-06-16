@@ -31,7 +31,7 @@ class ModelUtils():
             }
         }
 
-    def get_model(self, model_name:str, dset:str, device:torch.device, device_ids:list, pretrained=False, **kwargs) -> DataParallel:
+    def get_model(self, model_name:str, dset:str, device:torch.device, device_ids:list, pretrained=False, **kwargs) -> resnet.ResNet:
         #TODO: add support for loading checkpointed models
         model_name = model_name.lower()
         if model_name == "resnet10":
@@ -165,6 +165,7 @@ class ModelUtils():
                 # view_as() is used to make sure the shape of pred and target are the same
                 correct += pred.eq(target.view_as(pred)).sum().item()
         acc = correct / len(dloader.dataset)
+        test_loss /= len(dloader.dataset)
         return test_loss, acc
 
     def save_model(self, model, path):
