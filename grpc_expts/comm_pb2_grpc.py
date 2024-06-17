@@ -69,6 +69,11 @@ class CommunicationServerStub(object):
                 request_serializer=comm__pb2.Message.SerializeToString,
                 response_deserializer=comm__pb2.Empty.FromString,
                 _registered_method=True)
+        self.SendBye = channel.unary_unary(
+                '/CommunicationServer/SendBye',
+                request_serializer=comm__pb2.ID.SerializeToString,
+                response_deserializer=comm__pb2.Empty.FromString,
+                _registered_method=True)
 
 
 class CommunicationServerServicer(object):
@@ -110,6 +115,12 @@ class CommunicationServerServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def SendBye(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_CommunicationServerServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -141,6 +152,11 @@ def add_CommunicationServerServicer_to_server(servicer, server):
             'SendMessage': grpc.unary_unary_rpc_method_handler(
                     servicer.SendMessage,
                     request_deserializer=comm__pb2.Message.FromString,
+                    response_serializer=comm__pb2.Empty.SerializeToString,
+            ),
+            'SendBye': grpc.unary_unary_rpc_method_handler(
+                    servicer.SendBye,
+                    request_deserializer=comm__pb2.ID.FromString,
                     response_serializer=comm__pb2.Empty.SerializeToString,
             ),
     }
@@ -305,6 +321,33 @@ class CommunicationServer(object):
             target,
             '/CommunicationServer/SendMessage',
             comm__pb2.Message.SerializeToString,
+            comm__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def SendBye(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/CommunicationServer/SendBye',
+            comm__pb2.ID.SerializeToString,
             comm__pb2.Empty.FromString,
             options,
             channel_credentials,

@@ -14,7 +14,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\ncomm.proto\"\x07\n\x05\x45mpty\"\x1d\n\x02ID\x12\x0b\n\x03num\x18\x01 \x01(\x05\x12\n\n\x02id\x18\x02 \x01(\t\"\x14\n\x04Size\x12\x0c\n\x04size\x18\x01 \x01(\x05\"\x17\n\x05\x43hunk\x12\x0e\n\x06\x62uffer\x18\x01 \x01(\x0c\"2\n\x06Tensor\x12\n\n\x02id\x18\x01 \x01(\x05\x12\x0c\n\x04size\x18\x02 \x01(\x05\x12\x0e\n\x06\x62uffer\x18\x03 \x01(\x0c\"1\n\x07Message\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x15\n\x05model\x18\x02 \x01(\x0b\x32\x06.Model\"\x17\n\x05Model\x12\x0e\n\x06\x62uffer\x18\x01 \x01(\x0c\x32\xc6\x01\n\x13\x43ommunicationServer\x12\x16\n\x05GetID\x12\x06.Empty\x1a\x03.ID\"\x00\x12\x1a\n\x07GetSize\x12\x06.Empty\x1a\x05.Size\"\x00\x12\x19\n\x08GetModel\x12\x03.ID\x1a\x06.Model\"\x00\x12 \n\nGetMessage\x12\x08.Message\x1a\x06.Empty\"\x00\x12\x1b\n\tGetTensor\x12\x03.ID\x1a\x07.Tensor\"\x00\x12!\n\x0bSendMessage\x12\x08.Message\x1a\x06.Empty\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\ncomm.proto\"\x07\n\x05\x45mpty\"\x1d\n\x02ID\x12\x0b\n\x03num\x18\x01 \x01(\x05\x12\n\n\x02id\x18\x02 \x01(\t\"\x14\n\x04Size\x12\x0c\n\x04size\x18\x01 \x01(\x05\"\x17\n\x05\x43hunk\x12\x0e\n\x06\x62uffer\x18\x01 \x01(\x0c\"2\n\x06Tensor\x12\n\n\x02id\x18\x01 \x01(\x05\x12\x0c\n\x04size\x18\x02 \x01(\x05\x12\x0e\n\x06\x62uffer\x18\x03 \x01(\x0c\",\n\x07Message\x12\n\n\x02id\x18\x01 \x01(\t\x12\x15\n\x05model\x18\x02 \x01(\x0b\x32\x06.Model\"\x17\n\x05Model\x12\x0e\n\x06\x62uffer\x18\x01 \x01(\x0c\"\x11\n\x03\x42ye\x12\n\n\x02id\x18\x01 \x01(\t2\xe0\x01\n\x13\x43ommunicationServer\x12\x16\n\x05GetID\x12\x06.Empty\x1a\x03.ID\"\x00\x12\x1a\n\x07GetSize\x12\x06.Empty\x1a\x05.Size\"\x00\x12\x19\n\x08GetModel\x12\x03.ID\x1a\x06.Model\"\x00\x12 \n\nGetMessage\x12\x08.Message\x1a\x06.Empty\"\x00\x12\x1b\n\tGetTensor\x12\x03.ID\x1a\x07.Tensor\"\x00\x12!\n\x0bSendMessage\x12\x08.Message\x1a\x06.Empty\"\x00\x12\x18\n\x07SendBye\x12\x03.ID\x1a\x06.Empty\"\x00\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -32,9 +32,11 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_TENSOR']._serialized_start=101
   _globals['_TENSOR']._serialized_end=151
   _globals['_MESSAGE']._serialized_start=153
-  _globals['_MESSAGE']._serialized_end=202
-  _globals['_MODEL']._serialized_start=204
-  _globals['_MODEL']._serialized_end=227
-  _globals['_COMMUNICATIONSERVER']._serialized_start=230
-  _globals['_COMMUNICATIONSERVER']._serialized_end=428
+  _globals['_MESSAGE']._serialized_end=197
+  _globals['_MODEL']._serialized_start=199
+  _globals['_MODEL']._serialized_end=222
+  _globals['_BYE']._serialized_start=224
+  _globals['_BYE']._serialized_end=241
+  _globals['_COMMUNICATIONSERVER']._serialized_start=244
+  _globals['_COMMUNICATIONSERVER']._serialized_end=468
 # @@protoc_insertion_point(module_scope)

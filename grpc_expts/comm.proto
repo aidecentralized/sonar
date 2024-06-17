@@ -7,6 +7,7 @@ service CommunicationServer {
   rpc GetMessage (Message) returns (Empty) {}
   rpc GetTensor (ID) returns (Tensor) {}
   rpc SendMessage (Message) returns (Empty) {}
+  rpc SendBye (ID) returns (Empty) {}
 }
 
 message Empty {}
@@ -31,10 +32,14 @@ message Tensor {
 }
 
 message Message {
-  string message = 1;
+  string id = 1;
   Model model = 2;
 }
 
 message Model {
   bytes buffer = 1;
+}
+
+message Bye {
+  string id = 1;
 }

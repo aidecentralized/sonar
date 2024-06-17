@@ -1,6 +1,7 @@
 import gc
 from concurrent import futures
 import threading
+import time
 from typing import List
 from typing import OrderedDict as OrderedDictType
 from collections import OrderedDict
@@ -12,7 +13,8 @@ import torch
 import torch.nn as nn
 import sys
 
-sys.path.append('../src/')
+sys.path.append('/u/abhi24/Workspace/SONAR/src/')
+
 from grpc_utils import deserialize_model, serialize_model # type: ignore
 from utils.model_utils import ModelUtils
 
@@ -51,12 +53,24 @@ class CommunicationServicer(comm_pb2_grpc.CommunicationServer):
         with self.lock:
             random_id = self._generate_ID()
             user_num = len(self.user_ids) + 1
-            self.user_ids[random_id] = {'user_num': user_num, 'status': const.STATUS_ALIVE}
+            self.user_ids[random_id] = {
+                'user_num': user_num,
+                'status': const.STATUS_ALIVE,
+                'last_active': time.time()
+            }
             print(f'User {user_num} connected with ID {random_id}')
         return comm_pb2.ID(id=random_id, num=user_num)
 
     def GetSize(self, request, context):
-        return comm_pb2.Size(size=len(self.user_ids.keys()))
+        # if the last_active time is greater than 5 minutes, mark the user as dead
+        with self.lock:
+            for user_id, user_info in self.user_ids.items():
+                if time.time() - user_info['last_active'] > 300:
+                    user_info['status'] = const.STATUS_DEAD
+                    print(f'User {user_info["user_num"]} marked as dead')
+        # count the number of alive users
+        size = len([user_id for user_id, user_info in self.user_ids.items() if user_info['status'] == const.STATUS_ALIVE])
+        return comm_pb2.Size(size=size)
 
     def GetModel(self, request, context):
         # self.state_dict is empty then return self.model.state_dict()
@@ -66,6 +80,9 @@ class CommunicationServicer(comm_pb2_grpc.CommunicationServer):
             return comm_pb2.Model(buffer=serialize_model(self.state_dict))
 
     def SendMessage(self, request, context):
+        # update the user's last active time
+        user_id = request.id
+        self.user_ids[user_id]['last_active'] = time.time()
         with self.lock:
             self.local_averages.append(deserialize_model(request.model.buffer))
             self.num_clients = len(self.local_averages)
@@ -84,6 +101,14 @@ class CommunicationServicer(comm_pb2_grpc.CommunicationServer):
         gc.collect()
         torch.cuda.empty_cache()
 
+        return comm_pb2.Empty()
+
+    def SendBye(self, request, context):
+        """ Remove a user from the list of connected users
+        """
+        with self.lock:
+            self.user_ids.pop(request.id)
+            print(f'User {request.num} disconnected')
         return comm_pb2.Empty()
 
     def _compute_global_average(self):
