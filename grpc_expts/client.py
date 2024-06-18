@@ -1,3 +1,4 @@
+import argparse
 import os
 import grpc
 import comm_pb2
@@ -24,22 +25,28 @@ torch.manual_seed(SEED)
 LOG_BASE_DIR = f'{BASE_DIR}/grpc_expts/logs'
 config = {}
 
-def run_client():
+def run_client(args: argparse.Namespace):
+    # assign parsed args
+    dset = args.dataset
+    hostname = args.host
+    model_arch = args.model_arch
+    client_id = args.client_id
+
     # Compute local average
-    device_offset = 1
-    dset = 'cifar10'
+    device_offset = 1 # so that we don't run things on 0th gpu that is usually crowded
+    
     dpath = f'{BASE_DIR}/data'
     model_utils = ModelUtils()
     loss_fn = torch.nn.CrossEntropyLoss()
 
     # Connect to server and send local average
-    with grpc.insecure_channel(host, options=[
+    with grpc.insecure_channel(hostname, options=[
         ('grpc.max_send_message_length', 50 * 1024 * 1024), # 50MB
         ('grpc.max_receive_message_length', 50 * 1024 * 1024) # 50MB
     ]) as channel:
         stub = comm_pb2_grpc.CommunicationServerStub(channel)
         user_id = stub.GetID(comm_pb2.Empty())
-        config['log_path'] = f'{LOG_BASE_DIR}/{dset}/user_{user_id.num}'
+        config['log_path'] = f'{LOG_BASE_DIR}/{dset}/user_{client_id}'
         # try to create a new log directory, if it already exists then we overwrite!!
         # TODO: shouldn't be overwriting
         try:
@@ -62,7 +69,7 @@ def run_client():
         test_dset = dset_obj.test_dset
         test_loader = DataLoader(test_dset, batch_size=64)
 
-        model = model_utils.get_model("resnet18", "cifar10", device, [])
+        model = model_utils.get_model(model_arch, dset, device, [])
         te_loss, te_acc = model_utils.test(model, test_loader, loss_fn, device)
         log_utils.log_console(f'Test Loss: {te_loss:.3f}, Test Acc: {te_acc:.3f}')
         log_utils.log_tb('test_loss', te_loss, 0)
@@ -104,4 +111,10 @@ def run_client():
         print('Exiting...', user_id.num, f'{te_acc:.3f}')
 
 if __name__ == '__main__':
-    run_client()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--host', type=str, default=host)
+    parser.add_argument('--model_arch', type=str, default='resnet18')
+    parser.add_argument('--dataset', type=str, default='cifar10')
+    parser.add_argument('--client_id', type=str, default=None)
+    args = parser.parse_args()
+    run_client(args)
