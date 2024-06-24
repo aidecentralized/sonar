@@ -10,8 +10,12 @@ from algos.base_class import BaseFedAvgClient, BaseFedAvgServer
 from collections import defaultdict 
 from utils.stats_utils import from_round_stats_per_round_per_client_to_dict_arrays
 from fl_ring import RingTopology
+from fl_grid import GridTopology
+from fl_torus import TorusTopology
+from fl_random import RandomTopology
 
-class FedRingClient(BaseFedAvgClient):
+
+class FedStaticClient(BaseFedAvgClient):
     def __init__(self, config) -> None:
         super().__init__(config)
         
@@ -39,13 +43,22 @@ class FedRingClient(BaseFedAvgClient):
                 alpha = np.exp(1/within_community_sampling)-1
                 within_community_sampling = within_community_sampling * np.log2(1 + alpha * round / total_rounds)
 
-        topology = self.config["topology"]
-        if topology == "ring":
-            ring_topology = RingTopology(self.config["num_clients"])
-            selected_ids = ring_topology.get_selected_ids(self.node_id, self.config)
-        else:
-            selected_ids = self.get_selected_ids()
-       
+        algo = self.config["algo"]
+        if algo == "random":
+            topology = RandomTopology()
+            selected_ids = topology.get_selected_ids(self.node_id, self.config, self.reprs_dict, self.communities)
+        elif algo == "ring":
+            topology = RingTopology()
+            selected_ids = topology.get_selected_ids(self.node_id, self.config)
+
+        elif algo == "grid":
+            topology = GridTopology()
+            selected_ids = topology.get_selected_ids(self.node_id, self.config)
+
+        elif algo == "torus":
+            topology = TorusTopology()
+            selected_ids = topology.get_selected_ids(self.node_id, self.config)
+
         collab_weights = defaultdict(lambda: 0.0)
         for idx in selected_ids:
             own_aggr_weight = self.config.get("own_aggr_weight", 1/len(selected_ids))
@@ -186,7 +199,7 @@ class FedRingClient(BaseFedAvgClient):
 
             self.comm_utils.send_signal(dest=self.server_node, data=stats, tag=self.tag.ROUND_STATS)
 
-class FedRingServer(BaseFedAvgServer):
+class FedStaticServer(BaseFedAvgServer):
     def __init__(self, config) -> None:
         super().__init__(config)
         # self.set_parameters()
