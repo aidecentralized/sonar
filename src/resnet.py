@@ -1,15 +1,21 @@
+# resnet.py
 # 2019.07.24-Changed output of forward function
 # Huawei Technologies Co., Ltd. <foss@huawei.com>
-# taken from https://github.com/huawei-noah/Data-Efficient-Model-Compression/blob/master/DAFL/resnet.py
+# Taken from https://github.com/huawei-noah/Data-Efficient-Model-Compression/blob/master/DAFL/resnet.py
 # for comparison with DAFL
 
+"""
+This module implements ResNet models for image classification.
+"""
 
-import torch
-import torch.nn as nn
+from torch import nn
 import torch.nn.functional as F
 
 
 class BasicBlock(nn.Module):
+    """
+    A basic block for ResNet.
+    """
     expansion = 1
 
     def __init__(self, in_planes, planes, stride=1):
@@ -37,18 +43,23 @@ class BasicBlock(nn.Module):
             )
 
     def forward(self, x):
+        """
+        Forward pass for the BasicBlock.
+        """
         out = F.relu(self.bn1(self.conv1(x)))
         out = self.bn2(self.conv2(out))
         out += self.shortcut(x)
         out = F.relu(out)
         return out
 
-
 class Bottleneck(nn.Module):
+    """
+    A bottleneck block for ResNet.
+    """
     expansion = 4
 
     def __init__(self, in_planes, planes, stride=1):
-        super(Bottleneck, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=1, bias=False)
         self.bn1 = nn.BatchNorm2d(planes)
         self.conv2 = nn.Conv2d(
@@ -74,6 +85,9 @@ class Bottleneck(nn.Module):
             )
 
     def forward(self, x):
+        """
+        Forward pass for the Bottleneck block.
+        """
         out = F.relu(self.bn1(self.conv1(x)))
         out = F.relu(self.bn2(self.conv2(out)))
         out = self.bn3(self.conv3(out))
@@ -81,10 +95,12 @@ class Bottleneck(nn.Module):
         out = F.relu(out)
         return out
 
-
 class ResNet(nn.Module):
+    """
+    A ResNet model.
+    """
     def __init__(self, block, num_blocks, num_classes=10, num_channels=3):
-        super(ResNet, self).__init__()
+        super().__init__()
         self.in_planes = 64
         self.conv1 = nn.Conv2d(
             num_channels, 64, kernel_size=3, stride=1, padding=1, bias=False
@@ -105,6 +121,9 @@ class ResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x, position=0, out_feature=False):
+        """
+        Forward pass for the ResNet model.
+        """
         if position == 0:
             x = self.conv1(x)
             x = self.bn1(x)
@@ -126,37 +145,42 @@ class ResNet(nn.Module):
             x = F.avg_pool2d(x, 4)
             feature = x.view(x.size(0), -1)
             x = self.linear(feature)
-        # print(x.shape) # [16, 10]
-        if not out_feature:
-            return x
-        else:
-            return x, feature
+            if out_feature:
+                return x, feature
+        return x
 
-
-def ResNet10(num_channels=3, num_classes=10):
+def resnet10(num_channels=3, num_classes=10):
+    """
+    Constructs a ResNet-10 model.
+    """
     return ResNet(BasicBlock, [1, 1, 1, 1], num_classes, num_channels)
 
-
-def ResNet18(num_channels=3, num_classes=10):
+def resnet18(num_channels=3, num_classes=10):
+    """
+    Constructs a ResNet-18 model.
+    """
     return ResNet(BasicBlock, [2, 2, 2, 2], num_classes, num_channels)
 
-
-def ResNet34(num_channels=3, num_classes=10):
+def resnet34(num_channels=3, num_classes=10):
+    """
+    Constructs a ResNet-34 model.
+    """
     return ResNet(BasicBlock, [3, 4, 6, 3], num_classes, num_channels)
 
-
-def ResNet50(num_channels=3, num_classes=10):
+def resnet50(num_channels=3, num_classes=10):
+    """
+    Constructs a ResNet-50 model.
+    """
     return ResNet(Bottleneck, [3, 4, 6, 3], num_classes, num_channels)
 
-
-def ResNet101(num_channels=3, num_classes=10):
+def resnet101(num_channels=3, num_classes=10):
+    """
+    Constructs a ResNet-101 model.
+    """
     return ResNet(Bottleneck, [3, 4, 23, 3], num_classes, num_channels)
 
-
-def ResNet152(num_channels=3, num_classes=10):
+def resnet152(num_channels=3, num_classes=10):
+    """
+    Constructs a ResNet-152 model.
+    """
     return ResNet(Bottleneck, [3, 8, 36, 3], num_classes, num_channels)
-
-
-# model=ResNet34()
-# img=torch.randn((1,3,32,32))
-# print(model.forward(img,0))
