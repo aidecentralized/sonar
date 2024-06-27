@@ -19,8 +19,7 @@ from algos.fl_central import CentralizedCLient, CentralizedServer
 from algos.fl_data_repr import FedDataRepClient, FedDataRepServer
 from algos.fl_val import FedValClient, FedValServer
 from utils.log_utils import copy_source_code, check_and_create_path
-from utils.config_utils import load_config, process_config
-from configs.sys_config import get_device_ids
+from utils.config_utils import load_config, process_config, get_device_ids
 import os
 
 # should be used as: algo_map[algo_name][rank>0](config)
@@ -71,7 +70,7 @@ class Scheduler:
             "dpath": self.sys_config["dataset_path"] + "cifar10",
             "num_users": self.sys_config["num_users"],
             "samples_per_user": self.sys_config["dataset_splits"]["iid"]["samples_per_user"],
-            "device_ids": get_device_ids("iid_dispfl")
+            "device_ids": get_device_ids(num_clients=fedcentral_client, num_client_per_gpu=6, available_gpus=[0, 1,2, 3, 4, 5, 6, 7])
         })
 
     def initialize(self, copy_souce_code=True) -> None:
