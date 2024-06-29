@@ -69,8 +69,8 @@ class Scheduler:
             "dump_dir": "./expt_dump/",
             "dpath": self.sys_config["dataset_path"] + "cifar10",
             "num_users": self.sys_config["num_users"],
-            "samples_per_user": self.sys_config["dataset_splits"]["iid"]["samples_per_user"],
-            "device_ids": get_device_ids(num_clients=fedcentral_client, num_client_per_gpu=6, available_gpus=[0, 1,2, 3, 4, 5, 6, 7])
+            "samples_per_user": self.sys_config["dataset_splits"]["samples_per_user"],
+            "device_ids": self.sys_config["device_ids"]
         })
 
     def initialize(self, copy_souce_code=True) -> None:
