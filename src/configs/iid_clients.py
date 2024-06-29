@@ -260,4 +260,4 @@ iid_defkt_clients_new = {
 }
 
 
-current_config = iid_dispfl_clients_new
+current_config = iid_clients_federated_new
