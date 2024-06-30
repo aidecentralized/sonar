@@ -1,15 +1,19 @@
-import jmespath, importlib, os
+import jmespath
+import importlib
+import os
+
 
 def load_config(config_path):
     path = '.'.join(config_path.split('.')[1].split('/')[1:])
     print(path)
     config = importlib.import_module(path).current_config
     return config
-    #return process_config(config)
+    # return process_config(config)
+
 
 def process_config(config):
     config['num_gpus'] = len(config.get('device_ids'))
-    config['batch_size'] = config.get('batch_size', 64)# * config['num_gpus']
+    config['batch_size'] = config.get('batch_size', 64)  # * config['num_gpus']
     config['seed'] = config.get('seed', 1)
     config['load_existing'] = config.get('load_existing') or False
 
@@ -18,10 +22,11 @@ def process_config(config):
         if min([len(d.split("_")) for d in dsets]) <= 1:
             dset = "_".join([d[:3] for d in dsets])
         else:
-            dset = f"{dsets[0].split('_')[-2]}_" + "_".join([d.split("_")[-1][:3] for d in dsets])
+            dset = f"{dsets[0].split('_')[-2]}_" + \
+                "_".join([d.split("_")[-1][:3] for d in dsets])
     else:
         dset = config['dset']
-        
+
     experiment_name = "{}_{}clients_{}spc_{}_{}_{}epr_{}r_{}".format(
         dset,
         config['num_clients'],
@@ -31,17 +36,18 @@ def process_config(config):
         config['epochs_per_round'],
         config['rounds'],
         config['exp_id'])
-    
+
     for exp_key in config["exp_keys"]:
         item = jmespath.search(exp_key, config)
         assert item is not None
         key = exp_key.split(".")[-1]
         assert key is not None
-        #experiment_name += "_{}_{}".format(key, item)
+        # experiment_name += "_{}_{}".format(key, item)
         experiment_name += "_{}".format(item)
-    
+
     experiments_folder = config["dump_dir"]
-    results_path = experiments_folder + experiment_name + f"_seed{config['seed']}"
+    results_path = experiments_folder + \
+        experiment_name + f"_seed{config['seed']}"
 
     log_path = results_path + "/logs/"
     images_path = results_path + "/images/"
@@ -57,24 +63,33 @@ def process_config(config):
 
     return config
 
-def get_sliding_window_support(num_clients, num_classes, num_classes_per_client):
+
+def get_sliding_window_support(
+        num_clients,
+        num_classes,
+        num_classes_per_client):
     num_client_with_same_support = max(num_clients // num_classes, 1)
     support = {}
     # Slide window by 1, clients with same support are consecutive
-    for i in range(1, num_clients+1):
-        support[str(i)] = [(((i-1)//num_client_with_same_support)+j)%num_classes for j in range(num_classes_per_client)]
+    for i in range(1, num_clients + 1):
+        support[str(i)] = [(((i - 1) // num_client_with_same_support) + j) %
+                           num_classes for j in range(num_classes_per_client)]
     return support
 
-def get_device_ids(num_clients: int, num_client_per_gpu: int, available_gpus: list[int]):
+
+def get_device_ids(
+        num_clients: int,
+        num_client_per_gpu: int,
+        available_gpus: list[int]):
     assert num_clients <= len(available_gpus) * num_client_per_gpu
     device_ids = {}
 
     gpu_id = 0
-    for i in range(1,num_clients+1):
+    for i in range(1, num_clients + 1):
         device_ids[f"node_{i}"] = [available_gpus[gpu_id]]
         gpu_id = (gpu_id + 1) % len(available_gpus)  # Alternate GPU assignment
-    
+
     # Assign the server to the first GPU
-    device_ids[f"node_0"] = [available_gpus[0]] 
-        
+    device_ids[f"node_0"] = [available_gpus[0]]
+
     return device_ids
