@@ -12,7 +12,7 @@ class CommUtils():
             self.comm.send(data, dest=dest, tag=tag)
         else:
             self.comm.send(data, dest=dest)
-            
+
     def send_signal_to_all_clients(self, client_ids, data, tag=None):
         for client_id in client_ids:
             self.send_signal(client_id, data, tag=tag)
@@ -35,5 +35,3 @@ class CommUtils():
             data = self.wait_for_signal(client_id, tag=tag)
             data_list.append(data)
         return data_list
-
-    
