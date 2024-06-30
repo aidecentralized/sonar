@@ -17,7 +17,7 @@ import numpy as np
 def deprocess(img):
     inv_normalize = T.Normalize(
         mean=[-0.485 / 0.229, -0.456 / 0.224, -0.406 / 0.225],
-        std=[1 / 0.229, 1 / 0.224, 1 / 0.225]
+        std=[1 / 0.229, 1 / 0.224, 1 / 0.225],
     )
     img = inv_normalize(img)
     img = 255 * img
@@ -60,27 +60,28 @@ def copy_source_code(config: dict) -> None:
         # throw a prompt
         check_and_create_path(path)
         # the last folder is the path where all the expts are stored
-        denylist = ["./__pycache__/",
-                    "./.ipynb_checkpoints/",
-                    "./expt_dump/",
-                    "./helper_scripts/",
-                    "./imgs/",
-                    "./expt_dump_old/",
-                    "./comparison_plots/",
-                    "./toy_exp/",
-                    "./toy_exp_ml/",
-                    "./toy_exp.py",
-                    "./toy_exp_ml.py"
-                    '/'.join(path.split('/')[:-1]) + '/']
-        folders = glob(r'./*/')
+        denylist = [
+            "./__pycache__/",
+            "./.ipynb_checkpoints/",
+            "./expt_dump/",
+            "./helper_scripts/",
+            "./imgs/",
+            "./expt_dump_old/",
+            "./comparison_plots/",
+            "./toy_exp/",
+            "./toy_exp_ml/",
+            "./toy_exp.py",
+            "./toy_exp_ml.py" "/".join(path.split("/")[:-1]) + "/",
+        ]
+        folders = glob(r"./*/")
         print(denylist, folders)
 
         # For copying python files
-        for file_ in glob(r'./*.py'):
+        for file_ in glob(r"./*.py"):
             copy2(file_, path)
 
         # For copying json files
-        for file_ in glob(r'./*.json'):
+        for file_ in glob(r"./*.json"):
             copy2(file_, path)
 
         for folder in folders:
@@ -89,19 +90,23 @@ def copy_source_code(config: dict) -> None:
                 copytree(folder, path + folder[1:])
 
         # For saving models in the future
-        os.mkdir(config['saved_models'])
-        os.mkdir(config['log_path'])
+        os.mkdir(config["saved_models"])
+        os.mkdir(config["log_path"])
         print("source code copied to exp_dump")
 
 
-class LogUtils():
+class LogUtils:
     def __init__(self, config) -> None:
         log_dir, load_existing = config["log_path"], config["load_existing"]
-        log_format = "%(asctime)s::%(levelname)s::%(name)s::"\
-                     "%(filename)s::%(lineno)d::%(message)s"
-        logging.basicConfig(filename="{log_path}/log_console.log".format(
-            log_path=log_dir),
-            level='DEBUG', format=log_format)
+        log_format = (
+            "%(asctime)s::%(levelname)s::%(name)s::"
+            "%(filename)s::%(lineno)d::%(message)s"
+        )
+        logging.basicConfig(
+            filename="{log_path}/log_console.log".format(log_path=log_dir),
+            level="DEBUG",
+            format=log_format,
+        )
         logging.getLogger().addHandler(logging.StreamHandler())
         self.log_dir = log_dir
         self.init_tb(load_existing)
@@ -126,10 +131,7 @@ class LogUtils():
 
     def log_image(self, imgs: torch.Tensor, key, iteration):
         # imgs = deprocess(imgs.detach().cpu())[:64]
-        grid_img = make_grid(
-            imgs.detach().cpu(),
-            normalize=True,
-            scale_each=True)
+        grid_img = make_grid(imgs.detach().cpu(), normalize=True, scale_each=True)
         # Save the grid image using torchvision api
         save_image(grid_img, f"{self.log_dir}/{iteration}_{key}.png")
         # Save the grid image using tensorboard api
@@ -145,38 +147,37 @@ class LogUtils():
         np.save(f"{self.log_dir}/npy/{key}.npy", value)
 
     def log_max_stats_per_client(self, stats_per_client, round_step, metric):
-        self.__log_stats_per_client__(
-            stats_per_client, round_step, metric, is_max=True)
+        self.__log_stats_per_client__(stats_per_client, round_step, metric, is_max=True)
 
     def log_min_stats_per_client(self, stats_per_client, round_step, metric):
         self.__log_stats_per_client__(
-            stats_per_client, round_step, metric, is_max=False)
+            stats_per_client, round_step, metric, is_max=False
+        )
 
     def __log_stats_per_client__(
-            self,
-            stats_per_client,
-            round_step,
-            metric,
-            is_max=False):
+        self, stats_per_client, round_step, metric, is_max=False
+    ):
         if is_max:
-            best_round_per_client = np.argmax(
-                stats_per_client, axis=1) * round_step
+            best_round_per_client = np.argmax(stats_per_client, axis=1) * round_step
             best_val_per_client = np.max(stats_per_client, axis=1)
         else:
-            best_round_per_client = np.argmin(
-                stats_per_client, axis=1) * round_step
+            best_round_per_client = np.argmin(stats_per_client, axis=1) * round_step
             best_val_per_client = np.min(stats_per_client, axis=1)
 
-        minmax = 'max' if is_max else 'min'
+        minmax = "max" if is_max else "min"
         # Write to summary file
         self.summary_file.write(
-            f"============== {minmax} {metric} per client ==============\n")
+            f"============== {minmax} {metric} per client ==============\n"
+        )
         for client_idx, (best_round, best_val) in enumerate(
-                zip(best_round_per_client, best_val_per_client)):
+            zip(best_round_per_client, best_val_per_client)
+        ):
             self.summary_file.write(
-                f"Client {client_idx+1} : {best_val} at round {best_round}\n")
+                f"Client {client_idx+1} : {best_val} at round {best_round}\n"
+            )
         self.summary_file.write(
-            f"Mean of {minmax} {metric} : {np.mean(best_val_per_client)}, quantiles: {np.quantile(best_val_per_client, [0.25, 0.75])}\n")
+            f"Mean of {minmax} {metric} : {np.mean(best_val_per_client)}, quantiles: {np.quantile(best_val_per_client, [0.25, 0.75])}\n"
+        )
 
     def log_tb_round_stats(self, round_stats, stats_to_exclude, round):
         stats_key = round_stats[0].keys()

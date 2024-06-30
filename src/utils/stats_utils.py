@@ -14,10 +14,11 @@ def from_round_stats_per_round_per_client_to_dict_arrays(stats):
         for client_idx, client_stats in enumerate(rounds_stats):
             for key, value in client_stats.items():
                 if key not in stats_dict:
-                    stats_dict[key] = np.zeros(
-                        (num_clients, num_rounds, len(value))) if isinstance(
-                        value, np.ndarray) else np.zeros(
-                        (num_clients, num_rounds))
+                    stats_dict[key] = (
+                        np.zeros((num_clients, num_rounds, len(value)))
+                        if isinstance(value, np.ndarray)
+                        else np.zeros((num_clients, num_rounds))
+                    )
                 stats_dict[key][client_idx][round] = value
 
     return stats_dict
@@ -37,4 +38,5 @@ def from_rounds_stats_per_client_per_round_to_dict_arrays(stats):
             round_stats_per_round_per_client[round].append(round_stats)
 
     return from_round_stats_per_round_per_client_to_dict_arrays(
-        round_stats_per_round_per_client)
+        round_stats_per_round_per_client
+    )

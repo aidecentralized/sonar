@@ -1,7 +1,7 @@
 from mpi4py import MPI
 
 
-class CommUtils():
+class CommUtils:
     def __init__(self):
         self.comm = MPI.COMM_WORLD
         self.rank = self.comm.Get_rank()
@@ -28,8 +28,7 @@ class CommUtils():
         return recv_data
 
     def wait_for_all_clients(self, client_ids, tag=None):
-        """
-        """
+        """ """
         data_list = []
         for client_id in client_ids:
             data = self.wait_for_signal(client_id, tag=tag)
