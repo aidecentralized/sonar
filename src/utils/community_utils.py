@@ -10,7 +10,7 @@ def get_random_communities(num_clients, num_communities):
     support = {}
     for i, c_id in enumerate(indices):
         idx = (i // clients_per_community) * clients_per_community
-        support[c_id] = list(indices[idx: idx + clients_per_community])
+        support[c_id] = list(indices[idx : idx + clients_per_community])
     return support
 
 
@@ -22,18 +22,26 @@ def get_dset_balanced_communities(num_clients, num_communities, num_dset):
     clients_per_dset = num_clients // num_dset
     clients_id_per_dset = []
     for dset in range(num_dset):
-        clients_id_per_dset.append(list(np.random.permutation(np.arange(
-            1 + dset * clients_per_dset, 1 + (dset + 1) * clients_per_dset))))
+        clients_id_per_dset.append(
+            list(
+                np.random.permutation(
+                    np.arange(
+                        1 + dset * clients_per_dset, 1 + (dset + 1) * clients_per_dset
+                    )
+                )
+            )
+        )
 
     num_assigned = 0
     communities = {k: [] for k in range(num_communities)}
     while num_assigned < num_clients:
         communities_random_order = {
-            k: v for k, v in enumerate(
-                np.random.permutation(
-                    range(num_communities)))}
-        communities_id = sorted(range(num_communities), key=lambda k: (
-            len(communities[k]), communities_random_order[k]))
+            k: v for k, v in enumerate(np.random.permutation(range(num_communities)))
+        }
+        communities_id = sorted(
+            range(num_communities),
+            key=lambda k: (len(communities[k]), communities_random_order[k]),
+        )
 
         current_dset_clients = clients_id_per_dset.pop()
         while len(current_dset_clients) > 0:
@@ -54,6 +62,7 @@ def get_dset_communities(num_clients, num_dset):
     support = {}
     for idx in range(num_clients):
         dset = idx // clients_per_dset
-        support[idx + 1] = list(np.arange(1 + dset * \
-                                clients_per_dset, 1 + (dset + 1) * clients_per_dset))
+        support[idx + 1] = list(
+            np.arange(1 + dset * clients_per_dset, 1 + (dset + 1) * clients_per_dset)
+        )
     return support

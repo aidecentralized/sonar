@@ -2,7 +2,7 @@ import numpy as np
 import math
 
 
-class TorusTopology():
+class TorusTopology:
     def get_selected_ids(node_id, config):
         grid_size = int(math.sqrt(config["num_clients"]))
         num_clients = config["num_clients"]
@@ -43,12 +43,17 @@ class TorusTopology():
                 bottom_id = grid_size
         selected_ids.append(bottom_id)
 
-        # Force self node id to be selected, not removed before sampling to keep sampling identical across nodes (if same seed)
+        # Force self node id to be selected, not removed before sampling to
+        # keep sampling identical across nodes (if same seed)
         selected_ids = list(set(selected_ids))
 
         num_clients_to_select = config["num_clients_to_select"]
-        selected_collabs = np.random.choice(selected_ids, size=min(num_clients_to_select, len(selected_ids)), replace=False)
-        selected_ids = list(selected_collabs) + [node_id] 
+        selected_collabs = np.random.choice(
+            selected_ids,
+            size=min(num_clients_to_select, len(selected_ids)),
+            replace=False,
+        )
+        selected_ids = list(selected_collabs) + [node_id]
 
         print("Selected collabs: " + str(node_id) + str(selected_ids))
 

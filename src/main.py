@@ -3,13 +3,19 @@ from scheduler import Scheduler
 import gc
 import torch
 import copy
-import logging 
-logging.getLogger('PIL').setLevel(logging.INFO)
+import logging
+
+logging.getLogger("PIL").setLevel(logging.INFO)
 
 b_default = "./configs/non_iid_clients.py"
-parser = argparse.ArgumentParser(description='Run collaborative learning experiments')
-parser.add_argument('-b', nargs='?', default=b_default, type=str,
-                    help='filepath for benchmark config, default: {}'.format(b_default))
+parser = argparse.ArgumentParser(description="Run collaborative learning experiments")
+parser.add_argument(
+    "-b",
+    nargs="?",
+    default=b_default,
+    type=str,
+    help="filepath for benchmark config, default: {}".format(b_default),
+)
 args = parser.parse_args()
 
 scheduler = Scheduler()
@@ -28,21 +34,21 @@ for i in range(0, num_rep):
     values = [""]
     if test_key is not None:
         values = scheduler.config["test_values"]
-        
+
     for v in values:
         s = copy.deepcopy(scheduler)
         # Modify the experiment id to avoid conflicts
-        s.config["exp_id"] += str(v) 
+        s.config["exp_id"] += str(v)
         if num_rep > 1:
             # seed is different for each run across all clients
-            s.config["seed"] = i * s.config["num_clients"] 
+            s.config["seed"] = i * s.config["num_clients"]
         if test_key is not None:
             s.config[test_key] = v
         s.install_config()
         s.initialize(should_copy_source_code)
         should_copy_source_code = False
         s.run_job()
-        
+
         # Free up memory of previous run
         s = None
         gc.collect()

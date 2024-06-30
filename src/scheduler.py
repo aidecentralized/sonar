@@ -1,5 +1,7 @@
 from mpi4py import MPI
-import torch, random, numpy
+import torch
+import random
+import numpy
 from algos.base_class import BaseNode
 from algos.fl import FedAvgClient, FedAvgServer
 from algos.isolated import IsolatedServer
@@ -9,7 +11,7 @@ from algos.fl_weight import FedWeightClient, FedWeightServer
 from algos.fl_static import FedStaticClient, FedStaticServer
 from algos.swarm import SWARMClient, SWARMServer
 from algos.DisPFL import DisPFLClient, DisPFLServer
-from algos.def_kt import DefKTClient,DefKTServer
+from algos.def_kt import DefKTClient, DefKTServer
 from algos.fedfomo import FedFomoClient, FedFomoServer
 from algos.L2C import L2CClient, L2CServer
 from algos.MetaL2C import MetaL2CClient, MetaL2CServer
@@ -26,34 +28,35 @@ algo_map = {
     "fedavg": [FedAvgServer, FedAvgClient],
     "isolated": [IsolatedServer],
     "fedass": [FedAssServer, FedAssClient],
-    "fediso": [FedIsoServer,FedIsoClient],
-    "fedweight": [FedWeightServer,FedWeightClient],
-    "fedstatic": [FedStaticServer,FedStaticClient],
-    "swarm" : [SWARMServer, SWARMClient],
+    "fediso": [FedIsoServer, FedIsoClient],
+    "fedweight": [FedWeightServer, FedWeightClient],
+    "fedstatic": [FedStaticServer, FedStaticClient],
+    "swarm": [SWARMServer, SWARMClient],
     "dispfl": [DisPFLServer, DisPFLClient],
-    "defkt": [DefKTServer,DefKTClient],
+    "defkt": [DefKTServer, DefKTClient],
     "fedfomo": [FedFomoServer, FedFomoClient],
-    "l2c": [L2CServer,L2CClient],
-    "metal2c": [MetaL2CServer,MetaL2CClient],
+    "l2c": [L2CServer, L2CClient],
+    "metal2c": [MetaL2CServer, MetaL2CClient],
     "centralized": [CentralizedServer, CentralizedCLient],
     "feddatarepr": [FedDataRepServer, FedDataRepClient],
     "fedval": [FedValServer, FedValClient],
 }
 
+
 def get_node(config: dict, rank) -> BaseNode:
     algo_name = config["algo"]
-    return algo_map[algo_name][rank>0](config)
+    return algo_map[algo_name][rank > 0](config)
 
 
-class Scheduler():
-    """ Manages the overall orchestration of experiments
-    """
+class Scheduler:
+    """Manages the overall orchestration of experiments"""
+
     def __init__(self) -> None:
         pass
 
     def assign_config_by_path(self, config_path) -> None:
         self.config = load_config(config_path)
-        
+
     def install_config(self) -> None:
         self.config = process_config(self.config)
 
@@ -65,7 +68,9 @@ class Scheduler():
 
         # Base clients modify the seed later on
         seed = self.config["seed"]
-        torch.manual_seed(seed); random.seed(seed); numpy.random.seed(seed)
+        torch.manual_seed(seed)
+        random.seed(seed)
+        numpy.random.seed(seed)
 
         if rank == 0:
             if copy_souce_code:
@@ -73,8 +78,8 @@ class Scheduler():
             else:
                 path = self.config["results_path"]
                 check_and_create_path(path)
-                os.mkdir(self.config['saved_models'])
-                os.mkdir(self.config['log_path'])
+                os.mkdir(self.config["saved_models"])
+                os.mkdir(self.config["log_path"])
 
         self.node = get_node(self.config, rank=rank)
 
