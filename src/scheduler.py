@@ -72,10 +72,11 @@ class Scheduler():
     def merge_configs(self):
         self.config = self.algo_config.copy()
         self.config.update({
-            "dset": "cifar10",
-            "dump_dir": "./expt_dump/",
-            "dpath": self.sys_config["dataset_path"] + "cifar10",
+            "dset": self.sys_config["dset"],
+            "dump_dir": self.sys_config["dump_dir"],
+            "dpath": self.sys_config["dpath"],
             "num_users": self.sys_config["num_users"],
+            "seed": self.config["seed"],
             "samples_per_user": self.sys_config["dataset_splits"]["samples_per_user"],
             "device_ids": self.sys_config["device_ids"]
         })
