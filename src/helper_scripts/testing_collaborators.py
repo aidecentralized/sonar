@@ -1,5 +1,6 @@
 import math
 
+
 class Torus:
     def __init__(self, config, node_id):
         self.config = config
@@ -14,7 +15,10 @@ class Torus:
         # Left
         if self.node_id % self.grid_size != 1:
             selected_ids.append(self.node_id - 1)
-        elif math.ceil(self.node_id / self.grid_size) * self.grid_size <= self.num_clients:
+        elif (
+            math.ceil(self.node_id / self.grid_size) * self.grid_size
+            <= self.num_clients
+        ):
             selected_ids.append(self.node_id + self.grid_size - 1)
 
         # Right
@@ -49,9 +53,8 @@ class Torus:
 
         print("Selected collabs: " + str(self.node_id) + str(selected_ids))
 
-config = {
-    "num_clients": 8
-}
+
+config = {"num_clients": 8}
 
 for node_id in range(1, config["num_clients"] + 1):
     obj = Torus(config, node_id)

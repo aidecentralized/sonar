@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class Flatten(nn.Module):
     def __init__(self):
         super(Flatten, self).__init__()
@@ -9,27 +10,26 @@ class Flatten(nn.Module):
     def forward(self, x):
         return torch.flatten(x, 1)
 
+
 class Generator(nn.Module):
     def __init__(self, nz=100, ngf=64, img_size=32, nc=3):
         super(Generator, self).__init__()
         self.params = (nz, ngf, img_size, nc)
         self.init_size = img_size // 4
-        self.l1 = nn.Sequential(nn.Linear(nz, ngf * 2 * self.init_size ** 2))
+        self.l1 = nn.Sequential(nn.Linear(nz, ngf * 2 * self.init_size**2))
 
         self.conv_blocks = nn.Sequential(
             nn.BatchNorm2d(ngf * 2),
             nn.Upsample(scale_factor=2),
-
-            nn.Conv2d(ngf*2, ngf*2, 3, stride=1, padding=1, bias=False),
-            nn.BatchNorm2d(ngf*2),
+            nn.Conv2d(ngf * 2, ngf * 2, 3, stride=1, padding=1, bias=False),
+            nn.BatchNorm2d(ngf * 2),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Upsample(scale_factor=2),
-
-            nn.Conv2d(ngf*2, ngf, 3, stride=1, padding=1, bias=False),
+            nn.Conv2d(ngf * 2, ngf, 3, stride=1, padding=1, bias=False),
             nn.BatchNorm2d(ngf),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Conv2d(ngf, nc, 3, stride=1, padding=1),
-            nn.Sigmoid(),  
+            nn.Sigmoid(),
         )
 
     def forward(self, z):
@@ -40,7 +40,9 @@ class Generator(nn.Module):
 
     # return a copy of its own
     def clone(self):
-        clone = Generator(self.params[0], self.params[1], self.params[2], self.params[3])
+        clone = Generator(
+            self.params[0], self.params[1], self.params[2], self.params[3]
+        )
         clone.load_state_dict(self.state_dict())
         return clone.cuda()
 
@@ -58,104 +60,95 @@ class DeepGenerator(nn.Module):
         super(DeepGenerator, self).__init__()
         self.params = (nz, ngf, img_size, nc)
         self.init_size = img_size // 32
-        self.l1 = nn.Sequential(nn.Linear(nz, ngf * self.init_size ** 2))
+        self.l1 = nn.Sequential(nn.Linear(nz, ngf * self.init_size**2))
 
         self.conv_blocks = nn.Sequential(
-            #nn.Conv2d(nz, ngf, 3, stride=1, padding=1, bias=False),
-            #nn.BatchNorm2d(ngf),
-            #nn.LeakyReLU(0.2, inplace=True),
+            # nn.Conv2d(nz, ngf, 3, stride=1, padding=1, bias=False),
+            # nn.BatchNorm2d(ngf),
+            # nn.LeakyReLU(0.2, inplace=True),
             # 7x7
-
-            #nn.Upsample(scale_factor=2),
-            nn.Conv2d(nz, 2*ngf, 3, stride=1, padding=1, bias=False),
-            nn.BatchNorm2d(2*ngf),
+            # nn.Upsample(scale_factor=2),
+            nn.Conv2d(nz, 2 * ngf, 3, stride=1, padding=1, bias=False),
+            nn.BatchNorm2d(2 * ngf),
             nn.LeakyReLU(0.2, inplace=True),
             # 14x14
-
             nn.Upsample(scale_factor=2),
-            nn.Conv2d(2*ngf, 2*ngf, 3, stride=1, padding=1, bias=False),
-            nn.BatchNorm2d(2*ngf),
+            nn.Conv2d(2 * ngf, 2 * ngf, 3, stride=1, padding=1, bias=False),
+            nn.BatchNorm2d(2 * ngf),
             nn.LeakyReLU(0.2, inplace=True),
             # 28x28
-
             nn.Upsample(scale_factor=2),
-            nn.Conv2d(2*ngf, ngf, 3, stride=1, padding=1, bias=False),
+            nn.Conv2d(2 * ngf, ngf, 3, stride=1, padding=1, bias=False),
             nn.BatchNorm2d(ngf),
             nn.LeakyReLU(0.2, inplace=True),
             # 56x56
-
             nn.Upsample(scale_factor=2),
             nn.Conv2d(ngf, ngf, 3, stride=1, padding=1, bias=False),
             nn.BatchNorm2d(ngf),
             nn.LeakyReLU(0.2, inplace=True),
             # 112 x 112
-
             nn.Upsample(scale_factor=2),
             nn.Conv2d(ngf, ngf, 3, stride=1, padding=1, bias=False),
             nn.BatchNorm2d(ngf),
             nn.LeakyReLU(0.2, inplace=True),
             # 224 x 224
-
             nn.Conv2d(ngf, nc, 3, stride=1, padding=1),
-            nn.Sigmoid(),  
+            nn.Sigmoid(),
         )
 
     def forward(self, z):
-        #out = self.l1(z)
-        #out = out.view(out.shape[0], -1, self.init_size, self.init_size) 
+        # out = self.l1(z)
+        # out = out.view(out.shape[0], -1, self.init_size, self.init_size)
         img = self.conv_blocks(z)
         return img
 
     # return a copy of its own
     def clone(self, copy_params=True):
-        clone = DeepGenerator(self.params[0], self.params[1], self.params[2], self.params[3])
+        clone = DeepGenerator(
+            self.params[0], self.params[1], self.params[2], self.params[3]
+        )
         if copy_params:
             clone.load_state_dict(self.state_dict())
         return clone.cuda()
 
-        
+
 class DCGAN_Generator(nn.Module):
-    """ Generator from DCGAN: https://arxiv.org/abs/1511.06434
-    """
+    """Generator from DCGAN: https://arxiv.org/abs/1511.06434"""
+
     def __init__(self, nz=100, ngf=64, nc=3, img_size=64, slope=0.2):
         super(DCGAN_Generator, self).__init__()
         self.nz = nz
         if isinstance(img_size, (list, tuple)):
-            self.init_size = ( img_size[0]//16, img_size[1]//16 )
-        else:    
-            self.init_size = ( img_size // 16, img_size // 16)
+            self.init_size = (img_size[0] // 16, img_size[1] // 16)
+        else:
+            self.init_size = (img_size // 16, img_size // 16)
 
         self.project = nn.Sequential(
             Flatten(),
-            nn.Linear(nz, ngf*8*self.init_size[0]*self.init_size[1]),
+            nn.Linear(nz, ngf * 8 * self.init_size[0] * self.init_size[1]),
         )
 
         self.main = nn.Sequential(
-            nn.BatchNorm2d(ngf*8),
-            
-            nn.ConvTranspose2d(ngf*8, ngf*4, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ngf*4),
+            nn.BatchNorm2d(ngf * 8),
+            nn.ConvTranspose2d(ngf * 8, ngf * 4, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(ngf * 4),
             nn.LeakyReLU(slope, inplace=True),
             # 2x
-
-            nn.ConvTranspose2d(ngf*4, ngf*2, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ngf*2),
+            nn.ConvTranspose2d(ngf * 4, ngf * 2, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(ngf * 2),
             nn.LeakyReLU(slope, inplace=True),
             # 4x
-            
-            nn.ConvTranspose2d(ngf*2, ngf, 4, 2, 1, bias=False),
+            nn.ConvTranspose2d(ngf * 2, ngf, 4, 2, 1, bias=False),
             nn.BatchNorm2d(ngf),
             nn.LeakyReLU(slope, inplace=True),
             # 8x
-
             nn.ConvTranspose2d(ngf, ngf, 4, 2, 1, bias=False),
             nn.BatchNorm2d(ngf),
             nn.LeakyReLU(slope, inplace=True),
             # 16x
-
-            nn.Conv2d(ngf, nc, 3, 1,1),
+            nn.Conv2d(ngf, nc, 3, 1, 1),
             nn.Sigmoid(),
-            #nn.Sigmoid()
+            # nn.Sigmoid()
         )
 
     def forward(self, z):
@@ -164,49 +157,47 @@ class DCGAN_Generator(nn.Module):
         output = self.main(proj)
         return output
 
+
 class DCGAN_CondGenerator(nn.Module):
-    """ Generator from DCGAN: https://arxiv.org/abs/1511.06434
-    """
-    def __init__(self, num_classes,  nz=100, n_emb=50, ngf=64, nc=3, img_size=64, slope=0.2):
+    """Generator from DCGAN: https://arxiv.org/abs/1511.06434"""
+
+    def __init__(
+        self, num_classes, nz=100, n_emb=50, ngf=64, nc=3, img_size=64, slope=0.2
+    ):
         super(DCGAN_CondGenerator, self).__init__()
         self.nz = nz
         self.emb = nn.Embedding(num_classes, n_emb)
         if isinstance(img_size, (list, tuple)):
-            self.init_size = ( img_size[0]//16, img_size[1]//16 )
-        else:    
-            self.init_size = ( img_size // 16, img_size // 16)
+            self.init_size = (img_size[0] // 16, img_size[1] // 16)
+        else:
+            self.init_size = (img_size // 16, img_size // 16)
 
         self.project = nn.Sequential(
             Flatten(),
-            nn.Linear(nz+n_emb, ngf*8*self.init_size[0]*self.init_size[1]),
+            nn.Linear(nz + n_emb, ngf * 8 * self.init_size[0] * self.init_size[1]),
         )
 
         self.main = nn.Sequential(
-            nn.BatchNorm2d(ngf*8),
-            
-            nn.ConvTranspose2d(ngf*8, ngf*4, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ngf*4),
+            nn.BatchNorm2d(ngf * 8),
+            nn.ConvTranspose2d(ngf * 8, ngf * 4, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(ngf * 4),
             nn.LeakyReLU(slope, inplace=True),
             # 2x
-
-            nn.ConvTranspose2d(ngf*4, ngf*2, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ngf*2),
+            nn.ConvTranspose2d(ngf * 4, ngf * 2, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(ngf * 2),
             nn.LeakyReLU(slope, inplace=True),
             # 4x
-            
-            nn.ConvTranspose2d(ngf*2, ngf, 4, 2, 1, bias=False),
+            nn.ConvTranspose2d(ngf * 2, ngf, 4, 2, 1, bias=False),
             nn.BatchNorm2d(ngf),
             nn.LeakyReLU(slope, inplace=True),
             # 8x
-
             nn.ConvTranspose2d(ngf, ngf, 4, 2, 1, bias=False),
             nn.BatchNorm2d(ngf),
             nn.LeakyReLU(slope, inplace=True),
             # 16x
-
-            nn.Conv2d(ngf, nc, 3, 1,1),
-            #nn.Tanh(),
-            nn.Sigmoid()
+            nn.Conv2d(ngf, nc, 3, 1, 1),
+            # nn.Tanh(),
+            nn.Sigmoid(),
         )
 
     def forward(self, z, y):
@@ -217,12 +208,17 @@ class DCGAN_CondGenerator(nn.Module):
         output = self.main(proj)
         return output
 
+
 class Discriminator(nn.Module):
     def __init__(self, nc=3, img_size=32):
         super(Discriminator, self).__init__()
 
         def discriminator_block(in_filters, out_filters, bn=True):
-            block = [nn.Conv2d(in_filters, out_filters, 3, 2, 1), nn.LeakyReLU(0.2, inplace=True), nn.Dropout2d(0.25)]
+            block = [
+                nn.Conv2d(in_filters, out_filters, 3, 2, 1),
+                nn.LeakyReLU(0.2, inplace=True),
+                nn.Dropout2d(0.25),
+            ]
             if bn:
                 block.append(nn.BatchNorm2d(out_filters, 0.8))
             return block
@@ -235,14 +231,15 @@ class Discriminator(nn.Module):
         )
 
         # The height and width of downsampled image
-        ds_size = img_size // 2 ** 4
-        self.adv_layer = nn.Sequential(nn.Linear(128 * ds_size ** 2, 1), nn.Sigmoid())
+        ds_size = img_size // 2**4
+        self.adv_layer = nn.Sequential(nn.Linear(128 * ds_size**2, 1), nn.Sigmoid())
 
     def forward(self, img):
         out = self.model(img)
         out = out.view(out.shape[0], -1)
         validity = self.adv_layer(out)
         return validity
+
 
 class DCGAN_Discriminator(nn.Module):
     def __init__(self, nc=3, ndf=64):
@@ -265,7 +262,7 @@ class DCGAN_Discriminator(nn.Module):
             nn.LeakyReLU(0.2, inplace=True),
             # state size. (ndf*8) x 4 x 4
             nn.Conv2d(ndf * 8, 1, 2, 1, 0, bias=False),
-            nn.Sigmoid()
+            nn.Sigmoid(),
         )
 
     def forward(self, input):

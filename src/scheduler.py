@@ -5,13 +5,10 @@ import numpy
 from algos.base_class import BaseNode
 from algos.fl import FedAvgClient, FedAvgServer
 from algos.isolated import IsolatedServer
-from algos.fl_random import FedRanClient, FedRanServer
-from algos.fl_grid import FedGridClient, FedGridServer
-from algos.fl_torus import FedTorusClient, FedTorusServer
 from algos.fl_assigned import FedAssClient, FedAssServer
 from algos.fl_isolated import FedIsoClient, FedIsoServer
 from algos.fl_weight import FedWeightClient, FedWeightServer
-from algos.fl_ring import FedRingClient, FedRingServer
+from algos.fl_static import FedStaticClient, FedStaticServer
 from algos.swarm import SWARMClient, SWARMServer
 from algos.DisPFL import DisPFLClient, DisPFLServer
 from algos.def_kt import DefKTClient, DefKTServer
@@ -30,14 +27,11 @@ import os
 algo_map = {
     "fedavg": [FedAvgServer, FedAvgClient],
     "isolated": [IsolatedServer],
-    "fedran": [FedRanServer,FedRanClient],
-    "fedgrid": [FedGridServer,FedGridClient],
-    "fedtorus": [FedTorusServer,FedTorusClient],
     "fedass": [FedAssServer, FedAssClient],
-    "fediso": [FedIsoServer,FedIsoClient],
-    "fedweight": [FedWeightServer,FedWeightClient],
-    "fedring": [FedRingServer,FedRingClient],
-    "swarm" : [SWARMServer, SWARMClient],
+    "fediso": [FedIsoServer, FedIsoClient],
+    "fedweight": [FedWeightServer, FedWeightClient],
+    "fedstatic": [FedStaticServer, FedStaticClient],
+    "swarm": [SWARMServer, SWARMClient],
     "dispfl": [DisPFLServer, DisPFLClient],
     "defkt": [DefKTServer, DefKTClient],
     "fedfomo": [FedFomoServer, FedFomoClient],
@@ -48,12 +42,10 @@ algo_map = {
     "fedval": [FedValServer, FedValClient],
 }
 
-
 def get_node(config: dict, rank) -> BaseNode:
     algo_name = config["algo"]
     return algo_map[algo_name][rank > 0](config)
-
-
+  
 class Scheduler():
     """ Manages the overall orchestration of experiments
     """
@@ -99,8 +91,8 @@ class Scheduler():
             else:
                 path = self.config["results_path"]
                 check_and_create_path(path)
-                os.mkdir(self.config['saved_models'])
-                os.mkdir(self.config['log_path'])
+                os.mkdir(self.config["saved_models"])
+                os.mkdir(self.config["log_path"])
 
         self.node = get_node(self.config, rank=rank)
 
