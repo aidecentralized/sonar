@@ -1,3 +1,11 @@
+# scheduler.py
+"""
+This module manages the orchestration of federated learning experiments.
+"""
+
+import os
+import random
+
 from mpi4py import MPI
 import torch
 import random
@@ -18,12 +26,10 @@ from algos.MetaL2C import MetaL2CClient, MetaL2CServer
 from algos.fl_central import CentralizedCLient, CentralizedServer
 from algos.fl_data_repr import FedDataRepClient, FedDataRepServer
 from algos.fl_val import FedValClient, FedValServer
-from utils.log_utils import copy_source_code, check_and_create_path
-from utils.config_utils import load_config, process_config, get_device_ids
-import os
+from utils.log_utils import check_and_create_path
+from utils.config_utils import load_config, process_config
 
-# should be used as: algo_map[algo_name][rank>0](config)
-# If rank is 0, then it returns the server class otherwise the client class
+# Mapping of algorithm names to their corresponding client and server classes
 algo_map = {
     "fedavg": [FedAvgServer, FedAvgClient],
     "isolated": [IsolatedServer],
@@ -44,17 +50,29 @@ algo_map = {
 
 
 def get_node(config: dict, rank) -> BaseNode:
+    """
+    Returns the appropriate client or server class based on the algorithm and rank.
+
+    Args:
+        config (dict): Configuration dictionary containing algorithm details.
+        rank (int): Rank of the node in the MPI world.
+
+    Returns:
+        BaseNode: An instance of the corresponding client or server class.
+    """
     algo_name = config["algo"]
     return algo_map[algo_name][rank > 0](config)
 
-
 class Scheduler:
-    """Manages the overall orchestration of experiments"""
-
+    """Manages the overall orchestration of experiments."""
     def __init__(self) -> None:
-        pass
-
+        self.config = None
+        self.node = None
+        
     def install_config(self) -> None:
+        """
+        Processes the loaded configuration.
+        """
         self.config = process_config(self.config)
 
     def assign_config_by_path(self, sys_config_path, algo_config_path):
@@ -80,7 +98,8 @@ class Scheduler:
         numpy.random.seed(seed)
 
         if rank == 0:
-            if copy_souce_code:
+            if copy_source:
+                from utils.log_utils import copy_source_code
                 copy_source_code(self.config)
             else:
                 path = self.config["results_path"]
@@ -91,4 +110,7 @@ class Scheduler:
         self.node = get_node(self.config, rank=rank)
 
     def run_job(self) -> None:
+        """
+        Runs the protocol for the assigned node.
+        """
         self.node.run_protocol()
