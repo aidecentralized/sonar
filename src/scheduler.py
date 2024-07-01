@@ -19,7 +19,7 @@ from algos.fl_central import CentralizedCLient, CentralizedServer
 from algos.fl_data_repr import FedDataRepClient, FedDataRepServer
 from algos.fl_val import FedValClient, FedValServer
 from utils.log_utils import copy_source_code, check_and_create_path
-from utils.config_utils import load_config, process_config
+from utils.config_utils import load_config, process_config, get_device_ids
 import os
 
 # should be used as: algo_map[algo_name][rank>0](config)
@@ -42,23 +42,36 @@ algo_map = {
     "fedval": [FedValServer, FedValClient],
 }
 
-
 def get_node(config: dict, rank) -> BaseNode:
     algo_name = config["algo"]
     return algo_map[algo_name][rank > 0](config)
-
-
-class Scheduler:
-    """Manages the overall orchestration of experiments"""
+  
+class Scheduler():
+    """ Manages the overall orchestration of experiments
+    """
 
     def __init__(self) -> None:
         pass
 
-    def assign_config_by_path(self, config_path) -> None:
-        self.config = load_config(config_path)
-
     def install_config(self) -> None:
         self.config = process_config(self.config)
+
+    def assign_config_by_path(self, sys_config_path, algo_config_path):
+        self.sys_config = load_config(sys_config_path)
+        self.algo_config = load_config(algo_config_path)
+        self.merge_configs()
+
+    def merge_configs(self):
+        self.config = self.algo_config.copy()
+        self.config.update({
+            "dset": self.sys_config["dset"],
+            "dump_dir": self.sys_config["dump_dir"],
+            "dpath": self.sys_config["dpath"],
+            "num_users": self.sys_config["num_users"],
+            "seed": self.config["seed"],
+            "samples_per_user": self.sys_config["dataset_splits"]["samples_per_user"],
+            "device_ids": self.sys_config["device_ids"]
+        })
 
     def initialize(self, copy_souce_code=True) -> None:
         assert self.config is not None, "Config should be set when initializing"
