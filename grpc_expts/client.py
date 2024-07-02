@@ -16,7 +16,7 @@ from utils.log_utils import LogUtils
 from torch.utils.data import DataLoader, Subset
 from grpc_utils import deserialize_model, serialize_model # type: ignore
 
-host = 'matlaber7.media.mit.edu:50051'
+host = 'matlaber2.media.mit.edu:50051'
 
 TEMP_TOTAL_NODES = 4
 SEED = 1

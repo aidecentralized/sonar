@@ -1,6 +1,7 @@
 # project specific folders
 expt_dump/
 expt_dump_old/
+grpc_expts/logs/
 di_test/
 imgs/
 data/
