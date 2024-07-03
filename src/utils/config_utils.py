@@ -1,14 +1,11 @@
 import jmespath
 import importlib
-import os
 
 
 def load_config(config_path):
     path = ".".join(config_path.split(".")[1].split("/")[1:])
-    print(path)
     config = importlib.import_module(path).current_config
     return config
-    # return process_config(config)
 
 
 def process_config(config):
@@ -28,14 +25,11 @@ def process_config(config):
     else:
         dset = config["dset"]
 
-    experiment_name = "{}_{}clients_{}spc_{}_{}_{}epr_{}r_{}".format(
+    experiment_name = "{}_{}users_{}spc_{}_{}".format(
         dset,
-        config["num_clients"],
-        config["samples_per_client"],
+        config["num_users"],
+        config["samples_per_user"],
         config["algo"],
-        config["train_label_distribution"],
-        config["epochs_per_round"],
-        config["rounds"],
         config["exp_id"],
     )
 
@@ -65,11 +59,11 @@ def process_config(config):
     return config
 
 
-def get_sliding_window_support(num_clients, num_classes, num_classes_per_client):
-    num_client_with_same_support = max(num_clients // num_classes, 1)
+def get_sliding_window_support(num_users, num_classes, num_classes_per_client):
+    num_client_with_same_support = max(num_users // num_classes, 1)
     support = {}
     # Slide window by 1, clients with same support are consecutive
-    for i in range(1, num_clients + 1):
+    for i in range(1, num_users + 1):
         support[str(i)] = [
             (((i - 1) // num_client_with_same_support) + j) % num_classes
             for j in range(num_classes_per_client)
@@ -78,13 +72,13 @@ def get_sliding_window_support(num_clients, num_classes, num_classes_per_client)
 
 
 def get_device_ids(
-    num_clients: int, num_client_per_gpu: int, available_gpus: list[int]
+    num_users: int, num_client_per_gpu: int, available_gpus: list[int]
 ):
-    assert num_clients <= len(available_gpus) * num_client_per_gpu
+    assert num_users <= len(available_gpus) * num_client_per_gpu
     device_ids = {}
 
     gpu_id = 0
-    for i in range(1, num_clients + 1):
+    for i in range(1, num_users + 1):
         device_ids[f"node_{i}"] = [available_gpus[gpu_id]]
         gpu_id = (gpu_id + 1) % len(available_gpus)  # Alternate GPU assignment
 

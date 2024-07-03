@@ -37,10 +37,10 @@ class FedFomoClient(BaseClient):
         self.anneal_factor = self.config["anneal_factor"]
         self.dis_gradient_check = self.config["dis_gradient_check"]
         self.server_node = 1  # leader node
-        self.num_clients = config["num_clients"]
-        self.neighbors = list(range(self.num_clients))
+        self.num_users = config["num_users"]
+        self.neighbors = list(range(self.num_users))
         if self.node_id == 1:
-            self.clients = list(range(2, self.num_clients + 1))
+            self.clients = list(range(2, self.num_users + 1))
 
     def local_train(self):
         """
@@ -218,17 +218,17 @@ class FedFomoClient(BaseClient):
                 client_index for client_index in range(client_num_in_total)
             ]
         else:
-            num_clients = min(client_num_per_round, client_num_in_total)
+            num_users = min(client_num_per_round, client_num_in_total)
             p_choose[cur_clnt] = 0
             if random.random() >= 0.5:
-                client_indexes = np.argsort(p_choose)[-num_clients:]
+                client_indexes = np.argsort(p_choose)[-num_users:]
             else:
                 client_indexes = np.random.choice(
-                    range(client_num_in_total), num_clients, replace=False
+                    range(client_num_in_total), num_users, replace=False
                 )
                 while cur_clnt in client_indexes:
                     client_indexes = np.random.choice(
-                        range(client_num_in_total), num_clients, replace=False
+                        range(client_num_in_total), num_users, replace=False
                     )
 
         # self.logger.info("client_indexes = %s" % str(client_indexes))
@@ -286,13 +286,13 @@ class FedFomoClient(BaseClient):
         total_epochs = self.config["epochs"]
         self.params = self.get_trainable_params()
         self.index = self.node_id - 1
-        weights_locals = np.full((self.num_clients), 1.0 / self.num_clients)
-        p_choose_locals = np.ones(shape=(self.num_clients))
+        weights_locals = np.full((self.num_users), 1.0 / self.num_users)
+        p_choose_locals = np.ones(shape=(self.num_users))
         reprs_lstrnd = [
-            copy.deepcopy(self.get_representation()) for i in range(self.num_clients)
+            copy.deepcopy(self.get_representation()) for i in range(self.num_users)
         ]
         repr_per_global = [
-            copy.deepcopy(self.get_representation()) for i in range(self.num_clients)
+            copy.deepcopy(self.get_representation()) for i in range(self.num_users)
         ]
         for round in range(start_epochs, total_epochs):
             # wait for signal to start round
@@ -306,13 +306,13 @@ class FedFomoClient(BaseClient):
             nei_indexs = self.benefit_choose(
                 round,
                 self.index,
-                self.num_clients,
+                self.num_users,
                 self.config["neighbors"],
                 p_choose_locals[self.index],
             )
             # If not selected in full, the current clint is made up and the
             # aggregation operation is performed
-            if self.num_clients != self.config["neighbors"]:
+            if self.num_users != self.config["neighbors"]:
                 # when not active this round
                 nei_indexs = np.append(nei_indexs, self.index)
             nei_indexs = np.sort(nei_indexs)
@@ -334,7 +334,7 @@ class FedFomoClient(BaseClient):
 
             new_repr = self.aggregate(
                 self.index,
-                self.num_clients,
+                self.num_users,
                 self.config["neighbors"],
                 nei_indexs,
                 reprs_lstrnd,
@@ -359,7 +359,7 @@ class FedFomoServer(BaseServer):
             self.config["results_path"], self.node_id
         )
         self.dense_ratio = self.config["dense_ratio"]
-        self.num_clients = self.config["num_clients"]
+        self.num_users = self.config["num_users"]
 
     def get_representation(self) -> OrderedDict[str, Tensor]:
         """
@@ -371,7 +371,7 @@ class FedFomoServer(BaseServer):
         """
         Set the model
         """
-        for client_node in self.clients:
+        for client_node in self.users:
             self.comm_utils.send_signal(client_node, representations, self.tag.UPDATES)
             self.log_utils.log_console(
                 "Server sent {} representations to node {}".format(
@@ -398,7 +398,7 @@ class FedFomoServer(BaseServer):
         """
         Runs the whole training procedure
         """
-        for client_node in self.clients:
+        for client_node in self.users:
             self.log_utils.log_console(
                 "Server sending semaphore from {} to {}".format(
                     self.node_id, client_node
@@ -415,10 +415,10 @@ class FedFomoServer(BaseServer):
                 )
 
         self.masks = self.comm_utils.wait_for_all_clients(
-            self.clients, self.tag.SHARE_MASKS
+            self.users, self.tag.SHARE_MASKS
         )
         self.reprs = self.comm_utils.wait_for_all_clients(
-            self.clients, self.tag.SHARE_WEIGHTS
+            self.users, self.tag.SHARE_WEIGHTS
         )
 
     def get_trainable_params(self):
@@ -436,7 +436,7 @@ class FedFomoServer(BaseServer):
             self.round = round
             active_ths_rnd = np.random.choice(
                 [0, 1],
-                size=self.num_clients,
+                size=self.num_users,
                 p=[1.0 - self.config["active_rate"], self.config["active_rate"]],
             )
             self.log_utils.log_console("Starting round {}".format(round))
@@ -444,5 +444,5 @@ class FedFomoServer(BaseServer):
             # print("weight:",mask_pers_shared)
             self.single_round(round, active_ths_rnd)
 
-            accs = self.comm_utils.wait_for_all_clients(self.clients, self.tag.FINISH)
+            accs = self.comm_utils.wait_for_all_clients(self.users, self.tag.FINISH)
             self.log_utils.log_console("Round {} done; acc {}".format(round, accs))

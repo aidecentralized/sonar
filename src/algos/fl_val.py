@@ -70,7 +70,7 @@ class FedValClient(BaseFedAvgClient):
         return collab_weights, proba_dist
 
     def log_clients_stats(self, client_dict, stat_name):
-        clients_array = np.zeros(self.config["num_clients"])
+        clients_array = np.zeros(self.config["num_users"])
         for k, v in client_dict.items():
             clients_array[k - 1] = v
         self.round_stats[stat_name] = clients_array
@@ -181,7 +181,7 @@ class FedValServer(BaseFedAvgServer):
         """
 
         # Send signal to all clients to start local training
-        for client_node in self.clients:
+        for client_node in self.users:
             self.comm_utils.send_signal(
                 dest=client_node, data=None, tag=self.tag.ROUND_START
             )
@@ -191,7 +191,7 @@ class FedValServer(BaseFedAvgServer):
 
         # Collect models from all clients
         models = self.comm_utils.wait_for_all_clients(
-            self.clients, self.tag.REPR_ADVERT
+            self.users, self.tag.REPR_ADVERT
         )
         self.log_utils.log_console("Server received all clients models")
 
@@ -200,7 +200,7 @@ class FedValServer(BaseFedAvgServer):
 
         # Collect round stats from all clients
         round_stats = self.comm_utils.wait_for_all_clients(
-            self.clients, self.tag.ROUND_STATS
+            self.users, self.tag.ROUND_STATS
         )
         self.log_utils.log_console("Server received all clients stats")
 

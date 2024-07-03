@@ -29,8 +29,8 @@ class SWARMClient(BaseClient):
         )
         self.server_node = 1  # leader node
         if self.node_id == 1:
-            self.num_clients = config["num_clients"]
-            self.clients = list(range(2, self.num_clients + 1))
+            self.num_users = config["num_users"]
+            self.clients = list(range(2, self.num_users + 1))
 
     def local_train(self):
         """
@@ -73,12 +73,12 @@ class SWARMClient(BaseClient):
         # All models are sampled currently at every round
         # Each model is assumed to have equal amount of data and hence
         # coeff is same for everyone
-        num_clients = len(model_wts)
-        coeff = 1 / num_clients
+        num_users = len(model_wts)
+        coeff = 1 / num_users
         avgd_wts = OrderedDict()
         first_model = model_wts[0]
 
-        for client_num in range(num_clients):
+        for client_num in range(num_users):
             local_wts = model_wts[client_num]
             for key in first_model.keys():
                 if client_num == 0:
@@ -158,7 +158,7 @@ class SWARMServer(BaseServer):
         """
         Set the model
         """
-        for client_node in self.clients:
+        for client_node in self.users:
             self.comm_utils.send_signal(client_node, representations, self.tag.UPDATES)
             self.log_utils.log_console(
                 "Server sent {} representations to node {}".format(
@@ -185,7 +185,7 @@ class SWARMServer(BaseServer):
         """
         Runs the whole training procedure
         """
-        for client_node in self.clients:
+        for client_node in self.users:
             self.log_utils.log_console(
                 "Server sending semaphore from {} to {}".format(
                     self.node_id, client_node
@@ -203,10 +203,10 @@ class SWARMServer(BaseServer):
             self.log_utils.log_console("Starting round {}".format(round))
             self.single_round()
             train_acc = self.comm_utils.wait_for_all_clients(
-                self.clients, self.tag.FINISH
+                self.users, self.tag.FINISH
             )
             test_acc = self.comm_utils.wait_for_all_clients(
-                self.clients, self.tag.FINISH
+                self.users, self.tag.FINISH
             )
             self.log_utils.log_console(
                 "Round {} done; train acc {}".format(round, train_acc)

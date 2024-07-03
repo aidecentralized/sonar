@@ -29,8 +29,8 @@ class DefKTClient(BaseClient):
         )
         self.server_node = 1  # leader node
         if self.node_id == 1:
-            self.num_clients = config["num_clients"]
-            self.clients = list(range(2, self.num_clients + 1))
+            self.num_users = config["num_users"]
+            self.clients = list(range(2, self.num_users + 1))
 
     def local_train(self):
         """
@@ -83,12 +83,12 @@ class DefKTClient(BaseClient):
         # All models are sampled currently at every round
         # Each model is assumed to have equal amount of data and hence
         # coeff is same for everyone
-        num_clients = len(model_wts)
-        coeff = 1 / num_clients
+        num_users = len(model_wts)
+        coeff = 1 / num_users
         avgd_wts = OrderedDict()
         first_model = model_wts[0]
 
-        for client_num in range(num_clients):
+        for client_num in range(num_users):
             local_wts = model_wts[client_num]
             for key in first_model.keys():
                 if client_num == 0:
@@ -204,7 +204,7 @@ class DefKTServer(BaseServer):
         """
         Set the model
         """
-        for client_node in self.clients:
+        for client_node in self.users:
             self.comm_utils.send_signal(client_node, representations, self.tag.UPDATES)
             self.log_utils.log_console(
                 "Server sent {} representations to node {}".format(
@@ -229,12 +229,12 @@ class DefKTServer(BaseServer):
 
     def assigns_clients(self):
         num_teachers = self.config["num_teachers"]
-        clients = list(range(1, self.num_clients + 1))
-        if 2 * num_teachers > self.num_clients:
+        clients = list(range(1, self.num_users + 1))
+        if 2 * num_teachers > self.num_users:
             return None  # Not enough room to pick two non-overlapping subarrays
 
         # Pick the starting index of the first subarray
-        selected_indices = random.sample(range(self.num_clients), 2 * num_teachers)
+        selected_indices = random.sample(range(self.num_users), 2 * num_teachers)
         selected_elements = [clients[i] for i in selected_indices]
 
         # Divide the selected elements into two arrays of length num_teachers
@@ -250,7 +250,7 @@ class DefKTServer(BaseServer):
         teachers, students = self.assigns_clients()  # type: ignore
         self.log_utils.log_console("Teachers:{}".format(teachers))
         self.log_utils.log_console("Students:{}".format(students))
-        for client_node in self.clients:
+        for client_node in self.users:
             self.log_utils.log_console(
                 "Server sending status from {} to {}".format(self.node_id, client_node)
             )
@@ -267,5 +267,5 @@ class DefKTServer(BaseServer):
             self.log_utils.log_console("Starting round {}".format(round))
             self.single_round()
 
-            accs = self.comm_utils.wait_for_all_clients(self.clients, self.tag.FINISH)
+            accs = self.comm_utils.wait_for_all_clients(self.users, self.tag.FINISH)
             self.log_utils.log_console("Round {} done; acc {}".format(round, accs))

@@ -89,12 +89,12 @@ class FedAvgServer(BaseServer):
         # All models are sampled currently at every round
         # Each model is assumed to have equal amount of data and hence
         # coeff is same for everyone
-        num_clients = len(model_wts)
-        coeff = 1 / num_clients
+        num_users = len(model_wts)
+        coeff = 1 / num_users
         avgd_wts = OrderedDict()
         first_model = model_wts[0]
 
-        for client_num in range(num_clients):
+        for client_num in range(num_users):
             local_wts = model_wts[client_num]
             for key in first_model.keys():
                 if client_num == 0:
@@ -114,7 +114,7 @@ class FedAvgServer(BaseServer):
         """
         Set the model
         """
-        for client_node in self.clients:
+        for client_node in self.users:
             self.comm_utils.send_signal(client_node, representation, self.tag.UPDATES)
         self.model.load_state_dict(representation)
 
@@ -136,7 +136,7 @@ class FedAvgServer(BaseServer):
         """
         Runs the whole training procedure
         """
-        for client_node in self.clients:
+        for client_node in self.users:
             self.log_utils.log_console(
                 "Server sending semaphore from {} to {}".format(
                     self.node_id, client_node
@@ -144,7 +144,7 @@ class FedAvgServer(BaseServer):
             )
             self.comm_utils.send_signal(dest=client_node, data=None, tag=self.tag.START)
         self.log_utils.log_console("Server waiting for all clients to finish")
-        reprs = self.comm_utils.wait_for_all_clients(self.clients, self.tag.DONE)
+        reprs = self.comm_utils.wait_for_all_clients(self.users, self.tag.DONE)
         self.log_utils.log_console("Server received all clients done signal")
         avg_wts = self.aggregate(reprs)
         self.set_representation(avg_wts)
@@ -156,6 +156,7 @@ class FedAvgServer(BaseServer):
         for round in range(start_epochs, total_epochs):
             self.log_utils.log_console("Starting round {}".format(round))
             self.single_round()
+            self.log_utils.log_console("Server testing the model")
             acc = self.test()
             self.log_utils.log_tb(f"test_acc/clients", acc, round)
             self.log_utils.log_console("round: {} test_acc:{:.4f}".format(round, acc))
