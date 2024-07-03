@@ -8,7 +8,11 @@ import random
 
 from mpi4py import MPI
 import torch
+
 import numpy as np
+
+import random
+import numpy
 
 from algos.base_class import BaseNode
 from algos.fl import FedAvgClient, FedAvgServer
@@ -29,8 +33,14 @@ from algos.MetaL2C import MetaL2CClient, MetaL2CServer
 from algos.fl_central import CentralizedCLient, CentralizedServer
 from algos.fl_data_repr import FedDataRepClient, FedDataRepServer
 from algos.fl_val import FedValClient, FedValServer
+
 from utils.log_utils import check_and_create_path
 from utils.config_utils import load_config, process_config
+
+from utils.log_utils import copy_source_code, check_and_create_path
+from utils.config_utils import load_config, process_config, get_device_ids
+import os
+
 
 # Mapping of algorithm names to their corresponding client and server classes
 algo_map = {
@@ -54,9 +64,13 @@ algo_map = {
     "fedval": [FedValServer, FedValClient],
 }
 
+
 def get_node(config: dict, rank) -> BaseNode:
     """
     Returns the appropriate client or server class based on the algorithm and rank.
+=======
+    algo_name = config["algo"]
+    return algo_map[algo_name][rank > 0](config)
 
     Args:
         config (dict): Configuration dictionary containing algorithm details.
@@ -70,6 +84,7 @@ def get_node(config: dict, rank) -> BaseNode:
 
 class Scheduler:
     """Manages the overall orchestration of experiments."""
+
     def __init__(self) -> None:
         self.config = None
         self.node = None
@@ -89,6 +104,7 @@ class Scheduler:
         """
         self.config = process_config(self.config)
 
+
     def initialize(self, copy_source=True) -> None:
         """
         Initializes the experiment environment.
@@ -96,6 +112,25 @@ class Scheduler:
         Args:
             copy_source (bool): If True, copies the source code to the result directory.
         """
+
+    def assign_config_by_path(self, sys_config_path, algo_config_path):
+        self.sys_config = load_config(sys_config_path)
+        self.algo_config = load_config(algo_config_path)
+        self.merge_configs()
+
+    def merge_configs(self):
+        self.config = self.algo_config.copy()
+        self.config.update({
+            "dset": self.sys_config["dset"],
+            "dump_dir": self.sys_config["dump_dir"],
+            "dpath": self.sys_config["dpath"],
+            "num_users": self.sys_config["num_users"],
+            "seed": self.config["seed"],
+            "samples_per_user": self.sys_config["dataset_splits"]["samples_per_user"],
+            "device_ids": self.sys_config["device_ids"]
+        })
+
+    def initialize(self, copy_souce_code=True) -> None:
         assert self.config is not None, "Config should be set when initializing"
 
         comm = MPI.COMM_WORLD
@@ -105,7 +140,11 @@ class Scheduler:
         seed = self.config["seed"]
         torch.manual_seed(seed)
         random.seed(seed)
+
         np.random.seed(seed)
+
+        numpy.random.seed(seed)
+
 
         if rank == 0:
             if copy_source:
