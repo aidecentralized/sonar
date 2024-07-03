@@ -37,10 +37,10 @@ class DisPFLClient(BaseClient):
         self.anneal_factor = self.config["anneal_factor"]
         self.dis_gradient_check = self.config["dis_gradient_check"]
         self.server_node = 1  # leader node
-        self.num_clients = config["num_clients"]
-        self.neighbors = list(range(self.num_clients))
+        self.num_users = config["num_users"]
+        self.neighbors = list(range(self.num_users))
         if self.node_id == 1:
-            self.clients = list(range(2, self.num_clients + 1))
+            self.clients = list(range(2, self.num_users + 1))
 
     def local_train(self):
         """
@@ -295,13 +295,13 @@ class DisPFLClient(BaseClient):
 
         if cs == "random":
             # Random selection of available clients
-            num_clients = min(client_num_per_round, client_num_in_total)
+            num_users = min(client_num_per_round, client_num_in_total)
             client_indexes = np.random.choice(
-                range(client_num_in_total), num_clients, replace=False
+                range(client_num_in_total), num_users, replace=False
             )
             while cur_clnt in client_indexes:
                 client_indexes = np.random.choice(
-                    range(client_num_in_total), num_clients, replace=False
+                    range(client_num_in_total), num_users, replace=False
                 )
 
         elif cs == "ring":
@@ -332,14 +332,14 @@ class DisPFLClient(BaseClient):
             self.params, sparse=self.dense_ratio
         )  # calculate sparsity to create masks
         self.mask = self.init_masks(self.params, sparsities)  # mask_per_local
-        dist_locals = np.zeros(shape=(self.num_clients))
+        dist_locals = np.zeros(shape=(self.num_users))
         self.index = self.node_id - 1
-        masks_lstrnd = [self.mask for i in range(self.num_clients)]
+        masks_lstrnd = [self.mask for i in range(self.num_users)]
         weights_lstrnd = [
-            copy.deepcopy(self.get_representation()) for i in range(self.num_clients)
+            copy.deepcopy(self.get_representation()) for i in range(self.num_users)
         ]
         w_per_globals = [
-            copy.deepcopy(self.get_representation()) for i in range(self.num_clients)
+            copy.deepcopy(self.get_representation()) for i in range(self.num_users)
         ]
         for round in range(start_epochs, total_epochs):
             # wait for signal to start round
@@ -364,7 +364,7 @@ class DisPFLClient(BaseClient):
                 nei_indexs = self._benefit_choose(
                     round,
                     self.index,
-                    self.num_clients,
+                    self.num_users,
                     self.config["neighbors"],
                     dist_locals,
                     total_dis,
@@ -373,7 +373,7 @@ class DisPFLClient(BaseClient):
                 )
             # If not selected in full, the current clint is made up and the
             # aggregation operation is performed
-            if self.num_clients != self.config["neighbors"]:
+            if self.num_users != self.config["neighbors"]:
                 # when not active this round
                 nei_indexs = np.append(nei_indexs, self.index)
             print(
@@ -455,7 +455,7 @@ class DisPFLServer(BaseServer):
             self.config["results_path"], self.node_id
         )
         self.dense_ratio = self.config["dense_ratio"]
-        self.num_clients = self.config["num_clients"]
+        self.num_users = self.config["num_users"]
 
     def get_representation(self) -> OrderedDict[str, Tensor]:
         """
@@ -467,7 +467,7 @@ class DisPFLServer(BaseServer):
         """
         Set the model
         """
-        for client_node in self.clients:
+        for client_node in self.users:
             self.comm_utils.send_signal(client_node, representations, self.tag.UPDATES)
             self.log_utils.log_console(
                 "Server sent {} representations to node {}".format(
@@ -494,7 +494,7 @@ class DisPFLServer(BaseServer):
         """
         Runs the whole training procedure
         """
-        for client_node in self.clients:
+        for client_node in self.users:
             self.log_utils.log_console(
                 "Server sending semaphore from {} to {}".format(
                     self.node_id, client_node
@@ -511,10 +511,10 @@ class DisPFLServer(BaseServer):
                 )
 
         self.masks = self.comm_utils.wait_for_all_clients(
-            self.clients, self.tag.SHARE_MASKS
+            self.users, self.tag.SHARE_MASKS
         )
         self.reprs = self.comm_utils.wait_for_all_clients(
-            self.clients, self.tag.SHARE_WEIGHTS
+            self.users, self.tag.SHARE_WEIGHTS
         )
 
     def get_trainable_params(self):
@@ -532,7 +532,7 @@ class DisPFLServer(BaseServer):
             self.round = round
             active_ths_rnd = np.random.choice(
                 [0, 1],
-                size=self.num_clients,
+                size=self.num_users,
                 p=[1.0 - self.config["active_rate"], self.config["active_rate"]],
             )
             self.log_utils.log_console("Starting round {}".format(round))
@@ -540,5 +540,5 @@ class DisPFLServer(BaseServer):
             # print("weight:",mask_pers_shared)
             self.single_round(round, active_ths_rnd)
 
-            accs = self.comm_utils.wait_for_all_clients(self.clients, self.tag.FINISH)
+            accs = self.comm_utils.wait_for_all_clients(self.users, self.tag.FINISH)
             self.log_utils.log_console("Round {} done; acc {}".format(round, accs))

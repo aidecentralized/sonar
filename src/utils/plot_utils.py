@@ -59,7 +59,7 @@ class PlotUtils:
         plt.ylabel(metric)
         if self.with_title:
             plt.title(
-                f"avg_{metric} - {self.config['algo']}-{self.config['dset_name']}-clients:{self.config['num_clients']}-samples per clients: {self.config['samples_per_client']}\nlabel distribution: {self.config['train_label_distribution']}"
+                f"avg_{metric} - {self.config['algo']}-{self.config['dset_name']}-clients:{self.config['num_users']}-samples per clients: {self.config['samples_per_client']}\nlabel distribution: {self.config['train_label_distribution']}"
             )
         else:
             plt.title(f"avg_{metric}")
@@ -89,7 +89,7 @@ class PlotUtils:
         plt.ylabel("Client")
         if self.with_title:
             plt.title(
-                f"{name} weights - {self.config['algo']}-{self.config['dset_name']}-clients:{self.config['num_clients']}-samples per clients: {self.config['samples_per_client']}\nlabel distribution: {self.config['train_label_distribution']}"
+                f"{name} weights - {self.config['algo']}-{self.config['dset_name']}-clients:{self.config['num_users']}-samples per clients: {self.config['samples_per_client']}\nlabel distribution: {self.config['train_label_distribution']}"
             )
         else:
             plt.title(f"{name} weights")
@@ -187,7 +187,7 @@ class PlotUtils:
 
         if self.with_title:
             fig.suptitle(
-                f"{name} - {self.config['algo']}-{self.config['dset_name']}/samples per clients: {self.config['samples_per_client']}\nclients:{self.config['num_clients']}/label distribution: {self.config['train_label_distribution']}"
+                f"{name} - {self.config['algo']}-{self.config['dset_name']}/samples per clients: {self.config['samples_per_client']}\nclients:{self.config['num_users']}/label distribution: {self.config['train_label_distribution']}"
             )
         else:
             fig.suptitle(f"{name}")
@@ -220,7 +220,7 @@ class PlotUtils:
             ax.tick_params(bottom=label_bottom, left=label_left)
         if self.with_title:
             f.suptitle(
-                f"{name} -- {self.config['algo']}-{self.config['dset_name']}-clients:{self.config['num_clients']}-samples per clients: {self.config['samples_per_client']}\nlabel distribution: {self.config['train_label_distribution']})"
+                f"{name} -- {self.config['algo']}-{self.config['dset_name']}-clients:{self.config['num_users']}-samples per clients: {self.config['samples_per_client']}\nlabel distribution: {self.config['train_label_distribution']})"
             )
         else:
             f.suptitle(f"{name}")
@@ -292,7 +292,7 @@ class PlotUtils:
             ax.tick_params(bottom=label_bottom, left=label_left)
         if self.with_title:
             f.suptitle(
-                f"{name} -- {self.config['algo']}-{self.config['dset_name']}-clients:{self.config['num_clients']}-samples per clients: {self.config['samples_per_client']}\nlabel distribution: {self.config['train_label_distribution']})"
+                f"{name} -- {self.config['algo']}-{self.config['dset_name']}-clients:{self.config['num_users']}-samples per clients: {self.config['samples_per_client']}\nlabel distribution: {self.config['train_label_distribution']})"
             )
         else:
             f.suptitle(f"{name}")
@@ -336,8 +336,8 @@ class PlotUtils:
 
     def plot_clients_weights_evolution_one_plot(self, weights_stats, name):
 
-        num_clients, num_rounds, num_score = weights_stats.shape
-        grid_size = math.ceil(math.sqrt(num_clients))
+        num_users, num_rounds, num_score = weights_stats.shape
+        grid_size = math.ceil(math.sqrt(num_users))
 
         # Plot grid of subplot each grid show evolution of client weights over
         # round
@@ -346,7 +346,7 @@ class PlotUtils:
         )
 
         last_ax = ax[0]
-        for client in range(num_clients):
+        for client in range(num_users):
             row = client // grid_size
             col = client % grid_size
             for c in range(num_score):
@@ -430,7 +430,7 @@ class PlotUtils:
                 self.plot_clients_weights_evolution_one_plot(stat, stat_name)
 
                 if isinstance(self.config["dset"], dict) and stat_name in sim_metric:
-                    clients_per_community = self.config["num_clients"] // len(
+                    clients_per_community = self.config["num_users"] // len(
                         set(self.config["dset"].values())
                     )
                     self.plot_similarity_metric_accuracy(

@@ -41,7 +41,7 @@ class BaseNode(ABC):
             self.log_utils.log_console("Config: {}".format(config))
             self.plot_utils = PlotUtils(config)
 
-        # Support client specific dataset
+        # Support user specific dataset
         if isinstance(config["dset"], dict):
             if self.node_id != 0:
                 config["dset"].pop("0")
@@ -110,13 +110,13 @@ class BaseNode(ABC):
                 else len(set(config["dset"].values()))
             )
             if community_type is not None and community_type == "dataset":
-                self.communities = get_dset_communities(config["num_clients"], num_dset)
+                self.communities = get_dset_communities(config["num_users"], num_dset)
             elif community_type is None or number_of_communities == 1:
-                all_clients = list(range(1, config["num_clients"] + 1))
-                self.communities = {client: all_clients for client in all_clients}
+                all_users = list(range(1, config["num_users"] + 1))
+                self.communities = {user: all_users for user in all_users}
             elif community_type == "random":
                 self.communities = get_random_communities(
-                    config["num_clients"], number_of_communities
+                    config["num_users"], number_of_communities
                 )
             elif community_type == "balanced":
                 num_dset = (
@@ -124,10 +124,10 @@ class BaseNode(ABC):
                     if not isinstance(config["dset"], dict)
                     else len(set(config["dset"].values()))
                 )
-                # Assume clients ordered by dataset and same number of clients
+                # Assume users ordered by dataset and same number of users
                 # per dataset
                 self.communities = get_dset_balanced_communities(
-                    config["num_clients"], number_of_communities, num_dset
+                    config["num_users"], number_of_communities, num_dset
                 )
             else:
                 raise ValueError("Unknown community type: {}.".format(community_type))
@@ -151,11 +151,11 @@ class BaseClient(BaseNode):
 
     def set_parameters(self, config):
         """
-        Set the parameters for the client
+        Set the parameters for the user
         """
 
-        # Set same seed for all clients for data distribution and shared
-        # parameters so that all clients have the same data splits and shared
+        # Set same seed for all users for data distribution and shared
+        # parameters so that all users have the same data splits and shared
         # params
         seed = config["seed"]
         torch.manual_seed(seed)
@@ -174,8 +174,8 @@ class BaseClient(BaseNode):
             numpy.random.seed(seed)
 
         self.set_data_parameters(config)
-        # Number of random operation not the same across clients with different datasets
-        # Random state is not expected to be the same across clients after this
+        # Number of random operation not the same across users with different datasets
+        # Random state is not expected to be the same across users after this
         # point
 
         # Use different seeds for the rest of the experiment
@@ -207,52 +207,52 @@ class BaseClient(BaseNode):
         if config.get("test_samples_per_class", None) is not None:
             test_dset, _ = balanced_subset(test_dset, config["test_samples_per_class"])
 
-        samples_per_client = config["samples_per_client"]
+        samples_per_user = config["samples_per_user"]
         batch_size = config["batch_size"]
 
-        # Support client specific dataset
+        # Support user specific dataset
         if isinstance(config["dset"], dict):
 
             def is_same_dest(dset):
                 # Consider all variations of cifar10 as the same dataset
                 # To avoid having exactly same original dataset (without
-                # considering transformation) on multiple clients
+                # considering transformation) on multiple users
                 if self.dset == "cifar10" or self.dset.startswith("cifar10_"):
                     return dset == "cifar10" or dset.startswith("cifar10_")
                 else:
                     return dset == self.dset
 
-            clients_with_same_dset = sorted(
+            users_with_same_dset = sorted(
                 [int(k) for k, v in config["dset"].items() if is_same_dest(v)]
             )
         else:
-            clients_with_same_dset = list(range(1, config["num_clients"] + 1))
-        client_idx = clients_with_same_dset.index(self.node_id)
+            users_with_same_dset = list(range(1, config["num_users"] + 1))
+        user_idx = users_with_same_dset.index(self.node_id)
 
         cls_prior = None
-        # If iid, each client has random samples from the whole dataset (no
-        # overlap between clients)
+        # If iid, each user has random samples from the whole dataset (no
+        # overlap between users)
         if config["train_label_distribution"] == "iid":
             indices = numpy.random.permutation(len(train_dset))
             train_indices = indices[
-                client_idx * samples_per_client : (client_idx + 1) * samples_per_client
+                user_idx * samples_per_user : (user_idx + 1) * samples_per_user
             ]
             train_dset = Subset(train_dset, train_indices)
             classes = list(set([train_dset[i][1] for i in range(len(train_dset))]))
-        # If non_iid, each client get random samples from its support classes
-        # (mulitple clients might have same images)
+        # If non_iid, each user get random samples from its support classes
+        # (mulitple users might have same images)
         elif config["train_label_distribution"] == "support":
             classes = config["support"][str(self.node_id)]
             support_classes_dataset, indices = filter_by_class(train_dset, classes)
             train_dset, sel_indices = random_samples(
-                support_classes_dataset, samples_per_client
+                support_classes_dataset, samples_per_user
             )
             train_indices = [indices[i] for i in sel_indices]
         elif config["train_label_distribution"].endswith("non_iid"):
             alpha = config.get("alpha_data", 0.4)
             if config["train_label_distribution"] == "inter_domain_non_iid":
-                # Hack to get the same class prior for all clients with the same dataset
-                # While keeping the same random state for all clients
+                # Hack to get the same class prior for all users with the same dataset
+                # While keeping the same random state for all users
                 if isinstance(config["dset"], dict) and isinstance(
                     config["dset"], dict
                 ):
@@ -262,30 +262,30 @@ class BaseClient(BaseNode):
                         n_cls = self.dset_obj.NUM_CLS
                         cls_priors.append(
                             np.random.dirichlet(
-                                alpha=[alpha] * n_cls, size=len(clients_with_same_dset)
+                                alpha=[alpha] * n_cls, size=len(users_with_same_dset)
                             )
                         )
                     cls_prior = cls_priors[dsets.index(self.dset)]
             train_y, train_idx_split, cls_prior = non_iid_balanced(
                 self.dset_obj,
-                len(clients_with_same_dset),
-                samples_per_client,
+                len(users_with_same_dset),
+                samples_per_user,
                 alpha,
                 cls_priors=cls_prior,
                 is_train=True,
             )
             train_indices = train_idx_split[self.node_id - 1]
             train_dset = Subset(train_dset, train_indices)
-            classes = numpy.unique(train_y[client_idx]).tolist()
+            classes = numpy.unique(train_y[user_idx]).tolist()
             # One plot per dataset
-            # if client_idx == 0:
+            # if user_idx == 0:
             #     print("using non_iid_balanced", alpha)
-            #     self.plot_utils.plot_training_distribution(train_y, self.dset, clients_with_same_dset)
+            #     self.plot_utils.plot_training_distribution(train_y, self.dset, users_with_same_dset)
         elif config["train_label_distribution"] == "shard":
             raise NotImplementedError
-            # classes_per_client = config["shards"]["classes_per_client"]
-            # samples_per_shard = samples_per_client // classes_per_client
-            # train_dset = build_shards_dataset(train_dset, samples_per_shard, classes_per_client, self.node_id)
+            # classes_per_user = config["shards"]["classes_per_user"]
+            # samples_per_shard = samples_per_user // classes_per_user
+            # train_dset = build_shards_dataset(train_dset, samples_per_shard, classes_per_user, self.node_id)
         else:
             raise ValueError(
                 "Unknown train label distribution: {}.".format(
@@ -324,7 +324,7 @@ class BaseClient(BaseNode):
 
         if config["test_label_distribution"] == "iid":
             pass
-        # If non_iid, each clients ge the whole test set for each of its
+        # If non_iid, each users ge the whole test set for each of its
         # support classes
         elif config["test_label_distribution"] == "support":
             classes = config["support"][str(self.node_id)]
@@ -333,8 +333,8 @@ class BaseClient(BaseNode):
 
             test_y, test_idx_split, _ = non_iid_balanced(
                 self.dset_obj,
-                len(clients_with_same_dset),
-                config["test_samples_per_client"],
+                len(users_with_same_dset),
+                config["test_samples_per_user"],
                 is_train=False,
             )
 
@@ -411,9 +411,9 @@ class BaseServer(BaseNode):
 
     def __init__(self, config) -> None:
         super().__init__(config)
-        self.num_clients = config["num_clients"]
-        self.clients = list(range(1, self.num_clients + 1))
-        # self.set_data_parameters(config)
+        self.num_users = config["num_users"]
+        self.users = list(range(1, self.num_users + 1))
+        self.set_data_parameters(config)
 
     def set_data_parameters(self, config):
         test_dset = self.dset_obj.test_dset
@@ -422,7 +422,7 @@ class BaseServer(BaseNode):
 
     def aggregate(self, representation_list, **kwargs):
         """
-        Aggregate the knowledge from the clients
+        Aggregate the knowledge from the users
         """
         raise NotImplementedError
 
@@ -444,15 +444,15 @@ class BaseServer(BaseNode):
 
 class CommProtocol(object):
     """
-    Communication protocol tags for the server and clients
+    Communication protocol tags for the server and users
     """
 
     ROUND_START = 0  # Server signals the start of a round
-    REPR_ADVERT = 1  # Clients advertise their representations with the server
-    REPRS_SHARE = 2  # Server shares representations with clients
-    C_SELECTION = 3  # Clients send their selected collaborators to the server
-    KNLDG_SHARE = 4  # Server shares selected knowledge with clients
-    ROUND_STATS = 5  # Clients send their stats to the server
+    REPR_ADVERT = 1  # users advertise their representations with the server
+    REPRS_SHARE = 2  # Server shares representations with users
+    C_SELECTION = 3  # users send their selected collaborators to the server
+    KNLDG_SHARE = 4  # Server shares selected knowledge with users
+    ROUND_STATS = 5  # users send their stats to the server
 
 
 class BaseFedAvgClient(BaseClient):
@@ -586,7 +586,7 @@ class BaseFedAvgClient(BaseClient):
             last_layer_weight_key = last_layer_weight_key[0]
             last_layer_bias_key = last_layer_bias_key[0]
 
-            # Host is the client's model
+            # Host is the user's model
             # Ext are incoming models
             host_label_to_idx = label_dict[self.node_id]
             labels_coeff_sum = {
@@ -640,9 +640,9 @@ class BaseFedAvgServer(BaseServer):
         self.tag = comm_protocol
 
     def send_representations(self, representations, tag=None):
-        for client_node in self.clients:
+        for user_node in self.users:
             self.comm_utils.send_signal(
-                dest=client_node,
+                dest=user_node,
                 data=representations,
                 tag=self.tag.REPRS_SHARE if tag is None else tag,
             )

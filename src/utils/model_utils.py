@@ -192,8 +192,9 @@ class ModelUtils():
         model.eval()
         test_loss = 0
         correct = 0
+        print("Testing")
         with torch.no_grad():
-            for data, target in dloader:
+            for idx, (data, target) in enumerate(dloader):
                 data, target = data.to(device), target.to(device)
                 position = kwargs.get("position", 0)
                 output = model(data, position=position)
@@ -202,13 +203,16 @@ class ModelUtils():
                 # view_as() is used to make sure the shape of pred and target
                 # are the same
                 correct += pred.eq(target.view_as(pred)).sum().item()
+        print('Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
+            test_loss, correct, len(dloader.dataset),
+            100. * correct / len(dloader.dataset)
+        ))
         acc = correct / len(dloader.dataset)
         return test_loss, acc
 
     def save_model(self, model, path):
-
-
-if isinstance(model,         if )            model_ = model.module
+        if isinstance(model, DataParallel):
+            model_ = model.module
         else:
             model_ = model
         torch.save(model_.state_dict(), path)

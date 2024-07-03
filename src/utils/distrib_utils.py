@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.nn.parallel import DataParallel
-from resnet import ResNet34, ResNet18
+from resnet import ResNet34, ResNet18, ResNet50
 
 from torch.utils.data import Subset
 from torch.utils.data import DataLoader
@@ -19,7 +19,7 @@ def load_weights(model_dir: str, model: nn.Module, client_num: int):
 
 class ServerObj():
     def __init__(self, config, obj, rank) -> None:
-        self.num_clients, self.samples_per_client = config["num_clients"], config["samples_per_client"]
+        self.num_users, self.samples_per_client = config["num_users"], config["samples_per_client"]
         self.device, self.device_id = obj["device"], obj["device_id"]
         test_dataset = obj["dset_obj"].test_dset
         batch_size = config["batch_size"]
@@ -36,7 +36,7 @@ class ServerObj():
 
 class ClientObj():
     def __init__(self, config, obj, rank) -> None:
-        self.num_clients, self.samples_per_client = config["num_clients"], config["samples_per_client"]
+        self.num_users, self.samples_per_client = config["num_users"], config["samples_per_client"]
         self.device, self.device_id = obj["device"], obj["device_id"]
         train_dataset, test_dataset = obj["dset_obj"].train_dset, obj["dset_obj"].test_dset
         batch_size, lr = config["batch_size"], config["model_lr"]
@@ -53,16 +53,16 @@ class ClientObj():
         self.optim = optim(self.model.parameters(), lr=lr)
         self.loss_fn = nn.CrossEntropyLoss()
 
-        if "non_iid" in self.config["exp_type]:
+        if "non_iid" in self.config["exp_type"]:
             perm = torch.randperm(10)
             sp = [(0, 2), (2, 4)]
             self.c_dset = extr_noniid(train_dataset,
-                                      config["samples_per_client"],
-                                      perm[sp[i][0]:sp[i][1]])
-        else
-        # rank-1 because rank 0 is the server
-        self.c_dset = Subset(train_dataset, indices[(
-            rank - 1) * self.samples_per_client:rank * self.samples_per_client])
+                                      config["samples_per_user"],
+                                      perm[sp[rank - 1][0]:sp[rank - 1][1]]) #TODO: Not clear if rank is the correct index
+        else:
+            # rank-1 because rank 0 is the server
+            self.c_dset = Subset(train_dataset, indices[(
+                rank - 1) * self.samples_per_client:rank * self.samples_per_client])
         self.c_dloader = DataLoader(self.c_dset, batch_size=batch_size)
 
 
@@ -71,7 +71,7 @@ class ClientObj():
 #         """ The purpose of this class is to bootstrap the objects for the whole distributed training
 #         setup
 #         """
-#         self.num_clients, self.samples_per_client = config["num_clients"], config["samples_per_client"]
+#         self.num_users, self.samples_per_client = config["num_users"], config["samples_per_client"]
 #         self.device, self.device_id = obj["device"], obj["device_id"]
 #         train_dataset, test_dataset = obj["dset_obj"].train_dset, obj["dset_obj"].test_dset
 #         batch_size, lr = config["batch_size"], config["model_lr"]
@@ -86,7 +86,7 @@ class ClientObj():
 #         self.c_dsets = []
 #         self.c_dloaders = []
 
-#         for i in range(self.num_clients):
+#         for i in range(self.num_users):
 #             model = ResNet34()
 #             if config["load_existing"]:
 #                 model = load_weights(config["results_path"], model, i)
@@ -96,7 +96,7 @@ class ClientObj():
 #                 if i == 0:
 #                     # only need to call this func once since it returns all user_groups
 #                     user_groups_train, user_groups_test = cifar_extr_noniid(train_dataset, test_dataset,
-#                                                                             config["num_clients"], config["class_per_client"],
+#                                                                             config["num_users"], config["class_per_client"],
 #                                                                             config["samples_per_client"], rate_unbalance=1)
 #                 c_dset = Subset(train_dataset, user_groups_train[i].astype(int))
 #             else:

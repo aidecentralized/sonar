@@ -20,9 +20,9 @@ class L2CClient(BaseFedAvgClient):
         self.sharing_mode = self.config["sharing"]
 
     def init_collab_weights(self):
-        n = self.config["num_clients"]
-        # Neighbors id = [1, ..., num_clients]
-        # Neighbors idx = [0, ..., num_clients - 1]
+        n = self.config["num_users"]
+        # Neighbors id = [1, ..., num_users]
+        # Neighbors idx = [0, ..., num_users - 1]
         self.neighbors_id_to_idx = {idx + 1: idx for idx in range(n)}
 
         # TODO Init not specified in the paper
@@ -206,7 +206,7 @@ class L2CClient(BaseFedAvgClient):
 
             # Collab weights compted in previous round are used in current
             # round
-            cw = np.zeros(self.config["num_clients"])
+            cw = np.zeros(self.config["num_users"])
             for id, idx in self.neighbors_id_to_idx.items():
                 cw[id - 1] = self.collab_weights[idx]
             round_stats = {
@@ -300,7 +300,7 @@ class L2CServer(BaseFedAvgServer):
         """
 
         # Send signal to all clients to start local training
-        for client_node in self.clients:
+        for client_node in self.users:
             self.comm_utils.send_signal(
                 dest=client_node, data=None, tag=self.tag.ROUND_START
             )
@@ -309,7 +309,7 @@ class L2CServer(BaseFedAvgServer):
         )
 
         # Collect representations (from all clients
-        reprs = self.comm_utils.wait_for_all_clients(self.clients, self.tag.REPR_ADVERT)
+        reprs = self.comm_utils.wait_for_all_clients(self.users, self.tag.REPR_ADVERT)
         self.log_utils.log_console("Server received all clients models")
 
         # Broadcast the representations to all clients
@@ -317,7 +317,7 @@ class L2CServer(BaseFedAvgServer):
 
         # Collect round stats from all clients
         round_stats = self.comm_utils.wait_for_all_clients(
-            self.clients, self.tag.ROUND_STATS
+            self.users, self.tag.ROUND_STATS
         )
         self.log_utils.log_console("Server received all clients stats")
 

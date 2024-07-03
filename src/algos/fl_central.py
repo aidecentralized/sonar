@@ -178,7 +178,7 @@ class CentralizedServer(BaseServer):
         self.log_utils.log_console("Starting centralised learning")
 
         clients_samples = self.comm_utils.wait_for_all_clients(
-            self.clients, self.tag.SEND_DATA
+            self.users, self.tag.SEND_DATA
         )
         samples = set()
         for client_samples in clients_samples:
@@ -203,7 +203,7 @@ class CentralizedServer(BaseServer):
                 src=self.config["central_client"], tag=self.tag.SEND_MODEL
             )
 
-            for client_node in self.clients:
+            for client_node in self.users:
                 self.comm_utils.send_signal(
                     dest=client_node, data=model, tag=self.tag.SHARE_MODEL
                 )
@@ -211,7 +211,7 @@ class CentralizedServer(BaseServer):
             self.log_utils.log_console("Server waiting for all clients to finish")
 
             round_stats = self.comm_utils.wait_for_all_clients(
-                self.clients, tag=self.tag.ROUND_STATS
+                self.users, tag=self.tag.ROUND_STATS
             )
             stats.append(round_stats)
 

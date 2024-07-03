@@ -16,4 +16,16 @@ iid_dispfl_clients_new = {
     "exp_keys": []
 }
 
-current_config = iid_dispfl_clients_new
+traditional_fl = {
+    "algo": "fedavg",
+    "exp_id": 10,
+    "exp_type": "iid_clients_federated",
+    # Learning setup
+    "epochs": 1000,
+    "model": "resnet34",
+    "model_lr": 3e-4,
+    "batch_size": 256,
+    "exp_keys": [],
+}
+
+current_config = traditional_fl

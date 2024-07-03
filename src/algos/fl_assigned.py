@@ -19,9 +19,9 @@ class FedAssClient(BaseFedAvgClient):
                 id: 1 for id in self.config["assigned_collaborators"][self.node_id]
             }
         elif self.config["strategy"] == "direct_expo":
-            power = round % math.floor(math.log2(self.config["num_clients"] - 1))
+            power = round % math.floor(math.log2(self.config["num_users"] - 1))
             steps = math.pow(2, power)
-            collab_id = int(((self.node_id + steps) % self.config["num_clients"]) + 1)
+            collab_id = int(((self.node_id + steps) % self.config["num_users"]) + 1)
             collab_weights = {self.node_id: 1, collab_id: 1}
         else:
             raise ValueError("Strategy not implemented")
@@ -89,7 +89,7 @@ class FedAssClient(BaseFedAvgClient):
             stats["test_acc_after_training"] = self.local_test()
 
             # Include collab weights in the stats
-            collab_weight = np.zeros(self.config["num_clients"])
+            collab_weight = np.zeros(self.config["num_users"])
             for k, v in collab_weights_dict.items():
                 collab_weight[k - 1] = v
             stats["collab_weights"] = collab_weight
@@ -129,7 +129,7 @@ class FedAssServer(BaseFedAvgServer):
         """
 
         # Send signal to all clients to start local training
-        for client_node in self.clients:
+        for client_node in self.users:
             self.comm_utils.send_signal(
                 dest=client_node, data=None, tag=self.tag.ROUND_START
             )
@@ -139,7 +139,7 @@ class FedAssServer(BaseFedAvgServer):
 
         # Collect models from all clients
         models = self.comm_utils.wait_for_all_clients(
-            self.clients, self.tag.REPR_ADVERT
+            self.users, self.tag.REPR_ADVERT
         )
         self.log_utils.log_console("Server received all clients models")
 
@@ -148,7 +148,7 @@ class FedAssServer(BaseFedAvgServer):
 
         # Collect round stats from all clients
         round_stats = self.comm_utils.wait_for_all_clients(
-            self.clients, self.tag.ROUND_STATS
+            self.users, self.tag.ROUND_STATS
         )
         self.log_utils.log_console("Server received all clients stats")
 

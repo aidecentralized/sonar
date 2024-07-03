@@ -100,7 +100,7 @@ class FedIsoServer(BaseServer):
     def run_protocol(self):
         self.log_utils.log_console("Starting iid clients federated averaging")
 
-        for client_node in self.clients:
+        for client_node in self.users:
             self.log_utils.log_console(
                 "Server sending semaphore from {} to {}".format(
                     self.node_id, client_node
@@ -109,7 +109,7 @@ class FedIsoServer(BaseServer):
             self.comm_utils.send_signal(dest=client_node, data=None, tag=self.tag.START)
 
         self.log_utils.log_console("Server waiting for all clients to finish")
-        stats = self.comm_utils.wait_for_all_clients(self.clients, self.tag.DONE)
+        stats = self.comm_utils.wait_for_all_clients(self.users, self.tag.DONE)
 
         stats_dict = from_rounds_stats_per_client_per_round_to_dict_arrays(stats)
         stats_dict["round_step"] = 1

@@ -92,7 +92,7 @@ class MetaL2CClient(BaseFedAvgClient):
             self.model_keys_to_ignore.extend(keys)
 
         self.sharing_mode = self.config["sharing"]
-        self.neighbors_ids = list(range(1, self.config["num_clients"] + 1))
+        self.neighbors_ids = list(range(1, self.config["num_users"] + 1))
 
     def get_representation(self):
         repr = self.model_utils.substract_model_weights(
@@ -279,7 +279,7 @@ class MetaL2CClient(BaseFedAvgClient):
             # if self.node_id == 1:
             #     print(list(self.encoder.parameters())[0])
 
-            cws = np.zeros(self.config["num_clients"])
+            cws = np.zeros(self.config["num_users"])
             for id, cw in collab_weights_dict.items():
                 cws[id - 1] = cw
             round_stats["collab_weights"] = cws
@@ -320,7 +320,7 @@ class MetaL2CServer(BaseFedAvgServer):
         """
 
         # Send signal to all clients to start local training
-        for client_node in self.clients:
+        for client_node in self.users:
             self.comm_utils.send_signal(
                 dest=client_node, data=avg_alpha, tag=self.tag.ROUND_START
             )
@@ -329,7 +329,7 @@ class MetaL2CServer(BaseFedAvgServer):
         )
 
         # Collect representations (from all clients
-        reprs = self.comm_utils.wait_for_all_clients(self.clients, self.tag.REPR_ADVERT)
+        reprs = self.comm_utils.wait_for_all_clients(self.users, self.tag.REPR_ADVERT)
         self.log_utils.log_console("Server received all clients models")
 
         # Broadcast the representations to all clients
@@ -337,7 +337,7 @@ class MetaL2CServer(BaseFedAvgServer):
 
         # Collect round stats from all clients
         round_stats_and_alphas = self.comm_utils.wait_for_all_clients(
-            self.clients, self.tag.ROUND_STATS
+            self.users, self.tag.ROUND_STATS
         )
         alphas = [alpha for _, alpha in round_stats_and_alphas]
         round_stats = [stats for stats, _ in round_stats_and_alphas]

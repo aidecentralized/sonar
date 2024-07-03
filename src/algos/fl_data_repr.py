@@ -469,9 +469,9 @@ class FedDataRepClient(BaseFedAvgClient):
 
                 # Keep only k highest similarity
                 top_a_averaging = self.config.get(
-                    "sim_consensus_top_a", self.config["num_clients"] - 1
+                    "sim_consensus_top_a", self.config["num_users"] - 1
                 )
-                if top_a_averaging < self.config["num_clients"] - 1:
+                if top_a_averaging < self.config["num_users"] - 1:
                     sorted_collab = sorted(
                         own_dict.items(), key=lambda item: item[1], reverse=True
                     )
@@ -595,12 +595,12 @@ class FedDataRepClient(BaseFedAvgClient):
                 #         self.growing_top_x = 1
                 #         self.converged = []
                 #         self.prev_pg_norm = {}
-                top_x = self.config.get("num_clients_top_x", 0)
+                top_x = self.config.get("num_users_top_x", 0)
 
                 if strategy == "growing_schedulded_top_x":
 
                     top_x = 1 + int(
-                        (self.config["num_clients"] - 1) * (round // total_rounds)
+                        (self.config["num_users"] - 1) * (round // total_rounds)
                     )
 
                 # Get the top most similar clients
@@ -672,7 +672,7 @@ class FedDataRepClient(BaseFedAvgClient):
         return collab_weights, proba_dist
 
     def log_clients_stats(self, client_dict, stat_name):
-        clients_array = np.zeros(self.config["num_clients"])
+        clients_array = np.zeros(self.config["num_users"])
         for k, v in client_dict.items():
             clients_array[k - 1] = v
         self.round_stats[stat_name] = clients_array
@@ -839,14 +839,14 @@ class FedDataRepServer(BaseFedAvgServer):
 
         # Start local training
         self.comm_utils.send_signal_to_all_clients(
-            self.clients, data=None, tag=self.tag.ROUND_START
+            self.users, data=None, tag=self.tag.ROUND_START
         )
         self.log_utils.log_console(
             "Server waiting for all clients to finish local training"
         )
 
         # Collect representation from all clients
-        reprs = self.comm_utils.wait_for_all_clients(self.clients, self.tag.REP1_ADVERT)
+        reprs = self.comm_utils.wait_for_all_clients(self.users, self.tag.REP1_ADVERT)
         self.log_utils.log_console("Server received all clients reprs")
 
         if self.config["representation"] == "dreams":
@@ -856,38 +856,38 @@ class FedDataRepServer(BaseFedAvgServer):
                 self.log_utils.log_image(imgs, f"client{client+1}", self.round)
 
         self.comm_utils.send_signal_to_all_clients(
-            self.clients, data=reprs, tag=self.tag.REPS1_SHARE
+            self.users, data=reprs, tag=self.tag.REPS1_SHARE
         )
 
         if self.require_second_step:
             # Collect the representations from all other nodes from the server
             reprs2 = self.comm_utils.wait_for_all_clients(
-                self.clients, self.tag.REP2_ADVERT
+                self.users, self.tag.REP2_ADVERT
             )
             reprs2 = {idx: reprs for idx, reprs in enumerate(reprs2, 1)}
             self.comm_utils.send_signal_to_all_clients(
-                self.clients, data=reprs2, tag=self.tag.REPS2_SHARE
+                self.users, data=reprs2, tag=self.tag.REPS2_SHARE
             )
 
         if self.with_sim_consensus:
             sim_dicts = self.comm_utils.wait_for_all_clients(
-                self.clients, self.tag.SIM_ADVERT
+                self.users, self.tag.SIM_ADVERT
             )
             sim_dicts = {k: v for k, v in enumerate(sim_dicts, 1)}
             self.comm_utils.send_signal_to_all_clients(
-                self.clients, data=sim_dicts, tag=self.tag.SIM_SHARE
+                self.users, data=sim_dicts, tag=self.tag.SIM_SHARE
             )
 
         if self.with_cons_step:
             consensus = self.comm_utils.wait_for_all_clients(
-                self.clients, self.tag.CONS_ADVERT
+                self.users, self.tag.CONS_ADVERT
             )
             consensus_dict = {idx: cons for idx, cons in enumerate(consensus, 1)}
             self.comm_utils.send_signal_to_all_clients(
-                self.clients, data=consensus_dict, tag=self.tag.CONS_SHARE
+                self.users, data=consensus_dict, tag=self.tag.CONS_SHARE
             )
 
-        data = self.comm_utils.wait_for_all_clients(self.clients, self.tag.C_SELECTION)
+        data = self.comm_utils.wait_for_all_clients(self.users, self.tag.C_SELECTION)
         collaborator_selection = {
             idx: select for idx, (select, _) in enumerate(data, 1)
         }
@@ -898,7 +898,7 @@ class FedDataRepServer(BaseFedAvgServer):
 
         # Collect round stats from all clients
         clients_round_stats = self.comm_utils.wait_for_all_clients(
-            self.clients, self.tag.ROUND_STATS
+            self.users, self.tag.ROUND_STATS
         )
         self.log_utils.log_console("Server received all clients stats")
 
