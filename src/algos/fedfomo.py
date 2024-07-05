@@ -1,6 +1,10 @@
+"""
+Module for FedFomo algorithm.
+"""
+
 from collections import OrderedDict
-from typing import Any, Dict, List
-from torch import Tensor, cat, zeros_like, numel, randperm, from_numpy
+from typing import List
+from torch import Tensor
 import torch
 import torch.nn as nn
 import random
@@ -11,7 +15,7 @@ import math
 from algos.base_class import BaseClient, BaseServer
 
 
-class CommProtocol(object):
+class CommProtocol:
     """
     Communication protocol tags for the server and clients
     """
@@ -26,74 +30,72 @@ class CommProtocol(object):
 
 
 class FedFomoClient(BaseClient):
+    """
+    Client class for FedFomo algorithm.
+    """
+
     def __init__(self, config) -> None:
         super().__init__(config)
         self.config = config
         self.tag = CommProtocol
-        self.model_save_path = "{}/saved_models/node_{}.pt".format(
-            self.config["results_path"], self.node_id
-        )
+        self.model_save_path = f"{self.config['results_path']}/saved_models/node_{self.node_id}.pt"
         self.dense_ratio = self.config["dense_ratio"]
         self.anneal_factor = self.config["anneal_factor"]
         self.dis_gradient_check = self.config["dis_gradient_check"]
         self.server_node = 1  # leader node
         self.num_users = config["num_users"]
         self.neighbors = list(range(self.num_users))
+        self.mask = None
+        self.params = None
+        self.index = self.node_id - 1
+        self.repr = None
         if self.node_id == 1:
             self.clients = list(range(2, self.num_users + 1))
 
     def local_train(self):
         """
-        Train the model locally
-
+        Train the model locally.
         """
         loss, acc = self.model_utils.train_mask(
             self.model, self.mask, self.optim, self.dloader, self.loss_fn, self.device
         )
-
-        print("Node{} train loss: {}, train acc: {}".format(self.node_id, loss, acc))
-        # loss = self.model_utils.train_mask(self.model, self.mask,self.optim,
-        #                                   self.dloader, self.loss_fn,
-        #                                   self.device)
-
-        # print("Client {} finished training with loss {}".format(self.node_id, avg_loss))
-        # self.log_utils.logger.log_tb(f"train_loss/client{client_num}", avg_loss, epoch)
+        print(f"Node{self.node_id} train loss: {loss}, train acc: {acc}")
 
     def local_test(self, **kwargs):
         """
-        Test the model locally, not to be used in the traditional FedAvg
+        Test the model locally.
         """
         test_loss, acc = self.model_utils.test(
             self.model, self._test_loader, self.loss_fn, self.device
         )
-        # TODO save the model if the accuracy is better than the best accuracy so far
-        # if acc > self.best_acc:
-        #     self.best_acc = acc
-        #     self.model_utils.save_model(self.model, self.model_save_path)
         return test_loss, acc
 
     def get_trainable_params(self):
-        param_dict = {}
-        for name, param in self.model.named_parameters():
-            param_dict[name] = param
+        """
+        Get trainable parameters.
+        """
+        param_dict = {name: param for name, param in self.model.named_parameters()}
         return param_dict
 
     def get_representation(self) -> OrderedDict[str, Tensor]:
         """
-        Share the model weights
+        Share the model weights.
         """
         return self.model.state_dict()
 
     def set_representation(self, representation: OrderedDict[str, Tensor]):
         """
-        Set the model weights
+        Set the model weights.
         """
         self.model.load_state_dict(representation)
 
-    def fire_mask(self, masks, round, total_round):
+    def fire_mask(self, masks, epoch, total_epochs):
+        """
+        Fire mask to prune the model.
+        """
         weights = self.get_representation()
         drop_ratio = (
-            self.anneal_factor / 2 * (1 + np.cos((round * np.pi) / total_round))
+            self.anneal_factor / 2 * (1 + np.cos((epoch * np.pi) / total_epochs))
         )
         new_masks = copy.deepcopy(masks)
 
@@ -106,11 +108,14 @@ class FedFomoClient(BaseClient):
                 torch.abs(weights[name]),
                 100000 * torch.ones_like(weights[name]),
             )
-            x, idx = torch.sort(temp_weights.view(-1).to(self.device))
+            _, idx = torch.sort(temp_weights.view(-1).to(self.device))
             new_masks[name].view(-1)[idx[: num_remove[name]]] = 0
         return new_masks, num_remove
 
     def regrow_mask(self, masks, num_remove, gradient=None):
+        """
+        Regrow mask after pruning.
+        """
         new_masks = copy.deepcopy(masks)
         for name in masks:
             if not self.dis_gradient_check:
@@ -119,7 +124,7 @@ class FedFomoClient(BaseClient):
                     torch.abs(gradient[name]).to(self.device),
                     -100000 * torch.ones_like(gradient[name]).to(self.device),
                 )
-                sort_temp, idx = torch.sort(
+                _, idx = torch.sort(
                     temp.view(-1).to(self.device), descending=True
                 )
                 new_masks[name].view(-1)[idx[: num_remove[name]]] = 1
@@ -146,7 +151,7 @@ class FedFomoClient(BaseClient):
         w_local_mdl,
     ):
         """
-        Aggregate the model weights
+        Aggregate the model weights.
         """
         w_easy = copy.deepcopy(weights_local[nei_indexs])
         w_easy = np.maximum(w_easy, 0)
@@ -175,34 +180,34 @@ class FedFomoClient(BaseClient):
 
     def send_representations(self, representation):
         """
-        Set the model
+        Send the model representations to clients.
         """
         for client_node in self.clients:
             self.comm_utils.send_signal(client_node, representation, self.tag.UPDATES)
-        print("Node 1 sent average weight to {} nodes".format(len(self.clients)))
+        print(f"Node 1 sent average weight to {len(self.clients)} nodes")
 
     def screen_gradient(self):
+        """
+        Screen gradient method for model pruning.
+        """
         model = self.model
         model.eval()
-        # # # train and update
         criterion = nn.CrossEntropyLoss().to(self.device)
-        # # sample one epoch  of data
         model.zero_grad()
         (x, labels) = next(iter(self.dloader))
         x, labels = x.to(self.device), labels.to(self.device)
         log_probs = model.forward(x)
         loss = criterion(log_probs, labels.long())
         loss.backward()
-        gradient = {}
-        for name, param in self.model.named_parameters():
-            gradient[name] = param.grad.to("cpu")
-
+        gradient = {name: param.grad.to("cpu") for name, param in self.model.named_parameters()}
         return gradient
 
     def hamming_distance(self, mask_a, mask_b):
+        """
+        Calculate the Hamming distance between two masks.
+        """
         dis = 0
         total = 0
-
         for key in mask_a:
             dis += torch.sum(
                 mask_a[key].int().to(self.device) ^ mask_b[key].int().to(self.device)
@@ -213,10 +218,11 @@ class FedFomoClient(BaseClient):
     def benefit_choose(
         self, round_idx, cur_clnt, client_num_in_total, client_num_per_round, p_choose
     ):
+        """
+        Benefit choose method for client selection.
+        """
         if client_num_in_total == client_num_per_round:
-            client_indexes = [
-                client_index for client_index in range(client_num_in_total)
-            ]
+            client_indexes = list(range(client_num_in_total))
         else:
             num_users = min(client_num_per_round, client_num_in_total)
             p_choose[cur_clnt] = 0
@@ -231,18 +237,23 @@ class FedFomoClient(BaseClient):
                         range(client_num_in_total), num_users, replace=False
                     )
 
-        # self.logger.info("client_indexes = %s" % str(client_indexes))
         return client_indexes
 
     def model_difference(self, model_a, model_b):
-        a = sum(
+        """
+        Calculate the difference between two models.
+        """
+        diff = sum(
             [torch.sum(torch.square(model_a[name] - model_b[name])) for name in model_a]
         )
-        return a
+        return diff
 
     def update_weight(
         self, curr_idx, nei_indexs, w_per_mdls_lstrd, weight_local, w_local
     ):
+        """
+        Update the weights for the clients.
+        """
         client = self.client_list[curr_idx]
         metrics = client.val_test(
             w_per_mdls_lstrd[curr_idx], self.val_data_local_dict[curr_idx]
@@ -282,6 +293,9 @@ class FedFomoClient(BaseClient):
         return weight_local
 
     def run_protocol(self):
+        """
+        Run the entire protocol for FedFomoClient.
+        """
         start_epochs = self.config.get("start_epochs", 0)
         total_epochs = self.config["epochs"]
         self.params = self.get_trainable_params()
@@ -289,37 +303,30 @@ class FedFomoClient(BaseClient):
         weights_locals = np.full((self.num_users), 1.0 / self.num_users)
         p_choose_locals = np.ones(shape=(self.num_users))
         reprs_lstrnd = [
-            copy.deepcopy(self.get_representation()) for i in range(self.num_users)
+            copy.deepcopy(self.get_representation()) for _ in range(self.num_users)
         ]
         repr_per_global = [
-            copy.deepcopy(self.get_representation()) for i in range(self.num_users)
+            copy.deepcopy(self.get_representation()) for _ in range(self.num_users)
         ]
-        for round in range(start_epochs, total_epochs):
-            # wait for signal to start round
-            if round != 0:
-                [reprs_lstrnd, masks_lstrnd] = self.comm_utils.wait_for_signal(
+        for epoch in range(start_epochs, total_epochs):
+            if epoch != 0:
+                [reprs_lstrnd, _] = self.comm_utils.wait_for_signal(
                     src=0, tag=self.tag.LAST_ROUND
                 )
             self.local_train()
             self.repr = self.get_representation()
-            # share data with client 1
             nei_indexs = self.benefit_choose(
-                round,
+                epoch,
                 self.index,
                 self.num_users,
                 self.config["neighbors"],
                 p_choose_locals[self.index],
             )
-            # If not selected in full, the current clint is made up and the
-            # aggregation operation is performed
             if self.num_users != self.config["neighbors"]:
-                # when not active this round
                 nei_indexs = np.append(nei_indexs, self.index)
             nei_indexs = np.sort(nei_indexs)
             print(
-                "Node {}'s neighbors index:{}".format(
-                    self.index, [i + 1 for i in nei_indexs]
-                )
+                f"Node {self.index}'s neighbors index: {[i + 1 for i in nei_indexs]}"
             )
 
             weights_locals = self.update_weight(
@@ -344,70 +351,65 @@ class FedFomoClient(BaseClient):
             self.set_representation(new_repr)
 
             loss, acc = self.local_test()
-            # print("Node {} test_loss: {} test_acc:{}".format(self.node_id, loss,acc))
             self.comm_utils.send_signal(dest=0, data=acc, tag=self.tag.FINISH)
 
 
 class FedFomoServer(BaseServer):
+    """
+    Server class for FedFomo algorithm.
+    """
+
     def __init__(self, config) -> None:
         super().__init__(config)
-        # self.set_parameters()
         self.config = config
         self.set_model_parameters(config)
         self.tag = CommProtocol
-        self.model_save_path = "{}/saved_models/node_{}.pt".format(
-            self.config["results_path"], self.node_id
-        )
+        self.model_save_path = f"{self.config['results_path']}/saved_models/node_{self.node_id}.pt"
         self.dense_ratio = self.config["dense_ratio"]
         self.num_users = self.config["num_users"]
+        self.reprs = None
+        self.masks = None
 
     def get_representation(self) -> OrderedDict[str, Tensor]:
         """
-        Share the model weights
+        Share the model weights.
         """
         return self.model.state_dict()
 
     def send_representations(self, representations):
         """
-        Set the model
+        Set the model representations.
         """
         for client_node in self.users:
             self.comm_utils.send_signal(client_node, representations, self.tag.UPDATES)
             self.log_utils.log_console(
-                "Server sent {} representations to node {}".format(
-                    len(representations), client_node
-                )
+                f"Server sent {len(representations)} representations to node {client_node}"
             )
-        # self.model.load_state_dict(representation)
 
     def test(self) -> float:
         """
-        Test the model on the server
+        Test the model on the server.
         """
         test_loss, acc = self.model_utils.test(
             self.model, self._test_loader, self.loss_fn, self.device
         )
-        # TODO save the model if the accuracy is better than the best accuracy
-        # so far
         if acc > self.best_acc:
             self.best_acc = acc
             self.model_utils.save_model(self.model, self.model_save_path)
         return acc
 
-    def single_round(self, round, active_ths_rnd):
+    def single_round(self, epoch, active_ths_rnd):
         """
-        Runs the whole training procedure
+        Runs the whole training procedure for a single round.
         """
         for client_node in self.users:
             self.log_utils.log_console(
-                "Server sending semaphore from {} to {}".format(
-                    self.node_id, client_node
-                )
+                f"Server sending semaphore from {self.node_id} to {client_node}"
             )
             self.comm_utils.send_signal(
                 dest=client_node, data=active_ths_rnd, tag=self.tag.START
             )
-            if round != 0:
+            if epoch != 0:
                 self.comm_utils.send_signal(
                     dest=client_node,
                     data=[self.reprs, self.masks],
@@ -422,27 +424,30 @@ class FedFomoServer(BaseServer):
         )
 
     def get_trainable_params(self):
-        param_dict = {}
-        for name, param in self.model.named_parameters():
-            param_dict[name] = param
+        """
+        Get trainable parameters.
+        """
+        param_dict = {name: param for name, param in self.model.named_parameters()}
         return param_dict
 
     def run_protocol(self):
+        """
+        Run the entire protocol for FedFomoServer.
+        """
         self.log_utils.log_console("Starting iid clients federated averaging")
         start_epochs = self.config.get("start_epochs", 0)
         total_epochs = self.config["epochs"]
 
-        for round in range(start_epochs, total_epochs):
-            self.round = round
+        for epoch in range(start_epochs, total_epochs):
+            self.round = epoch
             active_ths_rnd = np.random.choice(
                 [0, 1],
                 size=self.num_users,
                 p=[1.0 - self.config["active_rate"], self.config["active_rate"]],
             )
-            self.log_utils.log_console("Starting round {}".format(round))
+            self.log_utils.log_console(f"Starting round {epoch}")
 
-            # print("weight:",mask_pers_shared)
-            self.single_round(round, active_ths_rnd)
+            self.single_round(epoch, active_ths_rnd)
 
             accs = self.comm_utils.wait_for_all_clients(self.users, self.tag.FINISH)
-            self.log_utils.log_console("Round {} done; acc {}".format(round, accs))
+            self.log_utils.log_console(f"Round {epoch} done; acc {accs}")
