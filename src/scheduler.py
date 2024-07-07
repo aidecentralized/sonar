@@ -39,7 +39,7 @@ from utils.config_utils import load_config, process_config, get_device_ids
 import os
 
 
-# Mapping of algorithm names to their corresponding client and server classes
+# Mapping of algorithm names to their corresponding client and server classes so that they can be consumed by the scheduler later on.
 algo_map = {
     "fedavg": [FedAvgServer, FedAvgClient],
     "isolated": [IsolatedServer],
