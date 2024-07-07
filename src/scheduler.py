@@ -1,7 +1,19 @@
+# scheduler.py
+"""
+This module manages the orchestration of federated learning experiments.
+"""
+
+import os
+import random
+
 from mpi4py import MPI
 import torch
+
+import numpy as np
+
 import random
 import numpy
+
 from algos.base_class import BaseNode
 from algos.fl import FedAvgClient, FedAvgServer
 from algos.isolated import IsolatedServer
@@ -18,19 +30,29 @@ from algos.MetaL2C import MetaL2CClient, MetaL2CServer
 from algos.fl_central import CentralizedCLient, CentralizedServer
 from algos.fl_data_repr import FedDataRepClient, FedDataRepServer
 from algos.fl_val import FedValClient, FedValServer
+
+from utils.log_utils import check_and_create_path
+from utils.config_utils import load_config, process_config
+
 from utils.log_utils import copy_source_code, check_and_create_path
 from utils.config_utils import load_config, process_config, get_device_ids
 import os
 
-# should be used as: algo_map[algo_name][rank>0](config)
-# If rank is 0, then it returns the server class otherwise the client class
+
+# Mapping of algorithm names to their corresponding client and server classes so that they can be consumed by the scheduler later on.
 algo_map = {
     "fedavg": [FedAvgServer, FedAvgClient],
     "isolated": [IsolatedServer],
+
+    "fedran": [FedRanServer, FedRanClient],
+    "fedgrid": [FedGridServer, FedGridClient],
+    "fedtorus": [FedTorusServer, FedTorusClient],
     "fedass": [FedAssServer, FedAssClient],
     "fediso": [FedIsoServer, FedIsoClient],
     "fedweight": [FedWeightServer, FedWeightClient],
+    "fedring": [FedRingServer, FedRingClient],
     "fedstatic": [FedStaticServer, FedStaticClient],
+
     "swarm": [SWARMServer, SWARMClient],
     "dispfl": [DisPFLServer, DisPFLClient],
     "defkt": [DefKTServer, DefKTClient],
