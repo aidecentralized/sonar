@@ -33,9 +33,14 @@ from utils.config_utils import load_config, process_config
 algo_map = {
     "fedavg": [FedAvgServer, FedAvgClient],
     "isolated": [IsolatedServer],
+
+#    "fedran": [FedRanServer, FedRanClient],
+#    "fedgrid": [FedGridServer, FedGridClient],
+#    "fedtorus": [FedTorusServer, FedTorusClient],
     "fedass": [FedAssServer, FedAssClient],
     "fediso": [FedIsoServer, FedIsoClient],
     "fedweight": [FedWeightServer, FedWeightClient],
+#    "fedring": [FedRingServer, FedRingClient],
     "fedstatic": [FedStaticServer, FedStaticClient],
     "swarm": [SWARMServer, SWARMClient],
     "dispfl": [DisPFLServer, DisPFLClient],
