@@ -16,7 +16,7 @@ class CIFAR10Dataset:
     """
     def __init__(self, dpath: str, rot_angle: int = 0) -> None:
         self.image_size = 32
-        self.num_cls = 10
+        self.NUM_CLS = 10
         self.mean = np.array((0.4914, 0.4822, 0.4465))
         self.std = np.array((0.2023, 0.1994, 0.2010))
         self.num_channels = 3
