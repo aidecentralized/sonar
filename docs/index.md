@@ -30,5 +30,5 @@ We log the results in the console and also in a log file that captures the same 
 * Clone the repository
 * `pip install mkdocs-material`
 * `mkdocs build`
-* Add `repo url: repo_url: https://github.com/aidecentralized/sonar/` to `mkdocs.yml`
+* Add `repo_url: https://github.com/aidecentralized/sonar/` to `mkdocs.yml`
 *  `mkdocs serve`
