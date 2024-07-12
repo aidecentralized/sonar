@@ -30,3 +30,4 @@ We log the results in the console and also in a log file that captures the same 
 * Clone the repository
 * `pip install mkdocs-material`
 * `mkdocs build`
+*  `mkdocs serve`
