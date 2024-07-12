@@ -5,7 +5,7 @@ The whole point of this project is to eventually transition to a distributed sys
 You can execute the 3 node simulation by running the following command:<br>
 `mpirun -np 4 -host localhost:11 python main.py`
 
-Depending on the environment you're running the experiment on, you may have to update the config files based on the number of GPUs available. Refer to the [Config file](#Config file) section for more information.
+Depending on the environment you're running the experiment on, you may have to update the config files based on the number of GPUs available. Refer to the [Config file](#config-file) section for more information.
 
 
 ### Config file
