@@ -2,6 +2,7 @@
 expt_dump/
 expt_dump_old/
 grpc_expts/logs/
+grpc_expts/sweep_logs/
 di_test/
 imgs/
 data/
