@@ -32,6 +32,7 @@ def run_client(args: argparse.Namespace):
     trial_seed = args.trial_seed
     output_dir = args.output_dir
     gpu_index = args.gpu_index
+    algorithm = args.algorithm
 
     # Compute local average
     device = f"cuda:{gpu_index}"  # Client GPU
@@ -93,15 +94,25 @@ def run_client(args: argparse.Namespace):
         log_utils.log_console("Received model from server")
 
         # Initialize logging metrics
-        metrics = collections.defaultdict(lambda: [])
+        results = collections.defaultdict(lambda: [])
 
-        metrics["client_id"] = client_id
-        metrics["gpu_index"] = gpu_index
-        metrics["node_id"] = node_id
-        metrics["train_indices"] = train_indices.tolist()
-        metrics["percentage_samples"] = len(train_indices) / len(org_train_dset)
-        metrics["initial_test_loss"] = te_loss
-        metrics["initial_test_acc"] = te_acc
+        results["client_id"] = client_id
+        results["gpu_index"] = gpu_index
+        results["node_id"] = node_id
+        results["train_indices"] = train_indices.tolist()
+        results["percentage_samples"] = len(train_indices) / len(org_train_dset)
+        results["initial_test_loss"] = te_loss
+        results["initial_test_acc"] = te_acc
+
+        # Add additional information to results
+        results["dataset"] = dset
+        results["model_arch"] = model_arch
+        results["algorithm"] = algorithm
+        results["hparams_seed"] = hparams_seed
+        results["trial_seed"] = trial_seed
+        results["learning_rate"] = learning_rate
+        results["batch_size"] = batch_size
+        results["dropout_rate"] = dropout_rate
 
         for i in range(1, 3):
             step_start_time = time.time()
@@ -141,25 +152,25 @@ def run_client(args: argparse.Namespace):
             log_utils.log_tb("test_acc", te_acc, i)
 
             # Log metrics
-            metrics["train_loss"].append(tr_loss)
-            metrics["train_acc"].append(tr_acc)
-            metrics["test_loss"].append(te_loss)
-            metrics["test_acc"].append(te_acc)
-            metrics["step_time"].append(time.time() - step_start_time)
+            results["train_loss"].append(tr_loss)
+            results["train_acc"].append(tr_acc)
+            results["test_loss"].append(te_loss)
+            results["test_acc"].append(te_acc)
+            results["step_time"].append(time.time() - step_start_time)
 
         stub.SendBye(comm_pb2.ID(id=user_id.id))
         log_utils.log_console(
             f"Exiting... Node {user_id.num}, Final Test Acc: {te_acc:.3f}"
         )
 
-        # Save metrics to file
-        metrics_path = os.path.join(output_dir, "metrics.json")
-        with open(metrics_path, "w") as f:
-            json.dump(metrics, f, indent=4)
+        # Save results to file
+        results_path = os.path.join(output_dir, "results.json")
+        with open(results_path, "w") as f:
+            json.dump(results, f, indent=4)
 
-        # Log final metrics
+        # Log final results
         with open(os.path.join(output_dir, "final_results.txt"), "w") as f:
-            for key, values in metrics.items():
+            for key, values in results.items():
                 f.write(f"{key}: {values}\n")
 
 
