@@ -1,0 +1,1 @@
+docker run -it --rm -v $(pwd)/src:/sonar/src sonar_image /bin/bash -c "cd /sonar/src && mpirun --allow-run-as-root -np 4 -host localhost:11 ../env/bin/python main.py"

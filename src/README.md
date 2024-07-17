@@ -1,3 +1,45 @@
+## Setting Up the Project with Docker
+
+### Prerequisites
+
+Ensure you have Docker installed on your machine. You can download it from [Docker's official website](https://www.docker.com/get-started).
+
+### Building the Docker Image
+
+1. Clone the repository:
+    ```sh
+    git clone https://github.com/aidecentralized/sonar
+    cd sonar
+    ```
+
+2. Build the Docker image:
+    ```sh
+    docker build -t sonar_image:latest .
+    ```
+
+### Running the Container
+
+We provide a `docker_run.sh` script to simplify running the Docker container.
+
+1. Ensure the script has execution permissions:
+    ```sh
+    chmod +x docker_run.sh
+    ```
+
+2. Run the script:
+- Using './':
+    ```sh
+    ./docker_run.sh
+    ```
+- Using 'bash':
+    ```sh
+    bash docker_run.sh
+    ```
+
+The `docker_run.sh` script will handle the necessary Docker commands to start the container with the appropriate settings.
+
+Note: If you have used a different Image name while building Docker Image, Please update the name accordingly in `docker_run.sh` script
+
 ### Running the code
 Let's say you want to run the model training of 3 nodes on a machine. That means there will be 4 nodes in total because there is 1 more node in addition to the clients --- server.
 The whole point of this project is to eventually transition to a distributed system where each node can be a separate machine and a server is simply another node. But for now, this is how things are done.
