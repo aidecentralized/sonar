@@ -34,11 +34,6 @@ fedweight = {
     "num_rep": 1,
     "load_existing": False,
 
-    # Dataset params 
-    #"test_samples_per_class": 300,
-    #"test_samples_per_client": 400, # Only for non_iid test distribution
-    # "support" : get_sliding_window_support(num_clients=NUM_CLIENT, num_classes=10, num_classes_per_client=4),
-
     # Clients selection
     "target_clients": 1,
     "similarity": "CosineSimilarity", #"EuclideanDistance", "CosineSimilarity", 
@@ -73,10 +68,6 @@ feddatarepr = {
     "exp_id": "test5",
     "num_rep": 1,
     "load_existing": False,
-
-     # Dataset params 
-    #"test_samples_per_class": 100,
-    #"support":get_sliding_window_support(num_clients=feddatarepr_clients, num_classes=10, num_classes_per_client=4),
     
     # Similarity params
     "representation": "train_data", # "test_data", "train_data", "dreams"
