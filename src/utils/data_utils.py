@@ -231,7 +231,7 @@ def non_iid_unbalanced_dataidx_map(dset_obj, n_parties, beta=0.4):
     Returns a non-IID unbalanced data index map.
     """
     train_dset = dset_obj.train_dset
-    n_classes = dset_obj.num_cls
+    n_classes = dset_obj.NUM_CLS
 
     N = len(train_dset)
     labels = np.array(train_dset.targets)
@@ -266,7 +266,7 @@ def non_iid_balanced(dset_obj, n_client, n_data_per_clnt, alpha=0.4, cls_priors=
     else:
         y = np.array(dset_obj.test_dset.targets)
     
-    n_cls = dset_obj.num_cls
+    n_cls = dset_obj.NUM_CLS
     clnt_data_list = (np.ones(n_client) * n_data_per_clnt).astype(int)
     if cls_priors is None:
         cls_priors = np.random.dirichlet(alpha=[alpha] * n_cls, size=n_client)
