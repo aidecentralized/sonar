@@ -1,10 +1,12 @@
-# fl_assigned.py
+"""
+This module implements FedAssClient and FedAssServer classes for federated learning.
+"""
 
-import math  # standard import
-import numpy as np  # third party import
+import math
+import numpy as np
 
-from algos.base_class import BaseFedAvgClient, BaseFedAvgServer  # first party import
 from utils.stats_utils import from_round_stats_per_round_per_client_to_dict_arrays
+from algos.base_class import BaseFedAvgClient, BaseFedAvgServer
 
 
 class FedAssClient(BaseFedAvgClient):
@@ -12,7 +14,7 @@ class FedAssClient(BaseFedAvgClient):
     FedAssClient extends BaseFedAvgClient to implement specific client-side
     functionalities for a federated learning framework.
     """
-    def __init__(self, config) -> None:
+    def __init__(self, config):
         super().__init__(config)
 
     def get_collaborator_weights(self, current_round):
@@ -36,6 +38,7 @@ class FedAssClient(BaseFedAvgClient):
         return collab_weights
 
     def get_representation(self):
+        """Returns the model weights as representation."""
         return self.get_model_weights()
 
     def run_protocol(self):
@@ -85,16 +88,13 @@ class FedAssClient(BaseFedAvgClient):
             stats["collab_weights"] = collab_weight
 
             self.comm_utils.send_signal(
-                dest=self.server_node, data=stats, tag=self.tag.ROUND_STATS
-            )
-
-
+                dest=self.server_node, data=stats, tag=self.tag.ROUND)
 class FedAssServer(BaseFedAvgServer):
     """
     FedAssServer extends BaseFedAvgServer to implement specific server-side
     functionalities for a federated learning framework.
     """
-    def __init__(self, config) -> None:
+    def __init__(self, config):
         super().__init__(config)
         self.config = config
         self.set_model_parameters(config)
@@ -102,11 +102,11 @@ class FedAssServer(BaseFedAvgServer):
         self.best_acc = 0.0
         self.round = 0
 
-    def test(self) -> float:
+    def test(self):
         """
         Test the model on the server.
         """
-        test_loss, acc = self.model_utils.test(
+        _, acc = self.model_utils.test(
             self.model, self._test_loader, self.loss_fn, self.device
         )
         if acc > self.best_acc:
