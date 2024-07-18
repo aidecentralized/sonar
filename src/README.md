@@ -96,3 +96,7 @@ One of the awesome things about this project is that whenever you run an experim
 ### Logging
 We log the results in the console and also in a log file that captures the same information. We also log a few metrics for the tensorboard. The tensorboard logs can be viewed by running tensorboard as follows:
 `tensorboard --logdir=expt_dump/ --host 0.0.0.0`. Assuming `expt_dump` is the folder where the experiment logs are stored.
+
+After a successful run with 50 epochs, the Tensorboard experiment log should look something like below:
+
+<img src="../resources/images/TensorboardSample.png" width=50% height=50%>
