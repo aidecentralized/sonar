@@ -17,6 +17,7 @@ system_config = {
     # we need to make this a dictionary with user_id as key and number of samples as value
     "train_label_distribution": "iid",
     "test_label_distribution": "iid",
+    "folder_deletion_signal_path":"./expt_dump/folder_deletion.signal"
 }
 
 current_config = system_config
