@@ -1,6 +1,10 @@
 ![Warning](https://img.shields.io/badge/Warning-This%20project%20is%20in%20beta-yellow)
 
 # Project SONAR - Self-Organizing Network of Aggregated Representations
+
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Documentation Status](https://readthedocs.org/projects/markdown-guide/badge/?version=latest)](https://aidecentralized.github.io/sonar/)
+
 A collaborative learning project where users self-organize to improve their ML models by sharing representations of their data or model.
 
 ⚠️**Warning:** This project is currently under a major revamp and may contain bugs.
