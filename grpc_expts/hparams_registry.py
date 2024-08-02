@@ -27,10 +27,11 @@ def _hparams(algorithm, dataset, random_seed):
 
     # Unconditional hparam definitions.
     _hparam("learning_rate", 3e-4, lambda r: 10 ** r.uniform(-5, -3))
-    _hparam("batch_size", 32, lambda r: int(2 ** r.uniform(3, 6)))
+    _hparam("batch_size", 64, lambda r: int(2 ** r.uniform(5, 10)))
     _hparam("dropout_rate", 0.5, lambda r: r.choice([0.0, 0.5]))
 
     # Algorithm-specific hparam definitions.
+    # TODO: Adapt to FL Algos
     if algorithm == "AlgorithmA":
         _hparam("alpha", 1.0, lambda r: 10 ** r.uniform(-3, 3))
         _hparam("beta", 0.5, lambda r: r.choice([0.1, 0.5, 1.0]))
@@ -40,6 +41,7 @@ def _hparams(algorithm, dataset, random_seed):
         _hparam("weight_decay", 0.01, lambda r: 10 ** r.uniform(-6, -2))
 
     # Dataset-specific hparam definitions.
+    # TODO: Adapt to FL Datasets
     if dataset == "DatasetX":
         _hparam("learning_rate", 1e-4, lambda r: 10 ** r.uniform(-5, -4))
 

@@ -71,12 +71,27 @@ The `command_launchers.py` module provides functions to launch client and server
 
 ### Example Command
 
-```sh
-python sweep.py launch --host 'hostname:50051' --model_arch 'resnet18' --dataset 'cifar10' --algorithm 'AlgorithmA' --num_clients 2 --num_trials 2 --hparams_seed 42 --num_hparams 2
-```
-
-or run the bash script:
+Run the bash script:
 
 ```sh
 bash run_sweep.sh
 ```
+
+### Example Results:
+
+Best hyperparameter setting: db339c756bf05546161ab518b8b50bfb with mean test accuracy: 0.7795    
+Model: resnet18    
+Dataset: cifar10    
+Algorithm: Fedavg    
+Best Test Accuracy: 0.7795 ± 0.1053    
+
+Table:
+
+| Model    | Dataset   | Algorithm   | Best Test Accuracy   |
+|----------|-----------|-------------|----------------------|
+| resnet18 | cifar10   | Fedavg      | 0.7795 ± 0.1053      |
+
+Job Statistics:
+
+Number of hyperparameter sets: 3    
+Number of trials: 3    

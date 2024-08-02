@@ -8,7 +8,7 @@ import shutil
 import numpy as np
 import tqdm
 import shlex
-from hparams_registry import random_hparams
+from hparams_registry import random_hparams, default_hparams
 from command_launchers import REGISTRY
 
 BASE_DIR = "/projectnb/ds598/projects/xthomas/temp/sonar/grpc_expts"
@@ -20,24 +20,20 @@ class Job:
     INCOMPLETE = "Incomplete"
     DONE = "Done"
 
-    def __init__(self, train_args_list, sweep_output_dir):
+    def __init__(self, hparams, train_args_list, sweep_output_dir):
+        # Generate hash based on hyperparameters only
+        hparams_str = json.dumps(hparams, sort_keys=True)
+        hparams_hash = hashlib.md5(hparams_str.encode("utf-8")).hexdigest()
+        self.output_dir = os.path.join(sweep_output_dir, hparams_hash)
+
         self.train_args_list = train_args_list
-
-        # Use the same output directory for all trials of the same hyperparameter set
-        hparams = train_args_list[0]
-        hparams_str = json.dumps(
-            {k: hparams[k] for k in hparams if k not in ["trial_seed", "client_id"]},
-            sort_keys=True,
-        )
-        self.output_dir = sweep_output_dir
-
         self.commands = []
         self.state = Job.DONE
         for train_args in train_args_list:
             trial_output_dir = os.path.join(
                 self.output_dir,
                 f'trial_{train_args["trial_seed"]}',
-                f'user_{train_args["client_id"]}',
+                f'client_{train_args["client_id"]}',
             )
             train_args["output_dir"] = trial_output_dir
 
@@ -48,11 +44,19 @@ class Job:
 
             command = ["python", "client_benchmark.py"]
             for k, v in sorted(train_args.items()):
-                if isinstance(v, list):
+                if isinstance(v, dict):
+                    v = json.dumps(v)
+                    command.append(
+                        f"--{k} {shlex.quote(v)}"
+                    )  # Properly escape JSON string
+                elif isinstance(v, list):
                     v = " ".join([str(v_) for v_ in v])
+                    command.append(f"--{k} {v}")
                 elif isinstance(v, str):
                     v = shlex.quote(v)
-                command.append(f"--{k} {v}")
+                    command.append(f"--{k} {v}")
+                else:
+                    command.append(f"--{k} {v}")
             self.commands.append(" ".join(command))
 
     def __str__(self):
@@ -94,12 +98,10 @@ class Job:
                 trial_output_dir = command.split("--output_dir ")[1].split(" ")[0]
                 os.makedirs(trial_output_dir, exist_ok=True)
 
-        grouped_commands = [job.commands for job in jobs]
+        for job in jobs:
+            print(f"Launching job with output_dir: {job.output_dir}")
+            launcher_fn(job.commands)
 
-        for group in grouped_commands:
-            print(f"Grouped commands for launch: {group}")
-
-        launcher_fn(grouped_commands)
         print(f"Launched {len(jobs)} jobs!")
 
     @staticmethod
@@ -122,38 +124,26 @@ def make_args_list(
 ):
     jobs = []
     for hparam_seed in range(num_hparams):
-        hparams = random_hparams(algorithm, dataset, hparam_seed)
-        hparams_str = json.dumps(
-            {
-                "host": host,
-                "model_arch": model_arch,
-                "dataset": dataset,
-                "algorithm": algorithm,
-                "hparams_seed": hparam_seed,
-            },
-            sort_keys=True,
-        )
-        hparams_hash = hashlib.md5(hparams_str.encode("utf-8")).hexdigest()
-        hparam_output_dir = os.path.join(LOG_DIR, hparams_hash)
+        if hparam_seed == 0:
+            hparams = default_hparams(algorithm, dataset)
+        else:
+            hparams = random_hparams(algorithm, dataset, hparam_seed)
 
         train_args_list = []
         for trial_seed in range(num_trials):
-            for client_id in range(1, num_clients + 1):
+            for client_id in range(num_clients):
                 train_args = {
                     "host": host,
                     "model_arch": model_arch,
                     "dataset": dataset,
                     "algorithm": algorithm,
                     "client_id": client_id,
-                    "learning_rate": hparams["learning_rate"],
-                    "batch_size": hparams["batch_size"],
-                    "dropout_rate": hparams["dropout_rate"],
+                    "hparams": hparams,
                     "hparams_seed": hparam_seed,
                     "trial_seed": trial_seed,
-                    "gpu_index": client_id,
                 }
                 train_args_list.append(train_args)
-        jobs.append(Job(train_args_list, hparam_output_dir))
+        jobs.append(Job(hparams, train_args_list, LOG_DIR))
     return jobs
 
 
@@ -188,20 +178,26 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     jobs = make_args_list(
-        args.num_clients,
-        args.num_hparams,
-        args.num_trials,
-        args.host,
-        args.model_arch,
-        args.dataset,
-        args.algorithm,
-        args.hparams_seed,
+        num_clients=args.num_clients,
+        num_hparams=args.num_hparams,
+        num_trials=args.num_trials,
+        host=args.host,
+        model_arch=args.model_arch,
+        dataset=args.dataset,
+        algorithm=args.algorithm,
+        hparams_seed=args.hparams_seed,
     )
 
     for job in jobs:
         print(job)
+        print()
     print(
-        f"{len(jobs)} jobs: {len([j for j in jobs if j.state == Job.DONE])} done, {len([j for j in jobs if j.state == Job.INCOMPLETE])} incomplete, {len([j for j in jobs if j.state == Job.NOT_LAUNCHED])} not launched."
+        "\n{} jobs: {} done, {} incomplete, {} not launched.\n".format(
+            len(jobs),
+            len([j for j in jobs if j.state == Job.DONE]),
+            len([j for j in jobs if j.state == Job.INCOMPLETE]),
+            len([j for j in jobs if j.state == Job.NOT_LAUNCHED]),
+        )
     )
 
     if args.command == "launch":
@@ -213,9 +209,7 @@ if __name__ == "__main__":
         Job.launch(to_launch, launcher_fn)
 
     elif args.command == "delete_incomplete":
-        to_delete = [
-            j for j in jobs if j.state == Job.INCOMPLETE or j.state == Job.NOT_LAUNCHED
-        ]
+        to_delete = [j for j in jobs if j.state == Job.INCOMPLETE]
         print(f"About to delete {len(to_delete)} jobs.")
         if not args.skip_confirmation:
             ask_for_confirmation()
