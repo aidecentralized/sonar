@@ -71,7 +71,7 @@ def run_client(args: argparse.Namespace):
         config = {}
         config["log_path"] = output_dir
         os.makedirs(config["log_path"], exist_ok=True)
-        config["load_existing"] = False
+        config["load_existing"] = True # TODO: False before
         log_utils = LogUtils(config)
         log_utils.log_console(f"User got ID: {user_id.id}, Number: {user_id.num}")
 
@@ -185,6 +185,10 @@ def run_client(args: argparse.Namespace):
         results_path = os.path.join(output_dir, "results.json")
         with open(results_path, "w") as f:
             json.dump(results, f, indent=4)
+
+        # Create done file
+        with open(os.path.join(output_dir, "done"), "w") as f:
+            f.write("done")
 
 
 if __name__ == "__main__":

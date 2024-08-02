@@ -201,7 +201,10 @@ if __name__ == "__main__":
     )
 
     if args.command == "launch":
-        to_launch = [j for j in jobs if j.state == Job.NOT_LAUNCHED]
+        to_launch = [j for j in jobs if j.state == Job.NOT_LAUNCHED or j.state == Job.INCOMPLETE]
+        if len(to_launch) == 0:
+            print("Nothing to launch! Exiting...All jobs are done.")
+            exit(0)
         print(f"About to launch {len(to_launch)} jobs.")
         if not args.skip_confirmation:
             ask_for_confirmation()
