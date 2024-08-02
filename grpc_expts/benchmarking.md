@@ -95,3 +95,4 @@ Job Statistics:
 
 Number of hyperparameter sets: 3    
 Number of trials: 3    
+Number of clients: 2    
