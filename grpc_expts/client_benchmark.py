@@ -71,7 +71,7 @@ def run_client(args: argparse.Namespace):
         config = {}
         config["log_path"] = output_dir
         os.makedirs(config["log_path"], exist_ok=True)
-        config["load_existing"] = True # TODO: False before
+        config["load_existing"] = True # TODO: False before. Unable to restart incomplete jobs when set to False.
         log_utils = LogUtils(config)
         log_utils.log_console(f"User got ID: {user_id.id}, Number: {user_id.num}")
 
