@@ -13,8 +13,8 @@ function App() {
     let lastLogTime = 0;
     let messagesQueue: string[] = [];
 
-    const [maxNumTrainSamples, setMaxNumTrainSamples] = React.useState<number>(5000);
-    const [maxNumTestSamples, setMaxNumTestSamples] = React.useState<number>(1000);
+    const [maxNumTrainSamples, setMaxNumTrainSamples] = React.useState<number>(320);
+    const [maxNumTestSamples, setMaxNumTestSamples] = React.useState<number>(160);
     const [batchSize, setBatchSize] = React.useState<number>(XSumData.BATCH_SIZE);
     const [numEpochs, setNumEpochs] = React.useState<number>(3);
     const [trainingLosses, setTrainingLosses] = React.useState<number[]>([]);
@@ -101,20 +101,18 @@ function App() {
     async function updateSummaryPredictions(session: ort.TrainingSession) {
         const input = new Float32Array(summaries.length * numCols);
         const batchShape = [summaries.length, numCols];
-        const labels: bigint[] = [];
+        const labels: string[] = [];
         for (let i = 0; i < summaries.length; ++i) {
-            const text = summaries[i].text.split(' ').map(parseFloat);
-            for (let j = 0; j < text.length; ++j) {
-                input[i * text.length + j] = text[j];
+            const textTokens = summaries[i].text.split(' ').map(word => word.length); // Example tokenization method
+            for (let j = 0; j < textTokens.length; ++j) {
+                input[i * numCols + j] = textTokens[j];
             }
-            labels.push(BigInt(summaries[i].summary.split(' ').map(parseFloat).join(' ')));
-        }
-
+            labels.push(summaries[i].summary);
+        }        
         const feeds = {
             input: new ort.Tensor('float32', input, batchShape),
-            labels: new ort.Tensor('int64', new BigInt64Array(labels), [summaries.length])
+            labels: new ort.Tensor('string', labels, [summaries.length])
         };
-
         const results = await session.runEvalStep(feeds);
         const predictions = getPredictions(results['output']);
         setSummaryPredictions(predictions.slice(0, summaries.length));
@@ -122,11 +120,16 @@ function App() {
 
     function getPredictions(results: ort.Tensor): string[] {
         const predictions: string[] = [];
-        const dataArray = Array.from(results.data as Iterable<number | bigint>) as (number | bigint)[];
-        dataArray.forEach(d => predictions.push(d.toString()));
+        const [batchSize, numTokens] = results.dims;
+    
+        for (let i = 0; i < batchSize; ++i) {
+            const tokens = Array.from(results.data.slice(i * numTokens, (i + 1) * numTokens) as Float32Array);
+            const prediction = tokens.map(t => String.fromCharCode(Math.round(t))).join(''); // might need to change
+            predictions.push(prediction);
+        }
         return predictions;
     }
-
+    
     function countCorrectPredictions(output: ort.Tensor, labels: ort.Tensor): number {
         let result = 0;
         const predictions = getPredictions(output);
@@ -144,17 +147,31 @@ function App() {
         let totalNumBatches = dataSet.getNumTrainingBatches();
         const epochStartTime = Date.now();
         let iterationsPerSecond = 0;
+    
         await logMessage(`TRAINING | Epoch: ${String(epoch + 1).padStart(2)} / ${numEpochs} | Starting training...`);
         for await (const batch of dataSet.trainingBatches()) {
             ++batchNum;
+    
+            const batchSize = batch.data.dims[0];
+            const input = new Float32Array(batchSize * numCols);
+            const labels: string[] = [];
+            for (let i = 0; i < batchSize; ++i) {
+                const textTokens = batch.data.data.slice(i * numCols, (i + 1) * numCols) as Float32Array;
+                for (let j = 0; j < textTokens.length; ++j) {
+                    input[i * numCols + j] = textTokens[j];
+                }
+                labels.push(batch.labels.data[i].toString());
+            }
+    
             const feeds = {
-                input: batch.data,
-                labels: batch.labels
+                input: new ort.Tensor('float32', input, [batchSize, numCols]),
+                labels: new ort.Tensor('string', labels, [batchSize])
             };
     
             const results = await session.runTrainStep(feeds);
             const loss = parseFloat(results[lossNodeName.toString()].data[0].toString());
             setTrainingLosses(losses => losses.concat(loss));
+    
             iterationsPerSecond = batchNum / ((Date.now() - epochStartTime) / 1000);
             const message = `TRAINING | Epoch: ${String(epoch + 1).padStart(2)} | Batch ${String(batchNum).padStart(3)} / ${totalNumBatches} | Loss: ${loss.toFixed(4)} | ${iterationsPerSecond.toFixed(2)} it/s`;
             await logMessage(message);
@@ -177,16 +194,27 @@ function App() {
         for await (const batch of dataSet.testBatches()) {
             ++batchNum;
     
+            const batchSize = batch.data.dims[0];
+            const input = new Float32Array(batchSize * numCols);
+            const labels: string[] = [];
+            for (let i = 0; i < batchSize; ++i) {
+                const textTokens = batch.data.data.slice(i * numCols, (i + 1) * numCols) as Float32Array;
+                for (let j = 0; j < textTokens.length; ++j) {
+                    input[i * numCols + j] = textTokens[j];
+                }
+                labels.push(batch.labels.data[i].toString());
+            }
+    
             const feeds = {
-                input: batch.data,
-                labels: batch.labels
+                input: new ort.Tensor('float32', input, [batchSize, numCols]),
+                labels: new ort.Tensor('string', labels, [batchSize])
             };
     
             const results = await session.runEvalStep(feeds);
             const loss = parseFloat(results[lossNodeName].data[0].toString());
             accumulatedLoss += loss;
-            testSummariesSoFar += batch.data.dims[0];
-            numCorrect += countCorrectPredictions(results['output'], batch.labels);
+            testSummariesSoFar += batchSize;
+            numCorrect += countCorrectPredictions(results['output'], new ort.Tensor('string', labels, [batchSize]));
             const iterationsPerSecond = batchNum / ((Date.now() - epochStartTime) / 1000);
             const message = `TESTING | Epoch: ${String(epoch + 1).padStart(2)} | Batch ${String(batchNum).padStart(3)} / ${totalNumBatches} | Average test loss: ${(accumulatedLoss / batchNum).toFixed(2)} | Accuracy: ${numCorrect}/${testSummariesSoFar} (${(100 * numCorrect / testSummariesSoFar).toFixed(2)}%) | ${iterationsPerSecond.toFixed(2)} it/s`;
             await logMessage(message);
@@ -195,31 +223,39 @@ function App() {
         setTestAccuracies(accs => accs.concat(avgAcc));
         return avgAcc;
     }
-
+    
     async function train() {
-        console.log("Training started");
+        console.log("Training init");
         setIsTraining(true);
         if (maxNumTrainSamples > XSumData.MAX_NUM_TRAIN_SAMPLES || maxNumTestSamples > XSumData.MAX_NUM_TEST_SAMPLES) {
             showErrorMessage(`Max number of training samples (${maxNumTrainSamples}) or test samples (${maxNumTestSamples}) exceeds the maximum allowed (${XSumData.MAX_NUM_TRAIN_SAMPLES} and ${XSumData.MAX_NUM_TEST_SAMPLES}, respectively). Please try again.`);
             return;
         }
-
+    
+        console.log("Loading training session...");
         const trainingSession = await loadTrainingSession();
+        console.log("Training session loaded");
+    
         const dataSet = new XSumData(batchSize, maxNumTrainSamples, maxNumTestSamples);
-
+        console.log("Dataset initialized");
+    
         lastLogTime = Date.now();
         const startTrainingTime = Date.now();
-        showStatusMessage('Training started');
+        showStatusMessage("Training started" + dataSet.batchSize);
         let itersPerSecCumulative = 0;
         let testAcc = 0;
+    
         for (let epoch = 0; epoch < numEpochs; epoch++) {
+            console.log(`Starting epoch ${epoch + 1}`);
             itersPerSecCumulative += await runTrainingEpoch(trainingSession, dataSet, epoch);
             testAcc = await runTestingEpoch(trainingSession, dataSet, epoch);
         }
+    
         const trainingTimeMs = Date.now() - startTrainingTime;
         showStatusMessage(`Training completed. Final test set accuracy: ${(100 * testAcc).toFixed(2)}% | Total training time: ${trainingTimeMs / 1000} seconds | Average iterations / second: ${(itersPerSecCumulative / numEpochs).toFixed(2)}`);
         setIsTraining(false);
     }
+    
 
     function renderPlots() {
         const margin = { t: 20, r: 25, b: 25, l: 40 };
@@ -306,58 +342,10 @@ function App() {
             <div className="section">
                 <h3>Background</h3>
                 <p>
-                    ONNX Runtime Training for Web is a new feature in ORT 1.17.0 that enables developers to train machine learning models in the browser using CPU and WebAssembly.
-                </p>
-                <p>
-                    This in-browser training capability is specifically designed to support federated learning scenarios, where multiple devices can collaborate to train a model without sharing data with each other.
-                    This approach enhances privacy and security while still allowing for effective machine learning.
-                </p>
-                <p>
-                    If you're interested in learning more about ONNX Runtime Training for Web and its potential applications, be sure to check out our blog coming out soon.
-                </p>
-                <p>
-                    For more information on how to use ONNX Runtime Web for training, please refer to <Link href="https://onnxruntime.ai/docs/">ONNX Runtime documentation</Link> or
-                    the <Link href="https://github.com/microsoft/onnxruntime-training-examples">ONNX Runtime Training Examples code</Link>.
+                    Based on: <Link href="https://github.com/microsoft/onnxruntime-training-examples/tree/master/on_device_training/web">ONNX Runtime Training Web Example</Link>
                 </p>
             </div>
-            <div className="section">
-                <h3>Training Metrics</h3>
-                <TableContainer sx={{ width: '50%' }}>
-                    <Table size='small'>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Browser</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Heap usage in MB</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>it/s</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            <TableRow>
-                                <TableCell>Chrome</TableCell>
-                                <TableCell>25.2</TableCell>
-                                <TableCell>54.30</TableCell>
-                            </TableRow>
-                            <TableRow>
-                                <TableCell>Edge</TableCell>
-                                <TableCell>24.2</TableCell>
-                                <TableCell>55.48</TableCell>
-                            </TableRow>
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-                <div className="section moreInfo">
-                    <Button onClick={toggleMoreInfoIsCollapsed}>{moreInfoIsCollapsed ? 'Expand' : 'Collapse'} more info</Button>
-                    {!moreInfoIsCollapsed && <div>
-                        <p>
-                            The above measurements were obtained on a Windows PC in a window with a single tab open.
-                        </p>
-                        <p>
-                            Measuring memory usage and performance in the browser is difficult because things such as screen resolution, window size, OS and OS version of the host machine, the number of tabs or windows open, the number of extensions installed, and more can affect memory usage.
-                            Thus, the above results may be difficult to replicate. The above numbers are meant to reflect that training in the browser does not have to be compute- or memory-intensive when using the ORT Web for Training framework.
-                        </p>
-                    </div>}
-                </div>
-            </div>
+            
             <div className="section">
                 <h3>Training</h3>
                 <Grid container spacing={{ xs: 1, md: 2 }}>
