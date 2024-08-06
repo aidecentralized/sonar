@@ -1,0 +1,22 @@
+.App {
+    word-break: normal;
+  }
+  
+  div.section {
+    /* margin-bottom: 20px; */
+    margin: 20px;
+  }
+  
+  div.moreInfo {
+    border-left: 2px solid white;
+    padding-left: 15px;
+  }
+  
+  p.error {
+    color: red;
+  }
+  
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
