@@ -36,7 +36,7 @@ def deprocess(img):
     return img.type(torch.uint8)
 
 
-def check_and_create_path(path):
+def check_and_create_path(path, folder_deletion_path):
     """
     Checks if the specified path exists and prompts the user for action if it does.
     Creates the directory if it does not exist.
@@ -48,17 +48,28 @@ def check_and_create_path(path):
         print(f"Experiment in {path} already present")
         done = False
         while not done:
-            inp = input("Press e to exit, r to replace it: ")
+            # Color the input prompt
+            color_code = "\033[94m"  # Blue text
+            reset_code = "\033[0m"   # Reset to default color
+            # Highlighted prompt in blue
+            inp = input(f"{color_code}Press e to exit, r to replace it: {reset_code}")
+
             if inp == "e":
                 sys.exit()
             elif inp == "r":
                 done = True
                 shutil.rmtree(path)
                 os.makedirs(path)
+                with open(folder_deletion_path, "w") as signal_file:
+                    #Folder deletion complete signal.
+                    signal_file.write("r")
             else:
                 print("Input not understood")
     else:
         os.makedirs(path)
+        with open(folder_deletion_path, "w") as signal_file:
+            #new folder creation complete signal.
+            signal_file.write("new")
 
 
 def copy_source_code(config: dict) -> None:
@@ -69,11 +80,12 @@ def copy_source_code(config: dict) -> None:
         config (dict): Configuration dictionary with the results path.
     """
     path = config["results_path"]
+    folder_deletion_path = config["folder_deletion_signal_path"]
     print("exp path:", path)
     if config["load_existing"]:
         print("Continue with loading checkpoint")
         return
-    check_and_create_path(path)
+    check_and_create_path(path, folder_deletion_path)
     denylist = [
         "./__pycache__/",
         "./.ipynb_checkpoints/",
@@ -99,7 +111,7 @@ def copy_source_code(config: dict) -> None:
         if folder not in denylist:
             copytree(folder, path + folder[1:])
     os.mkdir(config["saved_models"])
-    os.mkdir(config["log_path"])
+    os.makedirs(config["log_path"], exist_ok=True)
     print("source code copied to exp_dump")
 
 
@@ -140,7 +152,7 @@ class LogUtils:
         """
         tb_path = f"{self.log_dir}/tensorboard"
         if not load_existing:
-            os.makedirs(tb_path)
+            os.makedirs(tb_path, exist_ok=True)
         self.writer = SummaryWriter(tb_path)
 
     def init_npy(self):
@@ -151,6 +163,16 @@ class LogUtils:
         if not os.path.exists(npy_path) or not os.path.isdir(npy_path):
             os.makedirs(npy_path)
 
+    def log_summary(self, text):
+        """
+        Add summary text to the summary file for logging.
+        """
+        if self.summary_file:
+            self.summary_file.write(text + "\n")
+            self.summary_file.flush()
+        else:
+            raise ValueError("Summary file is not initialized. Call init_summary() first.")
+            
     def log_image(self, imgs: torch.Tensor, key, iteration):
         """
         Log image to file and TensorBoard.

@@ -22,7 +22,7 @@ system_config = {
     "train_label_distribution": "non_iid", # Either "iid", "non_iid" "support" 
     "test_label_distribution": "non_iid", # Either "iid", "non_iid" "support"
     "test_samples_per_user": 200, # Only for non_iid test distribution
-    #"test_samples_per_class": 100,
+    "folder_deletion_signal_path":"./expt_dump/folder_deletion.signal"
 }
 
 current_config = system_config

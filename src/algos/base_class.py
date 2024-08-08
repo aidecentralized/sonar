@@ -29,7 +29,7 @@ from utils.community_utils import (
     get_dset_communities,
 )
 import torchvision.transforms as T
-
+import os
 
 class BaseNode(ABC):
     def __init__(self, config) -> None:
@@ -37,6 +37,13 @@ class BaseNode(ABC):
         self.node_id = self.comm_utils.rank
 
         if self.node_id == 0:
+            self.log_dir = config['log_path']
+            config['log_path'] = f'{self.log_dir}/server'
+            try:
+                os.mkdir(config['log_path'])
+            except FileExistsError:
+                pass
+            config['load_existing'] = False
             self.log_utils = LogUtils(config)
             self.log_utils.log_console("Config: {}".format(config))
             self.plot_utils = PlotUtils(config)
@@ -68,8 +75,10 @@ class BaseNode(ABC):
 
         if torch.cuda.is_available():
             self.device = torch.device("cuda:{}".format(gpu_id))
+            print("Using GPU: cuda:{}".format(gpu_id))
         else:
             self.device = torch.device("cpu")
+            print("Using CPU")
 
     def set_model_parameters(self, config):
         # Model related parameters
