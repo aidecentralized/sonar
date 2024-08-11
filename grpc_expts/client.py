@@ -57,6 +57,7 @@ def run_client(args: argparse.Namespace):
         log_utils = LogUtils(config)
         log_utils.log_console(f'user got {user_id.id} {user_id.num}')
         node_id = user_id.num % TEMP_TOTAL_NODES
+        print(node_id, user_id.num)
         device = f'cuda:{node_id + device_offset}'
         dset_obj = get_dataset(dset, dpath=dpath)
         train_dset = dset_obj.train_dset
