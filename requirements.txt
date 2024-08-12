@@ -1,3 +1,4 @@
+albumentations==1.4.13
 certifi==2024.2.2
 charset-normalizer==3.3.2
 contourpy==1.2.1
