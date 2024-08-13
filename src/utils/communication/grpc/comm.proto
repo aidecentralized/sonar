@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+service CommunicationServer {
+  rpc SendData (Data) returns (Empty) {}
+}
+
+message Empty {}
+
+message Model {
+  bytes buffer = 1;
+}
+
+message Data {
+  string id = 1;
+  Model model = 2;
+}

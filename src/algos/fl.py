@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Any, Dict, List
+from typing import List
 from torch import Tensor
 import torch.nn as nn
 from utils.log_utils import LogUtils
@@ -7,21 +7,10 @@ from algos.base_class import BaseClient, BaseServer
 import os
 import time
 
-class CommProtocol(object):
-    """
-    Communication protocol tags for the server and clients
-    """
-
-    DONE = 0  # Used to signal that the client is done with the current round
-    START = 1  # Used to signal by the server to start the current round
-    UPDATES = 2  # Used to send the updates from the server to the clients
-
-
 class FedAvgClient(BaseClient):
-    def __init__(self, config) -> None:
-        super().__init__(config)
+    def __init__(self, config, comm_utils) -> None:
+        super().__init__(config, comm_utils)
         self.config = config
-        self.tag = CommProtocol
         self.folder_deletion_signal = config["folder_deletion_signal_path"]
 
         while not os.path.exists(self.folder_deletion_signal):
@@ -83,32 +72,24 @@ class FedAvgClient(BaseClient):
         start_epochs = self.config.get("start_epochs", 0)
         total_epochs = self.config["epochs"]
         for round in range(start_epochs, total_epochs):
-            self.client_log_utils.log_summary("Client {} waiting for semaphore from {}".format(self.node_id, self.server_node))
-            self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.START)
-            self.client_log_utils.log_summary("Client {} received semaphore from {}".format(self.node_id, self.server_node))
             self.local_train(round)
             self.local_test()
             repr = self.get_representation()
-            self.client_log_utils.log_summary("Client {} sending done signal to {}".format(self.node_id, self.server_node))
-            self.comm_utils.send_signal(
-                dest=self.server_node, data=repr, tag=self.tag.DONE
-            )
-            self.client_log_utils.log_summary("Client {} waiting to get new model from {}".format(self.node_id, self.server_node))
-            repr = self.comm_utils.wait_for_signal(
-                src=self.server_node, tag=self.tag.UPDATES
-            )
-            self.client_log_utils.log_summary("Client {} received new model from {}".format(self.node_id, self.server_node))
+            # self.client_log_utils.log_summary("Client {} sending done signal to {}".format(self.node_id, self.server_node))
+            self.comm_utils.send(self.server_node, repr)
+            # self.client_log_utils.log_summary("Client {} waiting to get new model from {}".format(self.node_id, self.server_node))
+            repr = self.comm_utils.receive(self.server_node)
+            # self.client_log_utils.log_summary("Client {} received new model from {}".format(self.node_id, self.server_node))
             self.set_representation(repr)
-            self.client_log_utils.log_summary("Round {} done for Client {}".format(round, self.node_id))
+            # self.client_log_utils.log_summary("Round {} done for Client {}".format(round, self.node_id))
 
 
 class FedAvgServer(BaseServer):
-    def __init__(self, config) -> None:
-        super().__init__(config)
+    def __init__(self, config, comm_utils) -> None:
+        super().__init__(config, comm_utils)
         # self.set_parameters()
         self.config = config
         self.set_model_parameters(config)
-        self.tag = CommProtocol
         self.model_save_path = "{}/saved_models/node_{}.pt".format(
             self.config["results_path"], self.node_id
         )
@@ -123,10 +104,10 @@ class FedAvgServer(BaseServer):
         avgd_wts = OrderedDict()
         first_model = model_wts[0]
 
-        for client_num in range(num_users):
-            local_wts = model_wts[client_num]
+        for node_num in range(num_users):
+            local_wts = model_wts[node_num]
             for key in first_model.keys():
-                if client_num == 0:
+                if node_num == 0:
                     avgd_wts[key] = coeff * local_wts[key].to(self.device)
                 else:
                     avgd_wts[key] += coeff * local_wts[key].to(self.device)
@@ -143,8 +124,7 @@ class FedAvgServer(BaseServer):
         """
         Set the model
         """
-        for client_node in self.users:
-            self.comm_utils.send_signal(client_node, representation, self.tag.UPDATES)
+        self.comm_utils.broadcast(representation)
         self.model.load_state_dict(representation)
 
     def test(self) -> float:
@@ -168,15 +148,8 @@ class FedAvgServer(BaseServer):
         """
         Runs the whole training procedure
         """
-        for client_node in self.users:
-            # self.log_utils.log_console(
-            #     "Server sending semaphore from {} to {}".format(
-            #         self.node_id, client_node
-            #     )
-            # )
-            self.comm_utils.send_signal(dest=client_node, data=None, tag=self.tag.START)
         # self.log_utils.log_console("Server waiting for all clients to finish")
-        reprs = self.comm_utils.wait_for_all_clients(self.users, self.tag.DONE)
+        reprs = self.comm_utils.all_gather()
         # self.log_utils.log_console("Server received all clients done signal")
         avg_wts = self.aggregate(reprs)
         self.set_representation(avg_wts)

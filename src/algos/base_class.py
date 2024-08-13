@@ -10,8 +10,8 @@ import copy
 import random
 import numpy as np
 
+from utils.communication.comm_utils import CommunicationManager
 from utils.plot_utils import PlotUtils
-from utils.comm_utils import CommUtils
 from utils.data_utils import (
     random_samples,
     filter_by_class,
@@ -34,9 +34,9 @@ import os
 from yolo import YOLOLoss
 
 class BaseNode(ABC):
-    def __init__(self, config) -> None:
-        self.comm_utils = CommUtils()
-        self.node_id = self.comm_utils.rank
+    def __init__(self, config, comm_utils: CommunicationManager) -> None:
+        self.comm_utils = comm_utils
+        self.node_id = self.comm_utils.get_rank()
 
         if self.node_id == 0:
             self.log_dir = config['log_path']
@@ -158,8 +158,8 @@ class BaseClient(BaseNode):
     Abstract class for all algorithms
     """
 
-    def __init__(self, config) -> None:
-        super().__init__(config)
+    def __init__(self, config, comm_utils) -> None:
+        super().__init__(config, comm_utils)
         self.server_node = 0
         self.set_parameters(config)
 
@@ -434,8 +434,8 @@ class BaseServer(BaseNode):
     Abstract class for orchestrator
     """
 
-    def __init__(self, config) -> None:
-        super().__init__(config)
+    def __init__(self, config, comm_utils) -> None:
+        super().__init__(config, comm_utils)
         self.num_users = config["num_users"]
         self.users = list(range(1, self.num_users + 1))
         self.set_data_parameters(config)
@@ -664,10 +664,5 @@ class BaseFedAvgServer(BaseServer):
         super().__init__(config)
         self.tag = comm_protocol
 
-    def send_representations(self, representations, tag=None):
-        for user_node in self.users:
-            self.comm_utils.send_signal(
-                dest=user_node,
-                data=representations,
-                tag=self.tag.REPRS_SHARE if tag is None else tag,
-            )
+    def send_representations(self, representations: Dict[int, OrderedDict[str, Tensor]]):
+        self.comm_utils.broadcast(representations)

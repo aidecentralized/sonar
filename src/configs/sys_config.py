@@ -2,8 +2,11 @@
 # TODO: Set up multiple non-iid configurations here. The goal of a separate system config
 # is to simulate different real-world scenarios without changing the algorithm configuration.
 system_config = {
-    "num_users": 3,
-    "experiment_path": "./experiments/",
+    "comm": {
+        "type": "MPI"
+    },
+    "num_users": 4,
+    # "experiment_path": "./experiments/",
     "dset": "cifar10",
     "dump_dir": "./expt_dump/",
     "dpath": "./datasets/imgs/cifar10/",
