@@ -9,6 +9,8 @@ from torch.nn.parallel import DataParallel
 import resnet
 import resnet_in
 
+import yolo
+
 
 class ModelUtils():
     def __init__(self) -> None:
@@ -54,6 +56,8 @@ class ModelUtils():
         elif model_name == "resnet50":
             model = resnet_in.resnet50(
                 pretrained=True, **kwargs) if pretrained else resnet.resnet50(**kwargs)
+        elif model_name == "yolo":
+            model = yolo._yolo()
         else:
             raise ValueError(f"Model name {model_name} not supported")
         model = model.to(device)

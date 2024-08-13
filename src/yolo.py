@@ -4,6 +4,9 @@ import torch.optim as optim
 
 from tqdm import tqdm
 
+# implemented following
+# https://www.geeksforgeeks.org/yolov3-from-scratch-using-pytorch/
+
 # Defining CNN Block
 class CNNBlock(nn.Module):
     def __init__(self, in_channels, out_channels, use_batch_norm=True, **kwargs):
@@ -199,6 +202,12 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 load_model = False
 save_model = True
 
+def _yolo(**kwargs):
+    r"""Yolov3 implementation from https://www.geeksforgeeks.org/yolov3-from-scratch-using-pytorch/
+    Args:
+        progress (bool): If True, displays a progress bar of the download to stderr
+    """
+    return YOLOv3()
 
 # Define the train function to train the model 
 def training_loop(loader, model, optimizer, loss_fn, scaler, scaled_anchors): 
