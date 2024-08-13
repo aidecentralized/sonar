@@ -110,7 +110,7 @@ def extr_noniid(train_dataset, samples_per_client, classes):
     return Subset(all_data, perm[:samples_per_client])
 
 
-def  cifar_extr_noniid(
+def cifar_extr_noniid(
     train_dataset, test_dataset, num_users, n_class, num_samples, rate_unbalance
 ):
     """

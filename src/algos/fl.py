@@ -169,15 +169,15 @@ class FedAvgServer(BaseServer):
         Runs the whole training procedure
         """
         for client_node in self.users:
-            self.log_utils.log_console(
-                "Server sending semaphore from {} to {}".format(
-                    self.node_id, client_node
-                )
-            )
+            # self.log_utils.log_console(
+            #     "Server sending semaphore from {} to {}".format(
+            #         self.node_id, client_node
+            #     )
+            # )
             self.comm_utils.send_signal(dest=client_node, data=None, tag=self.tag.START)
-        self.log_utils.log_console("Server waiting for all clients to finish")
+        # self.log_utils.log_console("Server waiting for all clients to finish")
         reprs = self.comm_utils.wait_for_all_clients(self.users, self.tag.DONE)
-        self.log_utils.log_console("Server received all clients done signal")
+        # self.log_utils.log_console("Server received all clients done signal")
         avg_wts = self.aggregate(reprs)
         self.set_representation(avg_wts)
         #Remove the signal file after confirming that all client paths have been created
@@ -185,7 +185,7 @@ class FedAvgServer(BaseServer):
             os.remove(self.folder_deletion_signal)
 
     def run_protocol(self):
-        self.log_utils.log_console("Starting iid clients federated averaging")
+        self.log_utils.log_console("Starting clients federated averaging")
         start_epochs = self.config.get("start_epochs", 0)
         total_epochs = self.config["epochs"]
         for round in range(start_epochs, total_epochs):

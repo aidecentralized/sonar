@@ -215,8 +215,8 @@ class BaseClient(BaseNode):
         train_dset = self.dset_obj.train_dset
         test_dset = self.dset_obj.test_dset
 
-        print("num train", len(train_dset))
-        print("num test", len(test_dset))
+        # print("num train", len(train_dset))
+        # print("num test", len(test_dset))
 
         if config.get("test_samples_per_class", None) is not None:
             test_dset, _ = balanced_subset(test_dset, config["test_samples_per_class"])
@@ -416,21 +416,17 @@ class BaseClient(BaseNode):
             print("test count: ", i)
             i += 1
 
-        print("Node: {} data distribution summary".format(self.node_id))
-        print(type(train_sample_per_class.items()))
-        print(
-            "Train samples per class: {}".format(sorted(train_sample_per_class.items()))
-        )
-        print(
-            "Train samples per class: {}".format(len(train_sample_per_class.items()))
-        )
-        if val_dset is not None:
-            print(
-                "Val samples per class: {}".format(len(val_sample_per_class.items()))
-            )
-        print(
-            "Test samples per class: {}".format(len(test_sample_per_class.items()))
-        )
+        # print("Node: {} data distribution summary".format(self.node_id))
+        # print(
+        #     "Train samples per class: {}".format(sorted(train_sample_per_class.items()))
+        # )
+        # if val_dset is not None:
+        #     print(
+        #         "Val samples per class: {}".format(sorted(val_sample_per_class.items()))
+        #     )
+        # print(
+        #     "Test samples per class: {}".format(sorted(test_sample_per_class.items()))
+        # )
 
 
 class BaseServer(BaseNode):
