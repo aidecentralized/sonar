@@ -57,7 +57,7 @@ class ModelUtils():
             model = resnet_in.resnet50(
                 pretrained=True, **kwargs) if pretrained else resnet.resnet50(**kwargs)
         elif model_name == "yolo":
-            model = yolo._yolo()
+            model = yolo.yolo()
         else:
             raise ValueError(f"Model name {model_name} not supported")
         model = model.to(device)
