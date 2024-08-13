@@ -19,12 +19,12 @@ iid_dispfl_clients_new = {
 traditional_fl = {
     "algo": "fedavg",
     "exp_id": 10,
-    "exp_type": "iid_clients_federated",
+    "exp_type": "test_object_detect3",
     # Learning setup
-    "epochs": 1000,
-    "model": "resnet34",
-    "model_lr": 3e-4,
-    "batch_size": 256,
+    "epochs": 50,
+    "model": "yolo",
+    "model_lr": 1e-5,
+    "batch_size": 32,
     "exp_keys": [],
 }
 
