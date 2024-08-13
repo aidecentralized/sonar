@@ -202,7 +202,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 load_model = False
 save_model = True
 
-def _yolo(**kwargs):
+def yolo(**kwargs):
     r"""Yolov3 implementation from https://www.geeksforgeeks.org/yolov3-from-scratch-using-pytorch/
     Args:
         progress (bool): If True, displays a progress bar of the download to stderr
