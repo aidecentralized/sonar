@@ -12,6 +12,8 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 import cv2
 
+# pascal dataset found here: http://host.robots.ox.ac.uk/pascal/VOC/voc2012/index.html#voc2012vs2011
+
 def xml2label(xml_file):
     classes = [
     "aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat",
