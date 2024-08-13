@@ -306,7 +306,7 @@ class PascalDataset:
     """
     Pascal Dataset Class.
     """
-    def __init__(self, dpath: str, domain_name: str) -> None:
+    def __init__(self, dpath: str) -> None:
         self.image_size = 416
         self.grid_sizes=[13, 26, 52]
 
@@ -376,22 +376,29 @@ class PascalDataset:
 
         # TODO: what to do about domain name?
         # csv_file = f'VOCdevkit/VOC2012/ImageSets/Main/{self.domain_name}_train.txt'
+        ANCHORS = [
+            [(0.28, 0.22), (0.38, 0.48), (0.9, 0.78)],
+            [(0.07, 0.15), (0.15, 0.11), (0.14, 0.29)],
+            [(0.02, 0.03), (0.04, 0.07), (0.08, 0.06)],
+        ]
         self.train_dset = Pascal(
-            csv_file="VOCdevkit/VOC2012/ImageSets/Main/train.txt",
-            image_dir="VOCdevkit/VOC2012/JPEGImages/",
-            label_dir="VOCdevkit/VOC2012/Annotations/",
+            csv_file=f"{dpath}ImageSets/Main/train.txt",
+            image_dir=f"{dpath}JPEGImages/",
+            label_dir=f"{dpath}Annotations/",
             image_size=self.image_size, 
             grid_sizes=self.grid_sizes,
             num_classes=self.num_cls,
             transform=train_transform,
+            anchors=ANCHORS,
         )
 
         self.test_dset = Pascal(
-            csv_file="./src/datasets/pascal/VOCdevkit/VOC2012/ImageSets/Main/val.txt",
-            image_dir="./src/datasets/pascal/VOCdevkit/VOC2012/JPEGImages/",
-            label_dir="./src/datasets/pascal/VOCdevkit/VOC2012/Annotations/",
+            csv_file=f"{dpath}ImageSets/Main/val.txt",
+            image_dir=f"{dpath}JPEGImages/",
+            label_dir=f"{dpath}Annotations/",
             image_size=self.image_size, 
             grid_sizes=self.grid_sizes,
             num_classes=self.num_cls,
             transform=test_transform,
+            anchors=ANCHORS,
         )
