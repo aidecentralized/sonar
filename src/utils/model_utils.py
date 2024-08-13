@@ -12,7 +12,6 @@ import resnet_in
 
 class ModelUtils():
     def __init__(self) -> None:
-        pass
 
         self.models_layers_idx = {
             "resnet10": {
@@ -39,6 +38,7 @@ class ModelUtils():
     device_ids: list,
     pretrained=False,
      **kwargs) -> DataParallel:
+        self.dset = dset # cifar10, wilds, pascal
         # TODO: add support for loading checkpointed models
         model_name = model_name.lower()
         if model_name == "resnet10":
@@ -72,27 +72,83 @@ class ModelUtils():
         """
         model.train()
         train_loss = 0
+        train_losses = []
         correct = 0
         for batch_idx, (data, target) in enumerate(dloader):
-            data, target = data.to(device), target.to(device)
-            optim.zero_grad()
-            position = kwargs.get("position", 0)
-            output = model(data, position=position)
-            if kwargs.get("apply_softmax", False):
-                output = nn.functional.log_softmax(
-                    output, dim=1)  # type: ignore
-            loss = loss_fn(output, target)
-            loss.backward()
-            optim.step()
-            train_loss += loss.item()
-            pred = output.argmax(dim=1, keepdim=True)
-            # view_as() is used to make sure the shape of pred and target are
-            # the same
-            if len(target.size()) > 1:
-                target = target.argmax(dim=1, keepdim=True)
-            correct += pred.eq(target.view_as(pred)).sum().item()
+
+            if self.dset == "pascal":
+                data = data.to(device)
+                y0, y1, y2 = ( 
+                    target[0].to(device), 
+                    target[1].to(device), 
+                    target[2].to(device), 
+                )
+
+                image_size = kwargs.get("image_size", 416)
+                # Grid cell sizes
+                s = [image_size // 32, image_size // 16, image_size // 8]
+
+                # Getting the model predictions 
+                outputs = model(data) 
+
+                # Calculating the loss at each scale 
+                scaled_anchors = kwargs.get("scaled_achors", ( 
+                    torch.tensor([ [(0.28, 0.22), (0.38, 0.48), (0.9, 0.78)],
+                                   [(0.07, 0.15), (0.15, 0.11), (0.14, 0.29)],
+                                   [(0.02, 0.03), (0.04, 0.07), (0.08, 0.06)],]) * 
+                    torch.tensor(s).unsqueeze(1).unsqueeze(1).repeat(1,3,2)).to(device) )
+                
+                loss = ( 
+                    loss_fn(outputs[0], y0, scaled_anchors[0]) 
+                    + loss_fn(outputs[1], y1, scaled_anchors[1]) 
+                    + loss_fn(outputs[2], y2, scaled_anchors[2]) 
+                ) 
+
+                # Add the loss to the list 
+                train_losses.append(loss.item()) 
+        
+                # Reset gradients 
+                optim.zero_grad() 
+                scaler = kwargs.get("scaler", torch.cuda.amp.GradScaler())
+                # Backpropagate the loss 
+                scaler.scale(loss).backward() 
+        
+                # Optimization step 
+                scaler.step(optim) 
+        
+                # Update the scaler for next iteration 
+                scaler.update() 
+
+                # train loss will be average loss
+                train_loss = sum(train_losses) / len(train_losses) 
+                print("batch ", batch_idx, "loss ", train_loss)
+
+            else:
+                data = data.to(device)
+                target = target.to(device)
+
+                optim.zero_grad()
+
+                position = kwargs.get("position", 0)
+                output = model(data, position=position)
+
+                if kwargs.get("apply_softmax", False):
+                    output = nn.functional.log_softmax(
+                        output, dim=1)  # type: ignore
+
+                loss = loss_fn(output, target)
+                loss.backward()
+                optim.step()
+                train_loss += loss.item()
+                pred = output.argmax(dim=1, keepdim=True)
+                # view_as() is used to make sure the shape of pred and target are
+                # the same
+                if len(target.size()) > 1:
+                    target = target.argmax(dim=1, keepdim=True)
+                correct += pred.eq(target.view_as(pred)).sum().item()
 
             if test_loader is not None:
+                # TODO: implement test loader for pascal
                 test_loss, test_acc = self.test(
                     model, test_loader, loss_fn, device)
                 print(
@@ -193,6 +249,9 @@ class ModelUtils():
         test_loss = 0
         correct = 0
         print("Testing")
+        # TODO: test loader for pascal dataset and object detection
+        if self.dset == "pascal":
+            raise NotImplementedError("Pascal Dataset test has not been implemented")
         with torch.no_grad():
             for idx, (data, target) in enumerate(dloader):
                 data, target = data.to(device), target.to(device)
