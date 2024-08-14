@@ -62,8 +62,6 @@ def get_dataset(dname: str, dpath: str):
         "wilds": ("data_loaders.wilds", "WildsDataset"),
     }
 
-    if dname not in dset_mapping:
-        raise ValueError(f"Unknown dataset name: {dname}")
 
     if dname.startswith("wilds"):
         dname_parts = dname.split("_")
@@ -77,6 +75,8 @@ def get_dataset(dname: str, dpath: str):
         module = importlib.import_module(module_path)
         dataset_class = getattr(module, class_name)
         return dataset_class(dpath, dname_parts[1])
+    elif dname not in dset_mapping:
+        raise ValueError(f"Unknown dataset name: {dname}")
     else:
         module_path, class_name = dset_mapping[dname]
         module = importlib.import_module(module_path)
