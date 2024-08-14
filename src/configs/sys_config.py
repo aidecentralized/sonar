@@ -1,9 +1,8 @@
 # System Configuration
 # TODO: Set up multiple non-iid configurations here. The goal of a separate system config
 # is to simulate different real-world scenarios without changing the algorithm configuration.
-
-from utils.config_utils import get_sliding_window_support, get_device_ids
 from typing import Dict, List
+from utils.config_utils import get_sliding_window_support, get_device_ids
 
 def get_domain_support(num_clients, base, domains):
     assert num_clients % len(domains) == 0
@@ -117,6 +116,23 @@ grpc_system_config = {
     "train_label_distribution": "iid",
     "test_label_distribution": "iid",
     "folder_deletion_signal_path":"./expt_dump/folder_deletion.signal"
+}
+
+non_iid_sys_config = {
+    "seed": 1,
+    "num_users": 12,
+    "experiment_path": "./experiments/",
+    "dset": "cifar10",
+    "dump_dir": "./expt_dump/",
+    "dpath": "./datasets/imgs/cifar10/",
+    "load_existing": False,
+    "device_ids": get_device_ids(
+        num_users=12, num_client_per_gpu=7, available_gpus=[1, 2]
+    ),
+    "train_label_distribution": "non_iid",  # Either "iid", "non_iid" "support",
+    "test_label_distribution": "non_iid",  # Either "iid" "support",
+    "samples_per_user": 32,
+    "test_samples_per_user": 32,
 }
 
 current_config = grpc_system_config
