@@ -131,4 +131,23 @@ feddatarepr = {
     "exp_keys": ["similarity_metric", "selection_strategy", "consensus"]
 }
 
-current_config = fedweight
+defkt = {
+    "algo": "defkt",
+    "exp_id": "defkt",
+    "central_client": 1,
+    "mask_last_layer": False,
+    "fine_tune_last_layer": False,
+    "epochs_per_round": 5,
+    "rounds": 210,
+    "epochs": 210,
+    "model": "resnet10",
+    "model_lr": 1e-4,
+    "batch_size": 16,
+    "num_teachers": 1,
+    # params for model
+    "position": 0,
+    "inp_shape": [128, 3, 32, 32],
+    "exp_keys": [],
+}
+
+current_config = defkt
