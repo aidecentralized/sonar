@@ -5,11 +5,9 @@ This module manages the orchestration of federated learning experiments.
 
 import os
 import random
+from typing import Any, Dict
 
-from mpi4py import MPI
 import torch
-
-import numpy as np
 
 import random
 import numpy
@@ -32,11 +30,8 @@ from algos.fl_data_repr import FedDataRepClient, FedDataRepServer
 from algos.fl_val import FedValClient, FedValServer
 
 from utils.communication.comm_utils import CommunicationManager
-from utils.log_utils import check_and_create_path
 from utils.config_utils import load_config, process_config
-
 from utils.log_utils import copy_source_code, check_and_create_path
-from utils.config_utils import load_config, process_config
 import os
 
 
@@ -65,10 +60,10 @@ algo_map = {
     "fedval": [FedValServer, FedValClient],
 }
 
-def get_node(config: dict, rank, comm_utils) -> BaseNode:
+def get_node(config: Dict[str, Any], rank: int, comm_utils: CommunicationManager) -> BaseNode:
     algo_name = config["algo"]
     return algo_map[algo_name][rank > 0](config, comm_utils)
-  
+
 class Scheduler():
     """ Manages the overall orchestration of experiments
     """
@@ -77,10 +72,12 @@ class Scheduler():
         pass
 
     def install_config(self) -> None:
-        self.config = process_config(self.config)
+        self.config: Dict[str, Any] = process_config(self.config)
 
-    def assign_config_by_path(self, sys_config_path, algo_config_path):
+    def assign_config_by_path(self, sys_config_path: Dict[str, Any], algo_config_path: Dict[str, Any], rank: int|None = None) -> None:
         self.sys_config = load_config(sys_config_path)
+        if rank is not None:
+            self.sys_config["comm"]["rank"] = rank
         self.algo_config = load_config(algo_config_path)
         self.merge_configs()
 
@@ -89,13 +86,13 @@ class Scheduler():
         self.config.update(self.sys_config)
         self.config.update(self.algo_config)
 
-    def initialize(self, copy_souce_code=True) -> None:
+    def initialize(self, copy_souce_code: bool=True) -> None:
         assert self.config is not None, "Config should be set when initializing"
         self.communication = CommunicationManager(self.config)
 
         # Base clients modify the seed later on
         seed = self.config["seed"]
-        torch.manual_seed(seed)
+        torch.manual_seed(seed) # type: ignore
         random.seed(seed)
         numpy.random.seed(seed)
 

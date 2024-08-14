@@ -1,37 +1,32 @@
 from collections import OrderedDict
-from typing import List
+import sys
+from typing import Any, Dict, List
 from torch import Tensor
-import torch.nn as nn
+from utils.communication.comm_utils import CommunicationManager
 from utils.log_utils import LogUtils
 from algos.base_class import BaseClient, BaseServer
 import os
 import time
 
 class FedAvgClient(BaseClient):
-    def __init__(self, config, comm_utils) -> None:
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
         super().__init__(config, comm_utils)
         self.config = config
-        self.folder_deletion_signal = config["folder_deletion_signal_path"]
 
-        while not os.path.exists(self.folder_deletion_signal):
-            print("Existing experiment already present, waiting user input, enter 'r' or 'e'...")
-            time.sleep(5)
-
-        # Once the signal file exists, read its contents
-        with open(self.folder_deletion_signal, "r") as signal_file:
-            mode = signal_file.read().strip()
-
-        if mode == 'r' or mode == 'new':
-            try:
-                config['log_path'] = f"{config['log_path']}/client_{self.node_id}"
-                os.makedirs(config['log_path'], exist_ok=True)
-            except FileExistsError:
-                pass
+        try:
+            config['log_path'] = f"{config['log_path']}/node_{self.node_id}"
+            os.makedirs(config['log_path'])
+        except FileExistsError:
+            color_code = "\033[91m" # Red color
+            reset_code = "\033[0m"   # Reset to default color
+            print(f"{color_code}Log directory for the node {self.node_id} already exists in {config['log_path']}")
+            print(f"Exiting to prevent accidental overwrite{reset_code}")
+            sys.exit(1)
 
         config['load_existing'] = False
         self.client_log_utils = LogUtils(config)
 
-    def local_train(self, round):
+    def local_train(self, round: int, **kwargs: Any):
         """
         Train the model locally
         """
@@ -85,7 +80,7 @@ class FedAvgClient(BaseClient):
 
 
 class FedAvgServer(BaseServer):
-    def __init__(self, config, comm_utils) -> None:
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
         super().__init__(config, comm_utils)
         # self.set_parameters()
         self.config = config
@@ -125,6 +120,7 @@ class FedAvgServer(BaseServer):
         Set the model
         """
         self.comm_utils.broadcast(representation)
+        print("braodcasted")
         self.model.load_state_dict(representation)
 
     def test(self) -> float:

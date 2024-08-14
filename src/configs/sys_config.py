@@ -1,7 +1,7 @@
 # System Configuration
 # TODO: Set up multiple non-iid configurations here. The goal of a separate system config
 # is to simulate different real-world scenarios without changing the algorithm configuration.
-system_config = {
+mpi_system_config = {
     "comm": {
         "type": "MPI"
     },
@@ -40,4 +40,21 @@ object_detect_system_config = {
     "folder_deletion_signal_path":"./expt_dump/folder_deletion.signal"
 }
 
-current_config = object_detect_system_config
+grpc_system_config = {
+    "comm": {
+        "type": "GRPC",
+        "all_peer_ids": ["localhost:50051", "localhost:50052", "localhost:50053", "localhost:50054", "localhost:50055"],
+    },
+    "num_users": 4,
+    "dset": "cifar10",
+    "dump_dir": "./expt_dump/",
+    "dpath": "./datasets/imgs/cifar10/",
+    "seed": 2,
+    "device_ids": {"node_0": [5], "node_1": [5],"node_2": [5], "node_3": [2], "node_4": [0]},
+    "samples_per_user": 500,
+    "train_label_distribution": "iid",
+    "test_label_distribution": "iid",
+    "folder_deletion_signal_path":"./expt_dump/folder_deletion.signal"
+}
+
+current_config = grpc_system_config

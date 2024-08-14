@@ -36,7 +36,7 @@ def deprocess(img):
     return img.type(torch.uint8)
 
 
-def check_and_create_path(path, folder_deletion_path):
+def check_and_create_path(path: str, folder_deletion_path: str|None=None):
     """
     Checks if the specified path exists and prompts the user for action if it does.
     Creates the directory if it does not exist.
@@ -45,26 +45,11 @@ def check_and_create_path(path, folder_deletion_path):
         path (str): Path to check and create if necessary.
     """
     if os.path.isdir(path):
-        print(f"Experiment in {path} already present")
-        done = False
-        while not done:
-            # Color the input prompt
-            color_code = "\033[94m"  # Blue text
-            reset_code = "\033[0m"   # Reset to default color
-            # Highlighted prompt in blue
-            inp = input(f"{color_code}Press e to exit, r to replace it: {reset_code}")
-
-            if inp == "e":
-                sys.exit()
-            elif inp == "r":
-                done = True
-                shutil.rmtree(path)
-                os.makedirs(path)
-                with open(folder_deletion_path, "w") as signal_file:
-                    #Folder deletion complete signal.
-                    signal_file.write("r")
-            else:
-                print("Input not understood")
+        color_code = "\033[94m"  # Blue text
+        reset_code = "\033[0m"   # Reset to default color
+        print(f"{color_code}Experiment in {path} already present. Exiting.")
+        print(f"Please do: rm -rf {path} to delete the folder.{reset_code}")
+        sys.exit()
     else:
         os.makedirs(path)
         with open(folder_deletion_path, "w") as signal_file:

@@ -31,3 +31,8 @@ Client Metrics
 
 Server Metrics
 <img src="../resources/images/Server_metrics.png" width=50% height=50%>
+
+### Debugging instructions
+GRPC simulation starts a lot of threads and even if one of them fail right now then you will have to kill all of them and start all over.
+So, here is a command to get the pid of all the threads and kill them all at once:
+`for pid in $(ps aux|grep 'python main.py -r' | cut -b 10-16); do kill -9 $pid; done`

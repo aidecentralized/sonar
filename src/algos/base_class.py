@@ -369,7 +369,7 @@ class BaseClient(BaseNode):
         # TODO: fix print_data_summary
         # self.print_data_summary(train_dset, test_dset, val_dset=val_dset)
 
-    def local_train(self, dataset, **kwargs):
+    def local_train(self, round: int, **kwargs: Any) -> None:
         """
         Train the model locally
         """

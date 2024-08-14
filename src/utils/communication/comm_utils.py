@@ -34,16 +34,18 @@ class CommunicationManager:
     def get_rank(self):
         if self.comm_type == CommunicationType.MPI:
             return self.comm.rank
+        elif self.comm_type == CommunicationType.GRPC:
+            return self.comm.rank
         else:
             raise NotImplementedError("Rank not implemented for communication type", self.comm_type)
 
-    def send(self, dest, data):
+    def send(self, dest:str|int, data:Any):
         self.comm.send(dest, data)
 
-    def receive(self, node_ids):
+    def receive(self, node_ids: str|int) -> Any:
         return self.comm.receive(node_ids)
 
-    def broadcast(self, data):
+    def broadcast(self, data: Any):
         self.comm.broadcast(data)
 
     def all_gather(self):
