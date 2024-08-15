@@ -39,9 +39,29 @@ class CommunicationServerStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.SendData = channel.unary_unary(
-                '/CommunicationServer/SendData',
+        self.send_data = channel.unary_unary(
+                '/CommunicationServer/send_data',
                 request_serializer=comm__pb2.Data.SerializeToString,
+                response_deserializer=comm__pb2.Empty.FromString,
+                _registered_method=True)
+        self.get_rank = channel.unary_unary(
+                '/CommunicationServer/get_rank',
+                request_serializer=comm__pb2.Empty.SerializeToString,
+                response_deserializer=comm__pb2.Rank.FromString,
+                _registered_method=True)
+        self.update_port = channel.unary_unary(
+                '/CommunicationServer/update_port',
+                request_serializer=comm__pb2.PeerId.SerializeToString,
+                response_deserializer=comm__pb2.Empty.FromString,
+                _registered_method=True)
+        self.send_peer_ids = channel.unary_unary(
+                '/CommunicationServer/send_peer_ids',
+                request_serializer=comm__pb2.PeerIds.SerializeToString,
+                response_deserializer=comm__pb2.Empty.FromString,
+                _registered_method=True)
+        self.send_quorum = channel.unary_unary(
+                '/CommunicationServer/send_quorum',
+                request_serializer=comm__pb2.Quorum.SerializeToString,
                 response_deserializer=comm__pb2.Empty.FromString,
                 _registered_method=True)
 
@@ -49,7 +69,31 @@ class CommunicationServerStub(object):
 class CommunicationServerServicer(object):
     """Missing associated documentation comment in .proto file."""
 
-    def SendData(self, request, context):
+    def send_data(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def get_rank(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def update_port(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def send_peer_ids(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def send_quorum(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -58,9 +102,29 @@ class CommunicationServerServicer(object):
 
 def add_CommunicationServerServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'SendData': grpc.unary_unary_rpc_method_handler(
-                    servicer.SendData,
+            'send_data': grpc.unary_unary_rpc_method_handler(
+                    servicer.send_data,
                     request_deserializer=comm__pb2.Data.FromString,
+                    response_serializer=comm__pb2.Empty.SerializeToString,
+            ),
+            'get_rank': grpc.unary_unary_rpc_method_handler(
+                    servicer.get_rank,
+                    request_deserializer=comm__pb2.Empty.FromString,
+                    response_serializer=comm__pb2.Rank.SerializeToString,
+            ),
+            'update_port': grpc.unary_unary_rpc_method_handler(
+                    servicer.update_port,
+                    request_deserializer=comm__pb2.PeerId.FromString,
+                    response_serializer=comm__pb2.Empty.SerializeToString,
+            ),
+            'send_peer_ids': grpc.unary_unary_rpc_method_handler(
+                    servicer.send_peer_ids,
+                    request_deserializer=comm__pb2.PeerIds.FromString,
+                    response_serializer=comm__pb2.Empty.SerializeToString,
+            ),
+            'send_quorum': grpc.unary_unary_rpc_method_handler(
+                    servicer.send_quorum,
+                    request_deserializer=comm__pb2.Quorum.FromString,
                     response_serializer=comm__pb2.Empty.SerializeToString,
             ),
     }
@@ -75,7 +139,7 @@ class CommunicationServer(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def SendData(request,
+    def send_data(request,
             target,
             options=(),
             channel_credentials=None,
@@ -88,8 +152,116 @@ class CommunicationServer(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/CommunicationServer/SendData',
+            '/CommunicationServer/send_data',
             comm__pb2.Data.SerializeToString,
+            comm__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def get_rank(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/CommunicationServer/get_rank',
+            comm__pb2.Empty.SerializeToString,
+            comm__pb2.Rank.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def update_port(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/CommunicationServer/update_port',
+            comm__pb2.PeerId.SerializeToString,
+            comm__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def send_peer_ids(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/CommunicationServer/send_peer_ids',
+            comm__pb2.PeerIds.SerializeToString,
+            comm__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def send_quorum(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/CommunicationServer/send_quorum',
+            comm__pb2.Quorum.SerializeToString,
             comm__pb2.Empty.FromString,
             options,
             channel_credentials,

@@ -30,7 +30,7 @@ print("Sys config loaded")
 # 1. find the number of users in the system configuration
 # 2. start separate processes by running python main.py for each user
 
-num_users = sys_config["num_users"] + 1 # +1 for the server
+num_users = sys_config["num_users"] + 1 # +1 for the super-node
 for i in range(num_users):
     print(f"Starting process for user {i}")
     # start a Popen process

@@ -1,7 +1,11 @@
 syntax = "proto3";
 
 service CommunicationServer {
-  rpc SendData (Data) returns (Empty) {}
+  rpc send_data (Data) returns (Empty) {}
+  rpc get_rank (Empty) returns (Rank) {}
+  rpc update_port (PeerId) returns (Empty) {}
+  rpc send_peer_ids (PeerIds) returns (Empty) {}
+  rpc send_quorum (Quorum) returns (Empty) {}
 }
 
 message Empty {}
@@ -13,4 +17,26 @@ message Model {
 message Data {
   string id = 1;
   Model model = 2;
+}
+
+message Rank {
+  int32 rank = 1;
+}
+
+message Port {
+  int32 port = 1;
+}
+
+message PeerId {
+  Rank rank = 1;
+  Port port = 2;
+  string ip = 3;
+}
+
+message PeerIds {
+  map<int32, PeerId> peer_ids = 1;
+}
+
+message Quorum {
+  bool quorum = 1;
 }
