@@ -89,7 +89,7 @@ class BaseNode(ABC):
             optim = torch.optim.SGD
         else:
             raise ValueError("Unknown optimizer: {}.".format(optim_name))
-        num_classes = self.dset_obj.NUM_CLS
+        num_classes = self.dset_obj.num_cls
         num_channels = self.dset_obj.num_channels
         self.model = self.model_utils.get_model(
             config["model"],
@@ -218,6 +218,7 @@ class BaseClient(BaseNode):
 
         samples_per_user = config["samples_per_user"]
         batch_size = config["batch_size"]
+        print(f"samples per user: {samples_per_user}, batch size: {batch_size}")
 
         # Support user specific dataset
         if isinstance(config["dset"], dict):
@@ -268,7 +269,7 @@ class BaseClient(BaseNode):
                     cls_priors = []
                     dsets = list(config["dset"].values())
                     for _ in dsets:
-                        n_cls = self.dset_obj.NUM_CLS
+                        n_cls = self.dset_obj.num_cls
                         cls_priors.append(
                             np.random.dirichlet(
                                 alpha=[alpha] * n_cls, size=len(users_with_same_dset)
@@ -301,6 +302,7 @@ class BaseClient(BaseNode):
                     config["train_label_distribution"]
                 )
             )
+        print("training distribution")
 
         if self.dset.startswith("domainnet"):
             train_transform = T.Compose(
@@ -355,12 +357,15 @@ class BaseClient(BaseNode):
                     config["test_label_distribution"]
                 )
             )
+        print("test distribution")
 
         if self.dset.startswith("domainnet"):
             test_dset = CacheDataset(test_dset)
 
         self._test_loader = DataLoader(test_dset, batch_size=batch_size)
+        print("summarizing data")
         self.print_data_summary(train_dset, test_dset, val_dset=val_dset)
+        print("done summarizing")
 
     def local_train(self, dataset, **kwargs):
         """
@@ -387,6 +392,7 @@ class BaseClient(BaseNode):
         """
         Print the data summary
         """
+
         train_sample_per_class = {}
         for x, y in train_test:
             train_sample_per_class[y] = train_sample_per_class.get(y, 0) + 1
@@ -401,15 +407,22 @@ class BaseClient(BaseNode):
             test_sample_per_class[y] = test_sample_per_class.get(y, 0) + 1
 
         print("Node: {} data distribution summary".format(self.node_id))
+        print(type(train_sample_per_class))
+        for key, value in train_sample_per_class.items():
+            print(key, type(value), value)
+            break
+        # print(
+        #     "Train samples per class: {}".format(sorted(train_sample_per_class.items()))
+        # )
         print(
-            "Train samples per class: {}".format(sorted(train_sample_per_class.items()))
+            "Train samples per class: {}".format(train_sample_per_class.items())
         )
         if val_dset is not None:
             print(
-                "Val samples per class: {}".format(sorted(val_sample_per_class.items()))
+                "Val samples per class: {}".format((val_sample_per_class.items()))
             )
         print(
-            "Test samples per class: {}".format(sorted(test_sample_per_class.items()))
+            "Test samples per class: {}".format((test_sample_per_class.items()))
         )
 
 
