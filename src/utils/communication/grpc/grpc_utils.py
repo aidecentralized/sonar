@@ -3,6 +3,9 @@ import io
 import torch
 
 def serialize_model(state_dict: OrderedDict[str, torch.Tensor]) -> bytes:
+    # put every parameter on cpu first
+    for key in state_dict.keys():
+        state_dict[key] = state_dict[key].to('cpu')
     buffer = io.BytesIO()
     torch.save(state_dict, buffer) # type: ignore
     buffer.seek(0)

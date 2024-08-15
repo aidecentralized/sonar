@@ -9,11 +9,11 @@ import logging
 import sys
 from glob import glob
 from shutil import copytree, copy2
-from PIL import Image
+from typing import Any, Dict
 import torch
-import torchvision.transforms as T
-from torchvision.utils import make_grid, save_image
-from tensorboardX import SummaryWriter
+import torchvision.transforms as T # type: ignore
+from torchvision.utils import make_grid, save_image # type: ignore
+from tensorboardX import SummaryWriter # type: ignore
 import numpy as np
 
 
@@ -57,7 +57,7 @@ def check_and_create_path(path: str, folder_deletion_path: str|None=None):
             signal_file.write("new")
 
 
-def copy_source_code(config: dict) -> None:
+def copy_source_code(config: Dict[str, Any]) -> None:
     """
     Copy source code to experiment folder for reproducibility.
 
@@ -105,7 +105,7 @@ class LogUtils:
     """
     Utility class for logging and saving experiment data.
     """
-    def __init__(self, config) -> None:
+    def __init__(self, config: Dict[str, Any]) -> None:
         log_dir = config["log_path"]
         load_existing = config["load_existing"]
         log_format = (
@@ -129,7 +129,7 @@ class LogUtils:
         """
         self.summary_file = open(f"{self.log_dir}/summary.txt", "w", encoding="utf-8")
 
-    def init_tb(self, load_existing):
+    def init_tb(self, load_existing: bool):
         """
         Initialize TensorBoard logging.
 
@@ -149,7 +149,7 @@ class LogUtils:
         if not os.path.exists(npy_path) or not os.path.isdir(npy_path):
             os.makedirs(npy_path)
 
-    def log_summary(self, text):
+    def log_summary(self, text: str):
         """
         Add summary text to the summary file for logging.
         """
@@ -159,7 +159,7 @@ class LogUtils:
         else:
             raise ValueError("Summary file is not initialized. Call init_summary() first.")
             
-    def log_image(self, imgs: torch.Tensor, key, iteration):
+    def log_image(self, imgs: torch.Tensor, key: str, iteration: int):
         """
         Log image to file and TensorBoard.
 
@@ -172,7 +172,7 @@ class LogUtils:
         save_image(grid_img, f"{self.log_dir}/{iteration}_{key}.png")
         self.writer.add_image(key, grid_img.numpy(), iteration)
 
-    def log_console(self, msg):
+    def log_console(self, msg: str):
         """
         Log a message to the console.
 
@@ -181,7 +181,7 @@ class LogUtils:
         """
         logging.info(msg)
 
-    def log_tb(self, key, value, iteration):
+    def log_tb(self, key: str, value: float|int, iteration: int):
         """
         Log a scalar value to TensorBoard.
 
@@ -190,9 +190,9 @@ class LogUtils:
             value (float): Value to log.
             iteration (int): Current iteration number.
         """
-        self.writer.add_scalar(key, value, iteration)
+        self.writer.add_scalar(key, value, iteration) # type: ignore
 
-    def log_npy(self, key, value):
+    def log_npy(self, key: str, value: np.ndarray):
         """
         Save a numpy array to file.
 
@@ -202,7 +202,7 @@ class LogUtils:
         """
         np.save(f"{self.log_dir}/npy/{key}.npy", value)
 
-    def log_max_stats_per_client(self, stats_per_client, round_step, metric):
+    def log_max_stats_per_client(self, stats_per_client: np.ndarray, round_step: int, metric: str):
         """
         Log maximum statistics per client.
 

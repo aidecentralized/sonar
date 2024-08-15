@@ -4,7 +4,7 @@ import numpy
 from torch.utils.data import DataLoader, Subset
 
 from collections import OrderedDict
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from torch import Tensor
 import copy
 import random
@@ -28,13 +28,13 @@ from utils.community_utils import (
     get_dset_balanced_communities,
     get_dset_communities,
 )
-import torchvision.transforms as T
+import torchvision.transforms as T # type: ignore
 import os
 
 from yolo import YOLOLoss
 
 class BaseNode(ABC):
-    def __init__(self, config, comm_utils: CommunicationManager) -> None:
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
         self.comm_utils = comm_utils
         self.node_id = self.comm_utils.get_rank()
 
@@ -54,13 +54,13 @@ class BaseNode(ABC):
         if isinstance(config["dset"], dict):
             if self.node_id != 0:
                 config["dset"].pop("0")
-            self.dset = config["dset"][str(self.node_id)]
+            self.dset = str(config["dset"][str(self.node_id)])
             config["dpath"] = config["dpath"][self.dset]
         else:
             self.dset = config["dset"]
 
         self.setup_cuda(config)
-        self.model_utils = ModelUtils()
+        self.model_utils = ModelUtils(self.device)
 
         self.dset_obj = get_dataset(self.dset, dpath=config["dpath"])
         self.set_constants()
@@ -68,7 +68,7 @@ class BaseNode(ABC):
     def set_constants(self):
         self.best_acc = 0.0
 
-    def setup_cuda(self, config):
+    def setup_cuda(self, config: Dict[str, Any]):
         # Need a mapping from rank to device id
         device_ids_map = config["device_ids"]
         node_name = "node_{}".format(self.node_id)
@@ -82,7 +82,7 @@ class BaseNode(ABC):
             self.device = torch.device("cpu")
             print("Using CPU")
 
-    def set_model_parameters(self, config):
+    def set_model_parameters(self, config: Dict[str, Any]):
         # Model related parameters
         optim_name = config.get("optimizer", "adam")
         if optim_name == "adam":
@@ -149,7 +149,7 @@ class BaseNode(ABC):
             self.log_utils.log_console("Communities: {}".format(self.communities))
 
     @abstractmethod
-    def run_protocol(self):
+    def run_protocol(self) -> None:
         raise NotImplementedError
 
 
@@ -375,13 +375,13 @@ class BaseClient(BaseNode):
         """
         raise NotImplementedError
 
-    def local_test(self, dataset, **kwargs):
+    def local_test(self, **kwargs: Any) -> float | Tuple[float, float] | None:
         """
         Test the model locally
         """
         raise NotImplementedError
 
-    def get_representation(self, **kwargs):
+    def get_representation(self, **kwargs: Any) -> OrderedDict[str, Tensor] | List[Tensor] | Tensor:
         """
         Share the model representation
         """
@@ -445,13 +445,13 @@ class BaseServer(BaseNode):
         batch_size = config["batch_size"]
         self._test_loader = DataLoader(test_dset, batch_size=batch_size)
 
-    def aggregate(self, representation_list, **kwargs):
+    def aggregate(self, representation_list: List[OrderedDict[str, Tensor]], **kwargs: Any) -> OrderedDict[str, Tensor]:
         """
         Aggregate the knowledge from the users
         """
         raise NotImplementedError
 
-    def test(self, dataset, **kwargs):
+    def test(self, **kwargs: Any) -> List[float]:
         """
         Test the model on the server
         """

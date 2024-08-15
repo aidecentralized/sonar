@@ -153,7 +153,7 @@ class GRPCCommunication(CommunicationInterface):
     def register(self):
         with grpc.insecure_channel(self.super_node_host) as channel: # type: ignore
             stub = comm_pb2_grpc.CommunicationServerStub(channel)
-            max_tries = 5
+            max_tries = 10
             while max_tries > 0:
                 try:
                     self.rank = stub.get_rank(comm_pb2.Empty()).rank # type: ignore
@@ -203,10 +203,12 @@ class GRPCCommunication(CommunicationInterface):
                 sys.exit(1)
         else:
             quorum_threshold = self.num_users + 1 # +1 for the super node
-            while self.get_registered_users(self.servicer.peer_ids) < quorum_threshold:
+            num_registered = self.get_registered_users(self.servicer.peer_ids)
+            while num_registered < quorum_threshold:
                 # sleep for 5 seconds
-                print(f"Waiting for {quorum_threshold} users to register")
+                print(f"Waiting for {quorum_threshold} users to register, {num_registered} have registered so far")
                 time.sleep(5)
+                num_registered = self.get_registered_users(self.servicer.peer_ids)
                 # TODO: Implement a timeout here and if the timeout is reached
                 # then set quorum to False for all registered users
                 # and exit the program

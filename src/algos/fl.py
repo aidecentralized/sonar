@@ -45,17 +45,17 @@ class FedAvgClient(BaseClient):
         self.client_log_utils.log_tb(f"train_loss/client{self.node_id}", avg_loss, round)
         self.client_log_utils.log_tb(f"train_accuracy/client{self.node_id}", avg_accuracy, round)
 
-    def local_test(self, **kwargs):
+    def local_test(self, **kwargs: Any):
         """
         Test the model locally, not to be used in the traditional FedAvg
         """
         pass
 
-    def get_representation(self) -> OrderedDict[str, Tensor]:
+    def get_representation(self, **kwargs: Any) -> OrderedDict[str, Tensor]:
         """
         Share the model weights
         """
-        return self.model.state_dict()
+        return self.model.state_dict() # type: ignore
 
     def set_representation(self, representation: OrderedDict[str, Tensor]):
         """
@@ -70,11 +70,11 @@ class FedAvgClient(BaseClient):
             self.local_train(round)
             self.local_test()
             repr = self.get_representation()
-            # self.client_log_utils.log_summary("Client {} sending done signal to {}".format(self.node_id, self.server_node))
+            self.client_log_utils.log_summary("Client {} sending done signal to {}".format(self.node_id, self.server_node))
             self.comm_utils.send(self.server_node, repr)
-            # self.client_log_utils.log_summary("Client {} waiting to get new model from {}".format(self.node_id, self.server_node))
+            self.client_log_utils.log_summary("Client {} waiting to get new model from {}".format(self.node_id, self.server_node))
             repr = self.comm_utils.receive(self.server_node)
-            # self.client_log_utils.log_summary("Client {} received new model from {}".format(self.node_id, self.server_node))
+            self.client_log_utils.log_summary("Client {} received new model from {}".format(self.node_id, self.server_node))
             self.set_representation(repr)
             # self.client_log_utils.log_summary("Round {} done for Client {}".format(round, self.node_id))
 
@@ -90,32 +90,48 @@ class FedAvgServer(BaseServer):
         )
         self.folder_deletion_signal = config["folder_deletion_signal_path"]
 
+    # def fed_avg(self, model_wts: List[OrderedDict[str, Tensor]]):
+    #     # All models are sampled currently at every round
+    #     # Each model is assumed to have equal amount of data and hence
+    #     # coeff is same for everyone
+    #     num_users = len(model_wts)
+    #     coeff = 1 / num_users # this assumes each node has equal amount of data
+    #     avgd_wts: OrderedDict[str, Tensor] = OrderedDict()
+    #     first_model = model_wts[0]
+
+    #     for node_num in range(num_users):
+    #         local_wts = model_wts[node_num]
+    #         for key in first_model.keys():
+    #             if node_num == 0:
+    #                 avgd_wts[key] = coeff * local_wts[key].to('cpu')
+    #             else:
+    #                 avgd_wts[key] += coeff * local_wts[key].to('cpu')
+    #     # put the model back to the device
+    #     for key in avgd_wts.keys():
+    #         avgd_wts[key] = avgd_wts[key].to(self.device)
+    #     return avgd_wts
+
     def fed_avg(self, model_wts: List[OrderedDict[str, Tensor]]):
-        # All models are sampled currently at every round
-        # Each model is assumed to have equal amount of data and hence
-        # coeff is same for everyone
         num_users = len(model_wts)
         coeff = 1 / num_users
-        avgd_wts = OrderedDict()
-        first_model = model_wts[0]
+        avgd_wts: OrderedDict[str, Tensor] = OrderedDict()
 
-        for node_num in range(num_users):
-            local_wts = model_wts[node_num]
-            for key in first_model.keys():
-                if node_num == 0:
-                    avgd_wts[key] = coeff * local_wts[key].to(self.device)
-                else:
-                    avgd_wts[key] += coeff * local_wts[key].to(self.device)
+        for key in model_wts[0].keys():
+            avgd_wts[key] = sum(coeff * m[key] for m in model_wts) # type: ignore
+
+        # Move to GPU only after averaging
+        for key in avgd_wts.keys():
+            avgd_wts[key] = avgd_wts[key].to(self.device)
         return avgd_wts
 
-    def aggregate(self, representation_list: List[OrderedDict[str, Tensor]]):
+    def aggregate(self, representation_list: List[OrderedDict[str, Tensor]], **kwargs: Any) -> OrderedDict[str, Tensor]:
         """
         Aggregate the model weights
         """
         avg_wts = self.fed_avg(representation_list)
         return avg_wts
 
-    def set_representation(self, representation):
+    def set_representation(self, representation: OrderedDict[str, Tensor]):
         """
         Set the model
         """
@@ -123,7 +139,7 @@ class FedAvgServer(BaseServer):
         print("braodcasted")
         self.model.load_state_dict(representation)
 
-    def test(self) -> float:
+    def test(self, **kwargs: Any) -> List[float]:
         """
         Test the model on the server
         """
@@ -138,12 +154,13 @@ class FedAvgServer(BaseServer):
         if test_acc > self.best_acc:
             self.best_acc = test_acc
             self.model_utils.save_model(self.model, self.model_save_path)
-        return test_loss, test_acc, time_taken
+        return [test_loss, test_acc, time_taken]
 
     def single_round(self):
         """
         Runs the whole training procedure
         """
+        # calculate how much memory torch is occupying right now
         # self.log_utils.log_console("Server waiting for all clients to finish")
         reprs = self.comm_utils.all_gather()
         # self.log_utils.log_console("Server received all clients done signal")
@@ -166,6 +183,6 @@ class FedAvgServer(BaseServer):
             self.log_utils.log_tb(f"test_acc/clients", acc, round)
             self.log_utils.log_tb(f"test_loss/clients", loss, round)
             self.log_utils.log_console("Round: {} test_acc:{:.4f}, test_loss:{:.4f}, time taken {:.2f} seconds".format(round, acc, loss, time_taken))
-            self.log_utils.log_summary("Round: {} test_acc:{:.4f}, test_loss:{:.4f}, time taken {:.2f} seconds".format(round, acc, loss, time_taken))
+            # self.log_utils.log_summary("Round: {} test_acc:{:.4f}, test_loss:{:.4f}, time taken {:.2f} seconds".format(round, acc, loss, time_taken))
             self.log_utils.log_console("Round {} complete".format(round))
             self.log_utils.log_summary("Round {} complete".format(round,))

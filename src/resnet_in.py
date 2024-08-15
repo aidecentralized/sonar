@@ -5,6 +5,7 @@
 This module implements ResNet models for ImageNet classification.
 """
 
+from typing import Any
 from torch import nn
 from torch.hub import load_state_dict_from_url
 
@@ -297,7 +298,7 @@ def _resnet(
     return model
 
 
-def resnet18(pretrained=False, progress=True, **kwargs):
+def resnet18(pretrained:bool=False, progress:bool=True, **kwargs: Any):
     r"""ResNet-18 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
     Args:
@@ -309,7 +310,7 @@ def resnet18(pretrained=False, progress=True, **kwargs):
 
 
 
-def resnet34(pretrained=False, progress=True, **kwargs):
+def resnet34(pretrained:bool=False, progress: bool=True, **kwargs: Any):
     r"""ResNet-34 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
     Args:
