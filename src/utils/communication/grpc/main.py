@@ -21,6 +21,15 @@ import comm_pb2_grpc as comm_pb2_grpc
 from utils.communication.interface import CommunicationInterface
 
 
+# TODO: Several changes needed to improve the quality of the code
+# 1. We need to improve comm.proto and get rid of singletons like Rank, Port etc.
+# 2. Some parts of the code are heavily nested and need to be refactored
+# 3. Insert try-except blocks wherever communication is involved
+# 4. Probably a good idea to move the Servicer class to a separate file
+# 5. Not needed for benchmarking but for the system to be robust, we need to implement timeouts and fault tolerance
+# 6. Peer_ids should be indexed by a unique identifier
+# 7. Try to get rid of type: ignore as much as possible
+
 def is_port_available(port: int) -> bool:
     """
     Check if a port is available for use.

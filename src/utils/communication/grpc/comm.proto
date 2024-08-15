@@ -1,3 +1,5 @@
+// To generate the gRPC code, run the following command:
+// python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. comm.proto --pyi_out=.
 syntax = "proto3";
 
 service CommunicationServer {
