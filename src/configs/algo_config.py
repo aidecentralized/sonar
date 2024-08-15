@@ -2,7 +2,7 @@
 
 iid_dispfl_clients_new = {
     "algo": "dispfl",
-    "exp_id": 200,
+    "exp_id": 12,
     "exp_type": "iid_dispfl",
     "neighbors": 2,
     "active_rate": 0.8,
@@ -18,8 +18,8 @@ iid_dispfl_clients_new = {
 
 traditional_fl = {
     "algo": "fedavg",
-    "exp_id": 10,
-    "exp_type": "test_object_detect3",
+    "exp_id": 12,
+    "exp_type": "test_object_detect4",
     # Learning setup
     "epochs": 50,
     "model": "yolo",
