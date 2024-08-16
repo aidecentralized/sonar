@@ -395,7 +395,7 @@ class PascalDataset:
         )
 
         self.test_dset = Pascal(
-            csv_file=f"{dpath}ImageSets/Main/val.txt",
+            csv_file=f"{dpath}ImageSets/Main/val_smol.txt",
             image_dir=f"{dpath}JPEGImages/",
             label_dir=f"{dpath}Annotations/",
             image_size=self.image_size, 

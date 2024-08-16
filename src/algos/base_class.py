@@ -31,6 +31,8 @@ from utils.community_utils import (
 import torchvision.transforms as T
 import os
 
+from yolo import YOLOLoss
+
 class BaseNode(ABC):
     def __init__(self, config) -> None:
         self.comm_utils = CommUtils()
@@ -105,7 +107,10 @@ class BaseNode(ABC):
             lr=config["model_lr"],
             weight_decay=config.get("weight_decay", 0),
         )
-        self.loss_fn = torch.nn.CrossEntropyLoss()
+        if config.get('dset') == "pascal":
+            self.loss_fn = YOLOLoss()
+        else:
+            self.loss_fn = torch.nn.CrossEntropyLoss()
 
     def set_shared_exp_parameters(self, config):
 
@@ -302,7 +307,6 @@ class BaseClient(BaseNode):
                     config["train_label_distribution"]
                 )
             )
-        print("training distribution")
 
         if self.dset.startswith("domainnet"):
             train_transform = T.Compose(
@@ -357,15 +361,13 @@ class BaseClient(BaseNode):
                     config["test_label_distribution"]
                 )
             )
-        print("test distribution")
 
         if self.dset.startswith("domainnet"):
             test_dset = CacheDataset(test_dset)
 
         self._test_loader = DataLoader(test_dset, batch_size=batch_size)
-        print("summarizing data")
-        self.print_data_summary(train_dset, test_dset, val_dset=val_dset)
-        print("done summarizing")
+        # TODO: fix print_data_summary
+        # self.print_data_summary(train_dset, test_dset, val_dset=val_dset)
 
     def local_train(self, dataset, **kwargs):
         """
@@ -394,35 +396,40 @@ class BaseClient(BaseNode):
         """
 
         train_sample_per_class = {}
+        i = 0
         for x, y in train_test:
             train_sample_per_class[y] = train_sample_per_class.get(y, 0) + 1
+            print("train count: ", i)
+            i += 1
 
+        i = 0
         if val_dset is not None:
             val_sample_per_class = {}
             for x, y in val_dset:
                 val_sample_per_class[y] = val_sample_per_class.get(y, 0) + 1
-
+                print("val count: ", i)
+                i += 1
+        i = 0
         test_sample_per_class = {}
         for x, y in test_dset:
             test_sample_per_class[y] = test_sample_per_class.get(y, 0) + 1
+            print("test count: ", i)
+            i += 1
 
         print("Node: {} data distribution summary".format(self.node_id))
-        print(type(train_sample_per_class))
-        for key, value in train_sample_per_class.items():
-            print(key, type(value), value)
-            break
-        # print(
-        #     "Train samples per class: {}".format(sorted(train_sample_per_class.items()))
-        # )
+        print(type(train_sample_per_class.items()))
         print(
-            "Train samples per class: {}".format(train_sample_per_class.items())
+            "Train samples per class: {}".format(sorted(train_sample_per_class.items()))
+        )
+        print(
+            "Train samples per class: {}".format(len(train_sample_per_class.items()))
         )
         if val_dset is not None:
             print(
-                "Val samples per class: {}".format((val_sample_per_class.items()))
+                "Val samples per class: {}".format(len(val_sample_per_class.items()))
             )
         print(
-            "Test samples per class: {}".format((test_sample_per_class.items()))
+            "Test samples per class: {}".format(len(test_sample_per_class.items()))
         )
 
 
