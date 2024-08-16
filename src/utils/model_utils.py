@@ -57,7 +57,7 @@ class ModelUtils():
             model = resnet_in.resnet50(
                 pretrained=True, **kwargs) if pretrained else resnet.resnet50(**kwargs)
         elif model_name == "yolo":
-            model = yolo.yolo()
+            model = yolo.yolo(pretrained=False)
         else:
             raise ValueError(f"Model name {model_name} not supported")
         model = model.to(device)
@@ -74,13 +74,13 @@ class ModelUtils():
      float]:
         """TODO: generate docstring
         """
+        print("started training with dset ", self.dset)
         model.train()
-        train_loss = 0
-        train_losses = []
-        correct = 0
-        for batch_idx, (data, target) in enumerate(dloader):
 
-            if self.dset == "pascal":
+        if self.dset == "pascal":
+            losses = []  # Initialize the list to store the losses
+
+            for batch_idx, (data, target) in enumerate(dloader):
                 data = data.to(device)
                 y0, y1, y2 = ( 
                     target[0].to(device), 
@@ -91,43 +91,49 @@ class ModelUtils():
                 image_size = kwargs.get("image_size", 416)
                 # Grid cell sizes
                 s = [image_size // 32, image_size // 16, image_size // 8]
-
-                # Getting the model predictions 
-                outputs = model(data) 
-
+                
                 # Calculating the loss at each scale 
-                scaled_anchors = kwargs.get("scaled_achors", ( 
+                scaled_anchors = kwargs.get("scaled_anchors", ( 
                     torch.tensor([ [(0.28, 0.22), (0.38, 0.48), (0.9, 0.78)],
-                                   [(0.07, 0.15), (0.15, 0.11), (0.14, 0.29)],
-                                   [(0.02, 0.03), (0.04, 0.07), (0.08, 0.06)],]) * 
+                                [(0.07, 0.15), (0.15, 0.11), (0.14, 0.29)],
+                                [(0.02, 0.03), (0.04, 0.07), (0.08, 0.06)],]) * 
                     torch.tensor(s).unsqueeze(1).unsqueeze(1).repeat(1,3,2)).to(device) )
                 
-                loss = ( 
-                    loss_fn(outputs[0], y0, scaled_anchors[0]) 
-                    + loss_fn(outputs[1], y1, scaled_anchors[1]) 
-                    + loss_fn(outputs[2], y2, scaled_anchors[2]) 
-                ) 
+                with torch.cuda.amp.autocast(enabled=False):
+                    # Getting the model predictions 
+                    outputs = model(data) 
+                
+                    loss = ( 
+                        loss_fn(outputs[0], y0, scaled_anchors[0]) 
+                        + loss_fn(outputs[1], y1, scaled_anchors[1]) 
+                        + loss_fn(outputs[2], y2, scaled_anchors[2]) 
+                    ) 
 
                 # Add the loss to the list 
-                train_losses.append(loss.item()) 
-        
+                losses.append(loss.item()) 
+                
                 # Reset gradients 
                 optim.zero_grad() 
                 scaler = kwargs.get("scaler", torch.cuda.amp.GradScaler())
                 # Backpropagate the loss 
                 scaler.scale(loss).backward() 
-        
+                
                 # Optimization step 
                 scaler.step(optim) 
-        
+                
                 # Update the scaler for next iteration 
                 scaler.update() 
 
-                # train loss will be average loss
-                train_loss = sum(train_losses) / len(train_losses) 
-                print("batch ", batch_idx, "loss ", train_loss)
+                # Calculate the mean loss dynamically after each batch
+                mean_loss = sum(losses) / len(losses)
+                print("batch ", batch_idx, "loss ", mean_loss)
 
-            else:
+            return mean_loss, 0  # Optionally return the mean loss at the end
+
+        else:
+            correct = 0
+            train_loss = 0
+            for batch_idx, (data, target) in enumerate(dloader):
                 data = data.to(device)
                 target = target.to(device)
 
@@ -252,10 +258,45 @@ class ModelUtils():
         model.eval()
         test_loss = 0
         correct = 0
-        print("Testing")
         # TODO: test loader for pascal dataset and object detection
         if self.dset == "pascal":
-            raise NotImplementedError("Pascal Dataset test has not been implemented")
+            losses = []
+            with torch.no_grad():
+                for idx, (data, target) in enumerate(dloader):
+                    data = data.to(device)
+                    y0, y1, y2 = ( 
+                        target[0].to(device), 
+                        target[1].to(device), 
+                        target[2].to(device), 
+                    )
+
+                    image_size = kwargs.get("image_size", 416)
+                    # Grid cell sizes
+                    s = [image_size // 32, image_size // 16, image_size // 8]
+                                    # Calculating the loss at each scale 
+                    scaled_anchors = kwargs.get("scaled_achors", ( 
+                        torch.tensor([ [(0.28, 0.22), (0.38, 0.48), (0.9, 0.78)],
+                                    [(0.07, 0.15), (0.15, 0.11), (0.14, 0.29)],
+                                    [(0.02, 0.03), (0.04, 0.07), (0.08, 0.06)],]) * 
+                        torch.tensor(s).unsqueeze(1).unsqueeze(1).repeat(1,3,2)).to(device) )
+                    
+                    with torch.cuda.amp.autocast(enabled=False):
+                        # Getting the model predictions 
+                        outputs = model(data) 
+                    
+                        loss = ( 
+                            loss_fn(outputs[0], y0, scaled_anchors[0]) 
+                            + loss_fn(outputs[1], y1, scaled_anchors[1]) 
+                            + loss_fn(outputs[2], y2, scaled_anchors[2]) 
+                        ) 
+
+                    # Add the loss to the list 
+                    losses.append(loss.item()) 
+
+                    # train loss will be average loss
+                    loss = sum(losses) / len(losses) 
+            return loss, 0
+
         with torch.no_grad():
             for idx, (data, target) in enumerate(dloader):
                 data, target = data.to(device), target.to(device)
