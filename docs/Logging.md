@@ -2,12 +2,12 @@
 
 This document provides a detailed overview of what is being logged in the Sonar setup. 
 
-## Table of Contents
+<!-- ## Table of Contents
 
 1. [Overview](#overview)
 2. [Logging Types](#logging-types)
 3. [Log Sources](#log-sources)
-4. [Log Details](#log-details)
+4. [Log Details](#log-details) -->
 
 ## Overview
 
@@ -28,8 +28,8 @@ This documentation aims to provide transparency on the logging mechanisms implem
 |--------------------|--------------------------------------------------|---------------|-------------|-------------------------------------|----------------------------------------|
 | Model Training (FL) | Aggregated model metrics, client updates         | INFO, DEBUG   | Plain text  | `./expt_dump/<experiment_name>/logs/client_<client_index>/summary.txt`     | On every FL round   
 
-## Log Details
+<!-- ## Log Details
 
 ### Federated Learning
 Logs aggregated model metrics (loss and accuracy) and updates from clients to track the overall progress and performance of the federated learning process. Additionally, logs include training loss and accuracy from individual clients. Also logs communication events between the server and clients to monitor interactions and data exchange.
-
+ -->

@@ -17,7 +17,8 @@ The application currently uses MPI and GRPC (experimental) to enable communicati
 | Similarity based (top-k)   | 206.4<sub>(1.6)</sub>  | 197.6<sub>(7.3)</sub>| 200.4<sub>(4.4)</sub>| 47.3<sub>(8.3)</sub>  | 48.4<sub>(8.5)</sub>| 52.8<sub>(7.2)</sub>|
 | Swarm                      | 183.2<sub>(3.5)</sub>  | 183.1<sub>(3.6)</sub>| 183.2<sub>(3.6)</sub>| 52.2<sub>(8.7)</sub>  | 52.3<sub>(8.7)</sub>| 52.4<sub>(8.6)</sub>|
 | L2C                        | 167.0<sub>(25.4)</sub> | 158.8<sub>(30.6)</sub>| 152.8<sub>(35.2)</sub>| 37.6<sub>(7.4)</sub>  | 36.6<sub>(7.4)</sub>| 35.8<sub>(7.7)</sub>|
-| **Table 1:** Performance overview (AUC) of various topologies with different number of collaborators. |
+
+**Table 1:** Performance overview (AUC) of various topologies with different number of collaborators.
 
 
 ### Running the code
