@@ -1,3 +1,3 @@
 # Tasks
 
-Welcome to the **Tasks** section of our repository! Here, you'll find resources and guides for three core tasks in machine learning: Image Classification, Object Detection, and Text Classification.
+Welcome to the **Tasks** section of our repository! Here, you'll find the core tasks and experiments we have integrated with SONAR. These use cases are being expanded. To contribute to this project, please review our [Github Issues](https://github.com/aidecentralized/sonar/issues) page.

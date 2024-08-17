@@ -1,4 +1,4 @@
-# SONAR Project
+# Contribution Guidelines
 To begin working on the project, please follow the set up instructions.
 
 ### Set up SONAR on Local

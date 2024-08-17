@@ -52,6 +52,7 @@ The application currently uses MPI and GRPC (experimental) to enable communicati
 |      3      | 179.1761            | 153.0658      |
 |      5      | 176.5059            | 139.4547      |
 
+
 *AUC Digit-Five (30 users, 200 rounds)*
 | Num Domains | Within Domain       | Random        |
 |-------------|---------------------|---------------|
@@ -71,7 +72,6 @@ The application currently uses MPI and GRPC (experimental) to enable communicati
 | 300    | 0.4362                    | 0.0498                 | 0.4203                    | 0.0537                 |
 | 400    | 0.4353                    | 0.0687                 | 0.4355                    | 0.0585                 |
 | 500    | 0.4726                    | 0.0502                 | 0.4499                    | 0.0496                 |
-
 
 
 | Rounds |          Camelyon17 (39 users, 3 domains)          |               |               |               |
