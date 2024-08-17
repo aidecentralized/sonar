@@ -1,7 +1,7 @@
 # Documentation
-There are a list of issues with respect to improving the documentation of this project on the [Github Issues](https://github.com/aidecentralized/sonar/issues) Page.
+To begin working on the documentation, please fellow the set up instructions.
 
-## Set up MK Docs on Local
+### Set up MK Docs on Local
 * Clone the repository
 * `pip install mkdocs-material`
 * `mkdocs build`
