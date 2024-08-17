@@ -16,28 +16,22 @@ nav:
           - Project: getting-started/issues/sonar.md
   - CollaBench:
     - Main: collabench.md
-  - Logging:
-    - Main: logging/logging.md
-    - Log Details: logging/log_details.md
-    # - [Overview](#overview)
-    # - [Logging Types](#logging-types)
-    # - [Log Sources](#log-sources)
-    # - [Log Details](#log-details)
-
   - Algorithms:
     - Algorithms: algorithms.md
-
-  
-
-  - Development:
-    - Contribution Guidelines: contributing/contribution-guidelines.md
-    - Documentation: contributing/documentation.md
-
   - Tasks: 
     - Main: tasks.md
     - Image Classification: tasks/image-classification.md
     - Object Detection: tasks/object-detection.md
     - Text Classification: tasks/text-classification.md
+  - Datasets:
+    - Main: datasets/main.md
+    - Partitioning Strategy: datasets/partitioning.md
+  - Logging:
+    - Main: logging/logging.md
+    - Log Details: logging/log_details.md
+  - Development:
+    - Contribution Guidelines: contributing/contribution-guidelines.md
+    - Documentation: contributing/documentation.md
 #
 # Theme Settings
 #
