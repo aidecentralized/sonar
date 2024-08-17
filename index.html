@@ -12,7 +12,7 @@
       
       
       
-        <link rel="next" href="collabench/">
+        <link rel="next" href="getting-started/getting-started/">
       
       
       <link rel="icon" href="assets/images/favicon.png">
@@ -243,12 +243,32 @@
     
     
       <li class="md-tabs__item">
+        <a href="getting-started/getting-started/" class="md-tabs__link">
+          
+  
+    
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
         <a href="collabench/" class="md-tabs__link">
           
   
     
   
-  Collabench
+  CollaBench
 
         </a>
       </li>
@@ -289,26 +309,6 @@
     
   
   Algorithms
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="getting-started/installation.md" class="md-tabs__link">
-          
-  
-    
-  
-  Getting Started
 
         </a>
       </li>
@@ -477,6 +477,56 @@
       
         
       
+        
+      
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="getting-started/getting-started/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
     
     
       
@@ -499,7 +549,7 @@
       
   
   <span class="md-ellipsis">
-    Collabench
+    CollaBench
   </span>
   
 
@@ -598,56 +648,6 @@
   
   <span class="md-ellipsis">
     Algorithms
-  </span>
-  
-
-      
-        <span class="md-nav__icon md-icon"></span>
-      
-    </a>
-  
-
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-      
-        
-      
-        
-      
-    
-    
-      
-      
-        
-      
-    
-    
-      
-        
-        
-      
-    
-    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
-      
-        
-  
-  
-    <a href="getting-started/installation.md" class="md-nav__link">
-      
-  
-  <span class="md-ellipsis">
-    Getting Started
   </span>
   
 
@@ -799,66 +799,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Main">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#running-the-code" class="md-nav__link">
-    <span class="md-ellipsis">
-      Running the code
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#config-file" class="md-nav__link">
-    <span class="md-ellipsis">
-      Config file
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#reproducability" class="md-nav__link">
-    <span class="md-ellipsis">
-      Reproducability
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#logging" class="md-nav__link">
-    <span class="md-ellipsis">
-      Logging
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#open-projects-and-tasks" class="md-nav__link">
-    <span class="md-ellipsis">
-      Open Projects and Tasks
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#set-up-mk-docs-on-local" class="md-nav__link">
-    <span class="md-ellipsis">
-      Set up MK Docs on Local
-    </span>
-  </a>
-  
 </li>
       
     </ul>
@@ -893,8 +833,9 @@
 
 
 <h1 id="sonar-self-organizing-network-of-aggregated-representations">SONAR: Self-Organizing Network of Aggregated Representations</h1>
-<p>Project by MIT Media Lab
-A collaborative learning project where users self-organize to improve their ML models by sharing representations of their data or model.</p>
+<p><strong>Project by MIT Media Lab</strong></p>
+<p>A collaborative learning project where users self-organize to improve their ML models by sharing representations of their data or model. </p>
+<p>To get started, please refer to the <a href="getting-started/getting-started/">Get Started</a> page.</p>
 <h2 id="main">Main</h2>
 <p>The application currently uses MPI and GRPC (experimental) to enable communication between different nodes in the network. The goal of the framework to organize everything in a modular manner. That way a researcher or engineer can easily swap out different components of the framework to test their hypothesis or a new algorithm.</p>
 <table>
@@ -1003,32 +944,6 @@ A collaborative learning project where users self-organize to improve their ML m
 </tbody>
 </table>
 <p><strong>Table 1:</strong> Performance overview (AUC) of various topologies with different number of collaborators.</p>
-<h3 id="running-the-code">Running the code</h3>
-<p>Let's say you want to run the model training of 3 nodes on a machine. That means there will be 4 nodes in total because there is 1 more node in addition to the clients --- server.
-The whole point of this project is to eventually transition to a distributed system where each node can be a separate machine and a server is simply another node. But for now, this is how things are done.
-You can do execute the 3 node simulation by running the following command:
-<code>mpirun -np 4 -host localhost:11 python main.py</code></p>
-<h3 id="config-file">Config file</h3>
-<p>The config file is the most important file when running the code. The current set up combines a system config with an algorithm config file. Always be sure of what config you are using. We have intentionally kept configuration files as a python file which is typically a big red flag in software engineering. But we did this because it enables plenty of quick automations and flexibility. Be very careful with the config file because it is easy to overlook some of the configurations such as device ids, number of clients etc.</p>
-<h3 id="reproducability">Reproducability</h3>
-<p>One of the awesome things about this project is that whenever you run an experiment, all the source code, logs, and model weights are saved in a separate folder. This is done to ensure that you can reproduce the results by looking at the code that was responsible for the results. The naming of the folder is based on the keys inside the config file. That also means you can not run the same experiment again without renaming/deleting the previous experimental run. The code automatically asks you to press <code>r</code> to remove and create a new folder. Be careful you are not overwriting someone else's results.</p>
-<h3 id="logging">Logging</h3>
-<p>We log the results in the console and also in a log file that captures the same information. We also log a few metrics for the tensorboard. The tensorboard logs can be viewed by running tensorboard as follows:
-<code>tensorboard --logdir=expt_dump/ --host 0.0.0.0</code>. Assuming <code>expt_dump</code> is the folder where the experiment logs are stored.</p>
-<h3 id="open-projects-and-tasks">Open Projects and Tasks</h3>
-<ul>
-<li>Experiments: Topology Experiments</li>
-<li>Benchmark Redesign: Improve telemetry, Seperate Topology</li>
-<li>Comprehensive Documentation</li>
-</ul>
-<h2 id="set-up-mk-docs-on-local">Set up MK Docs on Local</h2>
-<ul>
-<li>Clone the repository</li>
-<li><code>pip install mkdocs-material</code></li>
-<li><code>mkdocs build</code></li>
-<li>Add <code>repo_url: https://github.com/aidecentralized/sonar/</code> to <code>mkdocs.yml</code></li>
-<li><code>mkdocs serve</code></li>
-</ul>
 
 
 
