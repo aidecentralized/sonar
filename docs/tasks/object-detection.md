@@ -60,7 +60,7 @@ fedavg_object_detect = {
 }
 ```
 4) Initiate Training: `mpirun -n 4 python3 main.py`
-* *Note: the `-n` flag should be followed by (number of desired users+ 1), for the server node
+* *Note: the `-n` flag should be followed by (number of desired users+ 1), for the server node*
 * The training will proceed across the users as configured. Monitor printed or saved logs to track progress.
 * Your result will be written into the `dump_dir` path specified in `sys_config.py`
 
