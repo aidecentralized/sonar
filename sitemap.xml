@@ -16,17 +16,7 @@
          <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://aidecentralized.github.io/sonar/datasets/</loc>
-         <lastmod>2024-08-17</lastmod>
-         <changefreq>daily</changefreq>
-    </url>
-    <url>
          <loc>https://aidecentralized.github.io/sonar/logging/</loc>
-         <lastmod>2024-08-17</lastmod>
-         <changefreq>daily</changefreq>
-    </url>
-    <url>
-         <loc>https://aidecentralized.github.io/sonar/models/</loc>
          <lastmod>2024-08-17</lastmod>
          <changefreq>daily</changefreq>
     </url>
