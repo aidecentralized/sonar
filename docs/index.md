@@ -24,7 +24,7 @@ The application currently uses MPI and GRPC (experimental) to enable communicati
 **Table 1:** Performance overview (AUC) of various topologies with different number of collaborators.
 
 **Table 2** Area Under Curve of Test Accuracy Varying Number of Users
-| Num Users |      DomainNet                            |     Camelyon17                           |      Digit-Five                         |
+| Num Users |      DomainNet       |                    |     Camelyon17      |                    |      Digit-Five      |                  |
 |-----------|----------------------|--------------------|---------------------|--------------------|----------------------|------------------|
 |           | Within Domain        | Random             | Within Domain       | Random             | Within Domain        | Random           |
 |-----------|----------------------|--------------------|---------------------|--------------------|----------------------|------------------|
@@ -38,7 +38,7 @@ The application currently uses MPI and GRPC (experimental) to enable communicati
 
 **Table 3*** Area Under Curve of Test Accuracy Varying Number of Domains
 
-|   AUC DomainNet (48 users, 200 rounds)      |
+*AUC DomainNet (48 users, 200 rounds)*
 |---------------------------------------------|
 | Num Domains | Within Domain | Random        |
 |-------------|---------------|---------------|
@@ -46,7 +46,7 @@ The application currently uses MPI and GRPC (experimental) to enable communicati
 |   4         | 61.5723       | 50.2906       |
 |   6         | 69.4671       | 47.7867       |
 
-|   AUC Camelyon17 (30 users, 200 rounds)           |
+*AUC Camelyon17 (30 users, 200 rounds)*
 |---------------------------------------------------|
 | Num Domains | Within Domain       | Random        |
 |-------------|---------------------|---------------|
@@ -54,7 +54,7 @@ The application currently uses MPI and GRPC (experimental) to enable communicati
 |      3      | 179.1761            | 153.0658      |
 |      5      | 176.5059            | 139.4547      |
 
-|    AUC Digit-Five (30 users, 200 rounds)          |
+*AUC Digit-Five (30 users, 200 rounds)*
 |---------------------------------------------------|
 | Num Domains | Within Domain       | Random        |
 |-------------|---------------------|---------------|
@@ -89,9 +89,9 @@ The application currently uses MPI and GRPC (experimental) to enable communicati
 | 200    | 0.9353                    | 0.0251                 | 0.7762                    | 0.1516                 |
 
 
-|        |          Digit Five (39 users, 3 domains)         |                                                   |
-|--------|---------------------------------------------------|---------------------------------------------------|
-| Rounds |             Within Domain |                       |                      Random                       |
+| Rounds |          Digit Five (39 users, 3 domains)          |               |               |               |
+|--------|----------------------------------------------------|---------------|---------------|---------------|
+|        |                  Within Domain       |            |                Random             |               |
 |--------|---------------------------|-----------------------|---------------------------|-----------------------|
 |        | Mean                      | Std                   | Mean                      | Std                   |
 | 20     | 0.7314                    | 0.1290                | 0.6788                    | 0.0839                |
