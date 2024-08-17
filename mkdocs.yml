@@ -8,7 +8,13 @@ site_url: https://aidecentralized.github.io/sonar/
 nav:
   - Home:
     - Home: index.md
-  - Collabench:
+  - Getting Started:
+      - Main: getting-started/getting-started.md
+      - Issues:
+          - Overview: getting-started/issues.md
+          - Documentation: getting-started/issues/documentation.md
+          - Project: getting-started/issues/sonar.md
+  - CollaBench:
     - Main: collabench.md
   - Logging:
     - Main: logging/logging.md
@@ -21,11 +27,7 @@ nav:
   - Algorithms:
     - Algorithms: algorithms.md
 
-  - Getting Started:
-    - Installation: getting-started/installation.md
-    - Nested2:
-      - nestednested:
-        - nestednested: getting-started/getting-started.md
+  
 
   - Development:
     - Contribution Guidelines: contributing/contribution-guidelines.md
