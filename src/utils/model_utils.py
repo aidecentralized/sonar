@@ -197,12 +197,12 @@ class ModelUtils():
                 target = target.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
 
-        if test_loader is not None:
-            # TODO: implement test loader for pascal
-            test_loss, test_acc = self.test(
-                model, test_loader, loss_fn, device)
-            print(
-                f"Train Loss: {train_loss/(batch_idx+1):.6f} | Train Acc: {correct/((batch_idx+1)*len(data)):.6f} | Test Loss: {test_loss:.6f} | Test Acc: {test_acc:.6f}")
+            if test_loader is not None:
+                # TODO: implement test loader for pascal
+                test_loss, test_acc = self.test(
+                    model, test_loader, loss_fn, device)
+                print(
+                    f"Train Loss: {train_loss/(batch_idx+1):.6f} | Train Acc: {correct/((batch_idx+1)*len(data)):.6f} | Test Loss: {test_loss:.6f} | Test Acc: {test_acc:.6f}")
 
         acc = correct / len(dloader.dataset)
         return train_loss, acc
