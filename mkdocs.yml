@@ -10,6 +10,8 @@ nav:
     - Home: index.md
   - Getting Started:
       - Main: getting-started.md
+      - Config File: getting-started/config.md
+      - Customizability: getting-started/customize.md
   - CollaBench:
     - Main: collabench.md
     - Feature Comparison: feature.md
