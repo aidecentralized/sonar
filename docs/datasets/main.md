@@ -27,3 +27,8 @@ This dataset consists of 60,000 28x28 grayscale images of 10 classes (6,000 imag
 
 ### Pascal-VOC
 The PASCAL Visual Object Classes (VOC) dataset is a well-known dataset for object detection. It consists of images annotated with bounding boxes around objects of interest. The dataset contains 20 classes, including animals, vehicles, and household items. The dataset is divided into training and validation sets, with a separate test set for evaluation.
+
+## Text Classification
+
+### AGNews
+The AGNews dataset is a widely used benchmark for text classification tasks. It consists of news articles categorized into four distinct classes: World, Sports, Business, and Sci/Tech. Each article is labeled with its corresponding category, making it suitable for training and evaluating text classification models. The dataset is divided into training and test sets, allowing for consistent evaluation of model performance. AGNews is commonly used to benchmark the accuracy and effectiveness of natural language processing algorithms, particularly in the context of news categorization.
