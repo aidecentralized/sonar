@@ -22,6 +22,8 @@ This documentation aims to provide transparency on the logging mechanisms implem
     - Scalar Logging: Logs scalar values to TensorBoard for tracking metrics(loss, accuracy) over time.
     - Image Logging: Logs images to both a file and TensorBoard for visual analysis.
 
+The tensorboard logs can be viewed by running tensorboard as follows: `tensorboard --logdir=expt_dump/ --host 0.0.0.0`. Assuming `expt_dump` is the folder where the experiment logs are stored.
+
 ## Log Sources
 
 | Component/Module   | Data Logged                                      | Log Level     | Format      | Storage Location                    | Frequency/Trigger                      |
