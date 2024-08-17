@@ -22,7 +22,7 @@ traditional_fl = {
     "exp_type": "iid_clients_federated",
     # Learning setup
     "epochs": 1000,
-    "model": "resnet34",
+    "model": "resnet10",
     "model_lr": 3e-4,
     "batch_size": 256,
     "exp_keys": [],
