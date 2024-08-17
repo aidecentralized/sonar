@@ -18,10 +18,10 @@ iid_dispfl_clients_new = {
 
 traditional_fl = {
     "algo": "fedavg",
-    "exp_id": "no_mixed_precision_more_users",
+    "exp_id": "test_modular_yolo",
     "exp_type": "test",
     # Learning setup
-    "epochs": 1000,
+    "epochs": 10,
     "model": "yolo",
     "model_lr": 1e-5,
     "batch_size": 8,
