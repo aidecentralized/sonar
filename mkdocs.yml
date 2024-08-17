@@ -12,6 +12,7 @@ nav:
       - Main: getting-started.md
   - CollaBench:
     - Main: collabench.md
+    - Feature Comparison: feature.md
   - Algorithms:
     - Algorithms: algorithms.md
   - Tasks: 
