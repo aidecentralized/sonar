@@ -8,6 +8,8 @@ site_url: https://aidecentralized.github.io/sonar/
 nav:
   - Home:
     - Home: index.md
+  - Collabench:
+    - Main: collabench.md
   - Logging:
     - Main: logging/logging.md
     - Log Details: logging/log_details.md
