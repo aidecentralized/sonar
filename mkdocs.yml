@@ -13,7 +13,7 @@ nav:
       - Issues:
           - Overview: getting-started/issues.md
           - Documentation: getting-started/issues/documentation.md
-          - Project: getting-started/issues/sonar.md
+          - Contribution Guidelines: getting-started/issues/sonar.md
   - CollaBench:
     - Main: collabench.md
   - Algorithms:
