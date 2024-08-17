@@ -1,5 +1,5 @@
 # Documentation
-To begin working on the documentation, please fellow the set up instructions.
+To begin working on the documentation, please follow the set up instructions.
 
 ### Set up MK Docs on Local
 * Clone the repository
