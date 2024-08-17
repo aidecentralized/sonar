@@ -9,10 +9,12 @@ The implementation of YOLOv3 in this project is based on the [GeeksforGeeks YOLO
 ## Dataset Preparation
 We use the Pascal VOC dataset, a popular benchmark in object detection tasks. Follow the steps below to download and prepare the dataset:
 1) Download Pascal VOC Data:
+
 * Visit the [Pascal VOC Dataset page](http://host.robots.ox.ac.uk/pascal/VOC/).
 * Download the VOC 2012 dataset
 
 2) Extract and Structure the Dataset:
+
 * Extract the downloaded dataset into a directory of your choice.
 * Ensure the directory structure is as follows:
 ```
@@ -29,6 +31,7 @@ VOCdevkit/
 
 ## Configure the Training
 To set up the training environment, follow these instructions:
+
 1) Install Dependencies: If you haven't already, run `pip install -r requirements.txt`
 2) Configure the system settings. In `src/configs/sys_config.py`, create a system config object such as the example below, with your desired settings.
 ```
@@ -60,10 +63,14 @@ fedavg_object_detect = {
 }
 ```
 4) Initiate Training: `mpirun -n 4 python3 main.py`
-* *Note: the `-n` flag should be followed by (number of desired users+ 1), for the server node*
-* The training will proceed across the users as configured. Monitor printed or saved logs to track progress.
-* Your result will be written into the `dump_dir` path specified in `sys_config.py`
+
+> *Note: the `-n` flag should be followed by (number of desired users+ 1), for the server node*
+
+> The training will proceed across the users as configured. Monitor printed or saved logs to track progress.
+
+> Your result will be written into the `dump_dir` path specified in `sys_config.py`
 
 ## Additional Notes
+
 * Ensure that the setup is correctly configured to avoid issues with client-server communication.
 * If you encounter any issues or have suggestions, please open an issue on our [GitHub repository](https://github.com/aidecentralized/sonar).
