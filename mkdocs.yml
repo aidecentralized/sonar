@@ -9,11 +9,8 @@ nav:
   - Home:
     - Home: index.md
   - Getting Started:
-      - Main: getting-started/getting-started.md
-      - Issues:
-          - Overview: getting-started/issues.md
-          - Documentation: getting-started/issues/documentation.md
-          - Contribution Guidelines: getting-started/issues/sonar.md
+      - Main: getting-started.md
+      
   - CollaBench:
     - Main: collabench.md
   - Algorithms:
@@ -30,8 +27,10 @@ nav:
     - Main: logging/logging.md
     - Log Details: logging/log_details.md
   - Development:
-    - Contribution Guidelines: contributing/contribution-guidelines.md
-    - Documentation: contributing/documentation.md
+    - Overview: issues/issues.md
+    - Contribution Guidelines: issues/sonar.md
+    - Documentation: issues/documentation.md
+
 #
 # Theme Settings
 #
