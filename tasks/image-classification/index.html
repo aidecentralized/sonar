@@ -243,7 +243,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../getting-started/getting-started/" class="md-tabs__link">
+        <a href="../../getting-started/" class="md-tabs__link">
           
   
     
@@ -365,7 +365,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../contributing/contribution-guidelines.md" class="md-tabs__link">
+        <a href="../../issues/issues/" class="md-tabs__link">
           
   
     
@@ -484,8 +484,6 @@
       
         
       
-        
-      
     
     
       
@@ -504,7 +502,7 @@
         
   
   
-    <a href="../../getting-started/getting-started/" class="md-nav__link">
+    <a href="../../getting-started/" class="md-nav__link">
       
   
   <span class="md-ellipsis">
@@ -713,6 +711,17 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Image Classification
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -722,6 +731,76 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#credit" class="md-nav__link">
+    <span class="md-ellipsis">
+      Credit:
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dataset-preparation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Dataset Preparation
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configure-the-training" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configure the Training
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#additional-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Additional Notes
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -890,6 +969,8 @@
       
         
       
+        
+      
     
     
       
@@ -908,7 +989,7 @@
         
   
   
-    <a href="../../contributing/contribution-guidelines.md" class="md-nav__link">
+    <a href="../../issues/issues/" class="md-nav__link">
       
   
   <span class="md-ellipsis">
@@ -947,6 +1028,65 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#credit" class="md-nav__link">
+    <span class="md-ellipsis">
+      Credit:
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dataset-preparation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Dataset Preparation
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configure-the-training" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configure the Training
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#additional-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Additional Notes
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -977,6 +1117,56 @@
 
 
 <h1 id="image-classification">Image Classification</h1>
+<h2 id="overview">Overview</h2>
+<p>Our environment supports image classification tasks using various ResNet architectures. We provide implementations of ResNet models tailored for different image classification tasks across several datasets. ResNet (Residual Network) models are widely recognized for their effectiveness in deep learning, particularly in image recognition tasks. In this project, we utilize ResNet models to classify images from multiple datasets, including DomainNet, Camelyon17, Digit-Five, CIFAR-10, CIFAR-100, and Medical MNIST. The implementation is designed to handle decentralized machine learning scenarios, allowing multiple users to train a shared model while keeping their data localized.</p>
+<h3 id="credit">Credit:</h3>
+<p>Credit to Huawei Technologies Co., Ltd. <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#102;&#111;&#115;&#115;&#64;&#104;&#117;&#97;&#119;&#101;&#105;&#46;&#99;&#111;&#109;">&#102;&#111;&#115;&#115;&#64;&#104;&#117;&#97;&#119;&#101;&#105;&#46;&#99;&#111;&#109;</a> for ResNet. Taken from <a href="https://github.com/huawei-noah/Data-Efficient-Model-Compression/blob/master/DAFL/resnet.py">Huawei ResNet implementation</a> for comparison with DAFL.</p>
+<h2 id="dataset-preparation">Dataset Preparation</h2>
+<p>We use several datasets for image classification tasks, including DomainNet, Camelyon17, Digit-Five, CIFAR-10, CIFAR-100, and Medical MNIST. Each dataset has specific characteristics and is used for different types of classification tasks. Follow the steps below to download and prepare the datasets:
+1) Download the respective datasets from their official sources:
+   - <strong>DomainNet</strong>: <a href="http://ai.bu.edu/M3SDA/">DomainNet Dataset page</a>
+   - <strong>Camelyon17</strong>: <a href="https://camelyon17.grand-challenge.org/">Camelyon17 Dataset page</a>
+   - <strong>Digit-Five</strong>: Collection of five digit datasets, including <a href="http://yann.lecun.com/exdb/mnist/">MNIST</a>, <a href="http://ufldl.stanford.edu/housenumbers/">SVHN</a>, <a href="https://github.com/keras-team/keras/blob/master/keras/datasets/usps.py">USPS</a>, <a href="https://github.com/gabrieleilertsen/unsupervised-mnist/tree/master/unsupervised_mnist/syn">SYN</a>, <a href="https://github.com/NaJaeMin92/MNIST-M">MNIST-M</a>
+   - <strong>CIFAR-10</strong> and <strong>CIFAR-100</strong>: <a href="https://www.cs.toronto.edu/~kriz/cifar.html">CIFAR Dataset page</a>
+   - <strong>Medical MNIST</strong>: <a href="https://www.kaggle.com/andrewmvd/medical-mnist">Medical MNIST Dataset page</a></p>
+<h2 id="configure-the-training">Configure the Training</h2>
+<p>To set up the training environment, follow these instructions:
+1) Install Dependencies: If you haven't already, run <code>pip install -r requirements.txt</code>.
+2) Configure the system settings. In <code>src/configs/sys_config.py</code>, create a system config object such as the example below, with your desired settings.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>image_classification_system_config = {
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    &quot;num_users&quot;: 4, 
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    &quot;dset&quot;: &quot;cifar10&quot;,
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    &quot;dump_dir&quot;: &quot;./expt_dump/&quot;, # the path to place the results
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    &quot;dpath&quot;: &quot;./datasets/imgs/cifar10/&quot;, # the location of the dataset
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    &quot;device_ids&quot;: {&quot;node_0&quot;: [0], &quot;node_1&quot;: [0], &quot;node_2&quot;: [0], &quot;node_3&quot;: [0]},
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    &quot;samples_per_user&quot;: 1000, 
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    &quot;train_label_distribution&quot;: &quot;iid&quot;,
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    &quot;test_label_distribution&quot;: &quot;iid&quot;,
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    &quot;folder_deletion_signal_path&quot;:&quot;./expt_dump/folder_deletion.signal&quot;
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>}
+</code></pre></div>
+3) Configure the algorithm settings. In <code>src/configs/algo_config.py</code>, create an algo config object such as the example below, with your desired algorithm.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>fedavg_image_classify = {
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    &quot;algo&quot;: &quot;fedavg&quot;, # choose any algorithm we support
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    &quot;exp_id&quot;: &quot;image_classification&quot;,
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    # Learning setup
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    &quot;epochs&quot;: 20,
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    &quot;model&quot;: &quot;resnet18&quot;,
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    &quot;model_lr&quot;: 1e-3,
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    &quot;batch_size&quot;: 64,
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>}
+</code></pre></div>
+<p>4) Initiate Training: <code>mpirun -n 5 python3 main.py</code></p>
+<blockquote>
+<p><em>Note: the <code>-n</code> flag should be followed by (number of desired users + 1), for the server node.</em></p>
+<p>The training will proceed across the users as configured. Monitor printed or saved logs to track progress.</p>
+<p>Your result will be written into the <code>dump_dir</code> path specified in <code>sys_config.py</code>.</p>
+</blockquote>
+<h2 id="additional-notes">Additional Notes</h2>
+<ul>
+<li>Ensure that the setup is correctly configured to avoid issues with client-server communication.</li>
+<li>If you encounter any issues or have suggestions, please open an issue on our <a href="https://github.com/aidecentralized/sonar">GitHub repository</a>.</li>
+</ul>
 
 
 
