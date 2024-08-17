@@ -19,7 +19,6 @@ The application currently uses MPI and GRPC (experimental) to enable communicati
 - [ ] O4: Write the GRPC module for the communication layer. Then we don't need to rely on MPI which requires ssh access to all the nodes. See https://github.com/aidecentralized/sonar/issues/20
 - [ ] O5: Improve telemetry and logging for visualization of the network. See https://github.com/aidecentralized/sonar/issues/11
 - [ ] O6: Fault tolerance and rogue clients simulation.
-- [ ] O7: Comprehensive documentation - https://github.com/squidfunk/mkdocs-material
-- [ ] O8: Eliminate the need to add a BaseServer module, keep it backward compatible by instantiating the server as yet another node.
-- [ ] O9: Build testing suite. See https://github.com/aidecentralized/sonar/issues/21
-- [ ] O10: Set up milestones for transition to full API like interface and then launch on `pip`
+- [ ] O7: Eliminate the need to add a BaseServer module, keep it backward compatible by instantiating the server as yet another node.
+- [ ] O8: Build testing suite. See https://github.com/aidecentralized/sonar/issues/21
+- [ ] O9: Set up milestones for transition to full API like interface and then launch on `pip`
