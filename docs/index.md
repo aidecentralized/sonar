@@ -36,10 +36,9 @@ The application currently uses MPI and GRPC (experimental) to enable communicati
 |     45    | 68.124               | 59.7852            | 180.0231            | 147.4649           | 77.0248              | 73.0634          |
 
 
-**Table 3*** Area Under Curve of Test Accuracy Varying Number of Domains
+**Table 3** Area Under Curve of Test Accuracy Varying Number of Domains
 
 *AUC DomainNet (48 users, 200 rounds)*
-|---------------------------------------------|
 | Num Domains | Within Domain | Random        |
 |-------------|---------------|---------------|
 |   2         | 67.7514       | 58.7947       |
@@ -47,7 +46,6 @@ The application currently uses MPI and GRPC (experimental) to enable communicati
 |   6         | 69.4671       | 47.7867       |
 
 *AUC Camelyon17 (30 users, 200 rounds)*
-|---------------------------------------------------|
 | Num Domains | Within Domain       | Random        |
 |-------------|---------------------|---------------|
 |      2      | 179.7901            | 172.9167      |
@@ -55,7 +53,6 @@ The application currently uses MPI and GRPC (experimental) to enable communicati
 |      5      | 176.5059            | 139.4547      |
 
 *AUC Digit-Five (30 users, 200 rounds)*
-|---------------------------------------------------|
 | Num Domains | Within Domain       | Random        |
 |-------------|---------------------|---------------|
 |      2      | 71.8536             | 65.6555       |
