@@ -57,8 +57,8 @@ theme:
     - search.suggest
     - search.highlight
     # https://squidfunk.github.io/mkdocs-material/setup/adding-a-git-repository/#code-actions
-    - content.action.edit
-    - content.action.view
+    # - content.action.edit
+    # - content.action.view
     # https://squidfunk.github.io/mkdocs-material/reference/code-blocks/#configuration
     - content.code.copy
     - content.code.select
