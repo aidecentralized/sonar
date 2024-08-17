@@ -16,6 +16,11 @@
          <changefreq>daily</changefreq>
     </url>
     <url>
+         <loc>https://aidecentralized.github.io/sonar/development/</loc>
+         <lastmod>2024-08-17</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
          <loc>https://aidecentralized.github.io/sonar/getting-started/</loc>
          <lastmod>2024-08-17</lastmod>
          <changefreq>daily</changefreq>
@@ -41,17 +46,12 @@
          <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://aidecentralized.github.io/sonar/issues/documentation/</loc>
+         <loc>https://aidecentralized.github.io/sonar/development/documentation/</loc>
          <lastmod>2024-08-17</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://aidecentralized.github.io/sonar/issues/issues/</loc>
-         <lastmod>2024-08-17</lastmod>
-         <changefreq>daily</changefreq>
-    </url>
-    <url>
-         <loc>https://aidecentralized.github.io/sonar/issues/sonar/</loc>
+         <loc>https://aidecentralized.github.io/sonar/development/sonar/</loc>
          <lastmod>2024-08-17</lastmod>
          <changefreq>daily</changefreq>
     </url>
