@@ -1,8 +1,9 @@
+from typing import Any, Dict
 import jmespath
 import importlib
 
 
-def load_config(config_path):
+def load_config(config_path: str) -> Dict[str, Any]:
     path = ".".join(config_path.split(".")[1].split("/")[1:])
     config = importlib.import_module(path).current_config
     return config
