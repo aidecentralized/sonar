@@ -1,0 +1,2 @@
+# Config file
+The config file is the most important file when running the code. The current set up combines a system config with an algorithm config file. Always be sure of what config you are using. We have intentionally kept configuration files as a python file which is typically a big red flag in software engineering. But we did this because it enables plenty of quick automations and flexibility. Be very careful with the config file because it is easy to overlook some of the configurations such as device ids, number of clients etc.
