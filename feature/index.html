@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#feature-comparison" class="md-skip">
+        <a href="#comparison-with-existing-fl-frameworks" class="md-skip">
           Skip to content
         </a>
       
@@ -648,11 +648,26 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#feature-comparison" class="md-nav__link">
+  <a href="#comparison-with-existing-fl-frameworks" class="md-nav__link">
     <span class="md-ellipsis">
-      Feature Comparison
+      Comparison with Existing FL Frameworks
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Comparison with Existing FL Frameworks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scoring-mechanism" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scoring Mechanism
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -951,11 +966,26 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#feature-comparison" class="md-nav__link">
+  <a href="#comparison-with-existing-fl-frameworks" class="md-nav__link">
     <span class="md-ellipsis">
-      Feature Comparison
+      Comparison with Existing FL Frameworks
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Comparison with Existing FL Frameworks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scoring-mechanism" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scoring Mechanism
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -979,86 +1009,106 @@
 
   <h1>Feature Comparison</h1>
 
-<h2 id="feature-comparison">Feature Comparison</h2>
+<h2 id="comparison-with-existing-fl-frameworks">Comparison with Existing FL Frameworks</h2>
+<p>There are several frameworks available for federated learning, each with its unique features and capabilities. However, the focus of our work is on decentralized and large scale collaboration. Therefore, we identify the following five key features that are essential for evaluating the capabilities of federated learning frameworks in the context of decentralized collaborative learning:</p>
+<ol>
+<li>
+<p><strong>Decentralized Training</strong>: The ability to train models in a decentralized manner, where the training does not necessarily depend upon a central server or a single coordinator.</p>
+</li>
+<li>
+<p><strong>Topology</strong>: Support for a wide range of network topologies, including gossip-based, ring, tree, mesh, data-driven, etc. If a framework supports these multiple topologies out of the box, then it becomes easier to rapidly prototype and experiment with different network configurations.</p>
+</li>
+<li>
+<p><strong>Data Partitioning</strong>: The ability to handle different data partitioning strategies, such as IID, non-IID, personalized, and multi-task learning. This is crucial for modeling real-world scenarios where data is distributed across multiple users in a non-uniform manner.</p>
+</li>
+<li>
+<p><strong>Privacy &amp; Robustness</strong>: Support for privacy-preserving techniques such as differential privacy, secure aggregation, etc., to model privacy concerns in collaborative learning settings. Additionally, a framework should provide testbeds for empirically evaluating the privacy by applying reconstruction or membership inference attacks. From a robustness perspective, the framework should be able to simulate malicious behavior, such as Byzantine attacks, stragglers, and model poisoning etc and provide off-the-shelf support for mechanisms to mitigate these attacks.</p>
+</li>
+<li>
+<p><strong>Collaborator Selection</strong>: The ability to select collaborators dynamically based on various criteria such as network conditions, data distribution, model performance, etc. This is essential for large-scale decentralized collaboration where the network topology is dynamic and collaborators may join or leave the network at any time.</p>
+</li>
+</ol>
+<h3 id="scoring-mechanism">Scoring Mechanism</h3>
+<p>We compare the capabilities of existing federated learning frameworks with CollaBench based on the above features. We use a simple scoring mechanism to evaluate the capabilities of each framework. The score ranges from 0 to 2, where 0 indicates no support, 1 indicates partial support, and 2 indicates full support for the feature. Therefore, we get a total score out of 10 for each framework based on the five key features mentioned above.</p>
 <table>
 <thead>
 <tr>
 <th>Framework</th>
-<th>Decentralized</th>
+<th>Decentralized training</th>
 <th>Topology</th>
-<th>Algorithms</th>
-<th>Feature4</th>
-<th>Feature5</th>
+<th>Data Partitioning</th>
+<th>Privacy &amp; Robustness</th>
+<th>Collaborator Selection</th>
 <th>Total Score</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>P2PFL</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
+<td><a href="https://pguijas.github.io/p2pfl/index.html">P2PFL</a></td>
+<td>2</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>3</td>
 </tr>
 <tr>
-<td>FedML</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
+<td><a href="https://docs.tensoropera.ai/">FedML</a></td>
+<td>2</td>
+<td>1</td>
+<td>2</td>
+<td>1</td>
+<td>0</td>
+<td>6</td>
 </tr>
 <tr>
-<td>EasyFL</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
+<td><a href="https://github.com/EasyFL-AI/EasyFL">EasyFL</a></td>
+<td>0</td>
+<td>0</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+<td>1</td>
 </tr>
 <tr>
-<td>COALA</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
+<td><a href="https://github.com/SonyResearch/COALA">COALA</a></td>
+<td>0</td>
+<td>0</td>
+<td>2</td>
+<td>0</td>
+<td>0</td>
+<td>2</td>
 </tr>
 <tr>
-<td>FedScale</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
+<td><a href="https://fedscale.ai/">FedScale</a></td>
+<td>1</td>
+<td>0</td>
+<td>2</td>
+<td>0</td>
+<td>1</td>
+<td>4</td>
 </tr>
 <tr>
-<td>Flower</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-</tr>
-<tr>
-<td>CollaBench</td>
+<td><a href="https://flower.ai/docs/framework/index.html">Flower</a></td>
+<td>0</td>
+<td>0</td>
 <td>2</td>
 <td>2</td>
+<td>0</td>
+<td>4</td>
+</tr>
+<tr>
+<td>CollaBench (Ours)</td>
+<td>1</td>
 <td>2</td>
 <td>2</td>
+<td>0</td>
 <td>2</td>
-<td>10</td>
+<td>7</td>
 </tr>
 </tbody>
 </table>
-<p>Table 1. Head-to-head comparison of capabilities between existing frameworks and CollaBench</p>
+<p>Table 1. Head-to-head comparison of capabilities between existing frameworks and CollaBench. Note that this comparison is purely focused on the use-cases of decentralized collaborative learning and does not reflect the overall capabilities of the frameworks. Some of these frameworks are pretty advanced and have additional features that are not relevant to decentralized collaboration.</p>
 
 
 

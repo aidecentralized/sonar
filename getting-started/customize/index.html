@@ -586,6 +586,17 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Customizability
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -595,6 +606,97 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-customizing-the-dataset" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Customizing the Dataset:
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Customizing the Dataset:">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 1:
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-customizing-the-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Customizing the Model:
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Customizing the Model:">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 2:
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-customizing-the-topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Customizing the Topology:
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Customizing the Topology:">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-3" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 3:
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -932,6 +1034,86 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-customizing-the-dataset" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Customizing the Dataset:
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Customizing the Dataset:">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 1:
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-customizing-the-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Customizing the Model:
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Customizing the Model:">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 2:
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-customizing-the-topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Customizing the Topology:
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Customizing the Topology:">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-3" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 3:
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -949,6 +1131,20 @@
 
 
 <h1 id="customizability">Customizability</h1>
+<p>The framework provides an easy way to customize various aspects such as the dataset, model, and topology. By following these steps, users can switch topologies by simply changing a single parameter in the configuration file.</p>
+<h2 id="1-customizing-the-dataset">1. Customizing the Dataset:</h2>
+<p>To customize the dataset, users can modify the data loading code to read data from different sources or apply preprocessing techniques specific to their needs. This can involve changing file paths, data augmentation techniques, or data normalization methods.</p>
+<h3 id="example-1">Example 1:</h3>
+<p>To change the dataset, update the <code>dpath</code> parameter in the <code>sys_config.py</code> file with the address of your dataset folder.</p>
+<h2 id="2-customizing-the-model">2. Customizing the Model:</h2>
+<p>Users can easily customize the model by modifying the type of model you want to use.</p>
+<h3 id="example-2">Example 2:</h3>
+<p>To change the model, update the <code>model</code> parameter in the <code>algo_config.py</code> file. Choose from available options like <code>resnet10</code>, <code>resnet34</code>, <code>yolo</code>, etc.</p>
+<h2 id="3-customizing-the-topology">3. Customizing the Topology:</h2>
+<p>To switch topologies, users can define different topology configurations in the configuration file. By changing a single parameter, the framework will automatically use the corresponding topology during runtime. This allows switching between different network architectures without extensive code modifications. The supported topologies are mentioned in the documentation and new ones are constantly being added.</p>
+<h3 id="example-3">Example 3:</h3>
+<p>In the <code>algo_config.py</code> file, select the desired topology for an experiment by changing the <code>algo</code> parameter. This simple change allows switching between different topologies.</p>
+<p>By modifying a single parameter in the configuration file, multiple experiments can be run.</p>
 
 
 
