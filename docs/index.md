@@ -22,8 +22,3 @@ The application currently uses MPI and GRPC (experimental) to enable communicati
 | L2C                        | 167.0<sub>(25.4)</sub> | 158.8<sub>(30.6)</sub>| 152.8<sub>(35.2)</sub>| 37.6<sub>(7.4)</sub>  | 36.6<sub>(7.4)</sub>| 35.8<sub>(7.7)</sub>|
 
 **Table 1:** Performance overview (AUC) of various topologies with different number of collaborators.
-
-## Open Projects and Tasks
-- Experiments: Topology Experiments
-- Benchmark Redesign: Improve telemetry, Seperate Topology
-- Comprehensive Documentation
