@@ -36,6 +36,16 @@
          <changefreq>daily</changefreq>
     </url>
     <url>
+         <loc>https://aidecentralized.github.io/sonar/datasets/main/</loc>
+         <lastmod>2024-08-17</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://aidecentralized.github.io/sonar/datasets/partitioning/</loc>
+         <lastmod>2024-08-17</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
          <loc>https://aidecentralized.github.io/sonar/getting-started/getting-started/</loc>
          <lastmod>2024-08-17</lastmod>
          <changefreq>daily</changefreq>
