@@ -1,9 +1,11 @@
 # Text Classification
 
+> **_NOTE:_**  This task is a work in progress. We are currently running experiments to ensure support for Text Classification. It is currently not integrated properly with the system yet.
+
 ## Overview
 Our environment supports text classification tasks using Long Short-Term Memory (LSTM) networks. We provide an implementation of an LSTM-based text classification model using the AGNews dataset. The LSTM model is a type of recurrent neural network (RNN) that is particularly effective for sequential data such as text. In this project, we adapt an LSTM network to classify news articles into one of four categories: World, Sports, Business, and Sci/Tech. The implementation is designed to handle decentralized machine learning scenarios, where multiple users can train a shared model while keeping their data localized.
 
-### Credit:
+### Credit
 The AG's news topic classification dataset is constructed by Xiang Zhang (xiang.zhang@nyu.edu). It is used as a text classification benchmark in the following paper: Xiang Zhang, Junbo Zhao, Yann LeCun. Character-level Convolutional Networks for Text Classification. Advances in Neural Information Processing Systems 28 (NIPS 2015). This dataset is based on the [AGNews Dataset](http://www.di.unipi.it/~gulli/AG_corpus_of_news_articles.html). 
 
 ## Dataset Preparation
@@ -66,9 +68,12 @@ fedavg_text_classify = {
 }
 ```
 4) Initiate Training: `mpirun -n 4 python3 main.py`
-* *Note: the `-n` flag should be followed by (number of desired users + 1), for the server node.*
-* The training will proceed across the users as configured. Monitor printed or saved logs to track progress.
-* Your result will be written into the `dump_dir` path specified in `sys_config.py`.
+
+> *Note: the `-n` flag should be followed by (number of desired users + 1), for the server node.*
+
+> The training will proceed across the users as configured. Monitor printed or saved logs to track progress.
+
+> Your result will be written into the `dump_dir` path specified in `sys_config.py`.
 
 ## Additional Notes
 * Ensure that the setup is correctly configured to avoid issues with client-server communication.

@@ -3,7 +3,7 @@
 ## Overview
 Our environment supports object detection and classification tasks. We support an implementation of YOLOv3 objection detection model using the Pascal VOC dataset. The YOLOv3 (You Only Look Once, version 3) model is a state-of-the-art object detection algorithm known for its speed and accuracy. It performs both object detection and classification in a single forward pass through the network, making it highly efficient. In this project, we adapt YOLOv3 to work in a decentralized machine learning setup, which allows multiple users to train a shared model while keeping their data localized.
 
-### Credit:
+### Credit
 The implementation of YOLOv3 in this project is based on the [GeeksforGeeks YOLOv3 tutorial](https://www.geeksforgeeks.org/yolov3-from-scratch-using-pytorch/). Special thanks to the authors for providing a detailed guide that served as the foundation for this work.
 
 ## Dataset Preparation
