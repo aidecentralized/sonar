@@ -64,9 +64,9 @@ The application currently uses MPI and GRPC (experimental) to enable communicati
 
 **Table 4** Test Accuracy and Standard Deviation Over Rounds
 
-|                   DomainNet (39 users, 3 domains)                                                                |
-|--------|----------------------------------------------------|----------------------------------------------------|
-| Rounds |                  Within Domain                     |                     Random                         |
+| Rounds |          DomainNet (39 users, 3 domains)           |               |               |                    |
+|--------|----------------------------------------------------|---------------|---------------|---------------|
+|        |                  Within Domain    |                |                Random             |               |
 |--------|---------------------------|------------------------|---------------------------|------------------------|
 |        | Mean                      | Std                    | Mean                      | Std                    |
 | 100    | 0.3619                    | 0.0635                 | 0.3212                    | 0.0625                 |
@@ -74,6 +74,7 @@ The application currently uses MPI and GRPC (experimental) to enable communicati
 | 300    | 0.4362                    | 0.0498                 | 0.4203                    | 0.0537                 |
 | 400    | 0.4353                    | 0.0687                 | 0.4355                    | 0.0585                 |
 | 500    | 0.4726                    | 0.0502                 | 0.4499                    | 0.0496                 |
+
 
 
 |        |          Camelyon17 (39 users, 3 domains)                                                               |
@@ -89,7 +90,7 @@ The application currently uses MPI and GRPC (experimental) to enable communicati
 
 |        |          Digit Five (39 users, 3 domains)         |                                                   |
 |--------|---------------------------------------------------|---------------------------------------------------|
-| Rounds |                  Within Domain                    |                      Random                       |
+| Rounds |             Within Domain |                       |                      Random                       |
 |--------|---------------------------|-----------------------|---------------------------|-----------------------|
 |        | Mean                      | Std                   | Mean                      | Std                   |
 | 20     | 0.7314                    | 0.1290                | 0.6788                    | 0.0839                |
