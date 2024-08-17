@@ -1,9 +1,10 @@
 from collections import OrderedDict
-from typing import Tuple, List
+from typing import Any, Tuple, List
 import torch
 from torch import Tensor
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.data import DataLoader
 from torch.nn.parallel import DataParallel
 
 import resnet
@@ -13,7 +14,8 @@ import yolo
 
 
 class ModelUtils():
-    def __init__(self) -> None:
+    def __init__(self, device: torch.device) -> None:
+        self.device = device
 
         self.models_layers_idx = {
             "resnet10": {
@@ -33,14 +35,14 @@ class ModelUtils():
         }
 
     def get_model(
-    self,
-    model_name: str,
-    dset: str,
-    device: torch.device,
-    device_ids: list,
-    pretrained=False,
-     **kwargs) -> DataParallel:
-        self.dset = dset # cifar10, wilds, pascal
+        self,
+        model_name: str,
+        dset: str,
+        device: torch.device,
+        device_ids: List[int],
+        pretrained:bool=False,
+        **kwargs: Any
+    ) -> nn.Module:
         # TODO: add support for loading checkpointed models
         model_name = model_name.lower()
         if model_name == "resnet10":
@@ -65,12 +67,12 @@ class ModelUtils():
 
     def train(self,
     model: nn.Module,
-    optim,
-    dloader,
-    loss_fn,
+    optim: torch.optim.Optimizer,
+    dloader: DataLoader[Any],
+    loss_fn: Any,
     device: torch.device,
-    test_loader=None,
-    **kwargs) -> Tuple[float,
+    test_loader: DataLoader[Any]|None=None,
+    **kwargs: Any) -> Tuple[float,
      float]:
         """TODO: generate docstring
         """
@@ -291,8 +293,8 @@ class ModelUtils():
             train_accuracy[i] = 100. * correct[i] / len(dloader.dataset)
         return train_loss, train_accuracy
 
-    def test(self, model, dloader, loss_fn, device,
-             **kwargs) -> Tuple[float, float]:
+    def test(self, model: nn.Module, dloader: DataLoader[Any], loss_fn: Any, device: torch.device,
+             **kwargs: Any) -> Tuple[float, float]:
         """TODO: generate docstring
         """
         model.eval()
@@ -362,7 +364,7 @@ class ModelUtils():
         acc = correct / len(dloader.dataset)
         return test_loss, acc
 
-    def save_model(self, model, path):
+    def save_model(self, model: nn.Module, path: str) -> None:
         if isinstance(model, DataParallel):
             model_ = model.module
         else:
@@ -403,3 +405,9 @@ class ModelUtils():
             if key not in key_to_ignore:
                 filtered_model_wts[key] = param
         return filtered_model_wts
+
+    def get_memory_usage(self):
+        """
+        Get the memory usage
+        """
+        return torch.cuda.memory_allocated(self.device)

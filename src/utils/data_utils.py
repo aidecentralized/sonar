@@ -1,4 +1,5 @@
 import importlib
+from typing import Tuple
 import numpy as np
 import torch
 import torchvision.transforms as T
@@ -93,7 +94,7 @@ def filter_by_class(dataset, classes):
     return Subset(dataset, indices), indices
 
 
-def random_samples(dataset, num_samples):
+def random_samples(dataset, num_samples) -> Tuple[Subset, np.ndarray]:
     """
     Returns a random subset of samples from the dataset.
     """
@@ -110,7 +111,7 @@ def extr_noniid(train_dataset, samples_per_client, classes):
     return Subset(all_data, perm[:samples_per_client])
 
 
-def  cifar_extr_noniid(
+def cifar_extr_noniid(
     train_dataset, test_dataset, num_users, n_class, num_samples, rate_unbalance
 ):
     """
