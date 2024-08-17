@@ -60,6 +60,7 @@ def get_dataset(dname: str, dpath: str):
         "organsmnist": ("data_loaders.medmnist", "OrganSMNISTDataset"),
         "domainnet": ("data_loaders.domainnet", "DomainNetDataset"),
         "wilds": ("data_loaders.wilds", "WildsDataset"),
+        "pascal": ("data_loaders.pascal", "PascalDataset")
     }
 
 

@@ -91,6 +91,7 @@ def copy_source_code(config: dict) -> None:
         "./.ipynb_checkpoints/",
         "./expt_dump/",
         "./helper_scripts/",
+        "./datasets/",
         "./imgs/",
         "./expt_dump_old/",
         "./comparison_plots/",
