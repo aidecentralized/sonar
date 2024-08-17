@@ -78,95 +78,135 @@ class ModelUtils():
         model.train()
 
         if self.dset == "pascal":
-            losses = []  # Initialize the list to store the losses
-
-            for batch_idx, (data, target) in enumerate(dloader):
-                data = data.to(device)
-                y0, y1, y2 = ( 
-                    target[0].to(device), 
-                    target[1].to(device), 
-                    target[2].to(device), 
-                )
-
-                image_size = kwargs.get("image_size", 416)
-                # Grid cell sizes
-                s = [image_size // 32, image_size // 16, image_size // 8]
-                
-                # Calculating the loss at each scale 
-                scaled_anchors = kwargs.get("scaled_anchors", ( 
-                    torch.tensor([ [(0.28, 0.22), (0.38, 0.48), (0.9, 0.78)],
-                                [(0.07, 0.15), (0.15, 0.11), (0.14, 0.29)],
-                                [(0.02, 0.03), (0.04, 0.07), (0.08, 0.06)],]) * 
-                    torch.tensor(s).unsqueeze(1).unsqueeze(1).repeat(1,3,2)).to(device) )
-                
-                with torch.cuda.amp.autocast(enabled=False):
-                    # Getting the model predictions 
-                    outputs = model(data) 
-                
-                    loss = ( 
-                        loss_fn(outputs[0], y0, scaled_anchors[0]) 
-                        + loss_fn(outputs[1], y1, scaled_anchors[1]) 
-                        + loss_fn(outputs[2], y2, scaled_anchors[2]) 
-                    ) 
-
-                # Add the loss to the list 
-                losses.append(loss.item()) 
-                
-                # Reset gradients 
-                optim.zero_grad() 
-                scaler = kwargs.get("scaler", torch.cuda.amp.GradScaler())
-                # Backpropagate the loss 
-                scaler.scale(loss).backward() 
-                
-                # Optimization step 
-                scaler.step(optim) 
-                
-                # Update the scaler for next iteration 
-                scaler.update() 
-
-                # Calculate the mean loss dynamically after each batch
-                mean_loss = sum(losses) / len(losses)
-                print("batch ", batch_idx, "loss ", mean_loss)
-
-            return mean_loss, 0  # Optionally return the mean loss at the end
+            mean_loss, acc = self.train_object_detection(
+                model,
+                optim,
+                dloader,
+                loss_fn,
+                device,
+                test_loader=None,
+                **kwargs
+            )
+            return mean_loss, acc
 
         else:
-            correct = 0
-            train_loss = 0
-            for batch_idx, (data, target) in enumerate(dloader):
-                data = data.to(device)
-                target = target.to(device)
+            train_loss, acc = self.train_classification(
+                model,
+                optim,
+                dloader,
+                loss_fn,
+                device,
+                test_loader=None,
+                **kwargs
+            )
+            return train_loss, acc
+    
+    def train_object_detection(self,
+    model: nn.Module,
+    optim,
+    dloader,
+    loss_fn,
+    device: torch.device,
+    test_loader=None,
+    **kwargs) -> Tuple[float,
+     float]:
+        losses = []  # Initialize the list to store the losses
 
-                optim.zero_grad()
+        for batch_idx, (data, target) in enumerate(dloader):
+            data = data.to(device)
+            y0, y1, y2 = ( 
+                target[0].to(device), 
+                target[1].to(device), 
+                target[2].to(device), 
+            )
 
-                position = kwargs.get("position", 0)
-                output = model(data, position=position)
+            image_size = kwargs.get("image_size", 416)
+            # Grid cell sizes
+            s = [image_size // 32, image_size // 16, image_size // 8]
+            
+            # Calculating the loss at each scale 
+            scaled_anchors = kwargs.get("scaled_anchors", ( 
+                torch.tensor([ [(0.28, 0.22), (0.38, 0.48), (0.9, 0.78)],
+                            [(0.07, 0.15), (0.15, 0.11), (0.14, 0.29)],
+                            [(0.02, 0.03), (0.04, 0.07), (0.08, 0.06)],]) * 
+                torch.tensor(s).unsqueeze(1).unsqueeze(1).repeat(1,3,2)).to(device) )
+            
+            with torch.cuda.amp.autocast(enabled=False):
+                # Getting the model predictions 
+                outputs = model(data) 
+            
+                loss = ( 
+                    loss_fn(outputs[0], y0, scaled_anchors[0]) 
+                    + loss_fn(outputs[1], y1, scaled_anchors[1]) 
+                    + loss_fn(outputs[2], y2, scaled_anchors[2]) 
+                ) 
 
-                if kwargs.get("apply_softmax", False):
-                    output = nn.functional.log_softmax(
-                        output, dim=1)  # type: ignore
+            # Add the loss to the list 
+            losses.append(loss.item()) 
+            
+            # Reset gradients 
+            optim.zero_grad() 
+            scaler = kwargs.get("scaler", torch.cuda.amp.GradScaler())
+            # Backpropagate the loss 
+            scaler.scale(loss).backward() 
+            
+            # Optimization step 
+            scaler.step(optim) 
+            
+            # Update the scaler for next iteration 
+            scaler.update() 
 
-                loss = loss_fn(output, target)
-                loss.backward()
-                optim.step()
-                train_loss += loss.item()
-                pred = output.argmax(dim=1, keepdim=True)
-                # view_as() is used to make sure the shape of pred and target are
-                # the same
-                if len(target.size()) > 1:
-                    target = target.argmax(dim=1, keepdim=True)
-                correct += pred.eq(target.view_as(pred)).sum().item()
+            # Calculate the mean loss dynamically after each batch
+            mean_loss = sum(losses) / len(losses)
+            print("batch ", batch_idx, "loss ", mean_loss)
 
-            if test_loader is not None:
-                # TODO: implement test loader for pascal
-                test_loss, test_acc = self.test(
-                    model, test_loader, loss_fn, device)
-                print(
-                    f"Train Loss: {train_loss/(batch_idx+1):.6f} | Train Acc: {correct/((batch_idx+1)*len(data)):.6f} | Test Loss: {test_loss:.6f} | Test Acc: {test_acc:.6f}")
+        return mean_loss, 0  # Optionally return the mean loss at the end
+
+    def train_classification(self,
+    model: nn.Module,
+    optim,
+    dloader,
+    loss_fn,
+    device: torch.device,
+    test_loader=None,
+    **kwargs) -> Tuple[float,
+     float]:    
+        correct = 0
+        train_loss = 0
+        for batch_idx, (data, target) in enumerate(dloader):
+            data = data.to(device)
+            target = target.to(device)
+
+            optim.zero_grad()
+
+            position = kwargs.get("position", 0)
+            output = model(data, position=position)
+
+            if kwargs.get("apply_softmax", False):
+                output = nn.functional.log_softmax(
+                    output, dim=1)  # type: ignore
+
+            loss = loss_fn(output, target)
+            loss.backward()
+            optim.step()
+            train_loss += loss.item()
+            pred = output.argmax(dim=1, keepdim=True)
+            # view_as() is used to make sure the shape of pred and target are
+            # the same
+            if len(target.size()) > 1:
+                target = target.argmax(dim=1, keepdim=True)
+            correct += pred.eq(target.view_as(pred)).sum().item()
+
+        if test_loader is not None:
+            # TODO: implement test loader for pascal
+            test_loss, test_acc = self.test(
+                model, test_loader, loss_fn, device)
+            print(
+                f"Train Loss: {train_loss/(batch_idx+1):.6f} | Train Acc: {correct/((batch_idx+1)*len(data)):.6f} | Test Loss: {test_loss:.6f} | Test Acc: {test_acc:.6f}")
 
         acc = correct / len(dloader.dataset)
         return train_loss, acc
-
+        
     def train_mask(self,
     model: nn.Module,
     mask,
@@ -256,47 +296,55 @@ class ModelUtils():
         """TODO: generate docstring
         """
         model.eval()
+        test_loss, acc = 0, 0
+        if self.dset == "pascal":
+            test_loss, acc = self.test_object_detect(model, dloader, loss_fn, device, **kwargs)
+        else:
+            test_loss, acc = self.test_classification(model, dloader, loss_fn, device, **kwargs)
+        return test_loss, acc
+    
+    def test_object_detect(self, model, dloader, loss_fn, device,
+             **kwargs) -> Tuple[float, float]:
+        losses = []
+        with torch.no_grad():
+            for idx, (data, target) in enumerate(dloader):
+                data = data.to(device)
+                y0, y1, y2 = ( 
+                    target[0].to(device), 
+                    target[1].to(device), 
+                    target[2].to(device), 
+                )
+
+                image_size = kwargs.get("image_size", 416)
+                # Grid cell sizes
+                s = [image_size // 32, image_size // 16, image_size // 8]
+                                # Calculating the loss at each scale 
+                scaled_anchors = kwargs.get("scaled_achors", ( 
+                    torch.tensor([ [(0.28, 0.22), (0.38, 0.48), (0.9, 0.78)],
+                                [(0.07, 0.15), (0.15, 0.11), (0.14, 0.29)],
+                                [(0.02, 0.03), (0.04, 0.07), (0.08, 0.06)],]) * 
+                    torch.tensor(s).unsqueeze(1).unsqueeze(1).repeat(1,3,2)).to(device) )
+                
+                with torch.cuda.amp.autocast(enabled=False):
+                    # Getting the model predictions 
+                    outputs = model(data) 
+                
+                    loss = ( 
+                        loss_fn(outputs[0], y0, scaled_anchors[0]) 
+                        + loss_fn(outputs[1], y1, scaled_anchors[1]) 
+                        + loss_fn(outputs[2], y2, scaled_anchors[2]) 
+                    ) 
+
+                # Add the loss to the list 
+                losses.append(loss.item()) 
+
+                # train loss will be average loss
+            loss = sum(losses) / len(losses) 
+        return loss, 0
+        
+    def test_classification(self, model, dloader, loss_fn, device, **kwargs) -> Tuple[float, float]:
         test_loss = 0
         correct = 0
-        # TODO: test loader for pascal dataset and object detection
-        if self.dset == "pascal":
-            losses = []
-            with torch.no_grad():
-                for idx, (data, target) in enumerate(dloader):
-                    data = data.to(device)
-                    y0, y1, y2 = ( 
-                        target[0].to(device), 
-                        target[1].to(device), 
-                        target[2].to(device), 
-                    )
-
-                    image_size = kwargs.get("image_size", 416)
-                    # Grid cell sizes
-                    s = [image_size // 32, image_size // 16, image_size // 8]
-                                    # Calculating the loss at each scale 
-                    scaled_anchors = kwargs.get("scaled_achors", ( 
-                        torch.tensor([ [(0.28, 0.22), (0.38, 0.48), (0.9, 0.78)],
-                                    [(0.07, 0.15), (0.15, 0.11), (0.14, 0.29)],
-                                    [(0.02, 0.03), (0.04, 0.07), (0.08, 0.06)],]) * 
-                        torch.tensor(s).unsqueeze(1).unsqueeze(1).repeat(1,3,2)).to(device) )
-                    
-                    with torch.cuda.amp.autocast(enabled=False):
-                        # Getting the model predictions 
-                        outputs = model(data) 
-                    
-                        loss = ( 
-                            loss_fn(outputs[0], y0, scaled_anchors[0]) 
-                            + loss_fn(outputs[1], y1, scaled_anchors[1]) 
-                            + loss_fn(outputs[2], y2, scaled_anchors[2]) 
-                        ) 
-
-                    # Add the loss to the list 
-                    losses.append(loss.item()) 
-
-                    # train loss will be average loss
-                    loss = sum(losses) / len(losses) 
-            return loss, 0
-
         with torch.no_grad():
             for idx, (data, target) in enumerate(dloader):
                 data, target = data.to(device), target.to(device)
