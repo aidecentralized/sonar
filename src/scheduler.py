@@ -74,10 +74,12 @@ class Scheduler():
     def install_config(self) -> None:
         self.config: Dict[str, Any] = process_config(self.config)
 
-    def assign_config_by_path(self, sys_config_path: Dict[str, Any], algo_config_path: Dict[str, Any], rank: int|None = None) -> None:
+    def assign_config_by_path(self, sys_config_path: str, algo_config_path: str, is_super_node: bool|None = None) -> None:
         self.sys_config = load_config(sys_config_path)
-        if rank is not None:
-            self.sys_config["comm"]["rank"] = rank
+        if is_super_node:
+            self.sys_config["comm"]["rank"] = 0
+        else:
+            self.sys_config["comm"]["rank"] = None
         self.algo_config = load_config(algo_config_path)
         self.merge_configs()
 
@@ -90,6 +92,7 @@ class Scheduler():
         assert self.config is not None, "Config should be set when initializing"
         self.communication = CommunicationManager(self.config)
 
+        self.config["comm"]["rank"] = self.communication.get_rank()
         # Base clients modify the seed later on
         seed = self.config["seed"]
         torch.manual_seed(seed) # type: ignore
