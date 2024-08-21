@@ -4,7 +4,6 @@ This module manages the orchestration of federated learning experiments.
 """
 
 import os
-import random
 from typing import Any, Dict
 
 import torch
@@ -32,7 +31,6 @@ from algos.fl_val import FedValClient, FedValServer
 from utils.communication.comm_utils import CommunicationManager
 from utils.config_utils import load_config, process_config
 from utils.log_utils import copy_source_code, check_and_create_path
-import os
 
 
 # Mapping of algorithm names to their corresponding client and server classes so that they can be consumed by the scheduler later on.
@@ -74,11 +72,12 @@ class Scheduler():
     def install_config(self) -> None:
         self.config: Dict[str, Any] = process_config(self.config)
 
-    def assign_config_by_path(self, sys_config_path: str, algo_config_path: str, is_super_node: bool|None = None) -> None:
+    def assign_config_by_path(self, sys_config_path: str, algo_config_path: str, is_super_node: bool|None = None, host: str|None = None) -> None:
         self.sys_config = load_config(sys_config_path)
         if is_super_node:
             self.sys_config["comm"]["rank"] = 0
         else:
+            self.sys_config["comm"]["host"] = host
             self.sys_config["comm"]["rank"] = None
         self.algo_config = load_config(algo_config_path)
         self.merge_configs()

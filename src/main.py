@@ -33,11 +33,17 @@ parser.add_argument(
     type=bool,
     help=f"whether to run the super node",
 )
+parser.add_argument(
+    "-host",
+    nargs="?",
+    type=str,
+    help=f"host address of the nodes",
+)
 
 args = parser.parse_args()
 
 scheduler = Scheduler()
-scheduler.assign_config_by_path(args.s, args.b, args.super)
+scheduler.assign_config_by_path(args.s, args.b, args.super, args.host)
 print("Config loaded")
 
 scheduler.install_config()

@@ -14,9 +14,16 @@ parser.add_argument(
     help=f"number of nodes to run on this machine",
 )
 
+parser.add_argument(
+    "-host",
+    nargs="?",
+    type=str,
+    help=f"host address of the nodes",
+)
+
 args = parser.parse_args()
 
-command_list = ["python", "main.py"]
+command_list = ["python", "main.py", "-host", args.host]
 # if the super-node is to be started on this machine
 
 for i in range(args.n):
