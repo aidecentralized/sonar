@@ -98,8 +98,9 @@ def get_device_ids(num_users: int, gpus_available: List[int]) -> Dict[str, List[
         device_ids[f"node_{i}"] = [gpu_id]
     return device_ids
 
-num_users = 10
-gpu_ids = [0, 1, 2, 3, 4, 5, 6, 7]
+num_users = 80
+gpu_ids = [1, 2, 3, 4, 5, 6, 7]
+# gpu_ids = [1, 2, 3, 4, 5, 7]
 grpc_system_config = {
     "num_users": num_users,
     "comm": {
