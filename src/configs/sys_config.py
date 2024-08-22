@@ -62,7 +62,7 @@ grpc_system_config = {
     "num_users": num_users,
     "comm": {
         "type": "GRPC",
-        "peer_ids": ["matlaber6.media.mit.edu:50050"] # The super-node
+        "peer_ids": ["localhost:50050"] # The super-node
     },
     "dset": "cifar10",
     "dump_dir": "./expt_dump/",

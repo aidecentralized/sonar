@@ -14,7 +14,7 @@ Let's say you want to run the decentralized training with 80 users on 4 machines
 python main_grpc.py -n 20 -host randomhost42.mit.edu
 ```
 
-On **one** of the machines that you want to use as a coordinating node, run the following command:
+On **one** of the machines that you want to use as a coordinator node (let's say it is `randomhost43.mit.edu`), change the `peer_ids` with the hostname and the port you want to run the coordinator node and then run the following command:
 
 ``` bash
 python main.py -super true
