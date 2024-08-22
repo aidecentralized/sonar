@@ -1,3 +1,80 @@
+The project requires python3.9 +, we will go through the installation of pyenv to easily switch and virtual environment 
+
+## Setting Up `pyenv`
+
+`pyenv` allows you to easily switch between multiple versions of Python. Here's how to set it up:
+
+### 1. Install pyenv 
+
+```bash
+curl https://pyenv.run | bash
+```
+
+## Add pyenv to Your Shell:
+Add the following lines to your shell configuration file (~/.bashrc, ~/.zshrc, etc.):
+
+```bash
+export PATH="$HOME/.pyenv/bin:$PATH"
+eval "$(pyenv init --path)"
+eval "$(pyenv init -)"
+eval "$(pyenv virtualenv-init -)"
+
+```
+
+## Install Python Version
+
+Use pyenv to install Python 3.9 or later:
+
+```bash
+pyenv install 3.9.10
+pyenv global 3.9.10
+
+```
+
+## Verify Installation
+python --version
+
+```bash
+python --version
+
+```
+
+## Setting Up the Environment
+Create and activate a virtual environment using pyenv and pyenv-virtualenv:
+
+### Install pyenv-virtualenv:
+
+   #### On Linux:
+
+```bash
+git clone https://github.com/pyenv/pyenv-virtualenv.git ~/.pyenv/plugins/pyenv-virtualenv
+```
+ #### On Windows:
+
+```bash 
+git clone https://github.com/pyenv-win/pyenv-win.git %USERPROFILE%\.pyenv
+```
+
+## Create a Virtual Environment:
+
+``` bash
+
+pyenv virtualenv 3.9.10 env
+```
+
+```bash
+pyenv activate env
+```
+
+
+## Install  Packages:
+
+Install the required packages using requirements.txt:
+
+```
+pip install -r requirements.txt
+```
+
 ### Running the code
 Let's say you want to run the model training of 3 nodes on a machine. That means there will be 4 nodes in total because there is 1 more node in addition to the clients --- server.
 The whole point of this project is to eventually transition to a distributed system where each node can be a separate machine and a server is simply another node. But for now, this is how things are done.
