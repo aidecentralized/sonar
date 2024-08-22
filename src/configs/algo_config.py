@@ -1,6 +1,9 @@
+from typing import TypeAlias, Dict, List
+
+ConfigType: TypeAlias = Dict[str, str|float|int|bool|List[str]]
 # Algorithm Configuration
 
-iid_dispfl_clients_new = {
+iid_dispfl_clients_new: ConfigType = {
     "algo": "dispfl",
     "exp_id": 12,
     "exp_type": "iid_dispfl",
@@ -16,7 +19,7 @@ iid_dispfl_clients_new = {
     "exp_keys": []
 }
 
-traditional_fl = {
+traditional_fl: ConfigType = {
     "algo": "fedavg",
     "exp_id": 10,
     "exp_type": "iid_clients_federated",
@@ -28,7 +31,7 @@ traditional_fl = {
     "exp_keys": [],
 }
 
-fedavg_object_detect = {
+fedavg_object_detect: ConfigType = {
     "algo": "fedavg",
     "exp_id": "test_modular_yolo",
     "exp_type": "test",
@@ -40,4 +43,5 @@ fedavg_object_detect = {
     "exp_keys": [],
 }
 
-current_config = fedavg_object_detect
+# current_config = fedavg_object_detect
+current_config = traditional_fl

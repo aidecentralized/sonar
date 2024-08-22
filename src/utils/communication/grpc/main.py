@@ -137,11 +137,16 @@ class GRPCCommunication(CommunicationInterface):
         # 4. The nodes will execute rest of the protocol in the same way as before
         self.num_users: int = int(config["num_users"]) # type: ignore
         self.rank: int|None = config["comm"]["rank"]
+        # TODO: Get rid of peer_ids now that we are passing [comm][host]
         self.super_node_host: str = config["comm"]["peer_ids"][0]
         if self.rank == 0:
             node_id: List[str] = self.super_node_host.split(":")
             self.host: str = node_id[0]
             self.port: int = int(node_id[1])
+        else:
+            # get hostname based on ip address
+            self.host: str = config["comm"]["host"]
+            pass
         self.listener: Any = None
         self.servicer = Servicer(self.super_node_host)
 
@@ -167,7 +172,7 @@ class GRPCCommunication(CommunicationInterface):
             self.port = get_port(self.rank, self.num_users) # type: ignore because we are setting it in the register method
             rank = comm_pb2.Rank(rank=self.rank) # type: ignore
             port = comm_pb2.Port(port=self.port)
-            peer_id = comm_pb2.PeerId(rank=rank, port=port)
+            peer_id = comm_pb2.PeerId(rank=rank, port=port, ip=self.host)
             stub.update_port(peer_id) # type: ignore
 
     def start_listener(self):
@@ -176,9 +181,10 @@ class GRPCCommunication(CommunicationInterface):
             ('grpc.max_receive_message_length', 100 * 1024 * 1024),  # 100MB
         ])
         comm_pb2_grpc.add_CommunicationServerServicer_to_server(self.servicer, self.listener) # type: ignore
-        self.listener.add_insecure_port(f'[::]:{self.port}')
+        address = f"{self.host}:{self.port}"
+        self.listener.add_insecure_port(address)
         self.listener.start()
-        print(f'Started listener on port {self.port}')
+        print(f'Started listener on {address}')
 
     def peer_ids_to_proto(self, peer_ids: OrderedDict[int, Dict[str, int|str]]) -> Dict[int, comm_pb2.PeerId]:
         peer_ids_proto: Dict[int, comm_pb2.PeerId] = {}

@@ -11,7 +11,6 @@ logging.getLogger("PIL").setLevel(logging.INFO)
 
 B_DEFAULT = "./configs/algo_config.py"
 S_DEFAULT = "./configs/sys_config.py"
-RANK_DEFAULT = None
 
 parser = argparse.ArgumentParser(description="Run collaborative learning experiments")
 parser.add_argument(
@@ -29,17 +28,22 @@ parser.add_argument(
     help=f"filepath for system config, default: {S_DEFAULT}",
 )
 parser.add_argument(
-    "-r",
+    "-super",
     nargs="?",
-    default=RANK_DEFAULT,
-    type=int,
-    help=f"rank of the node, default: {RANK_DEFAULT}",
+    type=bool,
+    help=f"whether to run the super node",
+)
+parser.add_argument(
+    "-host",
+    nargs="?",
+    type=str,
+    help=f"host address of the nodes",
 )
 
 args = parser.parse_args()
 
 scheduler = Scheduler()
-scheduler.assign_config_by_path(args.s, args.b, args.r)
+scheduler.assign_config_by_path(args.s, args.b, args.super, args.host)
 print("Config loaded")
 
 scheduler.install_config()
