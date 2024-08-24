@@ -41,6 +41,27 @@ domainnet_dpath = {
     "domainnet_painting": domainnet_base_dir,
 }
 
+CAMELYON17_DMN = [0, 3, 4] # + 1, 2 in test set
+CAMELYON17_DMN_EXT = [0,1, 2, 3, 4] # + 1, 2 in test set
+
+def get_camelyon17_support(num_clients, domains=CAMELYON17_DMN):
+    return get_domain_support(num_clients, "wilds_camelyon17", domains)
+
+DIGIT_FIVE_2 = ["svhn", "mnist_m"] 
+DIGIT_FIVE = ["svhn", "mnist_m", "synth_digits"] 
+DIGIT_FIVE_5 = ["mnist", "usps", "svhn", "mnist_m", "synth_digits"] 
+
+def get_digit_five_support(num_clients, domains=DIGIT_FIVE):
+    return get_domain_support(num_clients, "", domains)
+
+digit_five_dpath = {
+    "mnist": "./imgs/mnist",
+    "usps": "./imgs/usps",
+    "svhn": "./imgs/svhn",
+    "mnist_m": "./imgs/MNIST-M",
+    "synth_digits": "./imgs/syn_digit"
+}
+
 mpi_system_config = {
     "comm": {
         "type": "MPI"
@@ -79,6 +100,76 @@ mpi_non_iid_sys_config = {
     "test_label_distribution": "non_iid",  # Either "iid" "support",
     "samples_per_user": 32,
     "test_samples_per_user": 32,
+    "folder_deletion_signal_path":"./expt_dump/folder_deletion.signal"
+}
+
+L2C_clients = 12
+mpi_L2C_sys_config = {
+    "comm": {
+        "type": "MPI"
+    },
+    "seed": 1,
+    "num_users": 3,
+    # "experiment_path": "./experiments/",
+    "dset": "cifar10",
+    "dump_dir": "./expt_dump/",
+    "dpath": "./datasets/imgs/cifar10/",
+    "load_existing": False,
+    "device_ids": get_device_ids(num_users=3, gpus_available=[1, 2]),
+    "train_label_distribution": "non_iid",  # Either "iid", "non_iid" "support",
+    "test_label_distribution": "non_iid",  # Either "iid" "support",
+    "samples_per_user": 32,
+    "test_samples_per_user": 32,
+    "validation_prop": 0.05,
+    "target_clients_before_T_0": 0, # Only used if adapted_to_assumption True otherwise all clients are kept
+    "target_clients_after_T_0": round((L2C_clients-1)*0.1),
+    "T_0": 10,   # round after wich only target_clients_after_T_0 peers are kept
+    "folder_deletion_signal_path":"./expt_dump/folder_deletion.signal"
+}
+
+mpi_fedcentral_sys_config = {
+    "comm": {
+        "type": "MPI"
+    },
+    "seed": 1,
+    "num_users": 3,
+
+    "load_existing": False,
+    "dump_dir": "./expt_dump/",
+    "device_ids": get_device_ids(num_users=3, gpus_available=[2,3]),
+
+    # Dataset params 
+    "dset": get_digit_five_support(3),#get_camelyon17_support(fedcentral_client), #get_domainnet_support(fedcentral_client),
+    "dpath": digit_five_dpath, #wilds_dpath,#domainnet_dpath,
+    "train_label_distribution": "iid", # Either "iid", "shard" "support", 
+    "test_label_distribution": "iid", # Either "iid" "support",     
+    "samples_per_client": 256,
+    "test_samples_per_class": 100,
+    "community_type": "dataset",
+    "folder_deletion_signal_path":"./expt_dump/folder_deletion.signal"
+}
+
+fedval_users = 12
+mpi_fedval_sys_config = {
+    "comm": {
+        "type": "MPI"
+    },
+    "seed": 1,
+    "num_users": 3,
+
+    "load_existing": False,
+    "dump_dir": "./expt_dump/",
+    "device_ids": get_device_ids(num_users=fedval_users, gpus_available=[2,3]),
+
+    # Dataset params 
+    "dset": get_domainnet_support(fedval_users),#get_camelyon17_support(fedcentral_client), #get_domainnet_support(fedcentral_client),
+    "dpath": domainnet_dpath, #wilds_dpath,#domainnet_dpath,
+    "train_label_distribution": "iid", # Either "iid", "shard" "support", 
+    "test_label_distribution": "iid", # Either "iid" "support",     
+    "samples_per_client": 32,
+    "test_samples_per_class": 100,
+    "community_type": "dataset",
+    "folder_deletion_signal_path":"./expt_dump/folder_deletion.signal"
 }
 
 object_detect_system_config = {

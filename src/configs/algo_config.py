@@ -136,7 +136,7 @@ feddatarepr: ConfigType = {
 
 defkt: ConfigType = {
     "algo": "defkt",
-    "exp_id": "defkt_test",
+    "exp_id": "defkt_test4",
     "central_client": 1,
     "mask_last_layer": False,
     "fine_tune_last_layer": False,
@@ -164,5 +164,107 @@ fedavg_object_detect: ConfigType = {
     "batch_size": 8,
     "exp_keys": [],
 }
+
+fediso: ConfigType = {
+    "algo": "fediso",
+    "exp_id": "",
+    "num_rep": 1,
+    "load_existing": False,
+    "dump_dir": "./expt_dump/",
+
+    # Learning setup
+    "rounds": 100, 
+    "epochs_per_round": 5,
+    "model": "resnet10",
+    "model_lr": 1e-4, 
+    "batch_size": 16,
+
+    # params for model
+    #"image_size": 224,
+    "position": 0, 
+    #"inp_shape": [128, 3, 32, 32],
+
+    "exp_keys": []
+}
+
+L2C: ConfigType = {
+    "algo": "l2c",
+    "sharing": "weights",
+    "exp_id": "",
+
+    "alpha_lr": 0.1, 
+    "alpha_weight_decay": 0.01,
+    
+    "epochs_per_round": 5,
+    "warmup_epochs": 5,
+    "rounds": 210, 
+    "model": "resnet10",
+    "average_last_layer": True,
+    "model_lr": 1e-4, #0.01, #1e-4, 
+    "batch_size": 32,
+    # "optimizer": "adam",
+    "weight_decay": 5e-4,
+    "adapted_to_assumption": False,
+    
+    # params for model
+    "position": 0, 
+    "inp_shape": [128, 3, 32, 32],
+
+    "exp_keys": []
+}
+
+fedcentral: ConfigType = {
+    "seed": 1,
+    "algo": "centralized",
+    "exp_id": "",
+
+    "mask_last_layer": False,
+    "fine_tune_last_layer": False,
+    "epochs_per_round": 5,
+    "rounds": 100, 
+    "model": "resnet10",
+    "model_lr": 1e-4, 
+    "batch_size": 16,
+
+    # params for model
+    #"image_size": 128,
+    "position": 0, 
+    "inp_shape": [128, 3, 32, 32],
+    
+    "exp_keys": []
+}
+
+fedval: ConfigType = {
+    "algo": "fedval",
+    "exp_id": "",
+    "num_rep": 1,
+
+    # Clients selection
+    "selection_strategy": "highest", # lowest,
+    "target_clients_before_T_0": 1,
+    "target_clients_after_T_0": 1,
+    "T_0": 400,   # round after wich only target_clients_after_T_0 peers are kept
+    "community_type": None,#"dataset",
+    # "num_communities": len(cifar10_rotations), #len(domainnet_classes),
+    
+    # Learning setup
+    "rounds": 200, 
+    "epochs_per_round": 5,
+    "model": "resnet10",
+    "local_train_after_aggr" : False,
+    # "pretrained": True,
+    # "train_only_fc": True,
+    "model_lr": 1e-4, 
+    "batch_size": 16,
+    
+    # Knowledge transfer params
+    "average_last_layer": True,
+    "mask_finetune_last_layer": False,
+
+    # params for model
+    "position": 0, 
+    "exp_keys": []
+}
+
 
 current_config = defkt
