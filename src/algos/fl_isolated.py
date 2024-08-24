@@ -1,5 +1,7 @@
 from algos.base_class import BaseClient, BaseServer
 from utils.stats_utils import from_rounds_stats_per_client_per_round_to_dict_arrays
+from typing import Any, Dict, List
+from utils.communication.comm_utils import CommunicationManager
 
 
 class CommProtocol(object):
@@ -12,8 +14,8 @@ class CommProtocol(object):
 
 
 class FedIsoClient(BaseClient):
-    def __init__(self, config) -> None:
-        super().__init__(config)
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+        super().__init__(config, comm_utils)
         self.config = config
         self.tag = CommProtocol
         self.model_save_path = "{}/saved_models/node_{}.pt".format(
