@@ -31,7 +31,7 @@ traditional_fl: ConfigType = {
     "exp_keys": [],
 }
 
-fedweight = {
+fedweight: ConfigType = {
     "algo": "fedweight",
     "exp_id": "test_noniid3",
     "num_rep": 1,
@@ -66,7 +66,7 @@ fedweight = {
 }
 
 
-feddatarepr = {
+feddatarepr: ConfigType = {
     "algo": "feddatarepr",
     "exp_id": "test5",
     "num_rep": 1,
@@ -134,15 +134,15 @@ feddatarepr = {
     "exp_keys": ["similarity_metric", "selection_strategy", "consensus"]
 }
 
-defkt = {
+defkt: ConfigType = {
     "algo": "defkt",
-    "exp_id": "defkt",
+    "exp_id": "defkt_test",
     "central_client": 1,
     "mask_last_layer": False,
     "fine_tune_last_layer": False,
     "epochs_per_round": 5,
-    "rounds": 210,
-    "epochs": 210,
+    "rounds": 10,
+    "epochs": 10,
     "model": "resnet10",
     "model_lr": 1e-4,
     "batch_size": 16,

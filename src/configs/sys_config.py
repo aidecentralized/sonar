@@ -2,7 +2,19 @@
 # TODO: Set up multiple non-iid configurations here. The goal of a separate system config
 # is to simulate different real-world scenarios without changing the algorithm configuration.
 from typing import Dict, List
-from utils.config_utils import get_sliding_window_support, get_device_ids
+# from utils.config_utils import get_sliding_window_support, get_device_ids
+
+def get_device_ids(num_users: int, gpus_available: List[int]) -> Dict[str, List[int]]:
+    """
+    Get the GPU device IDs for the users.
+    """
+    # TODO: Make it multi-host
+    device_ids: Dict[str, List[int]] = {}
+    for i in range(num_users):
+        index = i % len(gpus_available)
+        gpu_id = gpus_available[index]
+        device_ids[f"node_{i}"] = [gpu_id]
+    return device_ids
 
 def get_domain_support(num_clients, base, domains):
     assert num_clients % len(domains) == 0
@@ -38,7 +50,7 @@ mpi_system_config = {
     "dset": "cifar10",
     "dump_dir": "./expt_dump/",
     "dpath": "./datasets/imgs/cifar10/",
-    "seed": 31,
+    "seed": 32,
     # node_0 is a server currently
     # The device_ids dictionary depicts the GPUs on which the nodes reside.
     # For a single-GPU environment, the config will look as follows (as it follows a 0-based indexing):
@@ -51,17 +63,18 @@ mpi_system_config = {
     "folder_deletion_signal_path":"./expt_dump/folder_deletion.signal"
 }
 
-non_iid_sys_config = {
+mpi_non_iid_sys_config = {
+    "comm": {
+        "type": "MPI"
+    },
     "seed": 1,
-    "num_users": 12,
-    "experiment_path": "./experiments/",
+    "num_users": 3,
+    # "experiment_path": "./experiments/",
     "dset": "cifar10",
     "dump_dir": "./expt_dump/",
     "dpath": "./datasets/imgs/cifar10/",
     "load_existing": False,
-    "device_ids": get_device_ids(
-        num_users=12, num_client_per_gpu=7, available_gpus=[1, 2]
-    ),
+    "device_ids": get_device_ids(num_users=3, gpus_available=[1, 2]),
     "train_label_distribution": "non_iid",  # Either "iid", "non_iid" "support",
     "test_label_distribution": "non_iid",  # Either "iid" "support",
     "samples_per_user": 32,
@@ -86,21 +99,8 @@ object_detect_system_config = {
     "folder_deletion_signal_path":"./expt_dump/folder_deletion.signal"
 }
 
-def get_device_ids(num_users: int, gpus_available: List[int]) -> Dict[str, List[int]]:
-    """
-    Get the GPU device IDs for the users.
-    """
-    # TODO: Make it multi-host
-    device_ids: Dict[str, List[int]] = {}
-    for i in range(num_users):
-        index = i % len(gpus_available)
-        gpu_id = gpus_available[index]
-        device_ids[f"node_{i}"] = [gpu_id]
-    return device_ids
-
 num_users = 80
 gpu_ids = [1, 2, 3, 4, 5, 6, 7]
-# gpu_ids = [1, 2, 3, 4, 5, 7]
 grpc_system_config = {
     "num_users": num_users,
     "comm": {
@@ -118,21 +118,4 @@ grpc_system_config = {
     "folder_deletion_signal_path":"./expt_dump/folder_deletion.signal"
 }
 
-non_iid_sys_config = {
-    "seed": 1,
-    "num_users": 12,
-    "experiment_path": "./experiments/",
-    "dset": "cifar10",
-    "dump_dir": "./expt_dump/",
-    "dpath": "./datasets/imgs/cifar10/",
-    "load_existing": False,
-    "device_ids": get_device_ids(
-        num_users=12, num_client_per_gpu=7, available_gpus=[1, 2]
-    ),
-    "train_label_distribution": "non_iid",  # Either "iid", "non_iid" "support",
-    "test_label_distribution": "non_iid",  # Either "iid" "support",
-    "samples_per_user": 32,
-    "test_samples_per_user": 32,
-}
-
-current_config = grpc_system_config
+current_config = mpi_non_iid_sys_config
