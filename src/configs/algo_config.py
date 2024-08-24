@@ -136,7 +136,7 @@ feddatarepr: ConfigType = {
 
 defkt: ConfigType = {
     "algo": "defkt",
-    "exp_id": "defkt_test4",
+    "exp_id": "defkt_test9",
     "central_client": 1,
     "mask_last_layer": False,
     "fine_tune_last_layer": False,
