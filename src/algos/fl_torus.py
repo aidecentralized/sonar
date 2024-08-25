@@ -3,7 +3,7 @@ import math
 
 
 class TorusTopology:
-    def get_selected_ids(node_id, config):
+    def get_selected_ids(self, node_id, config):
         grid_size = int(math.sqrt(config["num_users"]))
         num_users = config["num_users"]
 

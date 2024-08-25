@@ -37,7 +37,7 @@ class FedStaticClient(BaseFedAvgClient):
                 p_within_decay, within_community_sampling, rnd, total_rounds
             )
 
-        algo = self.config["algo"]
+        algo = self.config["topology"]
         selected_ids = self._select_ids_based_on_algo(algo)
 
         collab_weights = defaultdict(lambda: 0.0)

@@ -284,49 +284,6 @@ fedval: ConfigType = {
     "exp_keys": []
 }
 
-fedran: ConfigType = {
-    "algo": "fedran",
-    "exp_id": "test1",
-    "num_rep": 1,
-
-    # Clients selection
-    "target_users_before_T_0": 0,
-    "target_users_after_T_0": 1,
-    "T_0": 10,   # round after wich only target_users_after_T_0 peers are kept
-    #"leader_mode": False,
-    #"community_type": "dataset",
-    # "community_noise": 0.1,
-    
-    # ("top_x", num_top,x evolution ["growing_schedulded", None], fixed: [True, False])
-    # ("p_within", probability within community sampling, p decay)
-    "selection_strategy": ("rdm",), # ("top_x", 5, None, False), #("p_within", 0.9, "log_inc") # ("rdm")
-
-    #"within_community_sampling": 0.1,
-    #"p_within_decay": "log_inc", #exp_inc, exp_dec, lin_inc, lin_dec
-    #"num_communities": len(cifar10_rotations), #len(domainnet_classes),
-    
-    # Learning setup
-    "rounds": 50,
-    "epochs_per_round": 5,
-    "model": "resnet10",
-    "local_train_after_aggr" : True, #TODO: where to put this
-    # "pretrained": True,
-    # "train_only_fc": True,
-    "model_lr": 1e-4, 
-    "batch_size": 16,
-    
-    # Knowledge transfer params
-    # "inter_commu_layer": "l2", # the layer until which the knowledge is transferred when collaborating outside community (within_community_sampling<1) [l1, l2, l3, l4, fc]
-    "average_last_layer": True,
-    "mask_finetune_last_layer": False,
-    #"own_aggr_weight": 0.3,
-    # "aggr_weight_strategy": "linear",
-
-    # params for model
-    "position": 0, 
-    "exp_keys": []
-}
-
 swarm_users = 3
 swarm: ConfigType = {
     "algo": "swarm",
@@ -334,8 +291,7 @@ swarm: ConfigType = {
     "num_rep": 1,
 
     # Clients selection
-    "num_clients": swarm_users,
-    "target_clients": 2,
+    "target_users": 2,
     "similarity": "CosineSimilarity",  # "EuclideanDistance", "CosineSimilarity",
     # "community_type": "dataset",
     "with_sim_consensus": True,
@@ -360,4 +316,37 @@ swarm: ConfigType = {
     "exp_keys": [],
 }
 
-current_config = fedweight
+fedstatic: ConfigType = {
+    "algo": "fedstatic",
+    "exp_id": "test_fedtorus_4",
+    "num_rep": 1,
+    "topology": "torus",
+
+    # Clients selection
+    "num_users_to_select": 2,
+    "leader_mode": False,
+    "community_type": "dataset",
+    # "within_community_sampling": 0.1,
+    # "p_within_decay": "log_inc", #exp_inc, exp_dec, lin_inc, lin_dec
+    # "num_communities": len(cifar10_rotations), #len(domainnet_classes),
+    # Learning setup
+    "rounds": 210,
+    "epochs_per_round": 5,
+    "model": "resnet10",
+    "local_train_after_aggr": True,
+    # "pretrained": True,
+    # "train_only_fc": True,
+    "model_lr": 1e-4,
+    "batch_size": 16,
+    # Knowledge transfer params
+    # "inter_commu_layer": "l2", # the layer until which the knowledge is transferred when collaborating outside community (within_community_sampling<1) [l1, l2, l3, l4, fc]
+    "average_last_layer": True,
+    "mask_finetune_last_layer": False,
+    # "own_aggr_weight": 0.3,
+    # "aggr_weight_strategy": "linear",
+    # params for model
+    "position": 0,
+    "exp_keys": [],
+}
+
+current_config = fedstatic

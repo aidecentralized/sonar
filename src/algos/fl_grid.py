@@ -3,7 +3,7 @@ import math
 
 
 class GridTopology:
-    def get_selected_ids(node_id, config):
+    def get_selected_ids(self, node_id, config):
         grid_size = int(config["num_users"] ** 0.5)
 
         num_users = config["num_users"]

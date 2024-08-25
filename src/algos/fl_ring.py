@@ -1,5 +1,5 @@
 class RingTopology:
-    def get_selected_ids(node_id, config):
+    def get_selected_ids(self, node_id, config):
         if (node_id + 1) % config["num_users"] == 0:
             selected_ids = [(node_id + 2) % config["num_users"]]
         else:
