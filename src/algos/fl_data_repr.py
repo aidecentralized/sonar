@@ -1118,12 +1118,12 @@ class FedDataRepClient(BaseFedAvgClient):
                 self.comm_utils.send_signal(dest=self.server_node, data=similarity_dict, tag=self.tag.SIM_ADVERT)
                 similarity_dict = self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.SIM_SHARE)
                                         
-            is_num_collab_changed = round == self.config['T_0'] and self.config["target_clients_after_T_0"] != self.config["target_clients_before_T_0"]
+            is_num_collab_changed = round == self.config['T_0'] and self.config["target_users_after_T_0"] != self.config["target_users_before_T_0"]
             is_selection_round = round == start_round or (round % self.config["rounds_per_selection"] == 0) or is_num_collab_changed
                         
             if is_selection_round:
-                num_collaborator_before = self.config["target_clients_before_T_0"]
-                num_collaborator_after = self.config["target_clients_after_T_0"]
+                num_collaborator_before = self.config["target_users_before_T_0"]
+                num_collaborator_after = self.config["target_users_after_T_0"]
                 # num_collaborator = self.config[f"target_clients_{'before' if round < self.config['T_0'] else 'after'}_T_0"]             
                 is_before_T0 = round < self.config['T_0']
                 if num_collaborator_before == 0 and is_before_T0:

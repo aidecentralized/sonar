@@ -210,7 +210,7 @@ class MetaL2CClient(BaseFedAvgClient):
 
             if round == self.config["T_0"]:
                 self.filter_out_worse_neighbors(
-                    self.config["target_clients_after_T_0"], collab_weights_dict
+                    self.config["target_users_after_T_0"], collab_weights_dict
                 )
 
             if self.sharing_mode == "updates":

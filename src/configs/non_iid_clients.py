@@ -257,9 +257,9 @@ L2C = {
     "device_ids": get_device_ids(
         num_clients=fediso_client, num_client_per_gpu=10, available_gpus=[1, 2, 3]
     ),
-    # "target_clients_before_T_0": 7,
-    "target_clients_after_T_0": 3,
-    "T_0": 0,  # round after wich only target_clients_after_T_0 peers are kept
+    # "target_users_before_T_0": 7,
+    "target_users_after_T_0": 3,
+    "T_0": 0,  # round after wich only target_users_after_T_0 peers are kept
     "alpha_lr": 0.1,
     "alpha_weight_decay": 0.01,
     # Learning setup
@@ -295,8 +295,8 @@ metaL2C_cifar10 = {
     # Learning setup
     "num_clients": 8,
     "device_ids": device_ids_8c_gpu,
-    # "target_clients_before_T_0": 7,
-    "target_clients_after_T_0": 1,
+    # "target_users_before_T_0": 7,
+    "target_users_after_T_0": 1,
     "T_0": 2,
     "K_0": 0,  # number of peers to keep as neighbors at T_0 (!) inverse that in L2C paper
     "T_0": 250,  # round after wich only K_0 peers are kept
@@ -368,9 +368,9 @@ fedweight = {
     # Learning setup
     "num_clients": 8,
     "device_ids": device_ids_8c_gpu,
-    "target_clients_before_T_0": 7,
-    "target_clients_after_T_0": 1,
-    "T_0": 0,  # round after wich only target_clients_after_T_0 peers are kept
+    "target_users_before_T_0": 7,
+    "target_users_after_T_0": 1,
+    "T_0": 0,  # round after wich only target_users_after_T_0 peers are kept
     "epochs_per_round": 5,
     "rounds": 30,
     "model": "resnet18",
@@ -534,9 +534,9 @@ fedval = {
     # "test_samples_per_class": 300,
     # Clients selection
     "selection_strategy": "lowest",  # lowest,
-    "target_clients_before_T_0": 1,
-    "target_clients_after_T_0": 1,
-    "T_0": 400,  # round after wich only target_clients_after_T_0 peers are kept
+    "target_users_before_T_0": 1,
+    "target_users_after_T_0": 1,
+    "T_0": 400,  # round after wich only target_users_after_T_0 peers are kept
     "community_type": None,  # "dataset",
     # "num_communities": len(cifar10_rotations), #len(domainnet_classes),
     # Learning setup
@@ -672,9 +672,9 @@ fedran = {
     # "support" : get_sliding_window_support(num_clients=NUM_CLIENT, num_classes=10, num_classes_per_client=4),
     # Clients selection
     "num_clients": fedran_client,
-    "target_clients_before_T_0": 0,
-    "target_clients_after_T_0": 1,
-    "T_0": 10,  # round after wich only target_clients_after_T_0 peers are kept
+    "target_users_before_T_0": 0,
+    "target_users_after_T_0": 1,
+    "T_0": 10,  # round after wich only target_users_after_T_0 peers are kept
     "leader_mode": False,
     "community_type": "dataset",
     # "within_community_sampling": 0.1,

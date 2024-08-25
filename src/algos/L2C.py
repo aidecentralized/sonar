@@ -265,7 +265,7 @@ class L2CClient(BaseFedAvgClient):
 
             # Lower the number of neighbors
             if round == self.config["T_0"]:
-                self.filter_out_worse_neighbors(self.config["target_clients_after_T_0"])
+                self.filter_out_worse_neighbors(self.config["target_users_after_T_0"])
 
             self.comm_utils.send(
                 dest=self.server_node, data=round_stats, tag=self.tag.ROUND_STATS
