@@ -10,26 +10,26 @@ def get_device_ids(num_users: int, gpus_available: List[int]) -> Dict[str, List[
     """
     # TODO: Make it multi-host
     device_ids: Dict[str, List[int]] = {}
-    for i in range(num_users):
+    for i in range(num_users + 1): # +1 for the server
         index = i % len(gpus_available)
         gpu_id = gpus_available[index]
         device_ids[f"node_{i}"] = [gpu_id]
     return device_ids
 
-def get_domain_support(num_clients, base, domains):
-    assert num_clients % len(domains) == 0
+def get_domain_support(num_users, base, domains):
+    assert num_users % len(domains) == 0
 
-    clients_per_domain = num_clients // len(domains)
+    users_per_domain = num_users // len(domains)
     support = {}
     support["0"] = f"{base}_{domains[0]}"
-    for i in range(1, num_clients + 1):
-        support[str(i)] = f"{base}_{domains[(i-1) // clients_per_domain]}"
+    for i in range(1, num_users + 1):
+        support[str(i)] = f"{base}_{domains[(i-1) // users_per_domain]}"
     return support
 
 DOMAINNET_DMN = ["real", "sketch", "clipart"]
 
-def get_domainnet_support(num_clients, domains=DOMAINNET_DMN):
-    return get_domain_support(num_clients, "domainnet", domains)
+def get_domainnet_support(num_users, domains=DOMAINNET_DMN):
+    return get_domain_support(num_users, "domainnet", domains)
 
 domainnet_base_dir = "/u/abhi24/matlaberp2/p2p/imgs/domainnet/"
 domainnet_dpath = {
@@ -44,15 +44,15 @@ domainnet_dpath = {
 CAMELYON17_DMN = [0, 3, 4] # + 1, 2 in test set
 CAMELYON17_DMN_EXT = [0,1, 2, 3, 4] # + 1, 2 in test set
 
-def get_camelyon17_support(num_clients, domains=CAMELYON17_DMN):
-    return get_domain_support(num_clients, "wilds_camelyon17", domains)
+def get_camelyon17_support(num_users, domains=CAMELYON17_DMN):
+    return get_domain_support(num_users, "wilds_camelyon17", domains)
 
 DIGIT_FIVE_2 = ["svhn", "mnist_m"] 
 DIGIT_FIVE = ["svhn", "mnist_m", "synth_digits"] 
 DIGIT_FIVE_5 = ["mnist", "usps", "svhn", "mnist_m", "synth_digits"] 
 
-def get_digit_five_support(num_clients, domains=DIGIT_FIVE):
-    return get_domain_support(num_clients, "", domains)
+def get_digit_five_support(num_users, domains=DIGIT_FIVE):
+    return get_domain_support(num_users, "", domains)
 
 digit_five_dpath = {
     "mnist": "./imgs/mnist",
@@ -103,7 +103,7 @@ mpi_non_iid_sys_config = {
     "folder_deletion_signal_path":"./expt_dump/folder_deletion.signal"
 }
 
-L2C_clients = 12
+L2C_users = 12
 mpi_L2C_sys_config = {
     "comm": {
         "type": "MPI"
@@ -121,13 +121,13 @@ mpi_L2C_sys_config = {
     "samples_per_user": 32,
     "test_samples_per_user": 32,
     "validation_prop": 0.05,
-    "target_clients_before_T_0": 0, # Only used if adapted_to_assumption True otherwise all clients are kept
-    "target_clients_after_T_0": round((L2C_clients-1)*0.1),
-    "T_0": 10,   # round after wich only target_clients_after_T_0 peers are kept
+    "target_users_before_T_0": 0, # Only used if adapted_to_assumption True otherwise all users are kept
+    "target_users_after_T_0": round((L2C_users-1)*0.1),
+    "T_0": 10,   # round after wich only target_users_after_T_0 peers are kept
     "folder_deletion_signal_path":"./expt_dump/folder_deletion.signal"
 }
 
-mpi_fedcentral_sys_config = {
+mpi_digitfive_sys_config = {
     "comm": {
         "type": "MPI"
     },
@@ -136,14 +136,14 @@ mpi_fedcentral_sys_config = {
 
     "load_existing": False,
     "dump_dir": "./expt_dump/",
-    "device_ids": get_device_ids(num_users=3, gpus_available=[2,3]),
+    "device_ids": get_device_ids(num_users=3, gpus_available=[6, 7]),
 
     # Dataset params 
     "dset": get_digit_five_support(3),#get_camelyon17_support(fedcentral_client), #get_domainnet_support(fedcentral_client),
     "dpath": digit_five_dpath, #wilds_dpath,#domainnet_dpath,
     "train_label_distribution": "iid", # Either "iid", "shard" "support", 
     "test_label_distribution": "iid", # Either "iid" "support",     
-    "samples_per_client": 256,
+    "samples_per_user": 256,
     "test_samples_per_class": 100,
     "community_type": "dataset",
     "folder_deletion_signal_path":"./expt_dump/folder_deletion.signal"
@@ -166,7 +166,7 @@ mpi_fedval_sys_config = {
     "dpath": domainnet_dpath, #wilds_dpath,#domainnet_dpath,
     "train_label_distribution": "iid", # Either "iid", "shard" "support", 
     "test_label_distribution": "iid", # Either "iid" "support",     
-    "samples_per_client": 32,
+    "samples_per_user": 32,
     "test_samples_per_class": 100,
     "community_type": "dataset",
     "folder_deletion_signal_path":"./expt_dump/folder_deletion.signal"
@@ -202,7 +202,7 @@ grpc_system_config = {
     "dump_dir": "./expt_dump/",
     "dpath": "./datasets/imgs/cifar10/",
     "seed": 2,
-    "device_ids": get_device_ids(num_users + 1, gpu_ids), # +1 for the super-node
+    "device_ids": get_device_ids(num_users, gpu_ids), # +1 for the super-node
     "samples_per_user": 500,
     "train_label_distribution": "iid",
     "test_label_distribution": "iid",

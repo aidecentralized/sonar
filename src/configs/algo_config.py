@@ -1,6 +1,6 @@
 from typing import TypeAlias, Dict, List
 
-ConfigType: TypeAlias = Dict[str, str|float|int|bool|List[str]]
+ConfigType: TypeAlias = Dict[str, str|float|int|bool|List[str]|List[int]]
 # Algorithm Configuration
 
 iid_dispfl_clients_new: ConfigType = {
@@ -133,6 +133,23 @@ feddatarepr: ConfigType = {
     
     "exp_keys": ["similarity_metric", "selection_strategy", "consensus"]
 }
+defkt: ConfigType = {
+    "algo": "defkt",
+    "exp_id": "defkt_test9",
+    "central_client": 1,
+    "mask_last_layer": False,
+    "fine_tune_last_layer": False,
+    "epochs_per_round": 5,
+    "rounds": 10,
+    "epochs": 10,
+    "model": "resnet10",
+    "model_lr": 1e-4,
+    "batch_size": 16,
+    "num_teachers": 1,
+    # params for model
+    "position": 0,
+    "inp_shape": [128, 3, 32, 32],
+}
 
 defkt: ConfigType = {
     "algo": "defkt",
@@ -167,10 +184,8 @@ fedavg_object_detect: ConfigType = {
 
 fediso: ConfigType = {
     "algo": "fediso",
-    "exp_id": "",
+    "exp_id": "test3",
     "num_rep": 1,
-    "load_existing": False,
-    "dump_dir": "./expt_dump/",
 
     # Learning setup
     "rounds": 100, 
@@ -216,7 +231,7 @@ L2C: ConfigType = {
 fedcentral: ConfigType = {
     "seed": 1,
     "algo": "centralized",
-    "exp_id": "",
+    "exp_id": "test1",
 
     "mask_last_layer": False,
     "fine_tune_last_layer": False,
@@ -267,4 +282,4 @@ fedval: ConfigType = {
 }
 
 
-current_config = defkt
+current_config = fedcentral
