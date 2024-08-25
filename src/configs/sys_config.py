@@ -98,12 +98,12 @@ mpi_non_iid_sys_config = {
     "device_ids": get_device_ids(num_users=3, gpus_available=[1, 2]),
     "train_label_distribution": "non_iid",  # Either "iid", "non_iid" "support",
     "test_label_distribution": "non_iid",  # Either "iid" "support",
-    "samples_per_user": 32,
-    "test_samples_per_user": 32,
+    "samples_per_user": 256,
+    "test_samples_per_user": 100,
     "folder_deletion_signal_path":"./expt_dump/folder_deletion.signal"
 }
 
-L2C_users = 12
+L2C_users = 3
 mpi_L2C_sys_config = {
     "comm": {
         "type": "MPI"
@@ -116,14 +116,11 @@ mpi_L2C_sys_config = {
     "dpath": "./datasets/imgs/cifar10/",
     "load_existing": False,
     "device_ids": get_device_ids(num_users=3, gpus_available=[1, 2]),
-    "train_label_distribution": "non_iid",  # Either "iid", "non_iid" "support",
-    "test_label_distribution": "non_iid",  # Either "iid" "support",
+    "train_label_distribution": "iid",  # Either "iid", "non_iid" "support",
+    "test_label_distribution": "iid",  # Either "iid" "support",
     "samples_per_user": 32,
     "test_samples_per_user": 32,
     "validation_prop": 0.05,
-    "target_users_before_T_0": 0, # Only used if adapted_to_assumption True otherwise all users are kept
-    "target_users_after_T_0": round((L2C_users-1)*0.1),
-    "T_0": 10,   # round after wich only target_users_after_T_0 peers are kept
     "folder_deletion_signal_path":"./expt_dump/folder_deletion.signal"
 }
 

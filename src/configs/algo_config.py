@@ -1,6 +1,6 @@
 from typing import TypeAlias, Dict, List
 
-ConfigType: TypeAlias = Dict[str, str|float|int|bool|List[str]|List[int]]
+ConfigType: TypeAlias = Dict[str, str|float|int|bool|List[str]|List[int]|tuple[int|str|float|bool|None]]
 # Algorithm Configuration
 
 iid_dispfl_clients_new: ConfigType = {
@@ -202,14 +202,20 @@ fediso: ConfigType = {
     "exp_keys": []
 }
 
+L2C_users = 3
 L2C: ConfigType = {
     "algo": "l2c",
     "sharing": "weights",
-    "exp_id": "",
+    "exp_id": "test1",
 
     "alpha_lr": 0.1, 
     "alpha_weight_decay": 0.01,
-    
+
+    # Clients selection
+    "target_users_before_T_0": 0, # Only used if adapted_to_assumption True otherwise all users are kept
+    "target_users_after_T_0": round((L2C_users-1)*0.1),
+    "T_0": 10,   # round after wich only target_users_after_T_0 peers are kept
+
     "epochs_per_round": 5,
     "warmup_epochs": 5,
     "rounds": 210, 
@@ -231,7 +237,7 @@ L2C: ConfigType = {
 fedcentral: ConfigType = {
     "seed": 1,
     "algo": "centralized",
-    "exp_id": "test1",
+    "exp_id": "test5",
 
     "mask_last_layer": False,
     "fine_tune_last_layer": False,
@@ -281,5 +287,47 @@ fedval: ConfigType = {
     "exp_keys": []
 }
 
+fedran: ConfigType = {
+    "algo": "fedran",
+    "exp_id": "test1",
+    "num_rep": 1,
 
-current_config = fedcentral
+    # Clients selection
+    "target_users_before_T_0": 0,
+    "target_users_after_T_0": 1,
+    "T_0": 10,   # round after wich only target_clients_after_T_0 peers are kept
+    #"leader_mode": False,
+    #"community_type": "dataset",
+    # "community_noise": 0.1,
+    
+    # ("top_x", num_top,x evolution ["growing_schedulded", None], fixed: [True, False])
+    # ("p_within", probability within community sampling, p decay)
+    "selection_strategy": ("rdm",), # ("top_x", 5, None, False), #("p_within", 0.9, "log_inc") # ("rdm")
+
+    #"within_community_sampling": 0.1,
+    #"p_within_decay": "log_inc", #exp_inc, exp_dec, lin_inc, lin_dec
+    #"num_communities": len(cifar10_rotations), #len(domainnet_classes),
+    
+    # Learning setup
+    "rounds": 50,
+    "epochs_per_round": 5,
+    "model": "resnet10",
+    "local_train_after_aggr" : True, #TODO: where to put this
+    # "pretrained": True,
+    # "train_only_fc": True,
+    "model_lr": 1e-4, 
+    "batch_size": 16,
+    
+    # Knowledge transfer params
+    # "inter_commu_layer": "l2", # the layer until which the knowledge is transferred when collaborating outside community (within_community_sampling<1) [l1, l2, l3, l4, fc]
+    "average_last_layer": True,
+    "mask_finetune_last_layer": False,
+    #"own_aggr_weight": 0.3,
+    # "aggr_weight_strategy": "linear",
+
+    # params for model
+    "position": 0, 
+    "exp_keys": []
+}
+
+current_config = L2C
