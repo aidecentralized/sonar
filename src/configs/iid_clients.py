@@ -11,7 +11,7 @@ iid_clients_collab_new = {
     # Learning setup
     "num_clients": 2,
     "top_k": 1,
-    "samples_per_client": 1000,
+    "samples_per_user": 1000,
     "device_ids": {"node_0": [], "node_1": [0], "node_2": [1]},
     # top_k peers to communicate with, currently it is same as num_clients - 1 because
     # we are not including the client itself
@@ -55,7 +55,7 @@ iid_clients_isolated_new = {
     "device_ids": {"node_0": [1, 2]},
     # Learning setup
     "num_clients": 1,
-    "samples_per_client": 2000,
+    "samples_per_user": 2000,
     "epochs": 1000,
     "model": "resnet34",
     "model_lr": 3e-4,
@@ -76,7 +76,7 @@ iid_clients_federated_new = {
     "device_ids": {"node_0": [0], "node_1": [0], "node_2": [0], "node_3": [0]},
     # Learning setup
     "num_clients": 3,
-    "samples_per_client": 2000,
+    "samples_per_user": 2000,
     "epochs": 1000,
     "model": "resnet34",
     "model_lr": 3e-4,
@@ -98,7 +98,7 @@ iid_random_clients_new = {
     "device_ids": {"node_0": [0], "node_1": [0], "node_2": [1], "node_3": [1]},
     # Learning setup
     "num_clients": 3,
-    "samples_per_client": 2000,
+    "samples_per_user": 2000,
     "target_clients": 1,
     "epochs": 1000,
     "model": "resnet34",
@@ -128,7 +128,7 @@ iid_weight_clients_new = {
     },
     # Learning setup
     "num_clients": 5,
-    "samples_per_client": 500,
+    "samples_per_user": 500,
     "target_clients": 2,
     "similarity": "CosineSimilarity",  # CosineSimilarity or EuclideanDistance
     "epochs": 1000,
@@ -159,7 +159,7 @@ iid_swarm_clients_new = {
     },
     # Learning setup
     "num_clients": 5,
-    "samples_per_client": 500,
+    "samples_per_user": 500,
     "epochs": 1000,
     "model": "resnet34",
     "model_lr": 3e-4,
@@ -187,7 +187,7 @@ iid_l2c_clients_new = {
     },
     # Learning setup
     "num_clients": 4,
-    "samples_per_client": 100,
+    "samples_per_user": 100,
     "alpha_lr": 0.01,
     "K_0": 1,
     "T_0": 2,
@@ -218,7 +218,7 @@ iid_dispfl_clients_new = {
     },
     # Learning setup
     "num_clients": 4,
-    "samples_per_client": 500,
+    "samples_per_user": 500,
     "cs": "random",
     "neighbors": 2,
     "active_rate": 0.8,  # prob of active node
@@ -249,7 +249,7 @@ iid_defkt_clients_new = {
     "num_teachers": 1,
     # Learning setup
     "num_clients": 3,
-    "samples_per_client": 500,
+    "samples_per_user": 500,
     "dense_ratio": 0.5,
     "erk_power_scale": 1,
     "epochs": 1000,

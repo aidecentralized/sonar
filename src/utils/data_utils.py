@@ -102,13 +102,13 @@ def random_samples(dataset, num_samples) -> Tuple[Subset, np.ndarray]:
     return Subset(dataset, indices), indices
 
 
-def extr_noniid(train_dataset, samples_per_client, classes):
+def extr_noniid(train_dataset, samples_per_user, classes):
     """
     Extracts non-IID data from the training dataset.
     """
     all_data = Subset(train_dataset, [i for i, (_, y) in enumerate(train_dataset) if y in classes])
     perm = torch.randperm(len(all_data))
-    return Subset(all_data, perm[:samples_per_client])
+    return Subset(all_data, perm[:samples_per_user])
 
 
 def cifar_extr_noniid(

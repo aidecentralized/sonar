@@ -37,7 +37,7 @@ class PlotUtils:
         plt.ylabel(metric)
         if self.with_title:
             plt.title(
-                f"{metric} - {self.config['algo']}-{self.config['dset_name']}-samples per clients: {self.config['samples_per_client']}\nlabel distribution: {self.config['train_label_distribution']}"
+                f"{metric} - {self.config['algo']}-{self.config['dset_name']}-samples per clients: {self.config['samples_per_user']}\nlabel distribution: {self.config['train_label_distribution']}"
             )
         else:
             plt.title(f"{metric}")
@@ -59,7 +59,7 @@ class PlotUtils:
         plt.ylabel(metric)
         if self.with_title:
             plt.title(
-                f"avg_{metric} - {self.config['algo']}-{self.config['dset_name']}-clients:{self.config['num_users']}-samples per clients: {self.config['samples_per_client']}\nlabel distribution: {self.config['train_label_distribution']}"
+                f"avg_{metric} - {self.config['algo']}-{self.config['dset_name']}-clients:{self.config['num_users']}-samples per clients: {self.config['samples_per_user']}\nlabel distribution: {self.config['train_label_distribution']}"
             )
         else:
             plt.title(f"avg_{metric}")
@@ -89,7 +89,7 @@ class PlotUtils:
         plt.ylabel("Client")
         if self.with_title:
             plt.title(
-                f"{name} weights - {self.config['algo']}-{self.config['dset_name']}-clients:{self.config['num_users']}-samples per clients: {self.config['samples_per_client']}\nlabel distribution: {self.config['train_label_distribution']}"
+                f"{name} weights - {self.config['algo']}-{self.config['dset_name']}-clients:{self.config['num_users']}-samples per clients: {self.config['samples_per_user']}\nlabel distribution: {self.config['train_label_distribution']}"
             )
         else:
             plt.title(f"{name} weights")
@@ -187,7 +187,7 @@ class PlotUtils:
 
         if self.with_title:
             fig.suptitle(
-                f"{name} - {self.config['algo']}-{self.config['dset_name']}/samples per clients: {self.config['samples_per_client']}\nclients:{self.config['num_users']}/label distribution: {self.config['train_label_distribution']}"
+                f"{name} - {self.config['algo']}-{self.config['dset_name']}/samples per clients: {self.config['samples_per_user']}\nclients:{self.config['num_users']}/label distribution: {self.config['train_label_distribution']}"
             )
         else:
             fig.suptitle(f"{name}")
@@ -220,7 +220,7 @@ class PlotUtils:
             ax.tick_params(bottom=label_bottom, left=label_left)
         if self.with_title:
             f.suptitle(
-                f"{name} -- {self.config['algo']}-{self.config['dset_name']}-clients:{self.config['num_users']}-samples per clients: {self.config['samples_per_client']}\nlabel distribution: {self.config['train_label_distribution']})"
+                f"{name} -- {self.config['algo']}-{self.config['dset_name']}-clients:{self.config['num_users']}-samples per clients: {self.config['samples_per_user']}\nlabel distribution: {self.config['train_label_distribution']})"
             )
         else:
             f.suptitle(f"{name}")
@@ -292,7 +292,7 @@ class PlotUtils:
             ax.tick_params(bottom=label_bottom, left=label_left)
         if self.with_title:
             f.suptitle(
-                f"{name} -- {self.config['algo']}-{self.config['dset_name']}-clients:{self.config['num_users']}-samples per clients: {self.config['samples_per_client']}\nlabel distribution: {self.config['train_label_distribution']})"
+                f"{name} -- {self.config['algo']}-{self.config['dset_name']}-clients:{self.config['num_users']}-samples per clients: {self.config['samples_per_user']}\nlabel distribution: {self.config['train_label_distribution']})"
             )
         else:
             f.suptitle(f"{name}")
@@ -327,7 +327,7 @@ class PlotUtils:
         plt.ylabel("Collaboration weight")
         if self.with_title:
             plt.title(
-                f"Collaboration weight of client {client_idx + 1}- {self.config['algo']}-{self.config['dset_name']}-samples per clients: {self.config['samples_per_client']}\nlabel distribution: {self.config['train_label_distribution']}"
+                f"Collaboration weight of client {client_idx + 1}- {self.config['algo']}-{self.config['dset_name']}-samples per clients: {self.config['samples_per_user']}\nlabel distribution: {self.config['train_label_distribution']}"
             )
         else:
             plt.title(f"Collaboration weight of client {client_idx + 1}")
@@ -360,7 +360,7 @@ class PlotUtils:
         fig.supylabel(f"{name} weight")
         if self.with_title:
             fig.suptitle(
-                f"{name} weight of client - {self.config['algo']}-{self.config['dset_name']}-samples per clients: {self.config['samples_per_client']}\nlabel distribution: {self.config['train_label_distribution']}"
+                f"{name} weight of client - {self.config['algo']}-{self.config['dset_name']}-samples per clients: {self.config['samples_per_user']}\nlabel distribution: {self.config['train_label_distribution']}"
             )
         else:
             fig.suptitle(f"{name} weight of client")
