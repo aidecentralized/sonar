@@ -146,8 +146,8 @@ mpi_digitfive_sys_config = {
     "folder_deletion_signal_path":"./expt_dump/folder_deletion.signal"
 }
 
-fedval_users = 12
-mpi_fedval_sys_config = {
+swarm_users = 3
+mpi_domainnet_sys_config = {
     "comm": {
         "type": "MPI"
     },
@@ -156,10 +156,10 @@ mpi_fedval_sys_config = {
 
     "load_existing": False,
     "dump_dir": "./expt_dump/",
-    "device_ids": get_device_ids(num_users=fedval_users, gpus_available=[2,3]),
+    "device_ids": get_device_ids(num_users=swarm_users, gpus_available=[3, 4]),
 
     # Dataset params 
-    "dset": get_domainnet_support(fedval_users),#get_camelyon17_support(fedcentral_client), #get_domainnet_support(fedcentral_client),
+    "dset": get_domainnet_support(swarm_users),#get_camelyon17_support(fedcentral_client), #get_domainnet_support(fedcentral_client),
     "dpath": domainnet_dpath, #wilds_dpath,#domainnet_dpath,
     "train_label_distribution": "iid", # Either "iid", "shard" "support", 
     "test_label_distribution": "iid", # Either "iid" "support",     

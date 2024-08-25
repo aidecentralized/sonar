@@ -31,38 +31,35 @@ traditional_fl: ConfigType = {
     "exp_keys": [],
 }
 
+fedweight_users = 3
 fedweight: ConfigType = {
     "algo": "fedweight",
-    "exp_id": "test_noniid3",
+    "exp_id": "test1",
     "num_rep": 1,
-    "load_existing": False,
 
-    # Clients selection
-    "target_clients": 1,
-    "similarity": "CosineSimilarity", #"EuclideanDistance", "CosineSimilarity", 
-    #"community_type": "dataset",
+    # Client selection
+    "target_users": 3,
+    "similarity": "CosineSimilarity",  # "EuclideanDistance", "CosineSimilarity",
+    # "community_type": "dataset",
     "with_sim_consensus": True,
-    
     # Learning setup
-    "rounds": 200, 
+    "rounds": 210,
     "epochs_per_round": 5,
     "warmup_epochs": 50,
     "model": "resnet10",
-    "local_train_after_aggr" : True,
+    "local_train_after_aggr": True,
     # "pretrained": True,
     # "train_only_fc": True,
-    "model_lr": 1e-4, 
+    "model_lr": 1e-4,
     "batch_size": 16,
-    
     # Knowledge transfer params
     "average_last_layer": True,
     "mask_finetune_last_layer": False,
-    #"own_aggr_weight": 0.3,
-    #"aggr_weight_strategy": "linear",
-
+    # "own_aggr_weight": 0.3,
+    # "aggr_weight_strategy": "linear",
     # params for model
-    "position": 0, 
-    "exp_keys": []
+    "position": 0,
+    "exp_keys": [],
 }
 
 
@@ -88,9 +85,9 @@ feddatarepr: ConfigType = {
     "sim_exclude_first": (5, 5), # (first rounds, first rounds after T0)
     
     # Clients selection
-    "target_clients_before_T_0": 0, #feddatarepr_clients-1,
-    "target_clients_after_T_0": 1,
-    "T_0": 10,   # round after wich only target_clients_after_T_0 peers are kept
+    "target_users_before_T_0": 0, #feddatarepr_clients-1,
+    "target_users_after_T_0": 1,
+    "T_0": 10,   # round after wich only target_users_after_T_0 peers are kept
     # highest, lowest, [lower_exp]_sim_sampling, top_x, xth, uniform_rdm
     "selection_strategy": "uniform_rdm",#"uniform_rdm", 
     #"eps_greedy": 0.1,
@@ -206,7 +203,7 @@ L2C_users = 3
 L2C: ConfigType = {
     "algo": "l2c",
     "sharing": "weights",
-    "exp_id": "test1",
+    "exp_id": "test3",
 
     "alpha_lr": 0.1, 
     "alpha_weight_decay": 0.01,
@@ -262,9 +259,9 @@ fedval: ConfigType = {
 
     # Clients selection
     "selection_strategy": "highest", # lowest,
-    "target_clients_before_T_0": 1,
-    "target_clients_after_T_0": 1,
-    "T_0": 400,   # round after wich only target_clients_after_T_0 peers are kept
+    "target_users_before_T_0": 1,
+    "target_users_after_T_0": 1,
+    "T_0": 400,   # round after wich only target_users_after_T_0 peers are kept
     "community_type": None,#"dataset",
     # "num_communities": len(cifar10_rotations), #len(domainnet_classes),
     
@@ -295,7 +292,7 @@ fedran: ConfigType = {
     # Clients selection
     "target_users_before_T_0": 0,
     "target_users_after_T_0": 1,
-    "T_0": 10,   # round after wich only target_clients_after_T_0 peers are kept
+    "T_0": 10,   # round after wich only target_users_after_T_0 peers are kept
     #"leader_mode": False,
     #"community_type": "dataset",
     # "community_noise": 0.1,
@@ -330,4 +327,37 @@ fedran: ConfigType = {
     "exp_keys": []
 }
 
-current_config = L2C
+swarm_users = 3
+swarm: ConfigType = {
+    "algo": "swarm",
+    "exp_id": "test2",
+    "num_rep": 1,
+
+    # Clients selection
+    "num_clients": swarm_users,
+    "target_clients": 2,
+    "similarity": "CosineSimilarity",  # "EuclideanDistance", "CosineSimilarity",
+    # "community_type": "dataset",
+    "with_sim_consensus": True,
+
+    # Learning setup
+    "epochs": 210,
+    "rounds": 210,
+    "epochs_per_round": 5,
+    "model": "resnet10",
+    "local_train_after_aggr": True,
+    # "pretrained": True,
+    # "train_only_fc": True,
+    "model_lr": 1e-4,
+    "batch_size": 16,
+    # Knowledge transfer params
+    "average_last_layer": True,
+    "mask_finetune_last_layer": False,
+    # "own_aggr_weight": 0.3,
+    # "aggr_weight_strategy": "linear",
+    # params for model
+    "position": 0,
+    "exp_keys": [],
+}
+
+current_config = fedweight
