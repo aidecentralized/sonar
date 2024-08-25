@@ -58,7 +58,7 @@ class FedIsoClient(BaseClient):
         total_rounds = self.config["rounds"]
         epochs_per_round = self.config["epochs_per_round"]
 
-        self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.START)
+        self.comm_utils.receive(self.server_node, tag=self.tag.START)
 
         stats = []
         for round in range(start_round, total_rounds):
@@ -83,14 +83,14 @@ class FedIsoClient(BaseClient):
                         round_stats["test_acc"],
                     )
                 )
-        self.comm_utils.send_signal(
+        self.comm_utils.send(
             dest=self.server_node, data=stats, tag=self.tag.DONE
         )
 
 
 class FedIsoServer(BaseServer):
-    def __init__(self, config) -> None:
-        super().__init__(config)
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+        super().__init__(config, comm_utils)
         # self.set_parameters()
         self.config = config
         self.set_model_parameters(config)
@@ -108,10 +108,10 @@ class FedIsoServer(BaseServer):
                     self.node_id, client_node
                 )
             )
-            self.comm_utils.send_signal(dest=client_node, data=None, tag=self.tag.START)
+            self.comm_utils.send(dest=client_node, data=None, tag=self.tag.START)
 
         self.log_utils.log_console("Server waiting for all clients to finish")
-        stats = self.comm_utils.wait_for_all_clients(self.users, self.tag.DONE)
+        stats = self.comm_utils.all_gather(self.tag.DONE)
 
         stats_dict = from_rounds_stats_per_client_per_round_to_dict_arrays(stats)
         stats_dict["round_step"] = 1
