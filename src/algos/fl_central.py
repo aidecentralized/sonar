@@ -1,6 +1,8 @@
 from collections import OrderedDict
 import torch
 from torch import Tensor
+from typing import Any, Dict, List
+from utils.communication.comm_utils import CommunicationManager
 
 from torch.utils.data import DataLoader, Subset
 import copy
@@ -23,8 +25,8 @@ class CommProtocol(object):
 
 class CentralizedCLient(BaseClient):
 
-    def __init__(self, config) -> None:
-        super().__init__(config)
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+        super().__init__(config, comm_utils)
         self.config = config
         self.tag = CommProtocol
         self.model_save_path = "{}/saved_models/node_{}.pt".format(
@@ -103,14 +105,14 @@ class CentralizedCLient(BaseClient):
             param.requires_grad = True
 
     def run_protocol(self):
-        self.comm_utils.send_signal(
+        self.comm_utils.send(
             dest=self.server_node, data=self.train_indices, tag=self.tag.SEND_DATA
         )
 
         global_dloader = None
         if self.node_id == self.config["central_client"]:
-            train_indices = self.comm_utils.wait_for_signal(
-                src=self.server_node, tag=self.tag.SHARE_DATA
+            train_indices = self.comm_utils.receive(
+                node_ids=self.server_node, tag=self.tag.SHARE_DATA
             )
             train_dset = Subset(self.dset_obj.train_dset, train_indices)
             batch_size = self.config["batch_size"]
@@ -132,16 +134,16 @@ class CentralizedCLient(BaseClient):
                     epochs_per_round, global_dloader
                 )
                 global_model = self.get_model_weights()
-                self.comm_utils.send_signal(
+                self.comm_utils.send(
                     dest=self.server_node, data=global_model, tag=self.tag.SEND_MODEL
                 )
-                self.comm_utils.wait_for_signal(
-                    src=self.server_node, tag=self.tag.SHARE_MODEL
+                self.comm_utils.receive(
+                    node_ids=self.server_node, tag=self.tag.SHARE_MODEL
                 )
             else:
                 round_stats["train_loss"], round_stats["train_acc"] = 0.0, 0.0
-                global_model = self.comm_utils.wait_for_signal(
-                    src=self.server_node, tag=self.tag.SHARE_MODEL
+                global_model = self.comm_utils.receive(
+                    node_ids=self.server_node, tag=self.tag.SHARE_MODEL
                 )
                 self.set_model_weights(global_model)
 
@@ -158,14 +160,14 @@ class CentralizedCLient(BaseClient):
                 self.unfreeze_model()
 
             # send stats to server
-            self.comm_utils.send_signal(
+            self.comm_utils.send(
                 dest=self.server_node, data=round_stats, tag=self.tag.ROUND_STATS
             )
 
 
 class CentralizedServer(BaseServer):
-    def __init__(self, config) -> None:
-        super().__init__(config)
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+        super().__init__(config, comm_utils)
         # self.set_parameters()
         self.config = config
         self.set_model_parameters(config)
@@ -177,15 +179,15 @@ class CentralizedServer(BaseServer):
     def run_protocol(self):
         self.log_utils.log_console("Starting centralised learning")
 
-        clients_samples = self.comm_utils.wait_for_all_clients(
-            self.users, self.tag.SEND_DATA
+        clients_samples = self.comm_utils.all_gather(
+            self.tag.SEND_DATA
         )
         samples = set()
         for client_samples in clients_samples:
             samples.update(client_samples)
         samples = list(samples)
 
-        self.comm_utils.send_signal(
+        self.comm_utils.send(
             dest=self.config["central_client"], data=samples, tag=self.tag.SHARE_DATA
         )
 
@@ -199,20 +201,18 @@ class CentralizedServer(BaseServer):
             self.round = round
             self.log_utils.log_console("Starting round {}".format(round))
 
-            model = self.comm_utils.wait_for_signal(
-                src=self.config["central_client"], tag=self.tag.SEND_MODEL
+            model = self.comm_utils.receive(
+                node_ids=self.config["central_client"], tag=self.tag.SEND_MODEL
             )
 
             for client_node in self.users:
-                self.comm_utils.send_signal(
+                self.comm_utils.send(
                     dest=client_node, data=model, tag=self.tag.SHARE_MODEL
                 )
 
             self.log_utils.log_console("Server waiting for all clients to finish")
 
-            round_stats = self.comm_utils.wait_for_all_clients(
-                self.users, tag=self.tag.ROUND_STATS
-            )
+            round_stats = self.comm_utils.all_gather(tag=self.tag.ROUND_STATS)
             stats.append(round_stats)
 
             print(f"Round test acc {[stats['test_acc'] for stats in round_stats]}")
