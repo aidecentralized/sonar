@@ -95,7 +95,7 @@ mpi_non_iid_sys_config = {
     "dump_dir": "./expt_dump/",
     "dpath": "./datasets/imgs/cifar10/",
     "load_existing": False,
-    "device_ids": get_device_ids(num_users=3, gpus_available=[1, 2]),
+    "device_ids": get_device_ids(num_users=3, gpus_available=[0, 3]),
     "train_label_distribution": "non_iid",  # Either "iid", "non_iid" "support",
     "test_label_distribution": "non_iid",  # Either "iid" "support",
     "samples_per_user": 256,

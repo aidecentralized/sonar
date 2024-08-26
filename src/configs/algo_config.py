@@ -232,7 +232,7 @@ swarm: ConfigType = {
 
 fedstatic: ConfigType = {
     "algo": "fedstatic",
-    "exp_id": "test_fedtorus_4",
+    "exp_id": "test_fedtorus_5",
     "num_rep": 1,
     "topology": "torus",
 
