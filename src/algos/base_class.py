@@ -334,6 +334,7 @@ class BaseClient(BaseNode):
             self.val_dloader = DataLoader(val_dset, batch_size=batch_size, shuffle=True)
 
         self.train_indices = train_indices
+        self.train_dset = train_dset
         # self.dloader = DataLoader(train_dset, batch_size=batch_size*len(self.device_ids), shuffle=True)
         self.dloader = DataLoader(train_dset, batch_size=batch_size, shuffle=True)
 
@@ -484,9 +485,8 @@ class BaseFedAvgClient(BaseClient):
     """
     Abstract class for FedAvg based algorithms
     """
-
-    def __init__(self, config, comm_protocol=CommProtocol) -> None:
-        super().__init__(config)
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager, comm_protocol=CommProtocol) -> None:
+        super().__init__(config, comm_utils)
         self.config = config
         self.model_save_path = "{}/saved_models/node_{}.pt".format(
             self.config["results_path"], self.node_id
@@ -659,9 +659,9 @@ class BaseFedAvgServer(BaseServer):
     """
     Abstract class for orchestrator
     """
-
-    def __init__(self, config, comm_protocol=CommProtocol) -> None:
-        super().__init__(config)
+    
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager, comm_protocol=CommProtocol) -> None:
+        super().__init__(config, comm_utils)
         self.tag = comm_protocol
 
     def send_representations(self, representations: Dict[int, OrderedDict[str, Tensor]]):

@@ -4,6 +4,7 @@ Module for FedStaticClient and FedStaticServer in Federated Learning.
 
 from collections import defaultdict
 from typing import Any, Dict, List
+from utils.communication.comm_utils import CommunicationManager
 import numpy as np
 import torch
 import torch.nn as nn
@@ -20,8 +21,8 @@ class FedStaticClient(BaseFedAvgClient):
     """
     Federated Static Client Class.
     """
-    def __init__(self, config: Dict[str, Any]) -> None:
-        super().__init__(config)
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+        super().__init__(config, comm_utils)
 
     def get_collaborator_weights(self, reprs_dict: Dict[int, Any], rnd: int) -> Dict[int, float]:
         """
@@ -36,7 +37,7 @@ class FedStaticClient(BaseFedAvgClient):
                 p_within_decay, within_community_sampling, rnd, total_rounds
             )
 
-        algo = self.config["algo"]
+        algo = self.config["topology"]
         selected_ids = self._select_ids_based_on_algo(algo)
 
         collab_weights = defaultdict(lambda: 0.0)
@@ -175,7 +176,7 @@ class FedStaticClient(BaseFedAvgClient):
             stats = {}
 
             # Wait on server to start the round
-            self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.ROUND_START)
+            self.comm_utils.receive(node_ids=self.server_node, tag=self.tag.ROUND_START)
 
             if self.config.get("finetune_last_layer", False):
                 self.freeze_model_except_last_layer()
@@ -185,10 +186,10 @@ class FedStaticClient(BaseFedAvgClient):
                 stats["train_loss"], stats["train_acc"] = self.local_train(epochs_per_round)
 
             repr_dict = self.get_representation()
-            self.comm_utils.send_signal(dest=self.server_node, data=repr_dict, tag=self.tag.REPR_ADVERT)
+            self.comm_utils.send(dest=self.server_node, data=repr_dict, tag=self.tag.REPR_ADVERT)
 
             # Collect the representations from all other nodes from the server
-            reprs = self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.REPRS_SHARE)
+            reprs = self.comm_utils.receive(node_ids=self.server_node, tag=self.tag.REPRS_SHARE)
             reprs_dict = {k: v for k, v in enumerate(reprs, 1)}
 
             # Aggregate the representations based on the collaborator weights
@@ -228,15 +229,15 @@ class FedStaticClient(BaseFedAvgClient):
                 collab_weight[k - 1] = v
             stats["Collaborator weights"] = collab_weight
 
-            self.comm_utils.send_signal(dest=self.server_node, data=stats, tag=self.tag.ROUND_STATS)
+            self.comm_utils.send(dest=self.server_node, data=stats, tag=self.tag.ROUND_STATS)
 
 
 class FedStaticServer(BaseFedAvgServer):
     """
     Federated Static Server Class.
     """
-    def __init__(self, config: Dict[str, Any]) -> None:
-        super().__init__(config)
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+        super().__init__(config, comm_utils)
         self.config = config
         self.set_model_parameters(config)
         self.model_save_path = f"{self.config['results_path']}/saved_models/node_{self.node_id}.pt"
@@ -256,14 +257,14 @@ class FedStaticServer(BaseFedAvgServer):
         Runs the whole training procedure for a single round.
         """
         for client_node in self.users:
-            self.comm_utils.send_signal(dest=client_node, data=None, tag=self.tag.ROUND_START)
+            self.comm_utils.send(dest=client_node, data=None, tag=self.tag.ROUND_START)
         self.log_utils.log_console("Server waiting for all clients to finish local training")
 
-        models = self.comm_utils.wait_for_all_clients(self.users, self.tag.REPR_ADVERT)
+        models = self.comm_utils.all_gather(self.tag.REPR_ADVERT)
         self.log_utils.log_console("Server received all clients models")
 
         self.send_representations(models)
-        clients_round_stats = self.comm_utils.wait_for_all_clients(self.users, self.tag.ROUND_STATS)
+        clients_round_stats = self.comm_utils.all_gather(self.tag.ROUND_STATS)
         self.log_utils.log_console("Server received all clients stats")
 
         self.log_utils.log_tb_round_stats(clients_round_stats, ["Collaborator weights"], self.round)
@@ -281,7 +282,7 @@ class FedStaticServer(BaseFedAvgServer):
         """
         Runs the federated learning protocol for the server.
         """
-        self.log_utils.log_console("Starting static ring P2P collaboration")
+        self.log_utils.log_console("Starting static P2P collaboration")
         start_round = self.config.get("start_round", 0)
         total_round = self.config["rounds"]
 

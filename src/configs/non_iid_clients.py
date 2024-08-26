@@ -220,7 +220,7 @@ fediso = {
     "dpath": domainnet_dpath,
     "train_label_distribution": "iid",  # Either "iid", "non_iid" "support",
     "test_label_distribution": "iid",  # Either "iid" "support",
-    "samples_per_client": 32,
+    "samples_per_user": 32,
     # "test_samples_per_class": 300,
     # "support": get_sliding_window_support(num_clients=fediso_client, num_classes=10, num_classes_per_client=4),
     # Clients
@@ -249,7 +249,7 @@ L2C = {
     "dpath": domainnet_dpath,
     "train_label_distribution": "iid",  # Either "iid", "non_iid" "support",
     "test_label_distribution": "iid",  # Either "iid" "support",
-    "samples_per_client": 32,
+    "samples_per_user": 32,
     "validation_prop": 0.05,
     "dump_dir": "./expt_dump/",
     # Learning setup
@@ -257,9 +257,9 @@ L2C = {
     "device_ids": get_device_ids(
         num_clients=fediso_client, num_client_per_gpu=10, available_gpus=[1, 2, 3]
     ),
-    # "target_clients_before_T_0": 7,
-    "target_clients_after_T_0": 3,
-    "T_0": 0,  # round after wich only target_clients_after_T_0 peers are kept
+    # "target_users_before_T_0": 7,
+    "target_users_after_T_0": 3,
+    "T_0": 0,  # round after wich only target_users_after_T_0 peers are kept
     "alpha_lr": 0.1,
     "alpha_weight_decay": 0.01,
     # Learning setup
@@ -290,13 +290,13 @@ metaL2C_cifar10 = {
     "test_label_distribution": "support",  # Either "iid" "support",
     "validation_prop": 0.05,
     "support": sliding_window_8c_4cpc_support,
-    "samples_per_client": 512,
+    "samples_per_user": 512,
     "dump_dir": "./expt_dump/",
     # Learning setup
     "num_clients": 8,
     "device_ids": device_ids_8c_gpu,
-    # "target_clients_before_T_0": 7,
-    "target_clients_after_T_0": 1,
+    # "target_users_before_T_0": 7,
+    "target_users_after_T_0": 1,
     "T_0": 2,
     "K_0": 0,  # number of peers to keep as neighbors at T_0 (!) inverse that in L2C paper
     "T_0": 250,  # round after wich only K_0 peers are kept
@@ -332,7 +332,7 @@ fedfomo = {
     "dpath": domainnet_dpath,
     "train_label_distribution": "iid",  # Either "iid", "non_iid" "support",
     "test_label_distribution": "iid",  # Either "iid" "support",
-    "samples_per_client": 32,
+    "samples_per_user": 32,
     # "test_samples_per_class": 300,
     # "support": get_sliding_window_support(num_clients=fediso_client, num_classes=10, num_classes_per_client=4),
     # Clients
@@ -363,14 +363,14 @@ fedweight = {
     "support": sliding_window_8c_4cpc_support,
     "collab_weights": "class_overlap",  # class_overlap, cosine_similarity, euclidean_distance
     "most_smilar": False,
-    "samples_per_client": 100,
+    "samples_per_user": 100,
     "dump_dir": "./expt_dump/",
     # Learning setup
     "num_clients": 8,
     "device_ids": device_ids_8c_gpu,
-    "target_clients_before_T_0": 7,
-    "target_clients_after_T_0": 1,
-    "T_0": 0,  # round after wich only target_clients_after_T_0 peers are kept
+    "target_users_before_T_0": 7,
+    "target_users_after_T_0": 1,
+    "T_0": 0,  # round after wich only target_users_after_T_0 peers are kept
     "epochs_per_round": 5,
     "rounds": 30,
     "model": "resnet18",
@@ -398,7 +398,7 @@ fedcentral = {
     "dpath": domainnet_dpath,
     "train_label_distribution": "iid",  # Either "iid", "non_iid" "support",
     "test_label_distribution": "iid",  # Either "iid" "support",
-    "samples_per_client": 32,
+    "samples_per_user": 32,
     # "support" : get_sliding_window_support(num_clients=fedcentral_client, num_classes=10, num_classes_per_client=4),
     "num_clients": fedcentral_client,
     "central_client": 1,
@@ -430,7 +430,7 @@ defkt = {
     "dpath": domainnet_dpath,
     "train_label_distribution": "iid",  # Either "iid", "non_iid" "support",
     "test_label_distribution": "iid",  # Either "iid" "support",
-    "samples_per_client": 32,
+    "samples_per_user": 32,
     # "support" : get_sliding_window_support(num_clients=fedcentral_client, num_classes=10, num_classes_per_client=4),
     "num_clients": defkt_client,
     "central_client": 1,
@@ -485,9 +485,9 @@ fedass = {
     "dpath": domainnet_dpath,
     "train_label_distribution": "iid",  # Either "iid", "non_iid" "support",
     "test_label_distribution": "iid",  # Either "iid" "non_iid" "support",
-    "samples_per_client": 32,
+    "samples_per_user": 32,
     # "test_samples_per_class": 300,
-    # "test_samples_per_client": 400, # Only for non_iid test distribution
+    # "test_samples_per_user": 400, # Only for non_iid test distribution
     # "support" : get_sliding_window_support(num_clients=NUM_CLIENT, num_classes=10, num_classes_per_client=4),
     # Clients selection
     "num_clients": fedass_client,
@@ -530,13 +530,13 @@ fedval = {
     "dpath": wilds_dpath,
     "train_label_distribution": "iid",  # Either "iid", "non_iid" "support",
     "test_label_distribution": "iid",  # Either "iid" "non_iid" "support",
-    "samples_per_client": 16,
+    "samples_per_user": 16,
     # "test_samples_per_class": 300,
     # Clients selection
     "selection_strategy": "lowest",  # lowest,
-    "target_clients_before_T_0": 1,
-    "target_clients_after_T_0": 1,
-    "T_0": 400,  # round after wich only target_clients_after_T_0 peers are kept
+    "target_users_before_T_0": 1,
+    "target_users_after_T_0": 1,
+    "T_0": 400,  # round after wich only target_users_after_T_0 peers are kept
     "community_type": None,  # "dataset",
     # "num_communities": len(cifar10_rotations), #len(domainnet_classes),
     # Learning setup
@@ -572,9 +572,9 @@ fedwe = {
     "dpath": domainnet_dpath,
     "train_label_distribution": "iid",  # Either "iid", "non_iid" "support",
     "test_label_distribution": "iid",  # Either "iid" "non_iid" "support",
-    "samples_per_client": 32,
+    "samples_per_user": 32,
     # "test_samples_per_class": 300,
-    # "test_samples_per_client": 400, # Only for non_iid test distribution
+    # "test_samples_per_user": 400, # Only for non_iid test distribution
     # "support" : get_sliding_window_support(num_clients=NUM_CLIENT, num_classes=10, num_classes_per_client=4),
     # Clients selection
     "num_clients": fedwe_client,
@@ -618,9 +618,9 @@ swarm = {
     "dpath": domainnet_dpath,
     "train_label_distribution": "iid",  # Either "iid", "non_iid" "support",
     "test_label_distribution": "iid",  # Either "iid" "non_iid" "support",
-    "samples_per_client": 32,
+    "samples_per_user": 32,
     # "test_samples_per_class": 300,
-    # "test_samples_per_client": 400, # Only for non_iid test distribution
+    # "test_samples_per_user": 400, # Only for non_iid test distribution
     # "support" : get_sliding_window_support(num_clients=NUM_CLIENT, num_classes=10, num_classes_per_client=4),
     # Clients selection
     "num_clients": swarm_client,
@@ -666,15 +666,15 @@ fedran = {
     "dpath": domainnet_dpath,
     "train_label_distribution": "iid",  # Either "iid", "non_iid" "support",
     "test_label_distribution": "iid",  # Either "iid" "non_iid" "support",
-    "samples_per_client": 32,
+    "samples_per_user": 32,
     # "test_samples_per_class": 300,
-    # "test_samples_per_client": 400, # Only for non_iid test distribution
+    # "test_samples_per_user": 400, # Only for non_iid test distribution
     # "support" : get_sliding_window_support(num_clients=NUM_CLIENT, num_classes=10, num_classes_per_client=4),
     # Clients selection
     "num_clients": fedran_client,
-    "target_clients_before_T_0": 0,
-    "target_clients_after_T_0": 1,
-    "T_0": 10,  # round after wich only target_clients_after_T_0 peers are kept
+    "target_users_before_T_0": 0,
+    "target_users_after_T_0": 1,
+    "T_0": 10,  # round after wich only target_users_after_T_0 peers are kept
     "leader_mode": False,
     "community_type": "dataset",
     # "within_community_sampling": 0.1,
@@ -720,9 +720,9 @@ fedring = {
     "dpath": domainnet_dpath,
     "train_label_distribution": "iid",  # Either "iid", "non_iid" "support",
     "test_label_distribution": "iid",  # Either "iid" "non_iid" "support",
-    "samples_per_client": 32,
+    "samples_per_user": 32,
     # "test_samples_per_class": 300,
-    # "test_samples_per_client": 400, # Only for non_iid test distribution
+    # "test_samples_per_user": 400, # Only for non_iid test distribution
     # "support" : get_sliding_window_support(num_clients=NUM_CLIENT, num_classes=10, num_classes_per_client=4),
     # Clients selection
     "num_clients": fedring_client,
@@ -770,9 +770,9 @@ fedgrid = {
     "dpath": domainnet_dpath,
     "train_label_distribution": "iid",  # Either "iid", "non_iid" "support",
     "test_label_distribution": "iid",  # Either "iid" "non_iid" "support",
-    "samples_per_client": 32,
+    "samples_per_user": 32,
     # "test_samples_per_class": 300,
-    # "test_samples_per_client": 400, # Only for non_iid test distribution
+    # "test_samples_per_user": 400, # Only for non_iid test distribution
     # "support" : get_sliding_window_support(num_clients=NUM_CLIENT, num_classes=10, num_classes_per_client=4),
     # Clients selection
     "num_clients": fedgrid_client,
@@ -820,9 +820,9 @@ fedtorus = {
     "dpath": domainnet_dpath,
     "train_label_distribution": "iid",  # Either "iid", "non_iid" "support",
     "test_label_distribution": "iid",  # Either "iid" "non_iid" "support",
-    "samples_per_client": 32,
+    "samples_per_user": 32,
     # "test_samples_per_class": 300,
-    # "test_samples_per_client": 400, # Only for non_iid test distribution
+    # "test_samples_per_user": 400, # Only for non_iid test distribution
     # "support" : get_sliding_window_support(num_clients=NUM_CLIENT, num_classes=10, num_classes_per_client=4),
     # Clients selection
     "num_clients": fedtorus_client,

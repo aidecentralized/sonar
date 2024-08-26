@@ -46,8 +46,6 @@ The application currently uses MPI and GRPC (experimental) to enable communicati
 | 4           | 61.5723       | 50.2906  |
 | 6           | 69.4671       | 47.7867  |
 
----
-
 **AUC Camelyon17 (30 users, 200 rounds)**
 
 | Num Domains | Within Domain | Random   |
@@ -56,21 +54,17 @@ The application currently uses MPI and GRPC (experimental) to enable communicati
 | 3           | 179.1761      | 153.0658 |
 | 5           | 176.5059      | 139.4547 |
 
----
-
 **AUC Digit-Five (30 users, 200 rounds)**
-
-| Num Domains | Within Domain | Random   |
-|-------------|---------------|----------|
-| 2           | 71.8536       | 65.6555  |
-| 3           | 74.4239       | 72.6996  |
-| 5           | 77.3709       | 76.3041  |
+| Num Domains | Within Domain       | Random        |
+|-------------|---------------------|---------------|
+|      2      | 71.8536             | 65.6555       |
+|      3      | 74.4239             | 72.6996       |
+|      5      | 77.3709             | 76.3041       |
 
 
 **Table 4** Test Accuracy and Standard Deviation Over Rounds
 
 **DomainNet (39 users, 3 domains)**
-
 | Rounds | Within Domain |           | Random        |           |
 |--------|---------------|-----------|---------------|-----------|
 |        | Mean          | Std       | Mean          | Std       |
@@ -79,8 +73,6 @@ The application currently uses MPI and GRPC (experimental) to enable communicati
 | 300    | 0.4362        | 0.0498    | 0.4203        | 0.0537    |
 | 400    | 0.4353        | 0.0687    | 0.4355        | 0.0585    |
 | 500    | 0.4726        | 0.0502    | 0.4499        | 0.0496    |
-
----
 
 **Camelyon17 (39 users, 3 domains)**
 
@@ -92,8 +84,6 @@ The application currently uses MPI and GRPC (experimental) to enable communicati
 | 120    | 0.9329        | 0.0195    | 0.7293        | 0.1520    |
 | 160    | 0.9361        | 0.0239    | 0.8122        | 0.1346    |
 | 200    | 0.9353        | 0.0251    | 0.7762        | 0.1516    |
-
----
 
 **Digit-Five (39 users, 3 domains)**
 

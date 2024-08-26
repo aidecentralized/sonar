@@ -1,5 +1,6 @@
 from collections import OrderedDict
 from typing import Any, Dict, List
+from utils.communication.comm_utils import CommunicationManager
 from torch import Tensor, cat
 import torch.nn as nn
 import numpy as np
@@ -8,8 +9,8 @@ from utils.stats_utils import from_round_stats_per_round_per_client_to_dict_arra
 
 
 class FedWeightClient(BaseFedAvgClient):
-    def __init__(self, config) -> None:
-        super().__init__(config)
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+        super().__init__(config, comm_utils)
         self.config = config
 
         self.with_sim_consensus = self.config.get("with_sim_consensus", False)
@@ -89,12 +90,12 @@ class FedWeightClient(BaseFedAvgClient):
 
         sorted_items = sorted(sim_dict.items(), key=lambda i: i[1], reverse=True)
 
-        selected_clients = [x[0] for x in sorted_items if x[0] != self.node_id][:k]
-        selected_clients.append(self.node_id)
+        selected_users = [x[0] for x in sorted_items if x[0] != self.node_id][:k]
+        selected_users.append(self.node_id)
 
         collaborator_dict = {
             client_id: (
-                1 / len(selected_clients) if client_id in selected_clients else 0
+                1 / len(selected_users) if client_id in selected_users else 0
             )
             for client_id in sim_dict.keys()
         }
@@ -102,10 +103,10 @@ class FedWeightClient(BaseFedAvgClient):
         return collaborator_dict
 
     def log_clients_stats(self, client_dict, stat_name):
-        clients_array = np.zeros(self.config["num_users"])
+        users_array = np.zeros(self.config["num_users"])
         for k, v in client_dict.items():
-            clients_array[k - 1] = v
-        self.round_stats[stat_name] = clients_array
+            users_array[k - 1] = v
+        self.round_stats[stat_name] = users_array
 
     def run_protocol(self):
         start_round = self.config.get("start_round", 0)
@@ -116,8 +117,8 @@ class FedWeightClient(BaseFedAvgClient):
 
             self.round_stats = {}
 
-            self.comm_utils.wait_for_signal(
-                src=self.server_node, tag=self.tag.ROUND_START
+            self.comm_utils.receive(
+                node_ids=self.server_node, tag=self.tag.ROUND_START
             )
             repr = self.get_representation()
 
@@ -126,11 +127,11 @@ class FedWeightClient(BaseFedAvgClient):
                 loss, acc = self.local_train(warmup)
                 print(f"Client {self.node_id} warmup loss {loss} acc {acc}")
 
-            self.comm_utils.send_signal(
+            self.comm_utils.send(
                 dest=self.server_node, data=repr, tag=self.tag.REPR_ADVERT
             )
-            reprs = self.comm_utils.wait_for_signal(
-                src=self.server_node, tag=self.tag.REPRS_SHARE
+            reprs = self.comm_utils.receive(
+                node_ids=self.server_node, tag=self.tag.REPRS_SHARE
             )
             reprs_dict = {k: v for k, v in enumerate(reprs, 1)}
 
@@ -139,19 +140,19 @@ class FedWeightClient(BaseFedAvgClient):
             self.log_clients_stats(reprs_similarity, self.config["similarity"])
 
             if self.with_sim_consensus:
-                self.comm_utils.send_signal(
+                self.comm_utils.send(
                     dest=self.server_node,
                     data=reprs_similarity,
                     tag=self.tag.C_SELECTION,
                 )
-                reprs_similarity = self.comm_utils.wait_for_signal(
-                    src=self.server_node, tag=self.tag.KNLDG_SHARE
+                reprs_similarity = self.comm_utils.receive(
+                    node_ids=self.server_node, tag=self.tag.KNLDG_SHARE
                 )
 
-            # Select K clients that have the highest similarity compared to
+            # Select K users that have the highest similarity compared to
             # their own node
             collab_weights_dict = self.get_k_higest_sim(
-                reprs_similarity, k=self.config["target_clients"]
+                reprs_similarity, k=self.config["target_users"]
             )
             self.log_clients_stats(collab_weights_dict, "Collaborator weights")
 
@@ -170,14 +171,14 @@ class FedWeightClient(BaseFedAvgClient):
 
             self.round_stats["test_acc_after_training"] = self.local_test()
 
-            self.comm_utils.send_signal(
+            self.comm_utils.send(
                 dest=self.server_node, data=self.round_stats, tag=self.tag.ROUND_STATS
             )
 
 
 class FedWeightServer(BaseFedAvgServer):
-    def __init__(self, config) -> None:
-        super().__init__(config)
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+        super().__init__(config, comm_utils)
         # self.set_parameters()
         self.config = config
 
@@ -188,40 +189,34 @@ class FedWeightServer(BaseFedAvgServer):
         Runs the whole training procedure
         """
 
-        # Send signal to all clients to start local training
+        # Send signal to all users to start local training
         for client_node in self.users:
-            self.comm_utils.send_signal(
+            self.comm_utils.send(
                 dest=client_node, data=None, tag=self.tag.ROUND_START
             )
         self.log_utils.log_console(
-            "Server waiting for all clients to finish local training"
+            "Server waiting for all users to finish local training"
         )
 
-        # Collect models from all clients
-        models = self.comm_utils.wait_for_all_clients(
-            self.users, self.tag.REPR_ADVERT
-        )
-        self.log_utils.log_console("Server received all clients models")
+        # Collect models from all users
+        models = self.comm_utils.all_gather(self.tag.REPR_ADVERT)
+        self.log_utils.log_console("Server received all users models")
 
-        # Broadcast the models to all clients
+        # Broadcast the models to all users
         self.send_representations(models)
 
         if self.with_sim_consensus:
-            sim_dicts = self.comm_utils.wait_for_all_clients(
-                self.users, self.tag.C_SELECTION
-            )
+            sim_dicts = self.comm_utils.all_gather(self.tag.C_SELECTION)
             sim_dicts = {k: v for k, v in enumerate(sim_dicts, 1)}
 
             for client_node in self.users:
-                self.comm_utils.send_signal(
+                self.comm_utils.send(
                     dest=client_node, data=sim_dicts, tag=self.tag.KNLDG_SHARE
                 )
 
-        # Collect round stats from all clients
-        round_stats = self.comm_utils.wait_for_all_clients(
-            self.users, self.tag.ROUND_STATS
-        )
-        self.log_utils.log_console("Server received all clients stats")
+        # Collect round stats from all users
+        round_stats = self.comm_utils.all_gather(self.tag.ROUND_STATS)
+        self.log_utils.log_console("Server received all users stats")
 
         # Log the round stats on tensorboard except the collab weights
         # self.log_utils.log_tb_round_stats(round_stats, ["Collaborator weights"], self.round)

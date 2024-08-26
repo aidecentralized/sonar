@@ -33,7 +33,7 @@ class ServerObj:
     """
     def __init__(self, config, obj, rank) -> None:
         self.num_users = config["num_users"]
-        self.samples_per_client = config["samples_per_client"]
+        self.samples_per_user = config["samples_per_user"]
         self.device = obj["device"]
         self.device_id = obj["device_id"]
         test_dataset = obj["dset_obj"].test_dset
@@ -55,7 +55,7 @@ class ClientObj:
     """
     def __init__(self, config, obj, rank) -> None:
         self.num_users = config["num_users"]
-        self.samples_per_client = config["samples_per_client"]
+        self.samples_per_user = config["samples_per_user"]
         self.device = obj["device"]
         self.device_id = obj["device_id"]
         train_dataset = obj["dset_obj"].train_dset
@@ -77,5 +77,5 @@ class ClientObj:
             sp = [(0, 2), (2, 4)]
             self.c_dset = extr_noniid(train_dataset, config["samples_per_user"], perm[sp[rank - 1][0]:sp[rank - 1][1]])
         else:
-            self.c_dset = Subset(train_dataset, indices[(rank - 1) * self.samples_per_client:rank * self.samples_per_client])
+            self.c_dset = Subset(train_dataset, indices[(rank - 1) * self.samples_per_user:rank * self.samples_per_user])
         self.c_dloader = DataLoader(self.c_dset, batch_size=batch_size)
