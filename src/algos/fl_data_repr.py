@@ -6,8 +6,8 @@ import torch.nn.functional as F
 from algos.base_class import BaseFedAvgClient, BaseFedAvgServer
 from utils.stats_utils import from_round_stats_per_round_per_client_to_dict_arrays
 from torch.utils.data import DataLoader, Dataset
-from algos.modules import (DeepInversionFeatureHook, kl_loss_fn, kl_loss_pw_fn,
-                           total_variation_loss, DistCorrelation)
+# from algos.modules import (DeepInversionFeatureHook, kl_loss_fn, kl_loss_pw_fn,
+#                            total_variation_loss, DistCorrelation)
 from sklearn.cluster import AffinityPropagation, MeanShift
 
 

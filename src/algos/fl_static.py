@@ -282,7 +282,7 @@ class FedStaticServer(BaseFedAvgServer):
         """
         Runs the federated learning protocol for the server.
         """
-        self.log_utils.log_console("Starting static ring P2P collaboration")
+        self.log_utils.log_console("Starting static P2P collaboration")
         start_round = self.config.get("start_round", 0)
         total_round = self.config["rounds"]
 

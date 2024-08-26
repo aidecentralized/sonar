@@ -7,7 +7,12 @@ class TorusTopology:
         grid_size = int(math.sqrt(config["num_users"]))
         num_users = config["num_users"]
 
+        print(num_users)
+
+        print(grid_size)
+
         selected_ids = []
+        
         num_rows = math.ceil(num_users / grid_size)
 
         # Left
@@ -22,7 +27,6 @@ class TorusTopology:
         else:
             node_row = math.ceil(node_id / grid_size)
             right_id = 1 + grid_size * (node_row - 1)
-
         selected_ids.append(right_id)
 
         # Top
@@ -46,6 +50,21 @@ class TorusTopology:
         # Force self node id to be selected, not removed before sampling to
         # keep sampling identical across nodes (if same seed)
         selected_ids = list(set(selected_ids))
+
+        if(num_users == 1):
+            selected_ids = [1]
+        elif(num_users == 2):
+            if(node_id == 1):
+                selected_ids = [2]
+            else:
+                selected_ids = [1]
+        elif(num_users == 3):
+            if(node_id == 1):
+                selected_ids = [2, 3]
+            elif(node_id == 2):
+                selected_ids = [1]
+            else:
+                selected_ids = [1]
 
         num_users_to_select = config["num_users_to_select"]
         selected_collabs = np.random.choice(
