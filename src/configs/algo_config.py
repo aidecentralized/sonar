@@ -237,7 +237,7 @@ fedstatic: ConfigType = {
     "topology": "torus",
 
     # Clients selection
-    "num_users_to_select": 2,
+    "num_users_to_select": 1,
     "leader_mode": False,
     "community_type": "dataset",
     # "within_community_sampling": 0.1,
