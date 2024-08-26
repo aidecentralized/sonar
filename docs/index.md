@@ -54,7 +54,6 @@ The application currently uses MPI and GRPC (experimental) to enable communicati
 | 3           | 179.1761      | 153.0658 |
 | 5           | 176.5059      | 139.4547 |
 
-
 **AUC Digit-Five (30 users, 200 rounds)**
 | Num Domains | Within Domain       | Random        |
 |-------------|---------------------|---------------|
@@ -66,7 +65,6 @@ The application currently uses MPI and GRPC (experimental) to enable communicati
 **Table 4** Test Accuracy and Standard Deviation Over Rounds
 
 **DomainNet (39 users, 3 domains)**
-
 | Rounds | Within Domain |           | Random        |           |
 |--------|---------------|-----------|---------------|-----------|
 |        | Mean          | Std       | Mean          | Std       |

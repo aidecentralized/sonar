@@ -1,6 +1,7 @@
 from typing import TypeAlias, Dict, List
 
 ConfigType: TypeAlias = Dict[str, str|float|int|bool|List[str]|List[int]|tuple[int|str|float|bool|None]]
+
 # Algorithm Configuration
 
 iid_dispfl_clients_new: ConfigType = {
@@ -80,7 +81,6 @@ defkt: ConfigType = {
     "inp_shape": [128, 3, 32, 32],
     "exp_keys": [],
 }
-
 fedavg_object_detect: ConfigType = {
     "algo": "fedavg",
     "exp_id": "test_modular_yolo",
