@@ -1,5 +1,5 @@
 # Getting Started
-> If you would like to contribute to improving this project, please refer to our issues page where we have our open [issues](./issues.md) in the side navigation bar.
+> If you would like to contribute to improving this project, please refer to our issues page where we have our open [issues](github.com/aidecentralized/sonar/issues) in the side navigation bar.
 
 ## Installation
 - `git clone` the repository

@@ -3,7 +3,7 @@
 
 A collaborative learning project where users self-organize to improve their ML models by sharing representations of their data or model. 
 
-To get started, please refer to the [Get Started](./getting-started/getting-started.md) page.
+To get started, please refer to the [Get Started](./getting-started/) page.
 
 ## Main
 The application currently uses MPI and GRPC (experimental) to enable communication between different nodes in the network. The goal of the framework to organize everything in a modular manner. That way a researcher or engineer can easily swap out different components of the framework to test their hypothesis or a new algorithm.
