@@ -2,6 +2,8 @@
 
 # Project SONAR - Self-Organizing Network of Aggregated Representations
 
+![Architecture Diagram](https://github.com/aidecentralized/sonar/blob/main/docs/arch.png)
+
 Documentation: https://aidecentralized.github.io/sonar/
 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
