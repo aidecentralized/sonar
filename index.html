@@ -900,7 +900,7 @@
 <h1 id="sonar-self-organizing-network-of-aggregated-representations">SONAR: Self-Organizing Network of Aggregated Representations</h1>
 <p><strong>Project by MIT Media Lab</strong></p>
 <p>A collaborative learning project where users self-organize to improve their ML models by sharing representations of their data or model. </p>
-<p>To get started, please refer to the <a href="./getting-started/getting-started.md">Get Started</a> page.</p>
+<p>To get started, please refer to the <a href="./getting-started/">Get Started</a> page.</p>
 <h2 id="main">Main</h2>
 <p>The application currently uses MPI and GRPC (experimental) to enable communication between different nodes in the network. The goal of the framework to organize everything in a modular manner. That way a researcher or engineer can easily swap out different components of the framework to test their hypothesis or a new algorithm.</p>
 <p><strong>Table 1:</strong> Performance overview (AUC) of various topologies with different number of collaborators.</p>
@@ -1107,7 +1107,6 @@
 </tr>
 </tbody>
 </table>
-<hr />
 <p><strong>AUC Camelyon17 (30 users, 200 rounds)</strong></p>
 <table>
 <thead>
@@ -1135,92 +1134,22 @@
 </tr>
 </tbody>
 </table>
-<hr />
-<p><strong>AUC Digit-Five (30 users, 200 rounds)</strong></p>
-<table>
-<thead>
-<tr>
-<th>Num Domains</th>
-<th>Within Domain</th>
-<th>Random</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>2</td>
-<td>71.8536</td>
-<td>65.6555</td>
-</tr>
-<tr>
-<td>3</td>
-<td>74.4239</td>
-<td>72.6996</td>
-</tr>
-<tr>
-<td>5</td>
-<td>77.3709</td>
-<td>76.3041</td>
-</tr>
-</tbody>
-</table>
+<p><strong>AUC Digit-Five (30 users, 200 rounds)</strong>
+| Num Domains | Within Domain       | Random        |
+|-------------|---------------------|---------------|
+|      2      | 71.8536             | 65.6555       |
+|      3      | 74.4239             | 72.6996       |
+|      5      | 77.3709             | 76.3041       |</p>
 <p><strong>Table 4</strong> Test Accuracy and Standard Deviation Over Rounds</p>
-<p><strong>DomainNet (39 users, 3 domains)</strong></p>
-<table>
-<thead>
-<tr>
-<th>Rounds</th>
-<th>Within Domain</th>
-<th></th>
-<th>Random</th>
-<th></th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td></td>
-<td>Mean</td>
-<td>Std</td>
-<td>Mean</td>
-<td>Std</td>
-</tr>
-<tr>
-<td>100</td>
-<td>0.3619</td>
-<td>0.0635</td>
-<td>0.3212</td>
-<td>0.0625</td>
-</tr>
-<tr>
-<td>200</td>
-<td>0.4220</td>
-<td>0.0563</td>
-<td>0.3733</td>
-<td>0.0791</td>
-</tr>
-<tr>
-<td>300</td>
-<td>0.4362</td>
-<td>0.0498</td>
-<td>0.4203</td>
-<td>0.0537</td>
-</tr>
-<tr>
-<td>400</td>
-<td>0.4353</td>
-<td>0.0687</td>
-<td>0.4355</td>
-<td>0.0585</td>
-</tr>
-<tr>
-<td>500</td>
-<td>0.4726</td>
-<td>0.0502</td>
-<td>0.4499</td>
-<td>0.0496</td>
-</tr>
-</tbody>
-</table>
-<hr />
+<p><strong>DomainNet (39 users, 3 domains)</strong>
+| Rounds | Within Domain |           | Random        |           |
+|--------|---------------|-----------|---------------|-----------|
+|        | Mean          | Std       | Mean          | Std       |
+| 100    | 0.3619        | 0.0635    | 0.3212        | 0.0625    |
+| 200    | 0.4220        | 0.0563    | 0.3733        | 0.0791    |
+| 300    | 0.4362        | 0.0498    | 0.4203        | 0.0537    |
+| 400    | 0.4353        | 0.0687    | 0.4355        | 0.0585    |
+| 500    | 0.4726        | 0.0502    | 0.4499        | 0.0496    |</p>
 <p><strong>Camelyon17 (39 users, 3 domains)</strong></p>
 <table>
 <thead>
@@ -1277,7 +1206,6 @@
 </tr>
 </tbody>
 </table>
-<hr />
 <p><strong>Digit-Five (39 users, 3 domains)</strong></p>
 <table>
 <thead>
