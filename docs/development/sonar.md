@@ -24,8 +24,8 @@ Our central development branch is `main`. Coding is done on feature branches bas
 ```
     git remote add upstream git@github.com:aidecentralized/sonar.git
     git fetch upstream
-    git checkout master
-    git merge upstream/master
+    git checkout main
+    git merge upstream/main
     git checkout -b your-branch-name
 ```
 2. Make your changes and commit them. Make sure to follow the commit message guidelines below.
