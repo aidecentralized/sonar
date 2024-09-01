@@ -4,23 +4,24 @@
 from typing import Dict, List
 # from utils.config_utils import get_sliding_window_support, get_device_ids
 
+
 def get_device_ids(num_users: int, gpus_available: List[int]) -> Dict[str, List[int]]:
     """
     Get the GPU device IDs for the users.
     """
     # TODO: Make it multi-host
     device_ids: Dict[str, List[int]] = {}
-    for i in range(num_users + 1): # +1 for the server
+    for i in range(num_users + 1): # +1 for the super-node
         index = i % len(gpus_available)
         gpu_id = gpus_available[index]
         device_ids[f"node_{i}"] = [gpu_id]
     return device_ids
 
-def get_domain_support(num_users, base, domains):
+def get_domain_support(num_users: int, base: str, domains: List[int]|List[str]) -> Dict[str, str]:
     assert num_users % len(domains) == 0
 
     users_per_domain = num_users // len(domains)
-    support = {}
+    support: Dict[str, str] = {}
     support["0"] = f"{base}_{domains[0]}"
     for i in range(1, num_users + 1):
         support[str(i)] = f"{base}_{domains[(i-1) // users_per_domain]}"
@@ -28,7 +29,7 @@ def get_domain_support(num_users, base, domains):
 
 DOMAINNET_DMN = ["real", "sketch", "clipart"]
 
-def get_domainnet_support(num_users, domains=DOMAINNET_DMN):
+def get_domainnet_support(num_users: int, domains: List[str]=DOMAINNET_DMN):
     return get_domain_support(num_users, "domainnet", domains)
 
 domainnet_base_dir = "/u/abhi24/matlaberp2/p2p/imgs/domainnet/"
@@ -44,14 +45,14 @@ domainnet_dpath = {
 CAMELYON17_DMN = [0, 3, 4] # + 1, 2 in test set
 CAMELYON17_DMN_EXT = [0,1, 2, 3, 4] # + 1, 2 in test set
 
-def get_camelyon17_support(num_users, domains=CAMELYON17_DMN):
+def get_camelyon17_support(num_users: int, domains: List[int]=CAMELYON17_DMN):
     return get_domain_support(num_users, "wilds_camelyon17", domains)
 
 DIGIT_FIVE_2 = ["svhn", "mnist_m"] 
 DIGIT_FIVE = ["svhn", "mnist_m", "synth_digits"] 
 DIGIT_FIVE_5 = ["mnist", "usps", "svhn", "mnist_m", "synth_digits"] 
 
-def get_digit_five_support(num_users, domains=DIGIT_FIVE):
+def get_digit_five_support(num_users:int, domains:List[str]=DIGIT_FIVE):
     return get_domain_support(num_users, "", domains)
 
 digit_five_dpath = {
@@ -187,39 +188,7 @@ object_detect_system_config = {
     "folder_deletion_signal_path":"./expt_dump/folder_deletion.signal"
 }
 
-num_users = 80
-gpu_ids = [1, 2, 3, 4, 5, 6, 7]
-object_detect_system_config = {
-    "num_users": 1,
-    "experiment_path": "./experiments/",
-    "dset": "pascal",
-    "dump_dir": "./expt_dump/",
-    "dpath": "./datasets/pascal/VOCdevkit/VOC2012/",
-    "seed": 37,
-    # node_0 is a server currently
-    # The device_ids dictionary depicts the GPUs on which the nodes reside.
-    # For a single-GPU environment, the config will look as follows (as it follows a 0-based indexing):
-    "device_ids": {"node_0": [1], "node_1": [2]},
-    "samples_per_user": 100, #TODO: To model scenarios where different users have different number of samples
-    # we need to make this a dictionary with user_id as key and number of samples as value
-    "train_label_distribution": "iid",
-    "test_label_distribution": "iid",
-    "folder_deletion_signal_path":"./expt_dump/folder_deletion.signal"
-}
-
-def get_device_ids(num_users: int, gpus_available: List[int]) -> Dict[str, List[int]]:
-    """
-    Get the GPU device IDs for the users.
-    """
-    # TODO: Make it multi-host
-    device_ids: Dict[str, List[int]] = {}
-    for i in range(num_users):
-        index = i % len(gpus_available)
-        gpu_id = gpus_available[index]
-        device_ids[f"node_{i}"] = [gpu_id]
-    return device_ids
-
-num_users = 80
+num_users = 20
 gpu_ids = [1, 2, 3, 4, 5, 6, 7]
 grpc_system_config = {
     "num_users": num_users,
@@ -231,11 +200,11 @@ grpc_system_config = {
     "dump_dir": "./expt_dump/",
     "dpath": "./datasets/imgs/cifar10/",
     "seed": 2,
-    "device_ids": get_device_ids(num_users, gpu_ids), # +1 for the super-node
-    "samples_per_user": 500,
+    "device_ids": get_device_ids(num_users, gpu_ids),
+    "samples_per_user": 50000 // num_users, # distributed equally
     "train_label_distribution": "iid",
     "test_label_distribution": "iid",
     "folder_deletion_signal_path":"./expt_dump/folder_deletion.signal"
 }
 
-current_config = mpi_non_iid_sys_config
+current_config = grpc_system_config

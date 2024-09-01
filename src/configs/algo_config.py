@@ -263,4 +263,4 @@ fedstatic: ConfigType = {
     "exp_keys": [],
 }
 
-current_config = fedstatic
+current_config = traditional_fl
