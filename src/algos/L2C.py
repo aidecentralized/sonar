@@ -1,6 +1,5 @@
 """Module docstring: This module implements the L2C algorithm for federated learning."""
 
-import collections
 import numpy as np
 import torch
 import torch.nn.functional as F
