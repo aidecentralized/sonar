@@ -1,21 +1,24 @@
+from typing import Any, Dict, List
 import jmespath
 import importlib
 
 
-def load_config(config_path):
+def load_config(config_path: str) -> Dict[str, Any]:
     path = ".".join(config_path.split(".")[1].split("/")[1:])
     config = importlib.import_module(path).current_config
     return config
 
 
-def process_config(config):
-    config["num_gpus"] = len(config.get("device_ids"))
+def process_config(config: Dict[str, Any]) -> Dict[str, Any]:
+    config["num_gpus"] = len(config.get("device_ids", [0]))
     config["batch_size"] = config.get("batch_size", 64)  # * config['num_gpus']
     config["seed"] = config.get("seed", 1)
     config["load_existing"] = config.get("load_existing") or False
 
     if isinstance(config["dset"], dict):
-        dsets = sorted(list(set(config["dset"].values())))
+        dset = config.get("dset", {})
+        dsets = list(set(dset.values()))
+        dsets = sorted(dsets)
         if min([len(d.split("_")) for d in dsets]) <= 1:
             dset = "_".join([d[:3] for d in dsets])
         else:
@@ -59,9 +62,9 @@ def process_config(config):
     return config
 
 
-def get_sliding_window_support(num_users, num_classes, num_classes_per_client):
+def get_sliding_window_support(num_users: int, num_classes: int, num_classes_per_client: int):
     num_client_with_same_support = max(num_users // num_classes, 1)
-    support = {}
+    support: Dict[str, List[int]] = {}
     # Slide window by 1, clients with same support are consecutive
     for i in range(1, num_users + 1):
         support[str(i)] = [
@@ -75,7 +78,7 @@ def get_device_ids(
     num_users: int, num_client_per_gpu: int, available_gpus: list[int]
 ):
     assert num_users <= len(available_gpus) * num_client_per_gpu
-    device_ids = {}
+    device_ids: Dict[str, List[int]] = {}
 
     gpu_id = 0
     for i in range(1, num_users + 1):

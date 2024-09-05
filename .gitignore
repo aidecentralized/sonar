@@ -3,6 +3,7 @@ expt_dump/
 expt_dump_old/
 di_test/
 imgs/
+pascal/
 data/
 notes.txt
 removeme*.png
@@ -160,6 +161,9 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# .DS_Store for OSX
+.DS_Store
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can

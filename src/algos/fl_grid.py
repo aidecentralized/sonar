@@ -4,7 +4,9 @@ import numpy as np
 
 class GridTopology:
     def get_selected_ids(self, node_id, config):
+
         """Selects and returns IDs based on the node_id and configuration.
+        grid_size = int(config["num_users"] ** 0.5)
 
         Args:
             self: Instance of the class.
@@ -35,10 +37,29 @@ class GridTopology:
         if node_id <= num_users - grid_size:
             selected_ids.append(node_id + grid_size)
 
+        if(num_users == 1):
+            selected_ids = [1]
+        elif(num_users == 2):
+            if(node_id == 1):
+                selected_ids = [2]
+            else:
+                selected_ids = [1]
+        elif(num_users == 3):
+            if(node_id == 1):
+                selected_ids = [2, 3]
+            elif(node_id == 2):
+                selected_ids = [1]
+            else:
+                selected_ids = [1]
+
         num_users_to_select = config["num_users_to_select"]
         # Force self node id to be selected, not removed before sampling to
-        # keep sampling identical across nodes (if same seed)
-        selected_collabs = np.random.choice(selected_ids, size=num_users_to_select, replace=False)
+        # keep sampling identic across nodes (if same seed)
+        selected_collabs = np.random.choice(
+            selected_ids,
+            size=min(num_users_to_select, len(selected_ids)),
+            replace=False,
+        )
         selected_ids = list(selected_collabs) + [node_id]
 
         return selected_ids

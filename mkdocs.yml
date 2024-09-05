@@ -1,5 +1,179 @@
-site_name: My Docs
+site_name: SONAR - Self-Organizing Network of Aggregated Representations
 repo_url: https://github.com/aidecentralized/sonar/
+site_url: https://aidecentralized.github.io/sonar/
+#
+# Navigation
+# https://www.mkdocs.org/user-guide/configuration/#nav
+#
+nav:
+  - Home:
+    - Home: index.md
+  - Getting Started:
+      - Main: getting-started.md
+      - Config File: getting-started/config.md
+      - Customizability: getting-started/customize.md
+      - Using GRPC: getting-started/grpc.md
+  - CollaBench:
+    - Main: collabench.md
+    - Feature Comparison: feature.md
+  - Algorithms:
+    - Algorithms: algorithms.md
+  - Tasks: 
+    - Main: tasks.md
+    - Image Classification: tasks/image-classification.md
+    - Object Detection: tasks/object-detection.md
+    - Text Classification: tasks/text-classification.md
+  - Datasets:
+    - Main: datasets/main.md
+    - Partitioning Strategy: datasets/partitioning.md
+  - Logging:
+    - Main: logging/logging.md
+    - Log Details: logging/log_details.md
+  - Development:
+    - Overview: development.md
+    - Contribution Guidelines: development/sonar.md
+    - Documentation: development/documentation.md
+
+#
+# Theme Settings
+#
+theme:
+  # https://squidfunk.github.io/mkdocs-material/customization/#setup-and-theme-structure
+  name: material
+  # custom_dir: overrides
+
+  features:
+    # https://squidfunk.github.io/mkdocs-material/setup/setting-up-navigation/#setting-up-navigation
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.path
+    - navigation.indexes
+    - navigation.top
+    - navigation.tabs
+    - navigation.sections
+    - navigation.tracking
+    # https://squidfunk.github.io/mkdocs-material/setup/setting-up-navigation/#navigation-pruning
+    - navigation.prune
+    # https://squidfunk.github.io/mkdocs-material/setup/setting-up-navigation/#table-of-contents
+    - toc.follow
+    # https://squidfunk.github.io/mkdocs-material/setup/setting-up-site-search/#search-suggestions
+    - search.suggest
+    - search.highlight
+    # https://squidfunk.github.io/mkdocs-material/setup/adding-a-git-repository/#code-actions
+    # - content.action.edit
+    # - content.action.view
+    # https://squidfunk.github.io/mkdocs-material/reference/code-blocks/#configuration
+    - content.code.copy
+    - content.code.select
+    - content.code.annotate
+
+  # https://squidfunk.github.io/mkdocs-material/setup/changing-the-colors
+  palette:
+    - scheme: slate
+      primary: blue
+      accent: light blue
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+    - scheme: default
+      primary: blue
+      accent: light blue
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+
+  # https://squidfunk.github.io/mkdocs-material/setup/changing-the-fonts
+  font:
+    text: Inter
+    code: Chivo Mono
+
+  # https://squidfunk.github.io/mkdocs-material/setup/changing-the-language
+  language: en
+
+  # https://squidfunk.github.io/mkdocs-material/setup/changing-the-logo-and-icons
+  # logo: assets/icon.svg
+  # favicon: assets/icon.png
+
+  # https://squidfunk.github.io/mkdocs-material/setup/adding-a-git-repository/#code-actions
+  icon:
+    edit: material/file-edit
+    view: material/file-eye
+    repo: fontawesome/brands/github-alt
+
+#
+# Extra Settings
+#
+extra_css:
+  - docs/stylesheets/msdl.v2.css
+  - docs/stylesheets/theme.v3.css
 
 
+extra:
+  # https://squidfunk.github.io/mkdocs-material/setup/setting-up-the-footer/#generator-notice
+  generator: false
 
+  # https://mkdocs-macros-plugin.readthedocs.io/en/stable/pages/#1-variable
+  sonar:
+    release: 0.1.0
+
+  # https://squidfunk.github.io/mkdocs-material/setup/setting-up-the-footer/#social-links
+  social:
+    # Add slack invite as well
+    - icon: fontawesome/brands/github
+      link: https://github.com/aidecentralized/sonar/
+      name: Sonar on GitHub
+  
+#
+# Python Markdown
+# https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown
+# https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown-extensions
+#
+markdown_extensions:
+  # https://squidfunk.github.io/mkdocs-material/reference/admonitions
+  - admonition
+  - footnotes
+  - pymdownx.details
+  - pymdownx.superfences
+
+  # https://squidfunk.github.io/mkdocs-material/reference/annotations
+  - abbr
+  - attr_list
+  - md_in_html
+
+  # https://squidfunk.github.io/mkdocs-material/reference/formatting
+  - pymdownx.critic
+  - pymdownx.caret
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.tilde
+
+  # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown-extensions/#inlinehilite
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+
+  # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown-extensions/#snippets
+  - pymdownx.snippets:
+      auto_append:
+        - abbreviations.md
+      base_path: ['./docs/getting-started/', './docs/contributing/', 'includes']
+
+  # https://squidfunk.github.io/mkdocs-material/reference/content-tabs
+  - pymdownx.tabbed:
+      alternate_style: true
+
+  # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown-extensions/#superfences
+  - pymdownx.superfences
+
+  # https://squidfunk.github.io/mkdocs-material/reference/icons-emojis
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+      options:
+        custom_icons:
+          - overrides/.icons
+
+  # https://squidfunk.github.io/mkdocs-material/reference/lists
+  - def_list
+  - pymdownx.tasklist:
+      custom_checkbox: true

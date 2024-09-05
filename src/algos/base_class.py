@@ -4,14 +4,14 @@ import numpy
 from torch.utils.data import DataLoader, Subset
 
 from collections import OrderedDict
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from torch import Tensor
 import copy
 import random
 import numpy as np
 
+from utils.communication.comm_utils import CommunicationManager
 from utils.plot_utils import PlotUtils
-from utils.comm_utils import CommUtils
 from utils.data_utils import (
     random_samples,
     filter_by_class,
@@ -28,15 +28,24 @@ from utils.community_utils import (
     get_dset_balanced_communities,
     get_dset_communities,
 )
-import torchvision.transforms as T
+import torchvision.transforms as T # type: ignore
+import os
 
+from yolo import YOLOLoss
 
 class BaseNode(ABC):
-    def __init__(self, config) -> None:
-        self.comm_utils = CommUtils()
-        self.node_id = self.comm_utils.rank
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+        self.comm_utils = comm_utils
+        self.node_id = self.comm_utils.get_rank()
 
         if self.node_id == 0:
+            self.log_dir = config['log_path']
+            config['log_path'] = f'{self.log_dir}/server'
+            try:
+                os.mkdir(config['log_path'])
+            except FileExistsError:
+                pass
+            config['load_existing'] = False
             self.log_utils = LogUtils(config)
             self.log_utils.log_console("Config: {}".format(config))
             self.plot_utils = PlotUtils(config)
@@ -45,13 +54,13 @@ class BaseNode(ABC):
         if isinstance(config["dset"], dict):
             if self.node_id != 0:
                 config["dset"].pop("0")
-            self.dset = config["dset"][str(self.node_id)]
+            self.dset = str(config["dset"][str(self.node_id)])
             config["dpath"] = config["dpath"][self.dset]
         else:
             self.dset = config["dset"]
 
         self.setup_cuda(config)
-        self.model_utils = ModelUtils()
+        self.model_utils = ModelUtils(self.device)
 
         self.dset_obj = get_dataset(self.dset, dpath=config["dpath"])
         self.set_constants()
@@ -59,7 +68,7 @@ class BaseNode(ABC):
     def set_constants(self):
         self.best_acc = 0.0
 
-    def setup_cuda(self, config):
+    def setup_cuda(self, config: Dict[str, Any]):
         # Need a mapping from rank to device id
         device_ids_map = config["device_ids"]
         node_name = "node_{}".format(self.node_id)
@@ -68,10 +77,12 @@ class BaseNode(ABC):
 
         if torch.cuda.is_available():
             self.device = torch.device("cuda:{}".format(gpu_id))
+            print("Using GPU: cuda:{}".format(gpu_id))
         else:
             self.device = torch.device("cpu")
+            print("Using CPU")
 
-    def set_model_parameters(self, config):
+    def set_model_parameters(self, config: Dict[str, Any]):
         # Model related parameters
         optim_name = config.get("optimizer", "adam")
         if optim_name == "adam":
@@ -80,7 +91,7 @@ class BaseNode(ABC):
             optim = torch.optim.SGD
         else:
             raise ValueError("Unknown optimizer: {}.".format(optim_name))
-        num_classes = self.dset_obj.NUM_CLS
+        num_classes = self.dset_obj.num_cls
         num_channels = self.dset_obj.num_channels
         self.model = self.model_utils.get_model(
             config["model"],
@@ -96,7 +107,10 @@ class BaseNode(ABC):
             lr=config["model_lr"],
             weight_decay=config.get("weight_decay", 0),
         )
-        self.loss_fn = torch.nn.CrossEntropyLoss()
+        if config.get('dset') == "pascal":
+            self.loss_fn = YOLOLoss()
+        else:
+            self.loss_fn = torch.nn.CrossEntropyLoss()
 
     def set_shared_exp_parameters(self, config):
 
@@ -139,7 +153,7 @@ class BaseNode(ABC):
                     self.communities))
 
     @abstractmethod
-    def run_protocol(self):
+    def run_protocol(self) -> None:
         raise NotImplementedError
 
 
@@ -148,8 +162,8 @@ class BaseClient(BaseNode):
     Abstract class for all algorithms
     """
 
-    def __init__(self, config) -> None:
-        super().__init__(config)
+    def __init__(self, config, comm_utils) -> None:
+        super().__init__(config, comm_utils)
         self.server_node = 0
         self.set_parameters(config)
 
@@ -205,8 +219,8 @@ class BaseClient(BaseNode):
         train_dset = self.dset_obj.train_dset
         test_dset = self.dset_obj.test_dset
 
-        print("num train", len(train_dset))
-        print("num test", len(test_dset))
+        # print("num train", len(train_dset))
+        # print("num test", len(test_dset))
 
         if config.get("test_samples_per_class", None) is not None:
             test_dset, _ = balanced_subset(
@@ -214,6 +228,7 @@ class BaseClient(BaseNode):
 
         samples_per_user = config["samples_per_user"]
         batch_size = config["batch_size"]
+        print(f"samples per user: {samples_per_user}, batch size: {batch_size}")
 
         # Support user specific dataset
         if isinstance(config["dset"], dict):
@@ -266,7 +281,7 @@ class BaseClient(BaseNode):
                     cls_priors = []
                     dsets = list(config["dset"].values())
                     for _ in dsets:
-                        n_cls = self.dset_obj.NUM_CLS
+                        n_cls = self.dset_obj.num_cls
                         cls_priors.append(
                             np.random.dirichlet(
                                 alpha=[alpha] * n_cls,
@@ -327,6 +342,7 @@ class BaseClient(BaseNode):
                 val_dset, batch_size=batch_size, shuffle=True)
 
         self.train_indices = train_indices
+        self.train_dset = train_dset
         # self.dloader = DataLoader(train_dset, batch_size=batch_size*len(self.device_ids), shuffle=True)
         self.dloader = DataLoader(
             train_dset,
@@ -362,21 +378,22 @@ class BaseClient(BaseNode):
             test_dset = CacheDataset(test_dset)
 
         self._test_loader = DataLoader(test_dset, batch_size=batch_size)
-        self.print_data_summary(train_dset, test_dset, val_dset=val_dset)
+        # TODO: fix print_data_summary
+        # self.print_data_summary(train_dset, test_dset, val_dset=val_dset)
 
-    def local_train(self, dataset, **kwargs):
+    def local_train(self, round: int, **kwargs: Any) -> None:
         """
         Train the model locally
         """
         raise NotImplementedError
 
-    def local_test(self, dataset, **kwargs):
+    def local_test(self, **kwargs: Any) -> float | Tuple[float, float] | None:
         """
         Test the model locally
         """
         raise NotImplementedError
 
-    def get_representation(self, **kwargs):
+    def get_representation(self, **kwargs: Any) -> OrderedDict[str, Tensor] | List[Tensor] | Tensor:
         """
         Share the model representation
         """
@@ -389,27 +406,39 @@ class BaseClient(BaseNode):
         """
         Print the data summary
         """
+
         train_sample_per_class = {}
+        i = 0
         for x, y in train_test:
             train_sample_per_class[y] = train_sample_per_class.get(y, 0) + 1
+            print("train count: ", i)
+            i += 1
 
+        i = 0
         if val_dset is not None:
             val_sample_per_class = {}
             for x, y in val_dset:
                 val_sample_per_class[y] = val_sample_per_class.get(y, 0) + 1
-
+                print("val count: ", i)
+                i += 1
+        i = 0
         test_sample_per_class = {}
         for x, y in test_dset:
             test_sample_per_class[y] = test_sample_per_class.get(y, 0) + 1
+            print("test count: ", i)
+            i += 1
 
-        print("Node: {} data distribution summary".format(self.node_id))
-        print("Train samples per class: {}".format(
-            sorted(train_sample_per_class.items())))
-        if val_dset is not None:
-            print("Val samples per class: {}".format(
-                sorted(val_sample_per_class.items())))
-        print("Test samples per class: {}".format(
-            sorted(test_sample_per_class.items())))
+        # print("Node: {} data distribution summary".format(self.node_id))
+        # print(
+        #     "Train samples per class: {}".format(sorted(train_sample_per_class.items()))
+        # )
+        # if val_dset is not None:
+        #     print(
+        #         "Val samples per class: {}".format(sorted(val_sample_per_class.items()))
+        #     )
+        # print(
+        #     "Test samples per class: {}".format(sorted(test_sample_per_class.items()))
+        # )
 
 
 class BaseServer(BaseNode):
@@ -417,8 +446,8 @@ class BaseServer(BaseNode):
     Abstract class for orchestrator
     """
 
-    def __init__(self, config) -> None:
-        super().__init__(config)
+    def __init__(self, config, comm_utils) -> None:
+        super().__init__(config, comm_utils)
         self.num_users = config["num_users"]
         self.users = list(range(1, self.num_users + 1))
         self.set_data_parameters(config)
@@ -428,13 +457,13 @@ class BaseServer(BaseNode):
         batch_size = config["batch_size"]
         self._test_loader = DataLoader(test_dset, batch_size=batch_size)
 
-    def aggregate(self, representation_list, **kwargs):
+    def aggregate(self, representation_list: List[OrderedDict[str, Tensor]], **kwargs: Any) -> OrderedDict[str, Tensor]:
         """
         Aggregate the knowledge from the users
         """
         raise NotImplementedError
 
-    def test(self, dataset, **kwargs):
+    def test(self, **kwargs: Any) -> List[float]:
         """
         Test the model on the server
         """
@@ -467,9 +496,8 @@ class BaseFedAvgClient(BaseClient):
     """
     Abstract class for FedAvg based algorithms
     """
-
-    def __init__(self, config, comm_protocol=CommProtocol) -> None:
-        super().__init__(config)
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager, comm_protocol=CommProtocol) -> None:
+        super().__init__(config, comm_utils)
         self.config = config
         self.model_save_path = "{}/saved_models/node_{}.pt".format(
             self.config["results_path"], self.node_id
@@ -648,15 +676,10 @@ class BaseFedAvgServer(BaseServer):
     """
     Abstract class for orchestrator
     """
-
-    def __init__(self, config, comm_protocol=CommProtocol) -> None:
-        super().__init__(config)
+    
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager, comm_protocol=CommProtocol) -> None:
+        super().__init__(config, comm_utils)
         self.tag = comm_protocol
 
-    def send_representations(self, representations, tag=None):
-        for user_node in self.users:
-            self.comm_utils.send_signal(
-                dest=user_node,
-                data=representations,
-                tag=self.tag.REPRS_SHARE if tag is None else tag,
-            )
+    def send_representations(self, representations: Dict[int, OrderedDict[str, Tensor]]):
+        self.comm_utils.broadcast(representations)

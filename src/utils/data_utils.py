@@ -1,4 +1,5 @@
 import importlib
+from typing import Any, List, Sequence, Tuple
 import numpy as np
 import torch
 import torchvision.transforms as T
@@ -10,13 +11,13 @@ class CacheDataset:
     """
     Caches the entire dataset in memory.
     """
-    def __init__(self, dset):
-        self.data = []
+    def __init__(self, dset: Subset[Any]):
+        self.data: List[Any] = []
         self.targets = getattr(dset, "targets", None)
         for i in range(len(dset)):
             self.data.append(dset[i])
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int):
         return self.data[index]
 
     def __len__(self):
@@ -27,11 +28,11 @@ class TransformDataset:
     """
     Applies a transformation to the dataset.
     """
-    def __init__(self, dset, transform):
+    def __init__(self, dset: CacheDataset, transform: T.Compose):
         self.dset = dset
         self.transform = transform
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int):
         img, label = self.dset[index]
         img = self.transform(img)
         return img, label
@@ -60,10 +61,9 @@ def get_dataset(dname: str, dpath: str):
         "organsmnist": ("data_loaders.medmnist", "OrganSMNISTDataset"),
         "domainnet": ("data_loaders.domainnet", "DomainNetDataset"),
         "wilds": ("data_loaders.wilds", "WildsDataset"),
+        "pascal": ("data_loaders.pascal", "PascalDataset")
     }
 
-    if dname not in dset_mapping:
-        raise ValueError(f"Unknown dataset name: {dname}")
 
     if dname.startswith("wilds"):
         dname_parts = dname.split("_")
@@ -77,6 +77,8 @@ def get_dataset(dname: str, dpath: str):
         module = importlib.import_module(module_path)
         dataset_class = getattr(module, class_name)
         return dataset_class(dpath, dname_parts[1])
+    elif dname not in dset_mapping:
+        raise ValueError(f"Unknown dataset name: {dname}")
     else:
         module_path, class_name = dset_mapping[dname]
         module = importlib.import_module(module_path)
@@ -84,7 +86,7 @@ def get_dataset(dname: str, dpath: str):
         return dataset_class(dpath)
 
 
-def filter_by_class(dataset, classes):
+def filter_by_class(dataset: Subset[Any], classes: List[str]):
     """
     Filters the dataset by specified classes.
     """
@@ -92,7 +94,7 @@ def filter_by_class(dataset, classes):
     return Subset(dataset, indices), indices
 
 
-def random_samples(dataset, num_samples):
+def random_samples(dataset: Subset[Any], num_samples: int) -> Tuple[Subset[Any], np.ndarray]:
     """
     Returns a random subset of samples from the dataset.
     """
@@ -100,17 +102,17 @@ def random_samples(dataset, num_samples):
     return Subset(dataset, indices), indices
 
 
-def extr_noniid(train_dataset, samples_per_client, classes):
+def extr_noniid(train_dataset: Any, samples_per_user: int, classes: Sequence[int]):
     """
     Extracts non-IID data from the training dataset.
     """
     all_data = Subset(train_dataset, [i for i, (_, y) in enumerate(train_dataset) if y in classes])
     perm = torch.randperm(len(all_data))
-    return Subset(all_data, perm[:samples_per_client])
+    return Subset(all_data, perm[:samples_per_user])
 
 
-def  cifar_extr_noniid(
-    train_dataset, test_dataset, num_users, n_class, num_samples, rate_unbalance
+def cifar_extr_noniid(
+    train_dataset: Subset[Any], test_dataset: Subset[Any], num_users: int, n_class: int, num_samples: int, rate_unbalance: float
 ):
     """
     Extracts non-IID data for CIFAR-10 dataset.

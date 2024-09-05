@@ -9,11 +9,11 @@ import logging
 import sys
 from glob import glob
 from shutil import copytree, copy2
-from PIL import Image
+from typing import Any, Dict
 import torch
-import torchvision.transforms as T
-from torchvision.utils import make_grid, save_image
-from tensorboardX import SummaryWriter
+import torchvision.transforms as T # type: ignore
+from torchvision.utils import make_grid, save_image # type: ignore
+from tensorboardX import SummaryWriter # type: ignore
 import numpy as np
 
 
@@ -36,7 +36,7 @@ def deprocess(img):
     return img.type(torch.uint8)
 
 
-def check_and_create_path(path):
+def check_and_create_path(path: str, folder_deletion_path: str|None=None):
     """
     Checks if the specified path exists and prompts the user for action if it does.
     Creates the directory if it does not exist.
@@ -45,23 +45,19 @@ def check_and_create_path(path):
         path (str): Path to check and create if necessary.
     """
     if os.path.isdir(path):
-        print(f"Experiment in {path} already present")
-        done = False
-        while not done:
-            inp = input("Press e to exit, r to replace it: ")
-            if inp == "e":
-                sys.exit()
-            elif inp == "r":
-                done = True
-                shutil.rmtree(path)
-                os.makedirs(path)
-            else:
-                print("Input not understood")
+        color_code = "\033[94m"  # Blue text
+        reset_code = "\033[0m"   # Reset to default color
+        print(f"{color_code}Experiment in {path} already present. Exiting.")
+        print(f"Please do: rm -rf {path} to delete the folder.{reset_code}")
+        sys.exit()
     else:
         os.makedirs(path)
+        with open(folder_deletion_path, "w") as signal_file:
+            #new folder creation complete signal.
+            signal_file.write("new")
 
 
-def copy_source_code(config: dict) -> None:
+def copy_source_code(config: Dict[str, Any]) -> None:
     """
     Copy source code to experiment folder for reproducibility.
 
@@ -69,16 +65,18 @@ def copy_source_code(config: dict) -> None:
         config (dict): Configuration dictionary with the results path.
     """
     path = config["results_path"]
+    folder_deletion_path = config["folder_deletion_signal_path"]
     print("exp path:", path)
     if config["load_existing"]:
         print("Continue with loading checkpoint")
         return
-    check_and_create_path(path)
+    check_and_create_path(path, folder_deletion_path)
     denylist = [
         "./__pycache__/",
         "./.ipynb_checkpoints/",
         "./expt_dump/",
         "./helper_scripts/",
+        "./datasets/",
         "./imgs/",
         "./expt_dump_old/",
         "./comparison_plots/",
@@ -99,7 +97,7 @@ def copy_source_code(config: dict) -> None:
         if folder not in denylist:
             copytree(folder, path + folder[1:])
     os.mkdir(config["saved_models"])
-    os.mkdir(config["log_path"])
+    os.makedirs(config["log_path"], exist_ok=True)
     print("source code copied to exp_dump")
 
 
@@ -107,7 +105,7 @@ class LogUtils:
     """
     Utility class for logging and saving experiment data.
     """
-    def __init__(self, config) -> None:
+    def __init__(self, config: Dict[str, Any]) -> None:
         log_dir = config["log_path"]
         load_existing = config["load_existing"]
         log_format = (
@@ -131,7 +129,7 @@ class LogUtils:
         """
         self.summary_file = open(f"{self.log_dir}/summary.txt", "w", encoding="utf-8")
 
-    def init_tb(self, load_existing):
+    def init_tb(self, load_existing: bool):
         """
         Initialize TensorBoard logging.
 
@@ -140,7 +138,7 @@ class LogUtils:
         """
         tb_path = f"{self.log_dir}/tensorboard"
         if not load_existing:
-            os.makedirs(tb_path)
+            os.makedirs(tb_path, exist_ok=True)
         self.writer = SummaryWriter(tb_path)
 
     def init_npy(self):
@@ -151,7 +149,17 @@ class LogUtils:
         if not os.path.exists(npy_path) or not os.path.isdir(npy_path):
             os.makedirs(npy_path)
 
-    def log_image(self, imgs: torch.Tensor, key, iteration):
+    def log_summary(self, text: str):
+        """
+        Add summary text to the summary file for logging.
+        """
+        if self.summary_file:
+            self.summary_file.write(text + "\n")
+            self.summary_file.flush()
+        else:
+            raise ValueError("Summary file is not initialized. Call init_summary() first.")
+            
+    def log_image(self, imgs: torch.Tensor, key: str, iteration: int):
         """
         Log image to file and TensorBoard.
 
@@ -164,7 +172,7 @@ class LogUtils:
         save_image(grid_img, f"{self.log_dir}/{iteration}_{key}.png")
         self.writer.add_image(key, grid_img.numpy(), iteration)
 
-    def log_console(self, msg):
+    def log_console(self, msg: str):
         """
         Log a message to the console.
 
@@ -173,7 +181,7 @@ class LogUtils:
         """
         logging.info(msg)
 
-    def log_tb(self, key, value, iteration):
+    def log_tb(self, key: str, value: float|int, iteration: int):
         """
         Log a scalar value to TensorBoard.
 
@@ -182,9 +190,9 @@ class LogUtils:
             value (float): Value to log.
             iteration (int): Current iteration number.
         """
-        self.writer.add_scalar(key, value, iteration)
+        self.writer.add_scalar(key, value, iteration) # type: ignore
 
-    def log_npy(self, key, value):
+    def log_npy(self, key: str, value: np.ndarray):
         """
         Save a numpy array to file.
 
@@ -194,7 +202,7 @@ class LogUtils:
         """
         np.save(f"{self.log_dir}/npy/{key}.npy", value)
 
-    def log_max_stats_per_client(self, stats_per_client, round_step, metric):
+    def log_max_stats_per_client(self, stats_per_client: np.ndarray, round_step: int, metric: str):
         """
         Log maximum statistics per client.
 

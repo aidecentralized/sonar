@@ -1,4 +1,9 @@
 """Module docstring: This module implements federated learning isolation protocols."""
+from algos.base_class import BaseClient, BaseServer
+from utils.stats_utils import from_rounds_stats_per_client_per_round_to_dict_arrays
+from typing import Any, Dict, List
+from utils.communication.comm_utils import CommunicationManager
+
 
 # Correct the import order
 from utils.stats_utils import from_rounds_stats_per_client_per_round_to_dict_arrays
@@ -14,9 +19,9 @@ class CommProtocol:
 
 class FedIsoClient(BaseClient):
     """Class docstring: Federated Isolation Client."""
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+        super().__init__(config, comm_utils)
 
-    def __init__(self, config) -> None:
-        super().__init__(config)
         self.config = config
         self.tag = CommProtocol
         self.model_save_path = "{}/saved_models/node_{}.pt".format(
@@ -45,8 +50,8 @@ class FedIsoClient(BaseClient):
         total_rounds = self.config["rounds"]
         epochs_per_round = self.config["epochs_per_round"]
 
-        self.comm_utils.wait_for_signal(
-            src=self.server_node, tag=self.tag.START)
+
+        self.comm_utils.receive(self.server_node, tag=self.tag.START)
 
         stats = []
         for round in range(start_round, total_rounds):
@@ -64,18 +69,21 @@ class FedIsoClient(BaseClient):
 
             if round % 10 == 0:
                 print(
-                     f"Client {self.node_id}, round {round}, "
-                     f"loss {round_stats['train_loss']}, "
-                     f"test acc {round_stats['test_acc']}"
-                )           
-        self.comm_utils.send_signal(
+                    "Client {}, round {}, loss {}, test acc {}".format(
+                        self.node_id,
+                        round,
+                        round_stats["train_loss"],
+                        round_stats["test_acc"],
+                    )
+                )
+        self.comm_utils.send(
             dest=self.server_node, data=stats, tag=self.tag.DONE
         )
 
 
 class FedIsoServer(BaseServer):
-    def __init__(self, config) -> None:
-        super().__init__(config)
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+        super().__init__(config, comm_utils)
         # self.set_parameters()
         self.config = config
         self.set_model_parameters(config)
@@ -91,11 +99,11 @@ class FedIsoServer(BaseServer):
             self.log_utils.log_console(
                 f"Server sending semaphore from {self.node_id} to {client_node}"
             )
-            self.comm_utils.send_signal(
-                dest=client_node, data=None, tag=self.tag.START)
+            self.comm_utils.send(dest=client_node, data=None, tag=self.tag.START)
+
 
         self.log_utils.log_console("Server waiting for all clients to finish")
-        stats = self.comm_utils.wait_for_all_clients(self.users, self.tag.DONE)
+        stats = self.comm_utils.all_gather(self.tag.DONE)
 
         stats_dict = from_rounds_stats_per_client_per_round_to_dict_arrays(
             stats)

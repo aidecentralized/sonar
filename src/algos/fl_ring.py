@@ -16,6 +16,7 @@ class RingTopology:
         Returns:
             list: A list of selected node IDs.
         """
+
         if (node_id + 1) % config["num_users"] == 0:
             selected_ids = [(node_id + 2) % config["num_users"]]
         else:
