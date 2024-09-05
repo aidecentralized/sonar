@@ -74,7 +74,8 @@ class FedFomoClient(BaseClient):
         """
         Get trainable parameters.
         """
-        param_dict = {name: param for name, param in self.model.named_parameters()}
+        param_dict = {name: param for name,
+                      param in self.model.named_parameters()}
         return param_dict
 
     def get_representation(self) -> OrderedDict[str, Tensor]:
@@ -95,7 +96,8 @@ class FedFomoClient(BaseClient):
         """
         weights = self.get_representation()
         drop_ratio = (
-            self.anneal_factor / 2 * (1 + np.cos((epoch * np.pi) / total_epochs))
+            self.anneal_factor / 2 *
+            (1 + np.cos((epoch * np.pi) / total_epochs))
         )
         new_masks = copy.deepcopy(masks)
 
@@ -171,7 +173,8 @@ class FedFomoClient(BaseClient):
                     )
                 else:
                     w_tmp[k] += (
-                        (w_per_mdls_lstrd[clnt][k] - w_per_mdls_lstrd[cur_clnt][k])
+                        (w_per_mdls_lstrd[clnt][k] -
+                         w_per_mdls_lstrd[cur_clnt][k])
                         * weight_tmp[clnt]
                         / w_easy
                     )
@@ -183,7 +186,8 @@ class FedFomoClient(BaseClient):
         Send the model representations to clients.
         """
         for client_node in self.clients:
-            self.comm_utils.send_signal(client_node, representation, self.tag.UPDATES)
+            self.comm_utils.send_signal(
+                client_node, representation, self.tag.UPDATES)
         print(f"Node 1 sent average weight to {len(self.clients)} nodes")
 
     def screen_gradient(self):
@@ -199,7 +203,8 @@ class FedFomoClient(BaseClient):
         log_probs = model.forward(x)
         loss = criterion(log_probs, labels.long())
         loss.backward()
-        gradient = {name: param.grad.to("cpu") for name, param in self.model.named_parameters()}
+        gradient = {name: param.grad.to(
+            "cpu") for name, param in self.model.named_parameters()}
         return gradient
 
     def hamming_distance(self, mask_a, mask_b):
@@ -210,7 +215,8 @@ class FedFomoClient(BaseClient):
         total = 0
         for key in mask_a:
             dis += torch.sum(
-                mask_a[key].int().to(self.device) ^ mask_b[key].int().to(self.device)
+                mask_a[key].int().to(
+                    self.device) ^ mask_b[key].int().to(self.device)
             )
             total += mask_a[key].numel()
         return dis, total
@@ -244,7 +250,8 @@ class FedFomoClient(BaseClient):
         Calculate the difference between two models.
         """
         diff = sum(
-            [torch.sum(torch.square(model_a[name] - model_b[name])) for name in model_a]
+            [torch.sum(torch.square(model_a[name] - model_b[name]))
+             for name in model_a]
         )
         return diff
 
@@ -261,7 +268,8 @@ class FedFomoClient(BaseClient):
         loss_cur_clnt = metrics["test_loss"]
         for nei_clnt in nei_indexs:
             if nei_clnt == curr_idx:
-                metrics = client.val_test(w_local, self.val_data_local_dict[curr_idx])
+                metrics = client.val_test(
+                    w_local, self.val_data_local_dict[curr_idx])
             else:
                 metrics = client.val_test(
                     w_per_mdls_lstrd[nei_clnt], self.val_data_local_dict[curr_idx]
@@ -381,7 +389,8 @@ class FedFomoServer(BaseServer):
         Set the model representations.
         """
         for client_node in self.users:
-            self.comm_utils.send_signal(client_node, representations, self.tag.UPDATES)
+            self.comm_utils.send_signal(
+                client_node, representations, self.tag.UPDATES)
             self.log_utils.log_console(
                 f"Server sent {len(representations)} representations to node {client_node}"
             )
@@ -427,7 +436,8 @@ class FedFomoServer(BaseServer):
         """
         Get trainable parameters.
         """
-        param_dict = {name: param for name, param in self.model.named_parameters()}
+        param_dict = {name: param for name,
+                      param in self.model.named_parameters()}
         return param_dict
 
     def run_protocol(self):
@@ -449,5 +459,6 @@ class FedFomoServer(BaseServer):
 
             self.single_round(epoch, active_ths_rnd)
 
-            accs = self.comm_utils.wait_for_all_clients(self.users, self.tag.FINISH)
+            accs = self.comm_utils.wait_for_all_clients(
+                self.users, self.tag.FINISH)
             self.log_utils.log_console(f"Round {epoch} done; acc {accs}")
