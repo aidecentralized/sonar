@@ -1,9 +1,12 @@
 ### Running the code
-Let's say you want to run the model training of 3 nodes on a machine. That means there will be 4 nodes in total because there is 1 more node in addition to the clients --- server.
+With the current configs, the following command will work off-the-shelf
+`mpirun -np 4 -host localhost:4 python main.py`
+
+Let's say you want to run the model training of 10 nodes on a machine. That means there will be 11 nodes in total because there is 1 extra node in addition to the clients --- server.
 The whole point of this project is to eventually transition to a distributed system where each node can be a separate machine and a server is simply another node. But for now, this is how things are done.
 
-You can execute the 3 node simulation by running the following command:<br>
-`mpirun -np 4 -host localhost:11 python main.py`
+You can execute the 10 node simulation by running the following command:<br>
+`mpirun -np 10 -host localhost:11 python main.py`
 
 Depending on the environment you're running the experiment on, you may have to update the config files based on the number of GPUs available. Refer to the [Config file](#config-file) section for more information.
 
