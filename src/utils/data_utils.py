@@ -1,5 +1,5 @@
 import importlib
-from typing import Tuple
+from typing import Any, List, Sequence, Tuple
 import numpy as np
 import torch
 import torchvision.transforms as T
@@ -11,13 +11,13 @@ class CacheDataset:
     """
     Caches the entire dataset in memory.
     """
-    def __init__(self, dset):
-        self.data = []
+    def __init__(self, dset: Subset[Any]):
+        self.data: List[Any] = []
         self.targets = getattr(dset, "targets", None)
         for i in range(len(dset)):
             self.data.append(dset[i])
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int):
         return self.data[index]
 
     def __len__(self):
@@ -28,11 +28,11 @@ class TransformDataset:
     """
     Applies a transformation to the dataset.
     """
-    def __init__(self, dset, transform):
+    def __init__(self, dset: CacheDataset, transform: T.Compose):
         self.dset = dset
         self.transform = transform
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int):
         img, label = self.dset[index]
         img = self.transform(img)
         return img, label
@@ -86,7 +86,7 @@ def get_dataset(dname: str, dpath: str):
         return dataset_class(dpath)
 
 
-def filter_by_class(dataset, classes):
+def filter_by_class(dataset: Subset[Any], classes: List[str]):
     """
     Filters the dataset by specified classes.
     """
@@ -94,7 +94,7 @@ def filter_by_class(dataset, classes):
     return Subset(dataset, indices), indices
 
 
-def random_samples(dataset, num_samples) -> Tuple[Subset, np.ndarray]:
+def random_samples(dataset: Subset[Any], num_samples: int) -> Tuple[Subset[Any], np.ndarray]:
     """
     Returns a random subset of samples from the dataset.
     """
@@ -102,7 +102,7 @@ def random_samples(dataset, num_samples) -> Tuple[Subset, np.ndarray]:
     return Subset(dataset, indices), indices
 
 
-def extr_noniid(train_dataset, samples_per_user, classes):
+def extr_noniid(train_dataset: Any, samples_per_user: int, classes: Sequence[int]):
     """
     Extracts non-IID data from the training dataset.
     """
@@ -112,7 +112,7 @@ def extr_noniid(train_dataset, samples_per_user, classes):
 
 
 def cifar_extr_noniid(
-    train_dataset, test_dataset, num_users, n_class, num_samples, rate_unbalance
+    train_dataset: Subset[Any], test_dataset: Subset[Any], num_users: int, n_class: int, num_samples: int, rate_unbalance: float
 ):
     """
     Extracts non-IID data for CIFAR-10 dataset.
