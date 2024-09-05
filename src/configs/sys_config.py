@@ -207,4 +207,5 @@ grpc_system_config = {
     "folder_deletion_signal_path":"./expt_dump/folder_deletion.signal"
 }
 
-current_config = grpc_system_config
+# current_config = grpc_system_config
+current_config = mpi_system_config
