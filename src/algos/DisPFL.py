@@ -34,14 +34,11 @@ class DisPFLClient(BaseClient):
     """
     Client class for DisPFL (Distributed Personalized Federated Learning).
     """
-
     def __init__(self, config) -> None:
         super().__init__(config)
         self.config = config
         self.tag = CommProtocol
-        self.model_save_path = (
-            f"{self.config['results_path']}/saved_models/node_{self.node_id}.pt"
-        )
+        self.model_save_path = f"{self.config['results_path']}/saved_models/node_{self.node_id}.pt"
         self.dense_ratio = self.config["dense_ratio"]
         self.anneal_factor = self.config["anneal_factor"]
         self.dis_gradient_check = self.config["dis_gradient_check"]
@@ -97,8 +94,7 @@ class DisPFLClient(BaseClient):
         """
         weights = self.get_representation()
         drop_ratio = (
-            self.anneal_factor / 2 *
-            (1 + np.cos((round_num * np.pi) / total_round))
+            self.anneal_factor / 2 * (1 + np.cos((round_num * np.pi) / total_round))
         )
         new_masks = copy.deepcopy(masks)
         num_remove = {}
@@ -148,8 +144,7 @@ class DisPFLClient(BaseClient):
         """
         count_mask = copy.deepcopy(masks_lstrnd[self.index])
         for k in count_mask.keys():
-            count_mask[k] = count_mask[k] - \
-                count_mask[k]  # zero out by pruning
+            count_mask[k] = count_mask[k] - count_mask[k]  # zero out by pruning
             for clnt in nei_indexes:
                 count_mask[k] += masks_lstrnd[clnt][k].to(self.device)  # mask
         for k in count_mask.keys():
@@ -181,8 +176,7 @@ class DisPFLClient(BaseClient):
         Set the model.
         """
         for client_node in self.clients:
-            self.comm_utils.send_signal(
-                client_node, representation, self.tag.UPDATES)
+            self.comm_utils.send_signal(client_node, representation, self.tag.UPDATES)
         print(f"Node 1 sent average weight to {len(self.clients)} nodes")
 
     def calculate_sparsities(self, params, tabu=None, distribution="ERK", sparse=0.5):
@@ -222,8 +216,7 @@ class DisPFLClient(BaseClient):
                     else:
                         rhs += n_ones
                         raw_probabilities[name] = (
-                            np.sum(params[name].shape) /
-                            np.prod(params[name].shape)
+                            np.sum(params[name].shape) / np.prod(params[name].shape)
                         ) ** self.config["erk_power_scale"]
                         divisor += raw_probabilities[name] * n_param
                 epsilon = rhs / divisor
@@ -233,8 +226,7 @@ class DisPFLClient(BaseClient):
                     is_epsilon_valid = False
                     for mask_name, mask_raw_prob in raw_probabilities.items():
                         if mask_raw_prob == max_prob:
-                            print(
-                                f"Sparsity of var:{mask_name} had to be set to 0.")
+                            print(f"Sparsity of var:{mask_name} had to be set to 0.")
                             dense_layers.add(mask_name)
                 else:
                     is_epsilon_valid = True
@@ -289,8 +281,7 @@ class DisPFLClient(BaseClient):
         total = 0
         for key in mask_a:
             dis += torch.sum(
-                mask_a[key].int().to(
-                    self.device) ^ mask_b[key].int().to(self.device)
+                mask_a[key].int().to(self.device) ^ mask_b[key].int().to(self.device)
             )
             total += mask_a[key].numel()
         return dis, total
@@ -340,8 +331,7 @@ class DisPFLClient(BaseClient):
         Calculate the difference between two models.
         """
         diff = sum(
-            [torch.sum(torch.square(model_a[name] - model_b[name]))
-             for name in model_a]
+            [torch.sum(torch.square(model_a[name] - model_b[name])) for name in model_a]
         )
         return diff
 
@@ -367,8 +357,7 @@ class DisPFLClient(BaseClient):
         ]
         for epoch in range(start_epochs, total_epochs):
             # wait for signal to start round
-            active_ths_rnd = self.comm_utils.wait_for_signal(
-                src=0, tag=self.tag.START)
+            active_ths_rnd = self.comm_utils.wait_for_signal(src=0, tag=self.tag.START)
             if epoch != 0:
                 [weights_lstrnd, masks_lstrnd] = self.comm_utils.wait_for_signal(
                     src=0, tag=self.tag.LAST_ROUND
@@ -396,7 +385,8 @@ class DisPFLClient(BaseClient):
             if self.num_users != self.config["neighbors"]:
                 nei_indexes = np.append(nei_indexes, self.index)
             print(
-                f"Node {self.index}'s neighbors index:{[i + 1 for i in nei_indexes]}")
+                f"Node {self.index}'s neighbors index:{[i + 1 for i in nei_indexes]}"
+            )
 
             for tmp_idx in nei_indexes:
                 if tmp_idx != self.index:
@@ -422,8 +412,7 @@ class DisPFLClient(BaseClient):
                 )
             else:
                 new_repr = copy.deepcopy(weights_lstrnd[self.index])
-                w_per_globals[self.index] = copy.deepcopy(
-                    weights_lstrnd[self.index])
+                w_per_globals[self.index] = copy.deepcopy(weights_lstrnd[self.index])
             model_diff = self.model_difference(new_repr, self.repr)
             print(f"Node {self.node_id} model_diff{model_diff}")
             self.comm_utils.send_signal(
@@ -441,8 +430,7 @@ class DisPFLClient(BaseClient):
             if not self.config["static"]:
                 if not self.dis_gradient_check:
                     gradient = self.screen_gradient()
-                self.mask, num_remove = self.fire_mask(
-                    self.mask, epoch, total_epochs)
+                self.mask, num_remove = self.fire_mask(self.mask, epoch, total_epochs)
                 self.mask = self.regrow_mask(self.mask, num_remove, gradient)
             self.comm_utils.send_signal(
                 dest=0, data=copy.deepcopy(repr), tag=self.tag.SHARE_WEIGHTS
@@ -458,15 +446,12 @@ class DisPFLServer(BaseServer):
     """
     Server class for DisPFL (Distributed Personalized Federated Learning).
     """
-
     def __init__(self, config) -> None:
         super().__init__(config)
         self.config = config
         self.set_model_parameters(config)
         self.tag = CommProtocol
-        self.model_save_path = (
-            f"{self.config['results_path']}/saved_models/node_{self.node_id}.pt"
-        )
+        self.model_save_path = f"{self.config['results_path']}/saved_models/node_{self.node_id}.pt"
         self.dense_ratio = self.config["dense_ratio"]
         self.num_users = self.config["num_users"]
 
@@ -481,8 +466,7 @@ class DisPFLServer(BaseServer):
         Set the model.
         """
         for client_node in self.users:
-            self.comm_utils.send_signal(
-                client_node, representations, self.tag.UPDATES)
+            self.comm_utils.send_signal(client_node, representations, self.tag.UPDATES)
             self.log_utils.log_console(
                 f"Server sent {len(representations)} representations to node {client_node}"
             )
@@ -550,6 +534,5 @@ class DisPFLServer(BaseServer):
 
             self.single_round(epoch, active_ths_rnd)
 
-            accs = self.comm_utils.wait_for_all_clients(
-                self.users, self.tag.FINISH)
+            accs = self.comm_utils.wait_for_all_clients(self.users, self.tag.FINISH)
             self.log_utils.log_console(f"Round {epoch} done; acc {accs}")

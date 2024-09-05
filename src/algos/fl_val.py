@@ -1,17 +1,14 @@
-"""Module docstring for fl_val.py."""
-
 import torch
 import numpy as np
 
-from utils.stats_utils import from_round_stats_per_round_per_client_to_dict_arrays
 from algos.base_class import BaseFedAvgClient, BaseFedAvgServer
 
+from utils.stats_utils import from_round_stats_per_round_per_client_to_dict_arrays
+
+
 class FedValClient(BaseFedAvgClient):
-    """Class docstring for FedValClient."""
     def __init__(self, config) -> None:
-        """Initialize the FedValClient."""
         super().__init__(config)
-        self.round_stats = None
 
     def evaluate_model(self, model, dloader, loss_fn, device):
         model.eval()
@@ -61,8 +58,7 @@ class FedValClient(BaseFedAvgClient):
             ]
             proba_dist = {key: 1 for key in selected_collab}
         else:
-            raise ValueError(
-                "Selection strategy {} not implemented".format(strategy))
+            raise ValueError("Selection strategy {} not implemented".format(strategy))
 
         selected_collab.append(self.node_id)
 
@@ -117,8 +113,7 @@ class FedValClient(BaseFedAvgClient):
 
             # Aggregate the representations based on the collab weights
             sim_dict = self.get_collaborator_similarity(reprs_dict)
-            self.log_clients_stats(
-                sim_dict, "Validation loss on training data")
+            self.log_clients_stats(sim_dict, "Validation loss on training data")
             num_collaborator = self.config[
                 f"target_clients_{'before' if round < self.config['T_0'] else 'after'}_T_0"
             ]
@@ -232,8 +227,7 @@ class FedValServer(BaseFedAvgServer):
             round_stats = self.single_round()
             stats.append(round_stats)
 
-        stats_dict = from_round_stats_per_round_per_client_to_dict_arrays(
-            stats)
+        stats_dict = from_round_stats_per_round_per_client_to_dict_arrays(stats)
         stats_dict["round_step"] = 1
         self.log_utils.log_experiments_stats(stats_dict)
         self.plot_utils.plot_experiments_stats(stats_dict)

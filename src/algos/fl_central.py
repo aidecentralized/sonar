@@ -208,19 +208,16 @@ class CentralizedServer(BaseServer):
                     dest=client_node, data=model, tag=self.tag.SHARE_MODEL
                 )
 
-            self.log_utils.log_console(
-                "Server waiting for all clients to finish")
+            self.log_utils.log_console("Server waiting for all clients to finish")
 
             round_stats = self.comm_utils.wait_for_all_clients(
                 self.users, tag=self.tag.ROUND_STATS
             )
             stats.append(round_stats)
 
-            print(
-                f"Round test acc {[stats['test_acc'] for stats in round_stats]}")
+            print(f"Round test acc {[stats['test_acc'] for stats in round_stats]}")
 
-        stats_dict = from_round_stats_per_round_per_client_to_dict_arrays(
-            stats)
+        stats_dict = from_round_stats_per_round_per_client_to_dict_arrays(stats)
         stats_dict["round_step"] = 1
         self.log_utils.log_experiments_stats(stats_dict)
         self.plot_utils.plot_experiments_stats(stats_dict)

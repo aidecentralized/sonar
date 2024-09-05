@@ -211,7 +211,7 @@ class PlotUtils:
             ax = plt.subplot(n_row, n_col, client_idx + 1)
             if client_idx < num_client:
                 weights = clients_stats[client_idx].mean(axis=0)
-                plt.bar(range(1, num_client + 1), weights)
+                im = plt.bar(range(1, num_client + 1), weights)
                 ax.set_title(f"Client {client_idx + 1}")
             ax.set_xticks(range(1, num_client + 1), range(1, num_client + 1))
 
@@ -284,7 +284,7 @@ class PlotUtils:
                     f"Client {client_idx + 1}, rounds {round_start}-{round_end}"
                 )
 
-            plt.bar(range(1, num_client + 1), weights)
+            im = plt.bar(range(1, num_client + 1), weights)
             ax.set_xticks(range(1, num_client + 1), range(1, num_client + 1))
 
             label_left = plt_idx % n_row == 0

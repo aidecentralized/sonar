@@ -44,16 +44,16 @@ class ModelUtils():
         if model_name == "resnet10":
             if pretrained:
                 raise ValueError("Pretrained model not available for resnet10")
-            model = resnet.resnet10(**kwargs)
+            model = resnet.ResNet10(**kwargs)
         elif model_name == "resnet18":
             model = resnet_in.resnet18(
-                pretrained=True, **kwargs) if pretrained else resnet.resnet18(**kwargs)
+                pretrained=True, **kwargs) if pretrained else resnet.ResNet18(**kwargs)
         elif model_name == "resnet34":
             model = resnet_in.resnet34(
-                pretrained=True, **kwargs) if pretrained else resnet.resnet34(**kwargs)
+                pretrained=True, **kwargs) if pretrained else resnet.ResNet34(**kwargs)
         elif model_name == "resnet50":
             model = resnet_in.resnet50(
-                pretrained=True, **kwargs) if pretrained else resnet.resnet50(**kwargs)
+                pretrained=True, **kwargs) if pretrained else resnet.ResNet50(**kwargs)
         else:
             raise ValueError(f"Model name {model_name} not supported")
         model = model.to(device)

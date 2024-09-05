@@ -1,11 +1,11 @@
-import random
-import os
-import numpy as np
+from collections import OrderedDict
 from typing import Any, Dict, List
 from torch import Tensor, cat
 import torch.nn as nn
+import random
+import os
 from algos.base_class import BaseClient, BaseServer
-from collections import OrderedDict
+import numpy as np
 
 
 class CommProtocol(object):
@@ -99,8 +99,7 @@ class SWARMClient(BaseClient):
         Set the model
         """
         for client_node in self.clients:
-            self.comm_utils.send_signal(
-                client_node, representation, self.tag.UPDATES)
+            self.comm_utils.send_signal(client_node, representation, self.tag.UPDATES)
         print("Node 1 sent average weight to {} nodes".format(len(self.clients)))
 
     def single_round(self, self_repr):
@@ -108,8 +107,7 @@ class SWARMClient(BaseClient):
         Runs the whole training procedure
         """
         print("Node 1 waiting for all clients to finish")
-        reprs = self.comm_utils.wait_for_all_clients(
-            self.clients, self.tag.DONE)
+        reprs = self.comm_utils.wait_for_all_clients(self.clients, self.tag.DONE)
         reprs.append(self_repr)
         print("Node 1 received {} clients' weights".format(len(reprs)))
         avg_wts = self.aggregate(reprs)
@@ -125,8 +123,7 @@ class SWARMClient(BaseClient):
             self.comm_utils.wait_for_signal(src=0, tag=self.tag.START)
             train_acc = self.local_train()
             print("Node {} train_acc:{:.4f}".format(self.node_id, train_acc))
-            self.comm_utils.send_signal(
-                dest=0, data=train_acc, tag=self.tag.FINISH)
+            self.comm_utils.send_signal(dest=0, data=train_acc, tag=self.tag.FINISH)
 
             self_repr = self.get_representation()
             if self.node_id == 1:
@@ -162,8 +159,7 @@ class SWARMServer(BaseServer):
         Set the model
         """
         for client_node in self.users:
-            self.comm_utils.send_signal(
-                client_node, representations, self.tag.UPDATES)
+            self.comm_utils.send_signal(client_node, representations, self.tag.UPDATES)
             self.log_utils.log_console(
                 "Server sent {} representations to node {}".format(
                     len(representations), client_node
@@ -195,8 +191,7 @@ class SWARMServer(BaseServer):
                     self.node_id, client_node
                 )
             )
-            self.comm_utils.send_signal(
-                dest=client_node, data=None, tag=self.tag.START)
+            self.comm_utils.send_signal(dest=client_node, data=None, tag=self.tag.START)
 
     def run_protocol(self):
         self.log_utils.log_console("Starting iid clients federated averaging")

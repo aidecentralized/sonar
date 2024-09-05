@@ -1,5 +1,3 @@
-"""Module docstring: This module implements federated learning weight adjustments."""
-
 from collections import OrderedDict
 from typing import Any, Dict, List
 from torch import Tensor, cat
@@ -10,8 +8,6 @@ from utils.stats_utils import from_round_stats_per_round_per_client_to_dict_arra
 
 
 class FedWeightClient(BaseFedAvgClient):
-    """Class docstring: Client class for federated weight adjustments."""
-    
     def __init__(self, config) -> None:
         super().__init__(config)
         self.config = config
@@ -91,11 +87,9 @@ class FedWeightClient(BaseFedAvgClient):
 
             self.log_clients_stats(sim_dict, "Consensus similarity")
 
-        sorted_items = sorted(
-            sim_dict.items(), key=lambda i: i[1], reverse=True)
+        sorted_items = sorted(sim_dict.items(), key=lambda i: i[1], reverse=True)
 
-        selected_clients = [x[0]
-                            for x in sorted_items if x[0] != self.node_id][:k]
+        selected_clients = [x[0] for x in sorted_items if x[0] != self.node_id][:k]
         selected_clients.append(self.node_id)
 
         collaborator_dict = {
@@ -255,8 +249,7 @@ class FedWeightServer(BaseFedAvgServer):
             round_stats = self.single_round()
             stats.append(round_stats)
 
-        stats_dict = from_round_stats_per_round_per_client_to_dict_arrays(
-            stats)
+        stats_dict = from_round_stats_per_round_per_client_to_dict_arrays(stats)
         stats_dict["round_step"] = 1
         self.log_utils.log_experiments_stats(stats_dict)
         self.plot_utils.plot_experiments_stats(stats_dict)

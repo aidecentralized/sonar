@@ -8,14 +8,14 @@ A collaborative learning project where users self-organize to improve their ML m
 ## Main
 The application currently uses MPI and GRPC (experimental) to enable communication between different nodes in the network. The goal of the framework to organize everything in a modular manner. That way a researcher or engineer can easily swap out different components of the framework to test their hypothesis or a new algorithm.
 
-### Framework Rewrite Objective
+### Objectives
 - [ ] O1: Benchmark existing configurations and algorithms.
 - [x] O2: Separate the communication layer (topology) from collaborative learning algorithms.
 - [ ] O3: Implement a few more collaborative learning algorithms.
-- [ ] O4: Write the GRPC module for the communication layer. Then we don't need to rely on MPI which requires ssh access to all the nodes. See https://github.com/aidecentralized/sonar/issues/20
-- [ ] O5: Improve telemetry and logging for visualization of the network. See https://github.com/aidecentralized/sonar/issues/11
-- [ ] O6: Fault tolerance and rogue clients simulation.
-- [ ] O7: Comprehensive documentation - https://github.com/squidfunk/mkdocs-material
-- [ ] O8: Eliminate the need to add a BaseServer module, keep it backward compatible by instantiating the server as yet another node.
-- [ ] O9: Build testing suite. See https://github.com/aidecentralized/sonar/issues/21
-- [ ] O10: Set up milestones for transition to full API like interface and then launch on `pip`
+- [ ] O4: Write the GRPC module for the communication layer. Then we don't need to rely on MPI which requires ssh access to all the nodes.
+- [ ] O5: Improve telemetry and logging for visualization of the network.
+- [ ] 06: Fault tolerance and rogue clients simulation
+- [ ] 07: Comprehensive documentation - https://github.com/squidfunk/mkdocs-material
+- [ ] 08: Eliminate the need to add a BaseServer module, keep it backward compatible by instantiating the server as yet another node.
+- [ ] 09: Build testing suite
+- [ ] 10: Set up milestones for transition to full API like interface and then launch on `pip`

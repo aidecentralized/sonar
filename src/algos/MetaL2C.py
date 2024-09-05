@@ -1,14 +1,14 @@
-"""Module docstring: This module implements Meta Learning with Layer-wise Client Contribution (MetaL2C)."""
-
-import copy
+from typing import Any, Dict, List
 import math
-import numpy as np
 import torch
-from torch import nn, optim
-from torch.nn import functional as F
+import numpy as np
+from torch import Tensor, cat, tensor, optim
+import torch.nn as nn
+import torch.nn.functional as F
+import copy
 
-from algos.base_class import BaseFedAvgClient, BaseFedAvgServer
 from utils.stats_utils import from_round_stats_per_round_per_client_to_dict_arrays
+from algos.base_class import BaseFedAvgClient, BaseFedAvgServer
 
 
 # Takes RestNet18 weights and returns a encoded vector
@@ -88,8 +88,7 @@ class MetaL2CClient(BaseFedAvgClient):
         if not self.config.get(
             "average_last_layer", True
         ):  # By default include last layer
-            keys = self.model_utils.get_last_layer_keys(
-                self.get_model_weights())
+            keys = self.model_utils.get_last_layer_keys(self.get_model_weights())
             self.model_keys_to_ignore.extend(keys)
 
         self.sharing_mode = self.config["sharing"]
@@ -120,8 +119,7 @@ class MetaL2CClient(BaseFedAvgClient):
         collab_weights = torch.zeros(len(ids))
         self.own_embedding = self.encoder(self.get_representation())
         for idx, id in enumerate(ids):
-            collab_weights[idx] = self.encoder(
-                reprs_dict[id]).dot(self.own_embedding)
+            collab_weights[idx] = self.encoder(reprs_dict[id]).dot(self.own_embedding)
 
         collab_weights = F.softmax(collab_weights, dim=0)
 
@@ -155,13 +153,11 @@ class MetaL2CClient(BaseFedAvgClient):
                     if key not in self.model_keys_to_ignore:
                         if self.sharing_mode == "updates":
                             cw_grad -= (
-                                models_update_wts[cw_id][key] *
-                                grad_dict[key].cpu()
+                                models_update_wts[cw_id][key] * grad_dict[key].cpu()
                             ).sum()
                         elif self.sharing_mode == "weights":
                             cw_grad += (
-                                models_update_wts[cw_id][key] *
-                                grad_dict[key].cpu()
+                                models_update_wts[cw_id][key] * grad_dict[key].cpu()
                             ).sum()
                         else:
                             raise ValueError("Unknown sharing mode")
@@ -251,16 +247,14 @@ class MetaL2CClient(BaseFedAvgClient):
             reprs_dict = {k: rep for k, (rep, _) in enumerate(reprs, 1)}
 
             # Aggregate the representations based on the collab wheigts
-            collab_weights_tensor_dict = self.get_collaborator_weights(
-                reprs_dict)
+            collab_weights_tensor_dict = self.get_collaborator_weights(reprs_dict)
             collab_weights_dict = {
                 k: cw.item() for k, cw in collab_weights_tensor_dict.items()
             }
 
             # Knowledge sharing artifact are received together with the
             # representations to save communication rounds
-            models_update_wts = {k: ks_art for k,
-                                 (_, ks_art) in enumerate(reprs, 1)}
+            models_update_wts = {k: ks_art for k, (_, ks_art) in enumerate(reprs, 1)}
 
             new_wts = self.weighted_aggregate(
                 models_update_wts, collab_weights_dict, self.model_keys_to_ignore
@@ -280,8 +274,7 @@ class MetaL2CClient(BaseFedAvgClient):
             # if self.node_id == 1:
             #     print(list(self.encoder.parameters())[0])
             round_stats["validation_loss"], round_stats["validation_acc"] = (
-                self.learn_collab_weights(
-                    models_update_wts, collab_weights_tensor_dict)
+                self.learn_collab_weights(models_update_wts, collab_weights_tensor_dict)
             )
             # if self.node_id == 1:
             #     print(list(self.encoder.parameters())[0])
@@ -336,8 +329,7 @@ class MetaL2CServer(BaseFedAvgServer):
         )
 
         # Collect representations (from all clients
-        reprs = self.comm_utils.wait_for_all_clients(
-            self.users, self.tag.REPR_ADVERT)
+        reprs = self.comm_utils.wait_for_all_clients(self.users, self.tag.REPR_ADVERT)
         self.log_utils.log_console("Server received all clients models")
 
         # Broadcast the representations to all clients
@@ -356,8 +348,7 @@ class MetaL2CServer(BaseFedAvgServer):
         self.log_utils.log_console("Server received all clients stats")
 
         # Log the round stats on tensorboard
-        self.log_utils.log_tb_round_stats(
-            round_stats, ["collab_weights"], self.round)
+        self.log_utils.log_tb_round_stats(round_stats, ["collab_weights"], self.round)
 
         self.log_utils.log_console(
             f"Round test acc {[stats['test_acc'] for stats in round_stats]}"
@@ -379,8 +370,7 @@ class MetaL2CServer(BaseFedAvgServer):
             round_stats, avg_alpha = self.single_round(avg_alpha)
             stats.append(round_stats)
 
-        stats_dict = from_round_stats_per_round_per_client_to_dict_arrays(
-            stats)
+        stats_dict = from_round_stats_per_round_per_client_to_dict_arrays(stats)
         stats_dict["round_step"] = 1
         self.log_utils.log_experiments_stats(stats_dict)
         self.plot_utils.plot_experiments_stats(stats_dict)
