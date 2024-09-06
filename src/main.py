@@ -9,8 +9,8 @@ from scheduler import Scheduler
 
 logging.getLogger("PIL").setLevel(logging.INFO)
 
-B_DEFAULT = "./configs/algo_config.py"
-S_DEFAULT = "./configs/sys_config.py"
+B_DEFAULT: str = "./configs/algo_config.py"
+S_DEFAULT: str = "./configs/sys_config.py"
 
 parser = argparse.ArgumentParser(description="Run collaborative learning experiments")
 parser.add_argument(
@@ -40,9 +40,9 @@ parser.add_argument(
     help=f"host address of the nodes",
 )
 
-args = parser.parse_args()
+args: argparse.Namespace = parser.parse_args()
 
-scheduler = Scheduler()
+scheduler: Scheduler = Scheduler()
 scheduler.assign_config_by_path(args.s, args.b, args.super, args.host)
 print("Config loaded")
 
