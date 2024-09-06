@@ -1,6 +1,8 @@
 from utils.config_utils import get_sliding_window_support, get_device_ids
 from collections import defaultdict
 
+from typing import Dict
+
 # ======================= Supports ======================= #
 # With 8 clients not every class is equally represented
 sliding_window_8c_4cpc_support = {
@@ -450,7 +452,7 @@ defkt = {
 }
 
 
-def assign_colab(clients):
+def assign_colab(clients : int) -> Dict[int, int]:
     groups = [3, 3, 3, 4]
     dict = {}
     client = 1
