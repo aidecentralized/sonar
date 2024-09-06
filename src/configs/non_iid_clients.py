@@ -162,7 +162,7 @@ def get_fmow_support(num_clients, domains=FMOW_DMN):
     return get_domain_support(num_clients, "wilds_fmow", domains)
 
 
-wilds_dpath = defaultdict(lambda: "imgs")
+wilds_dpath : defaultdict = defaultdict(lambda: "imgs")
 
 domainnet_base_dir = "/u/abhi24/matlaberp2/p2p/imgs/domainnet/"
 domainnet_dpath = {
@@ -452,7 +452,7 @@ defkt = {
 }
 
 
-def assign_colab(clients : int) -> Dict[int, int]:
+def assign_colab(clients : int) -> Dict[int, list[int]]:
     groups = [3, 3, 3, 4]
     dict = {}
     client = 1
