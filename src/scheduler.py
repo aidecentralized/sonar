@@ -31,7 +31,7 @@ from algos.fl_val import FedValClient, FedValServer
 from utils.communication.comm_utils import CommunicationManager
 from utils.config_utils import load_config, process_config
 from utils.log_utils import copy_source_code, check_and_create_path
-
+from utils.node_map import NodeMap
 
 # Mapping of algorithm names to their corresponding client and server classes so that they can be consumed by the scheduler later on.
 algo_map = {
@@ -60,11 +60,18 @@ algo_map = {
 
 def get_node(config: Dict[str, Any], rank: int, comm_utils: CommunicationManager) -> BaseNode:
     algo_name = config["algo"]
-    return algo_map[algo_name][rank > 0](config, comm_utils)
+    node = algo_map[algo_name][rank > 0](config, comm_utils)
+    
+    node_map = NodeMap()
+    malicious_type = node_map.get_malicious_type(node.node_id)
+    node_map.add_node(node.node_id, malicious_type)
+    
+    return node
 
 class Scheduler():
     """ Manages the overall orchestration of experiments
     """
+    node_map = NodeMap()
 
     def __init__(self) -> None:
         pass

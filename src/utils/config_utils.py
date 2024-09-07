@@ -1,7 +1,8 @@
 from typing import Any, Dict, List
 import jmespath
 import importlib
-
+from utils.node_map import NodeMap
+import random
 
 def load_config(config_path: str) -> Dict[str, Any]:
     path = ".".join(config_path.split(".")[1].split("/")[1:])
@@ -59,8 +60,20 @@ def process_config(config: Dict[str, Any]) -> Dict[str, Any]:
     config["saved_models"] = results_path + "/saved_models/"
     config["plot_path"] = plot_path
 
-    return config
+    num_clients = config.get("num_users", 0)
+    num_malicious_clients = config.get("num_malicious_clients", 0)
 
+    if num_malicious_clients > num_clients:
+        raise ValueError("Number of malicious clients cannot exceed the total number of clients.")
+
+    malicious_clients = random.sample(range(num_clients), num_malicious_clients)
+
+    node_map = NodeMap()
+    for node_id in range(num_clients):
+        malicious_type = 1 if node_id in malicious_clients else 0
+        node_map.add_node(node_id, malicious_type)
+
+    return config
 
 def get_sliding_window_support(num_users: int, num_classes: int, num_classes_per_client: int):
     num_client_with_same_support = max(num_users // num_classes, 1)
