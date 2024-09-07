@@ -1,25 +1,20 @@
-"""
-This module defines the DisPFLClient and DisPFLServer classes for distributed personalized federated learning.
-"""
+"""This module defines the DisPFL optimization strategy for distributed machine learning."""
 
 import copy
 import math
-import random
 from collections import OrderedDict
-from typing import Any, Dict, List
 
 import numpy as np
 import torch
-import torch.nn as nn
-from torch import Tensor, from_numpy, numel, randperm, zeros_like
-
+from torch import Tensor, from_numpy, randperm, zeros_like  # pylint: disable=no-name-in-module
+from torch import nn
 from algos.base_class import BaseClient, BaseServer
-
 
 class CommProtocol:
     """
     Communication protocol tags for the server and clients.
     """
+    # pylint: disable=too-few-public-methods
 
     DONE = 0  # Used to signal the server that the client is done with local training
     START = 1  # Used to signal by the server to start the current round
@@ -37,6 +32,10 @@ class DisPFLClient(BaseClient):
 
     def __init__(self, config) -> None:
         super().__init__(config)
+        self.params = None
+        self.mask = None
+        self.index = None
+        self.repr = None
         self.config = config
         self.tag = CommProtocol
         self.model_save_path = (
@@ -67,7 +66,7 @@ class DisPFLClient(BaseClient):
         test_loss, acc = self.model_utils.test(
             self.model, self._test_loader, self.loss_fn, self.device
         )
-        # TODO save the model if the accuracy is better than the best accuracy so far
+        # save the model if the accuracy is better than the best accuracy so far
         # if acc > self.best_acc:
         #     self.best_acc = acc
         #     self.model_utils.save_model(self.model, self.model_save_path)
@@ -110,7 +109,7 @@ class DisPFLClient(BaseClient):
                 torch.abs(weights[name]),
                 100000 * torch.ones_like(weights[name]),
             )
-            x, idx = torch.sort(temp_weights.view(-1).to(self.device))
+            _, idx = torch.sort(temp_weights.view(-1).to(self.device))
             new_masks[name].view(-1)[idx[: num_remove[name]]] = 0
         return new_masks, num_remove
 
@@ -297,12 +296,12 @@ class DisPFLClient(BaseClient):
 
     def _benefit_choose(
         self,
-        round_idx,
+        round_idx, # pylint: disable=unused-argument
         cur_clnt,
         client_num_in_total,
         client_num_per_round,
-        dist_local,
-        total_dist,
+        dist_local, # pylint: disable=unused-argument
+        total_dist, # pylint: disable=unused-argument
         cs=False,
         active_ths_rnd=None,
     ):
@@ -356,7 +355,7 @@ class DisPFLClient(BaseClient):
             self.params, sparse=self.dense_ratio
         )  # calculate sparsity to create masks
         self.mask = self.init_masks(self.params, sparsities)  # mask_per_local
-        dist_locals = np.zeros(shape=(self.num_users))
+        dist_locals = np.zeros(shape=self.num_users)
         self.index = self.node_id - 1
         masks_lstrnd = [self.mask for i in range(self.num_users)]
         weights_lstrnd = [
@@ -435,7 +434,7 @@ class DisPFLClient(BaseClient):
             # locally train
             print(f"Node {self.node_id} local train")
             self.local_train()
-            loss, acc = self.local_test()
+            _, acc = self.local_test()
             print(f"Node {self.node_id} local test: {acc}")
             repr = self.get_representation()
             if not self.config["static"]:
@@ -450,7 +449,7 @@ class DisPFLClient(BaseClient):
 
             # test updated model
             self.set_representation(repr)
-            loss, acc = self.local_test()
+            _, acc = self.local_test()
             self.comm_utils.send_signal(dest=0, data=acc, tag=self.tag.FINISH)
 
 
@@ -461,6 +460,10 @@ class DisPFLServer(BaseServer):
 
     def __init__(self, config) -> None:
         super().__init__(config)
+        self.best_acc = 0
+        self.round = 0
+        self.masks = 0
+        self.reprs = 0
         self.config = config
         self.set_model_parameters(config)
         self.tag = CommProtocol
@@ -494,7 +497,7 @@ class DisPFLServer(BaseServer):
         test_loss, acc = self.model_utils.test(
             self.model, self._test_loader, self.loss_fn, self.device
         )
-        # TODO save the model if the accuracy is better than the best accuracy so far
+        # save the model if the accuracy is better than the best accuracy so far
         if acc > self.best_acc:
             self.best_acc = acc
             self.model_utils.save_model(self.model, self.model_save_path)
