@@ -82,7 +82,7 @@ class Scheduler():
         self.algo_config = load_config(algo_config_path)
         self.merge_configs()
 
-    def merge_configs(self):
+    def merge_configs(self) -> None:
         self.config = {}
         self.config.update(self.sys_config)
         self.config.update(self.algo_config)
