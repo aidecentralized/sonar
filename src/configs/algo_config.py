@@ -56,6 +56,7 @@ traditional_fl: ConfigType = {
     "model_lr": 3e-4,
     "batch_size": 256,
     "exp_keys": [],
+    "num_malicious_clients": 2,
 }
 
 fedweight_users: int = 3

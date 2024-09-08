@@ -94,6 +94,21 @@ class Scheduler():
         self.config.update(self.sys_config)
         self.config.update(self.algo_config)
 
+    def malicious_simulation(self):
+        num_clients = self.config.get("num_users", 0)
+        num_malicious_clients = self.config.get("num_malicious_clients", 0)
+
+        if num_malicious_clients > num_clients:
+            raise ValueError("Number of malicious clients cannot exceed the total number of clients.")
+
+        possible_node_ids = list(range(1, num_clients))
+        malicious_clients = random.sample(possible_node_ids, num_malicious_clients)
+
+        node_map = NodeMap()
+        for node_id in range(num_clients):
+            malicious_type = 1 if node_id in malicious_clients else 0
+            node_map.add_node(node_id, malicious_type)
+
     def initialize(self, copy_souce_code: bool=True) -> None:
         assert self.config is not None, "Config should be set when initializing"
         self.communication = CommunicationManager(self.config)
@@ -114,6 +129,7 @@ class Scheduler():
                 os.mkdir(self.config["saved_models"])
                 os.mkdir(self.config["log_path"])
 
+        self.malicious_simulation()
         self.node = get_node(self.config, rank=self.communication.get_rank(), comm_utils=self.communication)
 
     def run_job(self) -> None:
