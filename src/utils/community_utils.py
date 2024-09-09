@@ -1,26 +1,27 @@
 import numpy as np
+from typing import Dict, List
 
 
-def get_random_communities(num_clients, num_communities):
+def get_random_communities(num_clients: int, num_communities: int) -> Dict[int, List[int]]:
     assert num_clients % num_communities == 0
 
     clients_per_community = num_clients // num_communities
     indices = np.random.permutation(range(1, num_clients + 1))
 
-    support = {}
+    support: Dict[int, List[int]] = {}
     for i, c_id in enumerate(indices):
         idx = (i // clients_per_community) * clients_per_community
-        support[c_id] = list(indices[idx : idx + clients_per_community])
+        support[c_id] = list(indices[idx: idx + clients_per_community])
     return support
 
 
-def get_dset_balanced_communities(num_clients, num_communities, num_dset):
+def get_dset_balanced_communities(num_clients: int, num_communities: int, num_dset: int) -> Dict[int, List[int]]:
     # Assume same dset are consecutive
     assert num_clients % num_communities == 0
     assert num_clients % num_dset == 0
 
     clients_per_dset = num_clients // num_dset
-    clients_id_per_dset = []
+    clients_id_per_dset: List[List[int]] = []
     for dset in range(num_dset):
         clients_id_per_dset.append(
             list(
@@ -33,7 +34,7 @@ def get_dset_balanced_communities(num_clients, num_communities, num_dset):
         )
 
     num_assigned = 0
-    communities = {k: [] for k in range(num_communities)}
+    communities: Dict[int, List[int]] = {k: [] for k in range(num_communities)}
     while num_assigned < num_clients:
         communities_random_order = {
             k: v for k, v in enumerate(np.random.permutation(range(num_communities)))
@@ -55,11 +56,11 @@ def get_dset_balanced_communities(num_clients, num_communities, num_dset):
     return support
 
 
-def get_dset_communities(num_clients, num_dset):
+def get_dset_communities(num_clients: int, num_dset: int) -> Dict[int, List[int]]:
     # Assume same dset are consecutive
     assert num_clients % num_dset == 0
     clients_per_dset = num_clients // num_dset
-    support = {}
+    support: Dict[int, List[int]] = {}
     for idx in range(num_clients):
         dset = idx // clients_per_dset
         support[idx + 1] = list(

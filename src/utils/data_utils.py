@@ -3,7 +3,7 @@ from typing import Any, List, Sequence, Tuple
 import numpy as np
 import torch
 import torchvision.transforms as T
-from torch.utils.data import Subset
+from torch.utils.data import Subset, Dataset
 
 
 
@@ -201,11 +201,11 @@ def cifar_extr_noniid(
     return dict_users_train, dict_users_test
 
 
-def balanced_subset(dataset, num_samples):
+def balanced_subset(dataset: Dataset, num_samples: int) -> Tuple[Subset, List[int]]:
     """
     Returns a balanced subset of the dataset.
     """
-    indices = []
+    indices: List[int] = []
     targets = np.array(dataset.targets)
     classes = set(dataset.targets)
     for c in classes:
@@ -214,11 +214,11 @@ def balanced_subset(dataset, num_samples):
     return Subset(dataset, indices), indices
 
 
-def random_balanced_subset(dataset, num_samples):
+def random_balanced_subset(dataset: Dataset, num_samples: int) -> Tuple[Subset, List[int]]:
     """
     Returns a random balanced subset of the dataset.
     """
-    indices = []
+    indices: List[int] = []
     targets = np.array(dataset.targets)
     classes = set(dataset.targets)
     for c in classes:
@@ -226,7 +226,6 @@ def random_balanced_subset(dataset, num_samples):
             np.random.choice(list((targets == c).nonzero()[0]), num_samples, replace=False)
         )
     return Subset(dataset, indices), indices
-
 
 def non_iid_unbalanced_dataidx_map(dset_obj, n_parties, beta=0.4):
     """
@@ -259,7 +258,14 @@ def non_iid_unbalanced_dataidx_map(dset_obj, n_parties, beta=0.4):
     return net_dataidx_map
 
 
-def non_iid_balanced(dset_obj, n_client, n_data_per_clnt, alpha=0.4, cls_priors=None, is_train=True):
+def non_iid_balanced(
+    dset_obj: Dataset,
+    n_client: int,
+    n_data_per_clnt: int,
+    alpha: float = 0.4,
+    cls_priors: Optional[np.ndarray] = None,
+    is_train: bool = True
+) -> Tuple[np.ndarray, List[List[int]], np.ndarray]:
     """
     Returns a non-IID balanced dataset.
     """
@@ -276,8 +282,8 @@ def non_iid_balanced(dset_obj, n_client, n_data_per_clnt, alpha=0.4, cls_priors=
     prior_cumsum = np.cumsum(cls_priors, axis=1)
     idx_list = [np.where(y == i)[0] for i in range(n_cls)]
     cls_amount = np.array([len(idx_list[i]) for i in range(n_cls)])
-    clnt_y = [np.zeros((clnt_data_list[clnt__], 1)).astype(np.int64) for clnt__ in range(n_client)]
-    clnt_idx = [[] for clnt__ in range(n_client)]
+    clnt_y = [np.zeros((clnt_data_list[clnt__], 1), dtype=np.int64) for clnt__ in range(n_client)]
+    clnt_idx = [[] for _ in range(n_client)]
     clients = list(np.arange(n_client))
 
     while np.sum(clnt_data_list) != 0:
