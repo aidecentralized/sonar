@@ -3,11 +3,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+"""Flatten layer class."""
 class Flatten(nn.Module):
+    """Flatten layer class."""
     def __init__(self):
-        super(Flatten, self).__init__()
+        """Initialize Flatten layer."""
+        super().__init__()
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x):
+        """Forward pass for Flatten layer."""
         return torch.flatten(x, 1)
 
 
@@ -153,7 +157,8 @@ class DCGAN_Generator(nn.Module):
 
     def forward(self, z: torch.Tensor) -> torch.Tensor:
         proj = self.project(z)
-        proj = proj.view(proj.shape[0], -1, self.init_size[0], self.init_size[1])
+        proj = proj.view(proj.shape[0], -1,
+                         self.init_size[0], self.init_size[1])
         output = self.main(proj)
         return output
 
@@ -181,7 +186,8 @@ class DCGAN_CondGenerator(nn.Module):
 
         self.project = nn.Sequential(
             Flatten(),
-            nn.Linear(nz + n_emb, ngf * 8 * self.init_size[0] * self.init_size[1]),
+            nn.Linear(nz + n_emb, ngf * 8 *
+                      self.init_size[0] * self.init_size[1]),
         )
 
         self.main = nn.Sequential(
@@ -211,7 +217,8 @@ class DCGAN_CondGenerator(nn.Module):
         y = self.emb(y)
         z = torch.cat([z, y], dim=1)
         proj = self.project(z)
-        proj = proj.view(proj.shape[0], -1, self.init_size[0], self.init_size[1])
+        proj = proj.view(proj.shape[0], -1,
+                         self.init_size[0], self.init_size[1])
         output = self.main(proj)
         return output
 
@@ -240,9 +247,7 @@ class Discriminator(nn.Module):
         # The height and width of downsampled image
         ds_size = img_size // 2**4
         self.adv_layer = nn.Sequential(
-            nn.Linear(128 * ds_size**2, 1),
-            nn.Sigmoid()
-        )
+            nn.Linear(128 * ds_size**2, 1), nn.Sigmoid())
 
     def forward(self, img: torch.Tensor) -> torch.Tensor:
         out = self.model(img)

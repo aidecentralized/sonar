@@ -1,25 +1,20 @@
-"""
-This module defines the DisPFLClient and DisPFLServer classes for distributed personalized federated learning.
-"""
+"""This module defines the DisPFL optimization strategy for distributed machine learning."""
 
 import copy
 import math
-import random
 from collections import OrderedDict
-from typing import Any, Dict, List
 
 import numpy as np
 import torch
-import torch.nn as nn
-from torch import Tensor, from_numpy, numel, randperm, zeros_like
-
+from torch import Tensor, from_numpy, randperm, zeros_like  # pylint: disable=no-name-in-module
+from torch import nn
 from algos.base_class import BaseClient, BaseServer
-
 
 class CommProtocol:
     """
     Communication protocol tags for the server and clients.
     """
+    # pylint: disable=too-few-public-methods
 
     DONE = 0  # Used to signal the server that the client is done with local training
     START = 1  # Used to signal by the server to start the current round
@@ -34,11 +29,18 @@ class DisPFLClient(BaseClient):
     """
     Client class for DisPFL (Distributed Personalized Federated Learning).
     """
+
     def __init__(self, config) -> None:
         super().__init__(config)
+        self.params = None
+        self.mask = None
+        self.index = None
+        self.repr = None
         self.config = config
         self.tag = CommProtocol
-        self.model_save_path = f"{self.config['results_path']}/saved_models/node_{self.node_id}.pt"
+        self.model_save_path = (
+            f"{self.config['results_path']}/saved_models/node_{self.node_id}.pt"
+        )
         self.dense_ratio = self.config["dense_ratio"]
         self.anneal_factor = self.config["anneal_factor"]
         self.dis_gradient_check = self.config["dis_gradient_check"]
@@ -64,7 +66,7 @@ class DisPFLClient(BaseClient):
         test_loss, acc = self.model_utils.test(
             self.model, self._test_loader, self.loss_fn, self.device
         )
-        # TODO save the model if the accuracy is better than the best accuracy so far
+        # save the model if the accuracy is better than the best accuracy so far
         # if acc > self.best_acc:
         #     self.best_acc = acc
         #     self.model_utils.save_model(self.model, self.model_save_path)
@@ -94,7 +96,8 @@ class DisPFLClient(BaseClient):
         """
         weights = self.get_representation()
         drop_ratio = (
-            self.anneal_factor / 2 * (1 + np.cos((round_num * np.pi) / total_round))
+            self.anneal_factor / 2 *
+            (1 + np.cos((round_num * np.pi) / total_round))
         )
         new_masks = copy.deepcopy(masks)
         num_remove = {}
@@ -106,7 +109,7 @@ class DisPFLClient(BaseClient):
                 torch.abs(weights[name]),
                 100000 * torch.ones_like(weights[name]),
             )
-            x, idx = torch.sort(temp_weights.view(-1).to(self.device))
+            _, idx = torch.sort(temp_weights.view(-1).to(self.device))
             new_masks[name].view(-1)[idx[: num_remove[name]]] = 0
         return new_masks, num_remove
 
@@ -144,7 +147,8 @@ class DisPFLClient(BaseClient):
         """
         count_mask = copy.deepcopy(masks_lstrnd[self.index])
         for k in count_mask.keys():
-            count_mask[k] = count_mask[k] - count_mask[k]  # zero out by pruning
+            count_mask[k] = count_mask[k] - \
+                count_mask[k]  # zero out by pruning
             for clnt in nei_indexes:
                 count_mask[k] += masks_lstrnd[clnt][k].to(self.device)  # mask
         for k in count_mask.keys():
@@ -176,7 +180,8 @@ class DisPFLClient(BaseClient):
         Set the model.
         """
         for client_node in self.clients:
-            self.comm_utils.send_signal(client_node, representation, self.tag.UPDATES)
+            self.comm_utils.send_signal(
+                client_node, representation, self.tag.UPDATES)
         print(f"Node 1 sent average weight to {len(self.clients)} nodes")
 
     def calculate_sparsities(self, params, tabu=None, distribution="ERK", sparse=0.5):
@@ -216,7 +221,8 @@ class DisPFLClient(BaseClient):
                     else:
                         rhs += n_ones
                         raw_probabilities[name] = (
-                            np.sum(params[name].shape) / np.prod(params[name].shape)
+                            np.sum(params[name].shape) /
+                            np.prod(params[name].shape)
                         ) ** self.config["erk_power_scale"]
                         divisor += raw_probabilities[name] * n_param
                 epsilon = rhs / divisor
@@ -226,7 +232,8 @@ class DisPFLClient(BaseClient):
                     is_epsilon_valid = False
                     for mask_name, mask_raw_prob in raw_probabilities.items():
                         if mask_raw_prob == max_prob:
-                            print(f"Sparsity of var:{mask_name} had to be set to 0.")
+                            print(
+                                f"Sparsity of var:{mask_name} had to be set to 0.")
                             dense_layers.add(mask_name)
                 else:
                     is_epsilon_valid = True
@@ -281,19 +288,20 @@ class DisPFLClient(BaseClient):
         total = 0
         for key in mask_a:
             dis += torch.sum(
-                mask_a[key].int().to(self.device) ^ mask_b[key].int().to(self.device)
+                mask_a[key].int().to(
+                    self.device) ^ mask_b[key].int().to(self.device)
             )
             total += mask_a[key].numel()
         return dis, total
 
     def _benefit_choose(
         self,
-        round_idx,
+        round_idx, # pylint: disable=unused-argument
         cur_clnt,
         client_num_in_total,
         client_num_per_round,
-        dist_local,
-        total_dist,
+        dist_local, # pylint: disable=unused-argument
+        total_dist, # pylint: disable=unused-argument
         cs=False,
         active_ths_rnd=None,
     ):
@@ -331,7 +339,8 @@ class DisPFLClient(BaseClient):
         Calculate the difference between two models.
         """
         diff = sum(
-            [torch.sum(torch.square(model_a[name] - model_b[name])) for name in model_a]
+            [torch.sum(torch.square(model_a[name] - model_b[name]))
+             for name in model_a]
         )
         return diff
 
@@ -346,7 +355,7 @@ class DisPFLClient(BaseClient):
             self.params, sparse=self.dense_ratio
         )  # calculate sparsity to create masks
         self.mask = self.init_masks(self.params, sparsities)  # mask_per_local
-        dist_locals = np.zeros(shape=(self.num_users))
+        dist_locals = np.zeros(shape=self.num_users)
         self.index = self.node_id - 1
         masks_lstrnd = [self.mask for i in range(self.num_users)]
         weights_lstrnd = [
@@ -357,7 +366,8 @@ class DisPFLClient(BaseClient):
         ]
         for epoch in range(start_epochs, total_epochs):
             # wait for signal to start round
-            active_ths_rnd = self.comm_utils.wait_for_signal(src=0, tag=self.tag.START)
+            active_ths_rnd = self.comm_utils.wait_for_signal(
+                src=0, tag=self.tag.START)
             if epoch != 0:
                 [weights_lstrnd, masks_lstrnd] = self.comm_utils.wait_for_signal(
                     src=0, tag=self.tag.LAST_ROUND
@@ -385,8 +395,7 @@ class DisPFLClient(BaseClient):
             if self.num_users != self.config["neighbors"]:
                 nei_indexes = np.append(nei_indexes, self.index)
             print(
-                f"Node {self.index}'s neighbors index:{[i + 1 for i in nei_indexes]}"
-            )
+                f"Node {self.index}'s neighbors index:{[i + 1 for i in nei_indexes]}")
 
             for tmp_idx in nei_indexes:
                 if tmp_idx != self.index:
@@ -412,7 +421,8 @@ class DisPFLClient(BaseClient):
                 )
             else:
                 new_repr = copy.deepcopy(weights_lstrnd[self.index])
-                w_per_globals[self.index] = copy.deepcopy(weights_lstrnd[self.index])
+                w_per_globals[self.index] = copy.deepcopy(
+                    weights_lstrnd[self.index])
             model_diff = self.model_difference(new_repr, self.repr)
             print(f"Node {self.node_id} model_diff{model_diff}")
             self.comm_utils.send_signal(
@@ -424,13 +434,14 @@ class DisPFLClient(BaseClient):
             # locally train
             print(f"Node {self.node_id} local train")
             self.local_train()
-            loss, acc = self.local_test()
+            _, acc = self.local_test()
             print(f"Node {self.node_id} local test: {acc}")
             repr = self.get_representation()
             if not self.config["static"]:
                 if not self.dis_gradient_check:
                     gradient = self.screen_gradient()
-                self.mask, num_remove = self.fire_mask(self.mask, epoch, total_epochs)
+                self.mask, num_remove = self.fire_mask(
+                    self.mask, epoch, total_epochs)
                 self.mask = self.regrow_mask(self.mask, num_remove, gradient)
             self.comm_utils.send_signal(
                 dest=0, data=copy.deepcopy(repr), tag=self.tag.SHARE_WEIGHTS
@@ -438,7 +449,7 @@ class DisPFLClient(BaseClient):
 
             # test updated model
             self.set_representation(repr)
-            loss, acc = self.local_test()
+            _, acc = self.local_test()
             self.comm_utils.send_signal(dest=0, data=acc, tag=self.tag.FINISH)
 
 
@@ -446,12 +457,19 @@ class DisPFLServer(BaseServer):
     """
     Server class for DisPFL (Distributed Personalized Federated Learning).
     """
+
     def __init__(self, config) -> None:
         super().__init__(config)
+        self.best_acc = 0
+        self.round = 0
+        self.masks = 0
+        self.reprs = 0
         self.config = config
         self.set_model_parameters(config)
         self.tag = CommProtocol
-        self.model_save_path = f"{self.config['results_path']}/saved_models/node_{self.node_id}.pt"
+        self.model_save_path = (
+            f"{self.config['results_path']}/saved_models/node_{self.node_id}.pt"
+        )
         self.dense_ratio = self.config["dense_ratio"]
         self.num_users = self.config["num_users"]
 
@@ -466,7 +484,8 @@ class DisPFLServer(BaseServer):
         Set the model.
         """
         for client_node in self.users:
-            self.comm_utils.send_signal(client_node, representations, self.tag.UPDATES)
+            self.comm_utils.send_signal(
+                client_node, representations, self.tag.UPDATES)
             self.log_utils.log_console(
                 f"Server sent {len(representations)} representations to node {client_node}"
             )
@@ -478,7 +497,7 @@ class DisPFLServer(BaseServer):
         test_loss, acc = self.model_utils.test(
             self.model, self._test_loader, self.loss_fn, self.device
         )
-        # TODO save the model if the accuracy is better than the best accuracy so far
+        # save the model if the accuracy is better than the best accuracy so far
         if acc > self.best_acc:
             self.best_acc = acc
             self.model_utils.save_model(self.model, self.model_save_path)
@@ -534,5 +553,6 @@ class DisPFLServer(BaseServer):
 
             self.single_round(epoch, active_ths_rnd)
 
-            accs = self.comm_utils.wait_for_all_clients(self.users, self.tag.FINISH)
+            accs = self.comm_utils.wait_for_all_clients(
+                self.users, self.tag.FINISH)
             self.log_utils.log_console(f"Round {epoch} done; acc {accs}")
