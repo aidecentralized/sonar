@@ -33,7 +33,7 @@ class SWARMClient(BaseClient):
             self.num_users = config["num_users"]
             self.clients = list(range(2, self.num_users + 1))
 
-    def local_train(self):
+    def local_train(self) -> float:
         """
         Train the model locally
         """
@@ -44,7 +44,7 @@ class SWARMClient(BaseClient):
         return acc
         # self.log_utils.logger.log_tb(f"train_loss/client{client_num}", avg_loss, epoch)
 
-    def local_test(self, **kwargs):
+    def local_test(self, **kwargs) -> float:
         """
         Test the model locally, not to be used in the traditional FedAvg
         """
@@ -64,13 +64,13 @@ class SWARMClient(BaseClient):
         """
         return self.model.state_dict()
 
-    def set_representation(self, representation: OrderedDict[str, Tensor]):
+    def set_representation(self, representation: OrderedDict[str, Tensor]) -> None:
         """
         Set the model weights
         """
         self.model.load_state_dict(representation)
 
-    def fed_avg(self, model_wts: List[OrderedDict[str, Tensor]]):
+    def fed_avg(self, model_wts: List[OrderedDict[str, Tensor]]) -> OrderedDict:
         # All models are sampled currently at every round
         # Each model is assumed to have equal amount of data and hence
         # coeff is same for everyone
@@ -88,14 +88,14 @@ class SWARMClient(BaseClient):
                     avgd_wts[key] += coeff * local_wts[key].to(self.device)
         return avgd_wts
 
-    def aggregate(self, representation_list: List[OrderedDict[str, Tensor]]):
+    def aggregate(self, representation_list: List[OrderedDict[str, Tensor]]) -> OrderedDict:
         """
         Aggregate the model weights
         """
         avg_wts = self.fed_avg(representation_list)
         return avg_wts
 
-    def send_representations(self, representation):
+    def send_representations(self, representation) -> None:
         """
         Set the model
         """
@@ -103,7 +103,7 @@ class SWARMClient(BaseClient):
             self.comm_utils.send(client_node, representation, self.tag.UPDATES)
         print("Node 1 sent average weight to {} nodes".format(len(self.clients)))
 
-    def single_round(self, self_repr):
+    def single_round(self, self_repr) -> OrderedDict:
         """
         Runs the whole training procedure
         """
@@ -116,7 +116,7 @@ class SWARMClient(BaseClient):
         return avg_wts
         # wait for all clients to finish
 
-    def run_protocol(self):
+    def run_protocol(self) -> None:
         start_epochs = self.config.get("start_epochs", 0)
         total_epochs = self.config["epochs"]
 
@@ -154,7 +154,7 @@ class SWARMServer(BaseServer):
             self.config["results_path"], self.node_id
         )
 
-    def send_representations(self, representations):
+    def send_representations(self, representations) -> None:
         """
         Set the model
         """
@@ -182,7 +182,7 @@ class SWARMServer(BaseServer):
             self.model_utils.save_model(self.model, self.model_save_path)
         return acc
 
-    def single_round(self):
+    def single_round(self) -> None:
         """
         Runs the whole training procedure
         """
@@ -194,7 +194,7 @@ class SWARMServer(BaseServer):
             )
             self.comm_utils.send(dest=client_node, data=None, tag=self.tag.START)
 
-    def run_protocol(self):
+    def run_protocol(self) -> None:
         self.log_utils.log_console("Starting iid clients federated averaging")
         start_epochs = self.config.get("start_epochs", 0)
         total_epochs = self.config["epochs"]
