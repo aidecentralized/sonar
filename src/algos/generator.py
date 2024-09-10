@@ -3,16 +3,20 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+"""Flatten layer class."""
 class Flatten(nn.Module):
+    """Flatten layer class."""
     def __init__(self):
-        super(Flatten, self).__init__()
+        """Initialize Flatten layer."""
+        super().__init__()
 
     def forward(self, x):
+        """Forward pass for Flatten layer."""
         return torch.flatten(x, 1)
 
 
 class Generator(nn.Module):
-    def __init__(self, nz=100, ngf=64, img_size=32, nc=3):
+    def __init__(self, nz: int = 100, ngf: int = 64, img_size: int = 32, nc: int = 3):
         super(Generator, self).__init__()
         self.params = (nz, ngf, img_size, nc)
         self.init_size = img_size // 4
@@ -32,19 +36,19 @@ class Generator(nn.Module):
             nn.Sigmoid(),
         )
 
-    def forward(self, z):
+    def forward(self, z: torch.Tensor) -> torch.Tensor:
         out = self.l1(z)
         out = out.view(out.shape[0], -1, self.init_size, self.init_size)
         img = self.conv_blocks(out)
         return img
 
     # return a copy of its own
-    def clone(self):
+    def clone(self) -> "Generator":
         clone = Generator(
             self.params[0], self.params[1], self.params[2], self.params[3]
         )
         clone.load_state_dict(self.state_dict())
-        return clone.cuda()
+        return clone.to(self.device)
 
     # def shuffle_filter(self):
     #     s1 = torch.randperm(self.params[1] * 2)
@@ -56,7 +60,7 @@ class Generator(nn.Module):
 
 
 class DeepGenerator(nn.Module):
-    def __init__(self, nz=100, ngf=64, img_size=224, nc=3):
+    def __init__(self, nz: int = 100, ngf: int = 64, img_size: int = 224, nc: int = 3):
         super(DeepGenerator, self).__init__()
         self.params = (nz, ngf, img_size, nc)
         self.init_size = img_size // 32
@@ -96,26 +100,26 @@ class DeepGenerator(nn.Module):
             nn.Sigmoid(),
         )
 
-    def forward(self, z):
+    def forward(self, z: torch.Tensor) -> torch.Tensor:
         # out = self.l1(z)
         # out = out.view(out.shape[0], -1, self.init_size, self.init_size)
         img = self.conv_blocks(z)
         return img
 
     # return a copy of its own
-    def clone(self, copy_params=True):
+    def clone(self, copy_params: bool = True) -> "DeepGenerator":
         clone = DeepGenerator(
             self.params[0], self.params[1], self.params[2], self.params[3]
         )
         if copy_params:
             clone.load_state_dict(self.state_dict())
-        return clone.cuda()
+        return clone.to(self.device)
 
 
 class DCGAN_Generator(nn.Module):
     """Generator from DCGAN: https://arxiv.org/abs/1511.06434"""
 
-    def __init__(self, nz=100, ngf=64, nc=3, img_size=64, slope=0.2):
+    def __init__(self, nz: int = 100, ngf: int = 64, nc: int = 3, img_size: Union[int, List[int], Tuple[int, int]] = 64, slope: float = 0.2):
         super(DCGAN_Generator, self).__init__()
         self.nz = nz
         if isinstance(img_size, (list, tuple)):
@@ -151,9 +155,10 @@ class DCGAN_Generator(nn.Module):
             # nn.Sigmoid()
         )
 
-    def forward(self, z):
+    def forward(self, z: torch.Tensor) -> torch.Tensor:
         proj = self.project(z)
-        proj = proj.view(proj.shape[0], -1, self.init_size[0], self.init_size[1])
+        proj = proj.view(proj.shape[0], -1,
+                         self.init_size[0], self.init_size[1])
         output = self.main(proj)
         return output
 
@@ -162,7 +167,14 @@ class DCGAN_CondGenerator(nn.Module):
     """Generator from DCGAN: https://arxiv.org/abs/1511.06434"""
 
     def __init__(
-        self, num_classes, nz=100, n_emb=50, ngf=64, nc=3, img_size=64, slope=0.2
+        self,
+        num_classes: int,
+        nz: int = 100,
+        n_emb: int = 50,
+        ngf: int = 64,
+        nc: int = 3,
+        img_size: Union[int, List[int], Tuple[int, int]] = 64,
+        slope: float = 0.2,
     ):
         super(DCGAN_CondGenerator, self).__init__()
         self.nz = nz
@@ -174,7 +186,8 @@ class DCGAN_CondGenerator(nn.Module):
 
         self.project = nn.Sequential(
             Flatten(),
-            nn.Linear(nz + n_emb, ngf * 8 * self.init_size[0] * self.init_size[1]),
+            nn.Linear(nz + n_emb, ngf * 8 *
+                      self.init_size[0] * self.init_size[1]),
         )
 
         self.main = nn.Sequential(
@@ -200,20 +213,21 @@ class DCGAN_CondGenerator(nn.Module):
             nn.Sigmoid(),
         )
 
-    def forward(self, z, y):
+    def forward(self, z: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         y = self.emb(y)
         z = torch.cat([z, y], dim=1)
         proj = self.project(z)
-        proj = proj.view(proj.shape[0], -1, self.init_size[0], self.init_size[1])
+        proj = proj.view(proj.shape[0], -1,
+                         self.init_size[0], self.init_size[1])
         output = self.main(proj)
         return output
 
 
 class Discriminator(nn.Module):
-    def __init__(self, nc=3, img_size=32):
-        super(Discriminator, self).__init__()
+    def __init__(self, nc: int = 3, img_size: int = 32):
+        super().__init__()
 
-        def discriminator_block(in_filters, out_filters, bn=True):
+        def discriminator_block(in_filters: int, out_filters: int, bn: bool = True) -> nn.ModuleList:
             block = [
                 nn.Conv2d(in_filters, out_filters, 3, 2, 1),
                 nn.LeakyReLU(0.2, inplace=True),
@@ -221,7 +235,7 @@ class Discriminator(nn.Module):
             ]
             if bn:
                 block.append(nn.BatchNorm2d(out_filters, 0.8))
-            return block
+            return nn.ModuleList(block)
 
         self.model = nn.Sequential(
             *discriminator_block(nc, 16, bn=False),
@@ -232,9 +246,10 @@ class Discriminator(nn.Module):
 
         # The height and width of downsampled image
         ds_size = img_size // 2**4
-        self.adv_layer = nn.Sequential(nn.Linear(128 * ds_size**2, 1), nn.Sigmoid())
+        self.adv_layer = nn.Sequential(
+            nn.Linear(128 * ds_size**2, 1), nn.Sigmoid())
 
-    def forward(self, img):
+    def forward(self, img: torch.Tensor) -> torch.Tensor:
         out = self.model(img)
         out = out.view(out.shape[0], -1)
         validity = self.adv_layer(out)
@@ -265,5 +280,5 @@ class DCGAN_Discriminator(nn.Module):
             nn.Sigmoid(),
         )
 
-    def forward(self, input):
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
         return self.main(input)

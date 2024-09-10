@@ -2,7 +2,7 @@
 This module provides utility functions and classes for handling logging,
 copying source code, and normalizing images in a distributed learning setting.
 """
-
+from typing import Union
 import os
 import shutil
 import logging
@@ -17,7 +17,7 @@ from tensorboardX import SummaryWriter # type: ignore
 import numpy as np
 
 
-def deprocess(img):
+def deprocess(img: torch.Tensor) -> torch.Tensor:
     """
     Deprocesses an image tensor by normalizing it to the original range.
 
@@ -34,6 +34,7 @@ def deprocess(img):
     img = inv_normalize(img)
     img = 255 * img
     return img.type(torch.uint8)
+
 
 
 def check_and_create_path(path: str, folder_deletion_path: str|None=None):

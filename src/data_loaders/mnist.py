@@ -6,6 +6,7 @@ class MNISTDataset:
     """
     MNIST Dataset Class.
     """
+
     def __init__(self, dpath: str) -> None:
         self.image_size = 28
         self.num_cls = 10
@@ -21,5 +22,13 @@ class MNISTDataset:
             T.ToTensor(),
             T.Normalize(self.mean, self.std),
         ])
-        self.train_dset = MNIST(root=dpath, train=True, download=True, transform=self.train_transform)
-        self.test_dset = MNIST(root=dpath, train=False, download=True, transform=self.test_transform)
+        self.train_dset = MNIST(
+            root=dpath,
+            train=True,
+            download=True,
+            transform=self.train_transform)
+        self.test_dset = MNIST(
+            root=dpath,
+            train=False,
+            download=True,
+            transform=self.test_transform)

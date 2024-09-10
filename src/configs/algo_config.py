@@ -1,6 +1,17 @@
-from typing import TypeAlias, Dict, List
+from typing import TypeAlias, Dict, List, Union, Tuple, Optional
 
-ConfigType: TypeAlias = Dict[str, str|float|int|bool|List[str]|List[int]|tuple[int|str|float|bool|None]]
+# Correcting the type for configuration to handle all possible types
+ConfigType: TypeAlias = Dict[str, Union[
+    str, 
+    float, 
+    int, 
+    bool, 
+    List[str], 
+    List[int], 
+    List[float], 
+    List[bool], 
+    Tuple[Union[int, str, float, bool, None], ...], 
+    Optional[List[int]]]]
 
 # Algorithm Configuration
 
@@ -32,7 +43,7 @@ traditional_fl: ConfigType = {
     "exp_keys": [],
 }
 
-fedweight_users = 3
+fedweight_users: int = 3
 fedweight: ConfigType = {
     "algo": "fedweight",
     "exp_id": "test1",
@@ -56,8 +67,6 @@ fedweight: ConfigType = {
     # Knowledge transfer params
     "average_last_layer": True,
     "mask_finetune_last_layer": False,
-    # "own_aggr_weight": 0.3,
-    # "aggr_weight_strategy": "linear",
     # params for model
     "position": 0,
     "exp_keys": [],
@@ -78,9 +87,10 @@ defkt: ConfigType = {
     "num_teachers": 1,
     # params for model
     "position": 0,
-    "inp_shape": [128, 3, 32, 32],
+    "inp_shape": [128, 3, 32, 32],  # This should be a List[int]
     "exp_keys": [],
 }
+
 fedavg_object_detect: ConfigType = {
     "algo": "fedavg",
     "exp_id": "test_modular_yolo",
@@ -106,14 +116,11 @@ fediso: ConfigType = {
     "batch_size": 16,
 
     # params for model
-    #"image_size": 224,
     "position": 0, 
-    #"inp_shape": [128, 3, 32, 32],
-
     "exp_keys": []
 }
 
-L2C_users = 3
+L2C_users: int = 3
 L2C: ConfigType = {
     "algo": "l2c",
     "sharing": "weights",
@@ -123,25 +130,23 @@ L2C: ConfigType = {
     "alpha_weight_decay": 0.01,
 
     # Clients selection
-    "target_users_before_T_0": 0, # Only used if adapted_to_assumption True otherwise all users are kept
+    "target_users_before_T_0": 0,  # Only used if adapted_to_assumption True otherwise all users are kept
     "target_users_after_T_0": round((L2C_users-1)*0.1),
-    "T_0": 10,   # round after wich only target_users_after_T_0 peers are kept
+    "T_0": 10,  # round after which only target_users_after_T_0 peers are kept
 
     "epochs_per_round": 5,
     "warmup_epochs": 5,
     "rounds": 210, 
     "model": "resnet10",
     "average_last_layer": True,
-    "model_lr": 1e-4, #0.01, #1e-4, 
+    "model_lr": 1e-4, 
     "batch_size": 32,
-    # "optimizer": "adam",
     "weight_decay": 5e-4,
     "adapted_to_assumption": False,
-    
+
     # params for model
     "position": 0, 
-    "inp_shape": [128, 3, 32, 32],
-
+    "inp_shape": [128, 3, 32, 32],  # This should be a List[int]
     "exp_keys": []
 }
 
@@ -159,7 +164,6 @@ fedcentral: ConfigType = {
     "batch_size": 16,
 
     # params for model
-    #"image_size": 128,
     "position": 0, 
     "inp_shape": [128, 3, 32, 32],
     
@@ -172,20 +176,17 @@ fedval: ConfigType = {
     "num_rep": 1,
 
     # Clients selection
-    "selection_strategy": "highest", # lowest,
+    "selection_strategy": "highest",  # lowest,
     "target_users_before_T_0": 1,
     "target_users_after_T_0": 1,
-    "T_0": 400,   # round after wich only target_users_after_T_0 peers are kept
-    "community_type": None,#"dataset",
-    # "num_communities": len(cifar10_rotations), #len(domainnet_classes),
+    "T_0": 400,  # round after which only target_users_after_T_0 peers are kept
+    "community_type": None,  # "dataset",
     
     # Learning setup
     "rounds": 200, 
     "epochs_per_round": 5,
     "model": "resnet10",
-    "local_train_after_aggr" : False,
-    # "pretrained": True,
-    # "train_only_fc": True,
+    "local_train_after_aggr": False,
     "model_lr": 1e-4, 
     "batch_size": 16,
     
@@ -198,7 +199,7 @@ fedval: ConfigType = {
     "exp_keys": []
 }
 
-swarm_users = 3
+swarm_users: int = 3
 swarm: ConfigType = {
     "algo": "swarm",
     "exp_id": "test2",
@@ -207,7 +208,6 @@ swarm: ConfigType = {
     # Clients selection
     "target_users": 2,
     "similarity": "CosineSimilarity",  # "EuclideanDistance", "CosineSimilarity",
-    # "community_type": "dataset",
     "with_sim_consensus": True,
 
     # Learning setup
@@ -216,15 +216,13 @@ swarm: ConfigType = {
     "epochs_per_round": 5,
     "model": "resnet10",
     "local_train_after_aggr": True,
-    # "pretrained": True,
-    # "train_only_fc": True,
     "model_lr": 1e-4,
     "batch_size": 16,
+    
     # Knowledge transfer params
     "average_last_layer": True,
     "mask_finetune_last_layer": False,
-    # "own_aggr_weight": 0.3,
-    # "aggr_weight_strategy": "linear",
+    
     # params for model
     "position": 0,
     "exp_keys": [],
@@ -240,27 +238,23 @@ fedstatic: ConfigType = {
     "num_users_to_select": 1,
     "leader_mode": False,
     "community_type": "dataset",
-    # "within_community_sampling": 0.1,
-    # "p_within_decay": "log_inc", #exp_inc, exp_dec, lin_inc, lin_dec
-    # "num_communities": len(cifar10_rotations), #len(domainnet_classes),
+
     # Learning setup
     "rounds": 210,
     "epochs_per_round": 5,
     "model": "resnet10",
     "local_train_after_aggr": True,
-    # "pretrained": True,
-    # "train_only_fc": True,
     "model_lr": 1e-4,
     "batch_size": 16,
+
     # Knowledge transfer params
-    # "inter_commu_layer": "l2", # the layer until which the knowledge is transferred when collaborating outside community (within_community_sampling<1) [l1, l2, l3, l4, fc]
     "average_last_layer": True,
     "mask_finetune_last_layer": False,
-    # "own_aggr_weight": 0.3,
-    # "aggr_weight_strategy": "linear",
+
     # params for model
     "position": 0,
     "exp_keys": [],
 }
 
-current_config = traditional_fl
+# Assign the current configuration
+current_config: ConfigType = traditional_fl

@@ -1,5 +1,5 @@
 import numpy as np
-from typing import List, Dict
+from typing import Dict, List
 
 
 def get_random_communities(num_clients: int, num_communities: int) -> Dict[int, List[int]]:
@@ -11,7 +11,7 @@ def get_random_communities(num_clients: int, num_communities: int) -> Dict[int, 
     support: Dict[int, List[int]] = {}
     for i, c_id in enumerate(indices):
         idx = (i // clients_per_community) * clients_per_community
-        support[c_id] = list(indices[idx : idx + clients_per_community])
+        support[c_id] = list(indices[idx: idx + clients_per_community])
     return support
 
 
