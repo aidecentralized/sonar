@@ -68,7 +68,7 @@ class ClientObj:
         indices = np.random.permutation(len(train_dataset))
 
         optim = torch.optim.Adam
-        self.model = ResNet34() 
+        self.model = ResNet34()
         self.model = DataParallel(self.model.to(self.device), device_ids=self.device_id)
         self.optim = optim(self.model.parameters(), lr=lr)
         self.loss_fn = nn.CrossEntropyLoss()
