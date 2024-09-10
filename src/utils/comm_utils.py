@@ -1,5 +1,5 @@
 from mpi4py import MPI
-from typing import List, Optional, Any
+from typing import Any, Optional, List
 
 
 class CommUtils:
