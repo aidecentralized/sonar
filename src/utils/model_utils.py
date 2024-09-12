@@ -22,7 +22,7 @@ class ModelUtils():
     """ Class to handle the model related operations """
     def __init__(self, device: torch.device) -> None:
         self.device = device
-        self.dset = No
+        self.dset = None # changed "No" to "None"
 
         self.models_layers_idx = {
             "resnet10": {

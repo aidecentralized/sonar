@@ -4,7 +4,7 @@ import random
 class RandomTopology:
     """Class docstring: Represents a random topology generator."""
 
-        """Method docstring: Returns selected IDs based on some criteria."""
+    """Method docstring: Returns selected IDs based on some criteria."""
     def get_selected_ids(self, node_id, config, reprs_dict, communities):
 
         within_community_sampling = config.get("within_community_sampling", 1)
