@@ -1,8 +1,15 @@
 # pylint: disable=trailing-whitespace
-import torch
-import torch.nn as nn
-import torch.optim as optim
+""" suppressing """
+# pylint: disable=too-many-arguments
+# pylint: disable=too-many-locals
+# pylint: disable=fixme
+# pylint: disable=invalid-name
+# pylint: disable=unused-import
+# pylint: disable=no-else-return
 import os
+import torch
+import torch.nn as nn # pylint: disable=consider-using-from-import
+import torch.optim as optim # pylint: disable=consider-using-from-import
 
 from tqdm import tqdm
 
@@ -48,11 +55,12 @@ def iou(box1, box2, is_pred=True):
         # Return IoU score
         return iou_score
 
-    else:
+    else: 
         # IoU score based on width and height of bounding boxes
 
         # Calculate intersection area
-        intersection_area = torch.min(box1[..., 0], box2[..., 0]) * torch.min(box1[..., 1], box2[..., 1])
+        intersection_area = torch.min(box1[..., 0], box2[..., 0]) * \
+                    torch.min(box1[..., 1], box2[..., 1])
 
         # Calculate union area
         box1_area = box1[..., 0] * box1[..., 1]
@@ -353,8 +361,8 @@ def load_checkpoint(checkpoint_file, model):
 
     # for param_group in optimizer.param_groups:
         # param_group["lr"] = lr
-
-def yolo(pretrained=False, **kwargs):
+# pylint: disable=unused-argument
+def yolo(pretrained=False, **kwargs): 
     r"""Yolov3 implementation from https://www.geeksforgeeks.org/yolov3-from-scratch-using-pytorch/
     Args:
         progress (bool): If True, displays a progress bar of the download to stderr
