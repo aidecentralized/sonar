@@ -1,10 +1,10 @@
 from collections import OrderedDict
 import torch
 from torch import Tensor
-from typing import Any, Dict
+from typing import Any, Dict, List
 from utils.communication.comm_utils import CommunicationManager
 
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 import copy
 
 from algos.base_class import BaseClient, BaseServer
@@ -20,13 +20,15 @@ class CommProtocol(object):
     SHARE_MODEL = 3
     ROUND_STATS = 4 # Used to signal the server the client is done
 
-class CentralizedCLient(BaseClient):  # pylint: disable=trailing-whitespace
+class CentralizedCLient(BaseClient):
+    
     def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
         super().__init__(config, comm_utils)
         self.config = config
         self.tag = CommProtocol
         self.model_save_path = "{}/saved_models/node_{}.pt".format(self.config["results_path"],
-                                                                   self.node_id)        
+                                                                   self.node_id)
+        
         self.central_client = sorted(self.communities[self.node_id])[0]
         self.is_central_client = self.node_id == self.central_client
         

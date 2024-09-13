@@ -1,21 +1,9 @@
-"""Module docstring: This module implements a torus topology for federated learning."""
 import numpy as np
 import math
 
 
 class TorusTopology:
-    """Class docstring: Represents a torus topology in federated learning."""
     def get_selected_ids(self, node_id, config):
-        """Method docstring: Calculates selected IDs based on the torus topology.
-
-        Args:
-            self: Instance of the class.
-            node_id: The ID of the current node.
-            config: Configuration dictionary containing 'num_users'.
-
-        Returns:
-            A list of selected IDs.
-        """
         grid_size = int(math.sqrt(config["num_users"]))
         num_users = config["num_users"]
 

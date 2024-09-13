@@ -1,4 +1,3 @@
-"""Module for FedAvg implementation"""
 from collections import OrderedDict
 import sys
 from typing import Any, Dict, List
@@ -13,6 +12,7 @@ class FedAvgClient(BaseClient):
     def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
         super().__init__(config, comm_utils)
         self.config = config
+
         try:
             config['log_path'] = f"{config['log_path']}/node_{self.node_id}"
             os.makedirs(config['log_path'])
@@ -57,13 +57,13 @@ class FedAvgClient(BaseClient):
         """
         return self.model.state_dict() # type: ignore
 
-
     def set_representation(self, representation: OrderedDict[str, Tensor]):
-        """Set the model weights"""
+        """
+        Set the model weights
+        """
         self.model.load_state_dict(representation)
 
     def run_protocol(self):
-        """Run the FedAvg protocol for the client"""
         start_epochs = self.config.get("start_epochs", 0)
         total_epochs = self.config["epochs"]
         for round in range(start_epochs, total_epochs):
@@ -164,7 +164,6 @@ class FedAvgServer(BaseServer):
         # self.log_utils.log_console("Server waiting for all clients to finish")
         reprs = self.comm_utils.all_gather()
         # self.log_utils.log_console("Server received all clients done signal")
-
         avg_wts = self.aggregate(reprs)
         self.set_representation(avg_wts)
         #Remove the signal file after confirming that all client paths have been created

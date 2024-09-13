@@ -1,12 +1,12 @@
-import random
-import os
-import numpy as np
+from collections import OrderedDict
 from typing import Any, Dict, List
 from utils.communication.comm_utils import CommunicationManager
 from torch import Tensor, cat
 import torch.nn as nn
+import random
+import os
 from algos.base_class import BaseClient, BaseServer
-from collections import OrderedDict
+import numpy as np
 
 
 class CommProtocol(object):
@@ -160,7 +160,6 @@ class SWARMServer(BaseServer):
         """
         for client_node in self.users:
             self.comm_utils.send(client_node, representations, self.tag.UPDATES)
-
             self.log_utils.log_console(
                 "Server sent {} representations to node {}".format(
                     len(representations), client_node
