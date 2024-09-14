@@ -256,5 +256,35 @@ fedstatic: ConfigType = {
     "exp_keys": [],
 }
 
+metaL2C_cifar10 = {
+    "algo": "metal2c",
+    "sharing": "weights", #"updates"
+    "exp_id": "",
+
+    # Client selection
+    "target_clients_before_T_0": 0,
+    "target_clients_after_T_0": 1,
+    "T_0": 2,
+    "K_0": 0,  # number of peers to keep as neighbors at T_0 (!) inverse that in L2C paper
+    "T_0": 250,   # round after wich only K_0 peers are kept
+    "alpha_lr": 0.1, 
+    "alpha_weight_decay": 0.01,
+
+    "epochs_per_round": 5,
+    "rounds": 3, 
+    "model": "resnet18",
+    "average_last_layer": False,
+    "model_lr": 1e-4, 
+    "batch_size": 64,
+    "optimizer": "sgd",
+    "weight_decay": 5e-4,
+
+    # params for model
+    "position": 0, 
+    "inp_shape": [128, 3, 32, 32],
+
+    "exp_keys": []
+}
+
 # Assign the current configuration
 current_config: ConfigType = traditional_fl

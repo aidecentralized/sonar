@@ -4,6 +4,16 @@
 from typing import Dict, List
 # from utils.config_utils import get_sliding_window_support, get_device_ids
 
+sliding_window_8c_4cpc_support = {
+    "1": [0, 1, 2, 3],
+    "2": [1, 2, 3, 4],
+    "3": [2, 3, 4, 5],
+    "4": [3, 4, 5, 6],
+    "5": [4, 5, 6, 7],
+    "6": [5, 6, 7, 8],
+    "7": [6, 7, 8, 9],
+    "8": [7, 8, 9, 0],
+}
 
 def get_device_ids(num_users: int, gpus_available: List[int]) -> Dict[str, List[int]]:
     """
@@ -125,6 +135,27 @@ mpi_L2C_sys_config = {
     "folder_deletion_signal_path":"./expt_dump/folder_deletion.signal"
 }
 
+mpi_metaL2C_support_sys_config = {
+    "comm": {
+        "type": "MPI"
+    },
+    "seed": 1,
+    "num_users": 3,
+    # "experiment_path": "./experiments/",
+    "dset": "cifar10",
+    "dump_dir": "./expt_dump/",
+    "dpath": "./datasets/imgs/cifar10/",
+    "load_existing": False,
+    "device_ids": get_device_ids(num_users=3, gpus_available=[1, 2]),
+    "train_label_distribution": "support",  # Either "iid", "non_iid" "support",
+    "test_label_distribution": "support",  # Either "iid" "support",
+    "support" : sliding_window_8c_4cpc_support,
+    "samples_per_user": 32,
+    "test_samples_per_user": 32,
+    "validation_prop": 0.05,
+    "folder_deletion_signal_path":"./expt_dump/folder_deletion.signal"
+}
+
 mpi_digitfive_sys_config = {
     "comm": {
         "type": "MPI"
@@ -208,4 +239,4 @@ grpc_system_config = {
 }
 
 # current_config = grpc_system_config
-current_config = mpi_system_config
+current_config = mpi_metaL2C_support_sys_config
