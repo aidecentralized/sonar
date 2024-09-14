@@ -1,16 +1,7 @@
-# pylint: disable=trailing-whitespace
-""" suppressing """
-# pylint: disable=too-many-arguments
-# pylint: disable=too-many-locals
-# pylint: disable=fixme
-# pylint: disable=invalid-name
-# pylint: disable=unused-import
-# pylint: disable=no-else-return
 import os
 import torch
-import torch.nn as nn # pylint: disable=consider-using-from-import
-import torch.optim as optim # pylint: disable=consider-using-from-import
-
+import torch.nn as nn 
+import torch.optim as optim 
 from tqdm import tqdm
 
 # implemented following
@@ -361,9 +352,9 @@ def load_checkpoint(checkpoint_file, model):
 
     # for param_group in optimizer.param_groups:
         # param_group["lr"] = lr
-# pylint: disable=unused-argument
+
 def yolo(pretrained=False, **kwargs): 
-    r"""Yolov3 implementation from https://www.geeksforgeeks.org/yolov3-from-scratch-using-pytorch/
+    """Yolov3 implementation from https://www.geeksforgeeks.org/yolov3-from-scratch-using-pytorch/
     Args:
         progress (bool): If True, displays a progress bar of the download to stderr
     """
