@@ -1,4 +1,5 @@
 from typing import Any, Dict, List
+from utils.communication.comm_utils import CommunicationManager
 import math
 import torch
 import numpy as np
@@ -76,8 +77,8 @@ class ModelEncoder(nn.Module):
 
 class MetaL2CClient(BaseFedAvgClient):
 
-    def __init__(self, config) -> None:
-        super().__init__(config)
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+        super().__init__(config, comm_utils)
 
         self.encoder = ModelEncoder(self.get_model_weights())
         self.encoder_optim = optim.SGD(
@@ -295,8 +296,8 @@ class MetaL2CClient(BaseFedAvgClient):
 
 class MetaL2CServer(BaseFedAvgServer):
 
-    def __init__(self, config) -> None:
-        super().__init__(config)
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+        super().__init__(config, comm_utils)
         # self.set_parameters()
         self.config = config
         self.set_model_parameters(config)

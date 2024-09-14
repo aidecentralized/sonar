@@ -287,4 +287,4 @@ metaL2C_cifar10 = {
 }
 
 # Assign the current configuration
-current_config: ConfigType = traditional_fl
+current_config: ConfigType = metaL2C_cifar10
