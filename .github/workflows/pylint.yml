@@ -20,6 +20,10 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install pylint
-    - name: Analysing the code with pylint
-      run: |
-        pylint $(git ls-files '*.py')
+        
+    - name: Make lint_changed_files.sh executable
+      run: chmod +x lint_changed_files.sh
+
+    - name: Run Pylint on changed files
+      run: ./lint_changed_files.sh
+
