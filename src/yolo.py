@@ -1,8 +1,8 @@
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import os
 
+import os
+import torch
+import torch.nn as nn 
+import torch.optim as optim 
 from tqdm import tqdm
 
 # implemented following
@@ -353,8 +353,8 @@ def load_checkpoint(checkpoint_file, model):
     # for param_group in optimizer.param_groups:
         # param_group["lr"] = lr
 
-def yolo(pretrained=False, **kwargs):
-    r"""Yolov3 implementation from https://www.geeksforgeeks.org/yolov3-from-scratch-using-pytorch/
+def yolo(pretrained=False, **kwargs): 
+    """Yolov3 implementation from https://www.geeksforgeeks.org/yolov3-from-scratch-using-pytorch/
     Args:
         progress (bool): If True, displays a progress bar of the download to stderr
     """
