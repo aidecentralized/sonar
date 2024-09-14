@@ -60,7 +60,7 @@ class CommunicationManager:
         else:
             return self.comm.receive(node_ids)
 
-    def broadcast(self, data: Any):
+    def broadcast(self, data: Any, tag:int=0):
         self.comm.broadcast(data)
 
     def all_gather(self, tag:int=0):
