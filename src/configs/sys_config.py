@@ -1,8 +1,20 @@
 # System Configuration
 # TODO: Set up multiple non-iid configurations here. The goal of a separate system config
 # is to simulate different real-world scenarios without changing the algorithm configuration.
-from typing import Dict, List
+from typing import TypeAlias, Dict, List, Union, Tuple, Optional
 # from utils.config_utils import get_sliding_window_support, get_device_ids
+
+ConfigType: TypeAlias = Dict[str, Union[
+    str, 
+    float, 
+    int, 
+    bool, 
+    List[str], 
+    List[int], 
+    List[float], 
+    List[bool], 
+    Tuple[Union[int, str, float, bool, None], ...], 
+    Optional[List[int]]]]
 
 sliding_window_8c_4cpc_support = {
     "1": [0, 1, 2, 3],
@@ -77,7 +89,7 @@ mpi_system_config = {
     "comm": {
         "type": "MPI"
     },
-    "num_users": 4,
+    "num_users": 3,
     # "experiment_path": "./experiments/",
     "dset": "cifar10",
     "dump_dir": "./expt_dump/",
@@ -239,4 +251,4 @@ grpc_system_config = {
 }
 
 # current_config = grpc_system_config
-current_config = mpi_metaL2C_support_sys_config
+current_config:ConfigType = mpi_system_config
