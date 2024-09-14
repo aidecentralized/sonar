@@ -1,8 +1,3 @@
-# pylint: disable=trailing-whitespace
-# pylint: disable=invalid-name
-# pylint: disable=too-many-arguments
-# pylint: disable=too-many-locals
-
 from collections import OrderedDict
 from typing import Any, Tuple, List
 import torch
@@ -19,10 +14,8 @@ import yolo
 
 
 class ModelUtils():
-    """ Class to handle the model related operations """
     def __init__(self, device: torch.device) -> None:
         self.device = device
-        self.dset = No
 
         self.models_layers_idx = {
             "resnet10": {
@@ -50,7 +43,6 @@ class ModelUtils():
         pretrained:bool=False,
         **kwargs: Any
     ) -> nn.Module:
-        """ Get the model based on the model name """
         self.dset = dset
         # TODO: add support for loading checkpointed models
         model_name = model_name.lower()
@@ -121,7 +113,6 @@ class ModelUtils():
     test_loader=None,
     **kwargs) -> Tuple[float,
      float]:
-        """ Train the model on the object detection dataset """
         losses = []  # Initialize the list to store the losses
 
         for batch_idx, (data, target) in enumerate(dloader):
@@ -174,10 +165,15 @@ class ModelUtils():
 
         return mean_loss, 0  # Optionally return the mean loss at the end
 
-    def train_classification(self, model: nn.Module, optim, 
-                             dloader, loss_fn, device: torch.device, 
-                             test_loader=None, **kwargs) -> Tuple[float, float]: 
-        """ Train the model on the classification dataset """    
+    def train_classification(self,
+    model: nn.Module,
+    optim,
+    dloader,
+    loss_fn,
+    device: torch.device,
+    test_loader=None,
+    **kwargs) -> Tuple[float,
+     float]:    
         correct = 0
         train_loss = 0
         for batch_idx, (data, target) in enumerate(dloader):
@@ -208,10 +204,8 @@ class ModelUtils():
                 # TODO: implement test loader for pascal
                 test_loss, test_acc = self.test(
                     model, test_loader, loss_fn, device)
-                print(f"Train Loss: {train_loss/(batch_idx+1):.6f} | "
-                    f"Train Acc: {correct/((batch_idx+1)*len(data)):.6f} | "
-                    f"Test Loss: {test_loss:.6f} | "
-                    f"Test Acc: {test_acc:.6f}")
+                print(
+                    f"Train Loss: {train_loss/(batch_idx+1):.6f} | Train Acc: {correct/((batch_idx+1)*len(data)):.6f} | Test Loss: {test_loss:.6f} | Test Acc: {test_acc:.6f}")
 
         acc = correct / len(dloader.dataset)
         return train_loss, acc
@@ -314,10 +308,9 @@ class ModelUtils():
     
     def test_object_detect(self, model, dloader, loss_fn, device,
              **kwargs) -> Tuple[float, float]:
-        """ Test the model on the object detection dataset """
         losses = []
         with torch.no_grad():
-            for _, (data, target) in enumerate(dloader):
+            for idx, (data, target) in enumerate(dloader):
                 data = data.to(device)
                 y0, y1, y2 = ( 
                     target[0].to(device), 
@@ -353,11 +346,10 @@ class ModelUtils():
         return loss, 0
         
     def test_classification(self, model, dloader, loss_fn, device, **kwargs) -> Tuple[float, float]:
-        """ Test the model on the classification dataset """
         test_loss = 0
         correct = 0
         with torch.no_grad():
-            for _, (data, target) in enumerate(dloader):
+            for idx, (data, target) in enumerate(dloader):
                 data, target = data.to(device), target.to(device)
                 position = kwargs.get("position", 0)
                 output = model(data, position=position)
@@ -374,7 +366,6 @@ class ModelUtils():
         return test_loss, acc
 
     def save_model(self, model: nn.Module, path: str) -> None:
-        """ Save the model to the specified path """
         if isinstance(model, DataParallel):
             model_ = model.module
         else:
@@ -383,18 +374,17 @@ class ModelUtils():
 
     def move_to_device(self, items: List[Tuple[torch.Tensor, torch.Tensor]],
                        device: torch.device) -> list:
-        """ Expects a list of tuples with each tupe containing two tensors """
+        # Expects a list of tuples with each tupe containing two tensors
         return [[item[0].to(device), item[1].to(device)] for item in items]
 
     def substract_model_weights(self, model1, model2):
-        """ Substracts the weights of model2 from model1 """
         res = {}
         for key, param in model1.items():
             res[key] = param - model2[key]
         return res
 
     def get_last_layer_keys(self, model_wts: OrderedDict[str, Tensor]):
-        """ Assume one layer is composed of multiple weights named as "layer_name.weight_name" """
+        # Assume one layer is composed of multiple weights named as "layer_name.weight_name"
 
         reversed_model_wts = reversed(model_wts)
         last_key = next(reversed_model_wts)
@@ -409,7 +399,7 @@ class ModelUtils():
 
     def filter_model_weights(
         self, model_wts: OrderedDict[str, Tensor], key_to_ignore: List[str]):
-        """ Assume one layer is composed of multiple weights named as "layer_name.weight_name" """
+        # Assume one layer is composed of multiple weights named as "layer_name.weight_name"
 
         filtered_model_wts = OrderedDict()
         for key, param in model_wts.items():

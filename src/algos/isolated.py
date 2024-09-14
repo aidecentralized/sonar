@@ -1,14 +1,14 @@
-"""Module docstring for isolated.py - describes the module's purpose and functionality."""
+import numpy
+from torch.utils.data import DataLoader, Subset
+
 
 from algos.base_class import BaseServer
 
 
 class IsolatedServer(BaseServer):
-    """Class docstring for IsolatedServer - describes the class and its purpose."""
-
     def __init__(self, config) -> None:
-        """Initialize the IsolatedServer with configuration."""
         super().__init__(config)
+        # self.set_parameters()
         self.config = config
         self.set_model_parameters(config)
         self.model_save_path = "{}/saved_models/node_{}.pt".format(
@@ -71,7 +71,8 @@ class IsolatedServer(BaseServer):
                 "round: {} train_loss:{:.4f}".format(round, loss)
             )
 
-    def set_model_parameters(self):
-        """Set model parameters based on the configuration."""
-        # Example of using an f-string for formatting
-        print(f"Model parameters set with configuration: {self.config}")
+            acc = self.test()
+            self.log_utils.log_tb(f"test_acc/clients", acc, round)
+            self.log_utils.log_console("round: {} test_acc:{:.4f}".format(round, acc))
+            self.log_utils.log_console("Round {} done".format(round))
+        self.log_utils.log_console("Isolated client training over")
