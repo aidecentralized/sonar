@@ -65,10 +65,10 @@ class BaseNode(ABC):
         self.dset_obj = get_dataset(self.dset, dpath=config["dpath"])
         self.set_constants()
 
-    def set_constants(self):
+    def set_constants(self) -> None:
         self.best_acc = 0.0
 
-    def setup_cuda(self, config: Dict[str, Any]):
+    def setup_cuda(self, config: Dict[str, Any]) -> None:
         # Need a mapping from rank to device id
         device_ids_map = config["device_ids"]
         node_name = "node_{}".format(self.node_id)
@@ -82,7 +82,7 @@ class BaseNode(ABC):
             self.device = torch.device("cpu")
             print("Using CPU")
 
-    def set_model_parameters(self, config: Dict[str, Any]):
+    def set_model_parameters(self, config: Dict[str, Any]) -> None:
         # Model related parameters
         optim_name = config.get("optimizer", "adam")
         if optim_name == "adam":
@@ -112,7 +112,7 @@ class BaseNode(ABC):
         else:
             self.loss_fn = torch.nn.CrossEntropyLoss()
 
-    def set_shared_exp_parameters(self, config):
+    def set_shared_exp_parameters(self, config: Dict[str, Any]) -> None:
 
         if self.node_id != 0:
             community_type, number_of_communities = config.get(
@@ -124,8 +124,7 @@ class BaseNode(ABC):
                 else len(set(config["dset"].values()))
             )
             if community_type is not None and community_type == "dataset":
-                self.communities = get_dset_communities(
-                    config["num_users"], num_dset)
+                self.communities = get_dset_communities(config["num_users"], num_dset)
             elif community_type is None or number_of_communities == 1:
                 all_users = list(range(1, config["num_users"] + 1))
                 self.communities = {user: all_users for user in all_users}
@@ -145,12 +144,9 @@ class BaseNode(ABC):
                     config["num_users"], number_of_communities, num_dset
                 )
             else:
-                raise ValueError(
-                    "Unknown community type: {}.".format(community_type))
+                raise ValueError("Unknown community type: {}.".format(community_type))
         if self.node_id == 0:
-            self.log_utils.log_console(
-                "Communities: {}".format(
-                    self.communities))
+            self.log_utils.log_console("Communities: {}".format(self.communities))
 
     @abstractmethod
     def run_protocol(self) -> None:
@@ -162,12 +158,12 @@ class BaseClient(BaseNode):
     Abstract class for all algorithms
     """
 
-    def __init__(self, config, comm_utils) -> None:
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
         super().__init__(config, comm_utils)
         self.server_node = 0
         self.set_parameters(config)
 
-    def set_parameters(self, config):
+    def set_parameters(self, config: Dict[str, Any]) -> None:
         """
         Set the parameters for the user
         """
@@ -213,7 +209,7 @@ class BaseClient(BaseNode):
             random.seed(seed)
             numpy.random.seed(seed)
 
-    def set_data_parameters(self, config):
+    def set_data_parameters(self, config: Dict[str, Any]) -> None:
 
         # Train set and test set from original dataset
         train_dset = self.dset_obj.train_dset
@@ -223,8 +219,7 @@ class BaseClient(BaseNode):
         # print("num test", len(test_dset))
 
         if config.get("test_samples_per_class", None) is not None:
-            test_dset, _ = balanced_subset(
-                test_dset, config["test_samples_per_class"])
+            test_dset, _ = balanced_subset(test_dset, config["test_samples_per_class"])
 
         samples_per_user = config["samples_per_user"]
         batch_size = config["batch_size"]
@@ -255,17 +250,15 @@ class BaseClient(BaseNode):
         if config["train_label_distribution"] == "iid":
             indices = numpy.random.permutation(len(train_dset))
             train_indices = indices[
-                user_idx * samples_per_user: (user_idx + 1) * samples_per_user
+                user_idx * samples_per_user : (user_idx + 1) * samples_per_user
             ]
             train_dset = Subset(train_dset, train_indices)
-            classes = list(set([train_dset[i][1]
-                                for i in range(len(train_dset))]))
+            classes = list(set([train_dset[i][1] for i in range(len(train_dset))]))
         # If non_iid, each user get random samples from its support classes
         # (mulitple users might have same images)
         elif config["train_label_distribution"] == "support":
             classes = config["support"][str(self.node_id)]
-            support_classes_dataset, indices = filter_by_class(
-                train_dset, classes)
+            support_classes_dataset, indices = filter_by_class(train_dset, classes)
             train_dset, sel_indices = random_samples(
                 support_classes_dataset, samples_per_user
             )
@@ -284,8 +277,9 @@ class BaseClient(BaseNode):
                         n_cls = self.dset_obj.num_cls
                         cls_priors.append(
                             np.random.dirichlet(
-                                alpha=[alpha] * n_cls,
-                                size=len(users_with_same_dset)))
+                                alpha=[alpha] * n_cls, size=len(users_with_same_dset)
+                            )
+                        )
                     cls_prior = cls_priors[dsets.index(self.dset)]
             train_y, train_idx_split, cls_prior = non_iid_balanced(
                 self.dset_obj,
@@ -324,8 +318,7 @@ class BaseClient(BaseNode):
             )
 
             # Cache before transform to preserve transform randomness
-            train_dset = TransformDataset(
-                CacheDataset(train_dset), train_transform)
+            train_dset = TransformDataset(CacheDataset(train_dset), train_transform)
 
         self.classes_of_interest = classes
 
@@ -338,16 +331,12 @@ class BaseClient(BaseNode):
                 train_dset, [train_size, val_size]
             )
             # self.val_dloader = DataLoader(val_dset, batch_size=batch_size*len(self.device_ids), shuffle=True)
-            self.val_dloader = DataLoader(
-                val_dset, batch_size=batch_size, shuffle=True)
+            self.val_dloader = DataLoader(val_dset, batch_size=batch_size, shuffle=True)
 
         self.train_indices = train_indices
         self.train_dset = train_dset
         # self.dloader = DataLoader(train_dset, batch_size=batch_size*len(self.device_ids), shuffle=True)
-        self.dloader = DataLoader(
-            train_dset,
-            batch_size=batch_size,
-            shuffle=True)
+        self.dloader = DataLoader(train_dset, batch_size=batch_size, shuffle=True)
 
         if config["test_label_distribution"] == "iid":
             pass
@@ -399,10 +388,10 @@ class BaseClient(BaseNode):
         """
         raise NotImplementedError
 
-    def run_protocol(self):
+    def run_protocol(self) -> None:
         raise NotImplementedError
 
-    def print_data_summary(self, train_test, test_dset, val_dset=None):
+    def print_data_summary(self, train_test: Any, test_dset: Any, val_dset: Optional[Any] = None) -> None:        
         """
         Print the data summary
         """
@@ -446,13 +435,13 @@ class BaseServer(BaseNode):
     Abstract class for orchestrator
     """
 
-    def __init__(self, config, comm_utils) -> None:
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
         super().__init__(config, comm_utils)
         self.num_users = config["num_users"]
         self.users = list(range(1, self.num_users + 1))
         self.set_data_parameters(config)
 
-    def set_data_parameters(self, config):
+    def set_data_parameters(self, config: Dict[str, Any]) -> None:
         test_dset = self.dset_obj.test_dset
         batch_size = config["batch_size"]
         self._test_loader = DataLoader(test_dset, batch_size=batch_size)
@@ -469,13 +458,13 @@ class BaseServer(BaseNode):
         """
         raise NotImplementedError
 
-    def get_model(self, **kwargs):
+    def get_model(self, **kwargs: Any) -> Any:
         """
         Get the model
         """
         raise NotImplementedError
 
-    def run_protocol(self):
+    def run_protocol(self) -> None:
         raise NotImplementedError
 
 
@@ -496,7 +485,7 @@ class BaseFedAvgClient(BaseClient):
     """
     Abstract class for FedAvg based algorithms
     """
-    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager, comm_protocol=CommProtocol) -> None:
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager, comm_protocol: type[CommProtocol]) -> None:
         super().__init__(config, comm_utils)
         self.config = config
         self.model_save_path = "{}/saved_models/node_{}.pt".format(
@@ -508,11 +497,10 @@ class BaseFedAvgClient(BaseClient):
         if not self.config.get(
             "average_last_layer", True
         ):  # By default include last layer
-            keys = self.model_utils.get_last_layer_keys(
-                self.get_model_weights())
+            keys = self.model_utils.get_last_layer_keys(self.get_model_weights())
             self.model_keys_to_ignore.extend(keys)
 
-    def local_train(self, epochs):
+    def local_train(self, epochs: int) -> Tuple[float, float]:
         """
         Train the model locally
         """
@@ -535,7 +523,7 @@ class BaseFedAvgClient(BaseClient):
 
         return avg_loss, avg_acc
 
-    def local_test(self, **kwargs):
+    def local_test(self, **kwargs: Any) -> float:
         """
         Test the model locally, not to be used in the traditional FedAvg
         """
@@ -553,8 +541,7 @@ class BaseFedAvgClient(BaseClient):
         """
         return {k: v.cpu() for k, v in self.model.state_dict().items()}
 
-    def set_model_weights(
-            self, model_wts: OrderedDict[str, Tensor], keys_to_ignore=[]):
+    def set_model_weights(self, model_wts: OrderedDict[str, Tensor], keys_to_ignore: List[str] = []) -> None:
         """
         Set the model weights
         """
@@ -574,21 +561,20 @@ class BaseFedAvgClient(BaseClient):
         self,
         models_wts: Dict[int, OrderedDict[str, Tensor]],
         collab_weights_dict: Dict[int, float],
-        keys_to_ignore=[],
+        keys_to_ignore: List[str] = [],
         label_dict: Optional[Dict[int, Dict[str, int]]] = None,
-    ):
+    ) -> OrderedDict[str, Tensor]:
         """
         Aggregate the model weights
         """
 
-        selected_collab = [
-            id for id,
-            w in collab_weights_dict.items() if w > 0]
+        selected_collab = [id for id, w in collab_weights_dict.items() if w > 0]
 
         first_model = models_wts[selected_collab[0]]
 
-        models_coeffs = [(id, models_wts[id], collab_weights_dict[id])
-                         for id in selected_collab]
+        models_coeffs = [
+            (id, models_wts[id], collab_weights_dict[id]) for id in selected_collab
+        ]
 
         last_layer_keys = []
         if label_dict is not None:
@@ -615,12 +601,9 @@ class BaseFedAvgClient(BaseClient):
             is_init = True
 
         if label_dict is not None:
-            last_layer_weight_key = [
-                key for key in last_layer_keys if "weight" in key]
-            last_layer_bias_key = [
-                key for key in last_layer_keys if "bias" in key]
-            if len(last_layer_weight_key) != 1 and len(
-                    last_layer_bias_key) != 1:
+            last_layer_weight_key = [key for key in last_layer_keys if "weight" in key]
+            last_layer_bias_key = [key for key in last_layer_keys if "bias" in key]
+            if len(last_layer_weight_key) != 1 and len(last_layer_bias_key) != 1:
                 raise ValueError(
                     "Unsupported last layer format, expected one weights layer and one bias."
                 )
@@ -668,7 +651,7 @@ class BaseFedAvgClient(BaseClient):
     ) -> Dict[int, float]:
         raise NotImplementedError
 
-    def run_protocol(self):
+    def run_protocol(self) -> None:
         raise NotImplementedError
 
 
@@ -677,7 +660,7 @@ class BaseFedAvgServer(BaseServer):
     Abstract class for orchestrator
     """
     
-    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager, comm_protocol=CommProtocol) -> None:
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager, comm_protocol: type[CommProtocol] = CommProtocol) -> None:
         super().__init__(config, comm_utils)
         self.tag = comm_protocol
 
