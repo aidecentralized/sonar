@@ -3,6 +3,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from typing import Any, Dict, List
+from utils.communication.comm_utils import CommunicationManager
+
 from algos.base_class import BaseFedAvgClient, BaseFedAvgServer
 from utils.stats_utils import from_round_stats_per_round_per_client_to_dict_arrays
 from torch.utils.data import DataLoader, Dataset
@@ -42,8 +45,8 @@ SIM_SHARING = ["affinity_propagation_clustering", "mean_shift_clustering",
 
 
 class FedDataRepClient(BaseFedAvgClient):
-    def __init__(self, config) -> None:
-        super().__init__(config)
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+        super().__init__(config, comm_utils=comm_utils, comm_protocol=CommProtocol)
         self.tag = CommProtocol
 
         self.require_second_step = config["similarity_metric"] in TWO_STEP_STRAT
@@ -666,7 +669,7 @@ class FedDataRepClient(BaseFedAvgClient):
 
                     voters = sorted_collab[:num_voter]
                     # + 1 to avoid receiving recommendation only about myself
-                    self.comm_utils.send_signal(
+                    self.comm_utils.send(
                         dest=self.server_node,
                         data=sorted_collab[: num_vote_per_voter + 1],
                         tag=self.tag.CONS_ADVERT,
@@ -769,7 +772,7 @@ class FedDataRepClient(BaseFedAvgClient):
                 selected_collab = list(np.random.choice([key for key, _ in items], k, p=[value for _, value in items], replace=False))
             elif strategy.endswith("top_x"):
           
-                top_x = self.config.get("num_clients_top_x", 0)
+                top_x = self.config.get("num_users_top_x", 0)
                 
                 if strategy == "growing_schedulded_top_x":
                     top_x = 1 + int(top_x * round/total_rounds)
@@ -794,7 +797,7 @@ class FedDataRepClient(BaseFedAvgClient):
             elif strategy == "xth":
                 sorted_collab = [id for id, _ in sorted(collab_similarity.items(), key=lambda item: item[1], reverse=True)]
                 
-                xth = self.config.get("num_clients_top_x", 0)
+                xth = self.config.get("num_users_top_x", 0)
                 
                 if xth >= len(sorted_collab):
                     raise ValueError("xth {} must be smaller than the number of clients {}".format(xth, len(sorted_collab)))
@@ -877,8 +880,8 @@ class FedDataRepClient(BaseFedAvgClient):
             
         voters = sorted_collab[:num_voter]
         # + 1 to avoid receiving recommendation only about myself
-        self.comm_utils.send_signal(dest=self.server_node, data=sorted_collab[:num_vote_per_voter+1], tag=self.tag.CONS_ADVERT)
-        vote_dict = self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.CONS_SHARE)
+        self.comm_utils.send(dest=self.server_node, data=sorted_collab[:num_vote_per_voter+1], tag=self.tag.CONS_ADVERT)
+        vote_dict = self.comm_utils.receive(node_ids=self.server_node, tag=self.tag.CONS_SHARE)
         
         candidate_list = []
         for voter_id, votes in vote_dict.items():
@@ -1091,7 +1094,7 @@ class FedDataRepClient(BaseFedAvgClient):
             self.round_stats = {}
             
             # Wait on server to start the round
-            self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.ROUND_START)
+            self.comm_utils.receive(node_ids=self.server_node, tag=self.tag.ROUND_START)
             
             if round == start_round:
                 warmup_epochs = self.config.get("warmup_epochs", epochs_per_round)
@@ -1100,23 +1103,23 @@ class FedDataRepClient(BaseFedAvgClient):
                     print("Client {} warmup loss {} acc {}".format(self.node_id, warmup_loss, warmup_acc))
             
             repr = self.get_representation()
-            self.comm_utils.send_signal(dest=self.server_node, data=repr, tag=self.tag.REP1_ADVERT)
+            self.comm_utils.send(dest=self.server_node, data=repr, tag=self.tag.REP1_ADVERT)
            
             # Collect the representations from all other nodes from the server 
-            reprs = self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.REPS1_SHARE)
+            reprs = self.comm_utils.receive(node_ids=self.server_node, tag=self.tag.REPS1_SHARE)
             reprs_dict = {k:v for k,v in enumerate(reprs, 1)}
             
             second_step_reprs_dict = None
             if self.require_second_step:
                 reprs2 = self.get_second_step_representation(reprs_dict)
-                self.comm_utils.send_signal(dest=self.server_node, data=reprs2, tag=self.tag.REP2_ADVERT)
-                second_step_reprs_dict = self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.REPS2_SHARE)
+                self.comm_utils.send(dest=self.server_node, data=reprs2, tag=self.tag.REP2_ADVERT)
+                second_step_reprs_dict = self.comm_utils.receive(node_ids=self.server_node, tag=self.tag.REPS2_SHARE)
                 
             similarity_dict = self.get_collaborators_similarity(round, reprs_dict, second_step_reprs_dict)
                                          
             if self.with_sim_sharing:
-                self.comm_utils.send_signal(dest=self.server_node, data=similarity_dict, tag=self.tag.SIM_ADVERT)
-                similarity_dict = self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.SIM_SHARE)
+                self.comm_utils.send(dest=self.server_node, data=similarity_dict, tag=self.tag.SIM_ADVERT)
+                similarity_dict = self.comm_utils.receive(node_ids=self.server_node, tag=self.tag.SIM_SHARE)
                                         
             is_num_collab_changed = round == self.config['T_0'] and self.config["target_users_after_T_0"] != self.config["target_users_before_T_0"]
             is_selection_round = round == start_round or (round % self.config["rounds_per_selection"] == 0) or is_num_collab_changed
@@ -1140,8 +1143,8 @@ class FedDataRepClient(BaseFedAvgClient):
                 self.log_clients_stats(proba_dist, "Selection probability")
                        
             selected_collaborators = [key for key, value in collab_weights_dict.items() if value > 0]
-            self.comm_utils.send_signal(dest=self.server_node, data=(selected_collaborators, self.get_model_weights()), tag=self.tag.C_SELECTION)
-            models_wts = self.comm_utils.wait_for_signal(src=self.server_node, tag=self.tag.KNLDG_SHARE)
+            self.comm_utils.send(dest=self.server_node, data=(selected_collaborators, self.get_model_weights()), tag=self.tag.C_SELECTION)
+            models_wts = self.comm_utils.receive(node_ids=self.server_node, tag=self.tag.KNLDG_SHARE)
                               
             avg_wts = self.weighted_aggregate(models_wts, collab_weights_dict, self.model_keys_to_ignore)
 
@@ -1160,11 +1163,11 @@ class FedDataRepClient(BaseFedAvgClient):
                         
             self.log_clients_stats(collab_weights_dict, "Collaborator weights")
             
-            self.comm_utils.send_signal(dest=self.server_node, data=self.round_stats, tag=self.tag.ROUND_STATS)
+            self.comm_utils.send(dest=self.server_node, data=self.round_stats, tag=self.tag.ROUND_STATS)
 
 class FedDataRepServer(BaseFedAvgServer):
-    def __init__(self, config) -> None:
-        super().__init__(config)
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+        super().__init__(config, comm_utils=comm_utils, comm_protocol=CommProtocol)
         # self.set_parameters()
         self.tag = CommProtocol
         self.config = config
@@ -1179,7 +1182,7 @@ class FedDataRepServer(BaseFedAvgServer):
     def send_models_selected(self, collaborator_selection, models_wts):
         for client_id, selected_clients in collaborator_selection.items():
             wts = {key: models_wts[key] for key in selected_clients}
-            self.comm_utils.send_signal(
+            self.comm_utils.send(
                 dest=client_id, data=wts, tag=self.tag.KNLDG_SHARE
             )
 
@@ -1189,15 +1192,15 @@ class FedDataRepServer(BaseFedAvgServer):
         """
 
         # Start local training
-        self.comm_utils.send_signal_to_all_clients(
-            self.users, data=None, tag=self.tag.ROUND_START
+        self.comm_utils.broadcast(
+            data=None, tag=self.tag.ROUND_START
         )
         self.log_utils.log_console(
             "Server waiting for all clients to finish local training"
         )
 
         # Collect representation from all clients
-        reprs = self.comm_utils.wait_for_all_clients(self.users, self.tag.REP1_ADVERT)
+        reprs = self.comm_utils.all_gather(self.tag.REP1_ADVERT)
         self.log_utils.log_console("Server received all clients reprs")
 
         if self.config["representation"] == "dreams":
@@ -1206,39 +1209,33 @@ class FedDataRepServer(BaseFedAvgServer):
                 imgs = rep[0][:16, :3]
                 self.log_utils.log_image(imgs, f"client{client+1}", self.round)
 
-        self.comm_utils.send_signal_to_all_clients(
-            self.users, data=reprs, tag=self.tag.REPS1_SHARE
+        self.comm_utils.broadcast(
+            data=reprs, tag=self.tag.REPS1_SHARE
         )
 
         if self.require_second_step:
             # Collect the representations from all other nodes from the server
-            reprs2 = self.comm_utils.wait_for_all_clients(
-                self.users, self.tag.REP2_ADVERT
-            )
+            reprs2 = self.comm_utils.all_gather(self.tag.REP2_ADVERT)
             reprs2 = {idx: reprs for idx, reprs in enumerate(reprs2, 1)}
-            self.comm_utils.send_signal_to_all_clients(
-                self.users, data=reprs2, tag=self.tag.REPS2_SHARE
+            self.comm_utils.broadcast(
+                data=reprs2, tag=self.tag.REPS2_SHARE
             )
 
         if self.with_sim_sharing:
-            sim_dicts = self.comm_utils.wait_for_all_clients(
-                self.users, self.tag.SIM_ADVERT
-            )
+            sim_dicts = self.comm_utils.all_gather(self.tag.SIM_ADVERT)
             sim_dicts = {k: v for k, v in enumerate(sim_dicts, 1)}
-            self.comm_utils.send_signal_to_all_clients(
-                self.users, data=sim_dicts, tag=self.tag.SIM_SHARE
+            self.comm_utils.broadcast(
+                data=sim_dicts, tag=self.tag.SIM_SHARE
             )
 
         if self.with_cons_step:
-            consensus = self.comm_utils.wait_for_all_clients(
-                self.users, self.tag.CONS_ADVERT
-            )
+            consensus = self.comm_utils.all_gather(self.tag.CONS_ADVERT)
             consensus_dict = {idx: cons for idx, cons in enumerate(consensus, 1)}
-            self.comm_utils.send_signal_to_all_clients(
-                self.users, data=consensus_dict, tag=self.tag.CONS_SHARE
+            self.comm_utils.broadcast(
+                data=consensus_dict, tag=self.tag.CONS_SHARE
             )
 
-        data = self.comm_utils.wait_for_all_clients(self.users, self.tag.C_SELECTION)
+        data = self.comm_utils.all_gather(self.tag.C_SELECTION)
         collaborator_selection = {
             idx: select for idx, (select, _) in enumerate(data, 1)
         }
@@ -1248,9 +1245,7 @@ class FedDataRepServer(BaseFedAvgServer):
         self.send_models_selected(collaborator_selection, models_wts)
 
         # Collect round stats from all clients
-        clients_round_stats = self.comm_utils.wait_for_all_clients(
-            self.users, self.tag.ROUND_STATS
-        )
+        clients_round_stats = self.comm_utils.all_gather(self.tag.ROUND_STATS)
         self.log_utils.log_console("Server received all clients stats")
 
         # Log the round stats on tensorboard
