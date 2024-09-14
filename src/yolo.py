@@ -1,4 +1,3 @@
-# pylint: disable=trailing-whitespace
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -10,8 +9,8 @@ from tqdm import tqdm
 # https://www.geeksforgeeks.org/yolov3-from-scratch-using-pytorch/
 
 # Helpers
+# Defining a function to calculate Intersection over Union (IoU)
 def iou(box1, box2, is_pred=True):
-    """ Defining a function to calculate Intersection over Union (IoU) """
     if is_pred:
         # IoU score for prediction and label
         # box1 (prediction) and box2 (label) are both in [x, y, width, height] format
@@ -67,7 +66,7 @@ def iou(box1, box2, is_pred=True):
 
 # Non-maximum suppression function to remove overlapping bounding boxes
 def nms(bboxes, iou_threshold, threshold):
-    """ Filter out bounding boxes with confidence below the threshold """
+    # Filter out bounding boxes with confidence below the threshold.
     bboxes = [box for box in bboxes if box[1] > threshold]
 
     # Sort the bounding boxes by confidence in descending order.
@@ -97,8 +96,8 @@ def nms(bboxes, iou_threshold, threshold):
     # Return bounding boxes after non-maximum suppression.
     return bboxes_nms
 
+# Function to convert cells to bounding boxes
 def convert_cells_to_bboxes(predictions, anchors, s, is_predictions=True):
-    """Function to convert cells to bounding boxes"""
     # Batch size used on predictions
     batch_size = predictions.shape[0]
     # Number of anchors
@@ -145,8 +144,8 @@ def convert_cells_to_bboxes(predictions, anchors, s, is_predictions=True):
     # Returning the reshaped and converted bounding box list
     return converted_bboxes.tolist()
 
+# Defining CNN Block
 class CNNBlock(nn.Module):
-    """ Defining the CNN block """
     def __init__(self, in_channels, out_channels, use_batch_norm=True, **kwargs):
         super().__init__()
         self.conv = nn.Conv2d(in_channels, out_channels, bias=not use_batch_norm, **kwargs)
@@ -155,16 +154,17 @@ class CNNBlock(nn.Module):
         self.use_batch_norm = use_batch_norm
 
     def forward(self, x):
-        """ Applying convolution """
+        # Applying convolution
         x = self.conv(x)
         # Applying BatchNorm and activation if needed
         if self.use_batch_norm:
             x = self.bn(x)
             return self.activation(x)
-        return x
-        
+        else:
+            return x
+
+# Defining residual block
 class ResidualBlock(nn.Module):
-    """ Defining the residual block """
     def __init__(self, channels, use_residual=True, num_repeats=1):
         super().__init__()
 
@@ -186,8 +186,8 @@ class ResidualBlock(nn.Module):
         self.use_residual = use_residual
         self.num_repeats = num_repeats
 
+    # Defining forward pass
     def forward(self, x):
-        """ Defining the forward pass """
         for layer in self.layers:
             residual = x
             x = layer(x)
@@ -195,8 +195,8 @@ class ResidualBlock(nn.Module):
                 x = x + residual
         return x
 
+# Defining scale prediction class
 class ScalePrediction(nn.Module):
-    """ Defining the scale prediction class """
     def __init__(self, in_channels, num_classes):
         super().__init__()
         # Defining the layers in the network
@@ -208,16 +208,16 @@ class ScalePrediction(nn.Module):
         )
         self.num_classes = num_classes
 
+    # Defining the forward pass and reshaping the output to the desired output
+    # format: (batch_size, 3, grid_size, grid_size, num_classes + 5)
     def forward(self, x):
-        """ Defining the forward pass and reshaping the output to the desired output format
-            format: (batch_size, 3, grid_size, grid_size, num_classes + 5) """
         output = self.pred(x)
         output = output.view(x.size(0), 3, self.num_classes + 5, x.size(2), x.size(3))
         output = output.permute(0, 1, 3, 4, 2)
-        return output    
-
+        return output
+    
+# Class for defining YOLOv3 model
 class YOLOv3(nn.Module):
-    """ Class for defining the YOLOv3 model """
     def __init__(self, in_channels=3, num_classes=20):
         super().__init__()
         self.num_classes = num_classes
@@ -257,8 +257,8 @@ class YOLOv3(nn.Module):
             ScalePrediction(128, num_classes=num_classes)
         ])
 
+    # Forward pass for YOLOv3 with route connections and scale predictions
     def forward(self, x):
-        """ Forward pass for the YOLOv3 with route connections and scale predictions """
         outputs = []
         route_connections = []
 
@@ -276,8 +276,8 @@ class YOLOv3(nn.Module):
                 route_connections.pop()
         return outputs
     
-class YOLOLoss(nn.Module):
-    """ Defining the YOLO loss class """ 
+# Defining YOLO loss class 
+class YOLOLoss(nn.Module): 
     def __init__(self): 
         super().__init__() 
         self.mse = nn.MSELoss() 
@@ -285,8 +285,7 @@ class YOLOLoss(nn.Module):
         self.cross_entropy = nn.CrossEntropyLoss() 
         self.sigmoid = nn.Sigmoid() 
       
-    def forward(self, pred, target, anchors):
-        """ Defining the forward pass for the YOLO loss """ 
+    def forward(self, pred, target, anchors): 
         # Identifying which cells in target have objects  
         # and which have no objects 
         obj = target[..., 0] == 1
@@ -340,8 +339,8 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 load_model = False
 save_model = True
 
+# Function to load checkpoint
 def load_checkpoint(checkpoint_file, model):
-    """ Function to load the checkpoint """
     print("==> Loading checkpoint")
     if not os.path.exists(checkpoint_file):
         raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_file}")
@@ -366,9 +365,9 @@ def yolo(pretrained=False, **kwargs):
         load_checkpoint(checkpoint_file, model)
         print("model loaded")
     return model
- 
+
+# Define the train function to train the model 
 def training_loop(loader, model, optimizer, loss_fn, scaler, scaled_anchors): 
-    """ Defining the training loop """
     # Creating a progress bar 
     progress_bar = tqdm(loader, leave=True) 
   

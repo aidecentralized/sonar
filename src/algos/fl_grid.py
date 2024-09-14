@@ -1,24 +1,13 @@
 import numpy as np
-# Removed unused import: math
+import math
 
 
 class GridTopology:
     def get_selected_ids(self, node_id, config):
-
-        """Selects and returns IDs based on the node_id and configuration.
         grid_size = int(config["num_users"] ** 0.5)
 
-        Args:
-            self: Instance of the class.
-            node_id: The ID of the current node.
-            config: Configuration parameters, including 'num_users'.
-
-        Returns:
-            A list of selected IDs.
-        """
-        grid_size = int(config["num_users"] ** 0.5)
         num_users = config["num_users"]
-        # Additional logic to select and return IDs goes here
+
         selected_ids = []
 
         # Left
@@ -60,6 +49,9 @@ class GridTopology:
             size=min(num_users_to_select, len(selected_ids)),
             replace=False,
         )
+
         selected_ids = list(selected_collabs) + [node_id]
+
+        print("Selected collabs:" + str(selected_ids))
 
         return selected_ids
