@@ -399,3 +399,21 @@ feddatarepr: ConfigType = {
 
 # Assign the current configuration
 current_config: ConfigType = feddatarepr
+
+# List of algorithm configurations
+algo_config_list: List[ConfigType] = [
+    iid_dispfl_clients_new,
+    traditional_fl,
+    fedweight,
+    defkt,
+    fedavg_object_detect,
+    fediso,
+    L2C,
+    fedcentral,
+    fedval,
+    swarm,
+    fedstatic,
+    metaL2C_cifar10,
+    fedass,
+    feddatarepr
+]

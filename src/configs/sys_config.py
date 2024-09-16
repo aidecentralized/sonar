@@ -3,6 +3,8 @@
 # is to simulate different real-world scenarios without changing the algorithm configuration.
 from typing import TypeAlias, Dict, List, Union, Tuple, Optional
 # from utils.config_utils import get_sliding_window_support, get_device_ids
+from .algo_config import algo_config_list
+import random
 
 ConfigType: TypeAlias = Dict[str, Union[
     str, 
@@ -38,6 +40,30 @@ def get_device_ids(num_users: int, gpus_available: List[int]) -> Dict[str, List[
         gpu_id = gpus_available[index]
         device_ids[f"node_{i}"] = [gpu_id]
     return device_ids
+
+def get_malicious_types(num_users: int, malicious_types: List[str], num_malicious: int) -> Dict[str, str]:
+    """
+    Assign whether a node is malicious and, if so, the type of malicious node it is.
+    """
+    malicious_nodes = random.sample(range(1, num_users + 1), num_malicious)
+    malicious_type_assignments = random.choices(malicious_types, k=num_malicious)
+
+    node_types: Dict[str, str] = {}
+    for i in range(num_users + 1):  # +1 for the super-node
+        if i in malicious_nodes:
+            node_types[f"node_{i}"] = malicious_type_assignments[malicious_nodes.index(i)]
+        else:
+            node_types[f"node_{i}"] = "normal"
+    return node_types
+
+def get_algo_configs(num_users: int, algo_configs: List[str]) -> Dict[str, str]:
+    """
+    Randomly assign an algorithm configuration to each node, allowing for repetition.
+    """
+    algo_config_map: Dict[str, str] = {}
+    for i in range(num_users + 1):  # +1 for the super-node
+        algo_config_map[f"node_{i}"] = random.choice(algo_configs)
+    return algo_config_map
 
 def get_domain_support(num_users: int, base: str, domains: List[int]|List[str]) -> Dict[str, str]:
     assert num_users % len(domains) == 0
@@ -77,6 +103,8 @@ DIGIT_FIVE_5 = ["mnist", "usps", "svhn", "mnist_m", "synth_digits"]
 def get_digit_five_support(num_users:int, domains:List[str]=DIGIT_FIVE):
     return get_domain_support(num_users, "", domains)
 
+malicious_types = ["label_flipping", "zero_weights"]
+
 digit_five_dpath = {
     "mnist": "./imgs/mnist",
     "usps": "./imgs/usps",
@@ -99,6 +127,8 @@ mpi_system_config = {
     # The device_ids dictionary depicts the GPUs on which the nodes reside.
     # For a single-GPU environment, the config will look as follows (as it follows a 0-based indexing):
     "device_ids": {"node_0": [0], "node_1": [0],"node_2": [0], "node_3": [0]},
+    "algo": get_algo_configs(num_users=3, algo_configs=algo_config_list),
+    "malicious_types": get_malicious_types(num_users=3, malicious_types = malicious_types, num_malicious=2),
     "samples_per_user": 1000, #TODO: To model scenarios where different users have different number of samples
     # we need to make this a dictionary with user_id as key and number of samples as value
     "train_label_distribution": "iid", # Either "iid", "non_iid" "support" 

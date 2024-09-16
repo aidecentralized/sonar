@@ -31,7 +31,6 @@ from algos.fl_val import FedValClient, FedValServer
 from utils.communication.comm_utils import CommunicationManager
 from utils.config_utils import load_config, process_config
 from utils.log_utils import copy_source_code, check_and_create_path
-from utils.node_map import NodeMap
 
 # Mapping of algorithm names to their corresponding client and server classes so that they can be consumed by the scheduler later on.
 algo_map = {
@@ -62,17 +61,11 @@ def get_node(config: Dict[str, Any], rank: int, comm_utils: CommunicationManager
     algo_name = config["algo"]
     node = algo_map[algo_name][rank > 0](config, comm_utils)
     
-    node_map = NodeMap()
-    malicious_type = node_map.get_malicious_type(node.node_id)
-    node_map.add_node(node.node_id, malicious_type)
-    
     return node
 
 class Scheduler():
     """ Manages the overall orchestration of experiments
     """
-    node_map = NodeMap()
-
     def __init__(self) -> None:
         pass
 
@@ -86,39 +79,27 @@ class Scheduler():
         else:
             self.sys_config["comm"]["host"] = host
             self.sys_config["comm"]["rank"] = None
-        self.algo_config = load_config(algo_config_path)
-        self.merge_configs()
-
-    def merge_configs(self) -> None:
         self.config = {}
         self.config.update(self.sys_config)
+        
+    def merge_configs(self) -> None:
+        self.config.update(self.sys_config)
         self.config.update(self.algo_config)
-
-    def malicious_simulation(self):
-        num_clients = self.config.get("num_users", 0)
-        num_malicious_clients = self.config.get("num_malicious_clients", 0)
-
-        if num_malicious_clients > num_clients:
-            raise ValueError("Number of malicious clients cannot exceed the total number of clients.")
-
-        possible_node_ids = list(range(1, num_clients))
-        malicious_clients = random.sample(possible_node_ids, num_malicious_clients)
-
-        node_map = NodeMap()
-        for node_id in range(num_clients):
-            malicious_type = 1 if node_id in malicious_clients else 0
-            node_map.add_node(node_id, malicious_type)
 
     def initialize(self, copy_souce_code: bool=True) -> None:
         assert self.config is not None, "Config should be set when initializing"
         self.communication = CommunicationManager(self.config)
-
         self.config["comm"]["rank"] = self.communication.get_rank()
         # Base clients modify the seed later on
         seed = self.config["seed"]
         torch.manual_seed(seed) # type: ignore
         random.seed(seed)
         numpy.random.seed(seed)
+
+        node_name = "node_{}".format(self.communication.get_rank())
+
+        self.algo_config = self.sys_config["algo"][node_name]
+        self.merge_configs()
 
         if self.communication.get_rank() == 0:
             if copy_souce_code:
@@ -129,7 +110,6 @@ class Scheduler():
                 os.mkdir(self.config["saved_models"])
                 os.mkdir(self.config["log_path"])
 
-        self.malicious_simulation()
         self.node = get_node(self.config, rank=self.communication.get_rank(), comm_utils=self.communication)
 
     def run_job(self) -> None:
