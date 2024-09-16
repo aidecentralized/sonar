@@ -7,7 +7,7 @@ from utils.stats_utils import from_round_stats_per_round_per_client_to_dict_arra
 
 
 class FedValClient(BaseFedAvgClient):
-    def __init__(self, config) -> None:
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
         super().__init__(config)
 
     def evaluate_model(self, model, dloader, loss_fn, device):
