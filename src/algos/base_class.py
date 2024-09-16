@@ -485,7 +485,7 @@ class BaseFedAvgClient(BaseClient):
     """
     Abstract class for FedAvg based algorithms
     """
-    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager, comm_protocol: type[CommProtocol]) -> None:
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager, comm_protocol: type[CommProtocol] = CommProtocol) -> None:
         super().__init__(config, comm_utils)
         self.config = config
         self.model_save_path = "{}/saved_models/node_{}.pt".format(

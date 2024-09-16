@@ -1,4 +1,5 @@
 from typing import Any, Dict, List
+from utils.communication.comm_utils import CommunicationManager
 import math
 import torch
 import numpy as np
@@ -76,8 +77,8 @@ class ModelEncoder(nn.Module):
 
 class MetaL2CClient(BaseFedAvgClient):
 
-    def __init__(self, config) -> None:
-        super().__init__(config)
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+        super().__init__(config, comm_utils)
 
         self.encoder = ModelEncoder(self.get_model_weights())
         self.encoder_optim = optim.SGD(
@@ -219,8 +220,8 @@ class MetaL2CClient(BaseFedAvgClient):
             round_stats = {}
 
             # Wait on server to start the round
-            avg_alpha = self.comm_utils.wait_for_signal(
-                src=self.server_node, tag=self.tag.ROUND_START
+            avg_alpha = self.comm_utils.receive(
+                self.server_node, tag=self.tag.ROUND_START
             )
             # Load result of AllReduce of previous round
             if avg_alpha is not None:
@@ -234,15 +235,15 @@ class MetaL2CClient(BaseFedAvgClient):
             )
             repr = self.get_representation()
             ks_artifact = self.get_knowledge_sharing_artifact()
-            self.comm_utils.send_signal(
+            self.comm_utils.send(
                 dest=self.server_node,
                 data=(repr, ks_artifact),
                 tag=self.tag.REPR_ADVERT,
             )
 
             # Collect the representations from all other nodes from the server
-            reprs = self.comm_utils.wait_for_signal(
-                src=self.server_node, tag=self.tag.REPRS_SHARE
+            reprs = self.comm_utils.receive(
+                self.server_node, tag=self.tag.REPRS_SHARE
             )
             reprs_dict = {k: rep for k, (rep, _) in enumerate(reprs, 1)}
 
@@ -286,7 +287,7 @@ class MetaL2CClient(BaseFedAvgClient):
 
             # AllReduce is computed by the server
             alpha = self.encoder.state_dict()
-            self.comm_utils.send_signal(
+            self.comm_utils.send(
                 dest=self.server_node,
                 data=(round_stats, alpha),
                 tag=self.tag.ROUND_STATS,
@@ -295,8 +296,8 @@ class MetaL2CClient(BaseFedAvgClient):
 
 class MetaL2CServer(BaseFedAvgServer):
 
-    def __init__(self, config) -> None:
-        super().__init__(config)
+    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+        super().__init__(config, comm_utils)
         # self.set_parameters()
         self.config = config
         self.set_model_parameters(config)
@@ -321,7 +322,7 @@ class MetaL2CServer(BaseFedAvgServer):
 
         # Send signal to all clients to start local training
         for client_node in self.users:
-            self.comm_utils.send_signal(
+            self.comm_utils.send(
                 dest=client_node, data=avg_alpha, tag=self.tag.ROUND_START
             )
         self.log_utils.log_console(
@@ -329,16 +330,14 @@ class MetaL2CServer(BaseFedAvgServer):
         )
 
         # Collect representations (from all clients
-        reprs = self.comm_utils.wait_for_all_clients(self.users, self.tag.REPR_ADVERT)
+        reprs = self.comm_utils.all_gather(self.tag.REPR_ADVERT)
         self.log_utils.log_console("Server received all clients models")
 
         # Broadcast the representations to all clients
         self.send_representations(reprs)
 
         # Collect round stats from all clients
-        round_stats_and_alphas = self.comm_utils.wait_for_all_clients(
-            self.users, self.tag.ROUND_STATS
-        )
+        round_stats_and_alphas = self.comm_utils.all_gather(self.tag.ROUND_STATS)
         alphas = [alpha for _, alpha in round_stats_and_alphas]
         round_stats = [stats for stats, _ in round_stats_and_alphas]
 

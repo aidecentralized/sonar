@@ -13,6 +13,21 @@ ConfigType: TypeAlias = Dict[str, Union[
     Tuple[Union[int, str, float, bool, None], ...], 
     Optional[List[int]]]]
 
+def assign_colab(clients):
+    groups = [1, 2]
+
+    dict = {}
+    client = 1
+    while client <= clients:
+        for size in groups:
+            group = []
+            for i in range(size):
+                group.append(client)
+                client += 1
+            for c in group:
+                dict[c] = group
+    return dict
+
 # Algorithm Configuration
 
 iid_dispfl_clients_new: ConfigType = {
@@ -256,5 +271,130 @@ fedstatic: ConfigType = {
     "exp_keys": [],
 }
 
+metaL2C_cifar10: ConfigType = {
+    "algo": "metal2c",
+    "sharing": "weights", #"updates"
+    "exp_id": "",
+
+    # Client selection
+    "target_users_before_T_0": 0,
+    "target_users_after_T_0": 1,
+    "T_0": 2,
+    "K_0": 0,  # number of peers to keep as neighbors at T_0 (!) inverse that in L2C paper
+    "T_0": 250,   # round after wich only K_0 peers are kept
+    "alpha_lr": 0.1, 
+    "alpha_weight_decay": 0.01,
+
+    "epochs_per_round": 5,
+    "rounds": 3, 
+    "model": "resnet18",
+    "average_last_layer": False,
+    "model_lr": 1e-4, 
+    "batch_size": 64,
+    "optimizer": "sgd",
+    "weight_decay": 5e-4,
+
+    # params for model
+    "position": 0, 
+    "inp_shape": [128, 3, 32, 32],
+
+    "exp_keys": []
+}
+
+fedass: ConfigType = {
+    "algo": "fedass",
+    "exp_id": "",
+    "num_rep": 1,
+    "load_existing": False,
+
+    # Clients selection
+    "strategy": "random_among_assigned", # fixed, direct_expo
+    "assigned_collaborators": assign_colab(3),
+    "target_users_before_T_0": 0, 
+    "target_users_after_T_0": 1,
+    "T_0": 10,   # round after wich only target_users_after_T_0 peers are kept
+    
+    # Learning setup
+    "rounds": 10, 
+    "epochs_per_round": 5,
+    "model": "resnet10",
+    # "pretrained": True,
+    # "train_only_fc": True,
+    "model_lr": 1e-4, 
+    "batch_size": 16,
+    
+    # params for model
+    "position": 0, 
+    "exp_keys": ["strategy"]
+}
+
+feddatarepr: ConfigType = {
+    "algo": "feddatarepr",
+    "exp_id": "try2",
+    "num_rep": 1,
+    "load_existing": False,
+
+    # Similarity params
+    "representation": "train_data", # "test_data", "train_data", "dreams"
+    "num_repr_samples": 16,
+    # "CTLR_KL" Collaborator is Teacher using Learner Representation 
+    # "CTCR_KL" Collaborator is Teacher using Collaborator Representation - Default row
+    # "LTLR_KL" Collaborator is Learner using Learner Representation - Default column
+    # "CTAR_KL" Collaborator is Teacher using ALL Representations (from every other client)
+    # "train_loss_inv" : 1-loss/total
+    # "train_loss_sm": 1-softmax(losses) 
+    "similarity_metric": "train_loss_inv",
+    
+    # Memory params
+    "sim_running_average": 10,
+    "sim_exclude_first": (5, 5), # (first rounds, first rounds after T0)
+    
+    # Clients selection
+    "target_users_before_T_0": 0, #feddatarepr_users-1,
+    "target_users_after_T_0": 1,
+    "T_0": 10,   # round after wich only target_users_after_T_0 peers are kept
+    # highest, lowest, [lower_exp]_sim_sampling, top_x, xth, uniform_rdm
+    "selection_strategy": "uniform_rdm",#"uniform_rdm", 
+    #"eps_greedy": 0.1,
+    # "num_users_top_x" : 1, # Ideally: size community-1
+    # "selection_temperature": 0.5, # For all strategy with temperature
+    
+    
+    # Consensus params
+    # "sim_averaging", "sim_of_sim", "vote_1hop", "affinity_propagation_clustering", "mean_shift_clustering", "club"
+    "consensus":"mean_shift_clustering",# "affinity_propagation_clustering",
+    # "affinity_precomputed": False, # If False similarity row are treated as data points and not as similarity values    
+    # "club_weak_link_strategy": "own_cluster_and_pointing_to", #"own_cluster_and_pointing_to", pointing_to, own_cluster
+    # "vote_consensus": (2,2), #( num_voter, num_vote_per_voter)
+    # "sim_consensus_top_a": 3,
+
+    #"community_type": "dataset", 
+    #"num_communities": len(domainnet_classes),
+    
+    # Learning setup
+    "warmup_epochs": 5,
+    "epochs_per_round": 5,
+    "rounds_per_selection": 1, # Number of rounds before selecting new collaborator(s)
+    "rounds": 10, 
+    "model": "resnet10",
+    "average_last_layer": True,
+    "mask_finetune_last_layer": False,
+    "model_lr": 1e-4, 
+    "batch_size": 16,
+    
+    # Dreams params
+    # "reprs_position": 0,
+    # "inp_shape": [3, 32, 32] , 
+    # "inv_lr": 1e-1, 
+    # "inv_epochs": 500, 
+    # "alpha_preds": 0.1, 
+    # "alpha_tv": 2.5e-3, 
+    # "alpha_l2": 1e-7, 
+    # "alpha_f": 10.0,
+    #"dreams_keep_best": False, # Use reprs with lowest loss 
+    
+    "exp_keys": ["similarity_metric", "selection_strategy", "consensus"]
+}
+
 # Assign the current configuration
-current_config: ConfigType = traditional_fl
+current_config: ConfigType = feddatarepr
