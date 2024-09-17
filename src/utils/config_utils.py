@@ -38,13 +38,13 @@ def process_config(config: Dict[str, Any]) -> Dict[str, Any]:
         unique_id
     )
 
-    # for exp_key in config["exp_keys"]:
-    #     item = jmespath.search(exp_key, config)
-    #     assert item is not None
-    #     key = exp_key.split(".")[-1]
-    #     assert key is not None
-    #     # experiment_name += "_{}_{}".format(key, item)
-    #     experiment_name += "_{}".format(item)
+    for exp_key in config["exp_keys"]:
+        item = jmespath.search(exp_key, config)
+        assert item is not None
+        key = exp_key.split(".")[-1]
+        assert key is not None
+        # experiment_name += "_{}_{}".format(key, item)
+        experiment_name += "_{}".format(item)
 
     experiments_folder = config["dump_dir"]
     results_path = experiments_folder + experiment_name + f"_seed{config['seed']}"
