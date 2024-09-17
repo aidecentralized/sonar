@@ -33,6 +33,7 @@ def process_config(config: Dict[str, Any]) -> Dict[str, Any]:
         dset,
         config["num_users"],
         config["samples_per_user"],
+        # add a hex uid which is unique
     )
 
     # for exp_key in config["exp_keys"]:

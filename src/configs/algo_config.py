@@ -1,4 +1,6 @@
 from typing import TypeAlias, Dict, List, Union, Tuple, Optional
+from .malicious_config import malicious_config_list
+import random
 
 # Correcting the type for configuration to handle all possible types
 ConfigType: TypeAlias = Dict[str, Union[
@@ -28,6 +30,13 @@ def assign_colab(clients):
                 dict[c] = group
     return dict
 
+def get_malicious_types(malicious_config_list: List[ConfigType]) -> Dict[str, str]:
+    """
+    Assign a random malicious type to a single node.
+    """
+    malicious_type = random.choice(malicious_config_list)
+    return malicious_type
+
 # Algorithm Configuration
 
 iid_dispfl_clients_new: ConfigType = {
@@ -56,7 +65,12 @@ traditional_fl: ConfigType = {
     "model_lr": 3e-4,
     "batch_size": 256,
     "exp_keys": [],
-    "num_malicious_clients": 2,
+    "malicious_type": "normal"
+}
+
+malicious_traditional_fl: ConfigType = {
+    **traditional_fl,
+    "malicious_type": get_malicious_types(malicious_config_list),
 }
 
 fedweight_users: int = 3
@@ -397,13 +411,11 @@ feddatarepr: ConfigType = {
     "exp_keys": ["similarity_metric", "selection_strategy", "consensus"]
 }
 
-# Assign the current configuration
-current_config: ConfigType = feddatarepr
-
 # List of algorithm configurations
 algo_config_list: List[ConfigType] = [
     iid_dispfl_clients_new,
     traditional_fl,
+    malicious_traditional_fl,
     fedweight,
     defkt,
     fedavg_object_detect,
@@ -416,4 +428,10 @@ algo_config_list: List[ConfigType] = [
     metaL2C_cifar10,
     fedass,
     feddatarepr
+]
+
+# Temp List of algorithm configurations
+temp_algo_config_list: List[ConfigType] = [
+    traditional_fl,
+    malicious_traditional_fl,
 ]
