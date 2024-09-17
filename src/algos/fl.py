@@ -7,7 +7,6 @@ from utils.log_utils import LogUtils
 from algos.base_class import BaseClient, BaseServer
 import os
 import time
-from utils.node_map import NodeMap
 
 class FedAvgClient(BaseClient):
     def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
@@ -67,19 +66,12 @@ class FedAvgClient(BaseClient):
     def run_protocol(self):
         start_epochs = self.config.get("start_epochs", 0)
         total_epochs = self.config["epochs"]
-        node_map = NodeMap()
 
         for round in range(start_epochs, total_epochs):
             self.local_train(round)
             self.local_test()
             repr = self.get_representation()
             
-            if node_map.is_malicious(self.node_id):
-                state_dict = self.model.state_dict()
-                for key in state_dict:
-                    state_dict[key] = state_dict[key].zero_()
-                repr = state_dict
-
             self.client_log_utils.log_summary("Client {} sending done signal to {}".format(self.node_id, self.server_node))
             self.comm_utils.send(self.server_node, repr)
             self.client_log_utils.log_summary("Client {} waiting to get new model from {}".format(self.node_id, self.server_node))

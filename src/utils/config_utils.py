@@ -1,8 +1,8 @@
 from typing import Any, Dict, List
 import jmespath
 import importlib
-from utils.node_map import NodeMap
 import random
+import uuid
 
 def load_config(config_path: str) -> Dict[str, Any]:
     path = ".".join(config_path.split(".")[1].split("/")[1:])
@@ -29,11 +29,13 @@ def process_config(config: Dict[str, Any]) -> Dict[str, Any]:
     else:
         dset = config["dset"]
 
-    experiment_name = "{}_{}users_".format(
+    unique_id = uuid.uuid4().hex[:8]
+
+    experiment_name = "{}_{}users_{}_{}".format(
         dset,
         config["num_users"],
         config["samples_per_user"],
-        # add a hex uid which is unique
+        unique_id
     )
 
     # for exp_key in config["exp_keys"]:
