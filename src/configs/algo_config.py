@@ -1,4 +1,6 @@
 from typing import TypeAlias, Dict, List, Union, Tuple, Optional
+from .malicious_config import malicious_config_list
+import random
 
 # Correcting the type for configuration to handle all possible types
 ConfigType: TypeAlias = Dict[str, Union[
@@ -28,6 +30,13 @@ def assign_colab(clients):
                 dict[c] = group
     return dict
 
+def get_malicious_types(malicious_config_list: List[ConfigType]) -> Dict[str, str]:
+    """
+    Assign a random malicious type to a single node.
+    """
+    malicious_type = random.choice(malicious_config_list)
+    return malicious_type
+
 # Algorithm Configuration
 
 iid_dispfl_clients_new: ConfigType = {
@@ -42,8 +51,7 @@ iid_dispfl_clients_new: ConfigType = {
     "epochs": 1000,
     "model": "resnet34",
     "model_lr": 3e-4,
-    "batch_size": 128,
-    "exp_keys": []
+    "batch_size": 128
 }
 
 traditional_fl: ConfigType = {
@@ -55,7 +63,12 @@ traditional_fl: ConfigType = {
     "model": "resnet10",
     "model_lr": 3e-4,
     "batch_size": 256,
-    "exp_keys": [],
+    "malicious_type": "normal"
+}
+
+malicious_traditional_fl: ConfigType = {
+    **traditional_fl,
+    "malicious_type": get_malicious_types(malicious_config_list),
 }
 
 fedweight_users: int = 3
@@ -84,7 +97,6 @@ fedweight: ConfigType = {
     "mask_finetune_last_layer": False,
     # params for model
     "position": 0,
-    "exp_keys": [],
 }
 
 defkt: ConfigType = {
@@ -103,7 +115,6 @@ defkt: ConfigType = {
     # params for model
     "position": 0,
     "inp_shape": [128, 3, 32, 32],  # This should be a List[int]
-    "exp_keys": [],
 }
 
 fedavg_object_detect: ConfigType = {
@@ -114,8 +125,7 @@ fedavg_object_detect: ConfigType = {
     "epochs": 10,
     "model": "yolo",
     "model_lr": 1e-5,
-    "batch_size": 8,
-    "exp_keys": [],
+    "batch_size": 8
 }
 
 fediso: ConfigType = {
@@ -131,8 +141,7 @@ fediso: ConfigType = {
     "batch_size": 16,
 
     # params for model
-    "position": 0, 
-    "exp_keys": []
+    "position": 0
 }
 
 L2C_users: int = 3
@@ -162,7 +171,6 @@ L2C: ConfigType = {
     # params for model
     "position": 0, 
     "inp_shape": [128, 3, 32, 32],  # This should be a List[int]
-    "exp_keys": []
 }
 
 fedcentral: ConfigType = {
@@ -181,8 +189,6 @@ fedcentral: ConfigType = {
     # params for model
     "position": 0, 
     "inp_shape": [128, 3, 32, 32],
-    
-    "exp_keys": []
 }
 
 fedval: ConfigType = {
@@ -210,8 +216,7 @@ fedval: ConfigType = {
     "mask_finetune_last_layer": False,
 
     # params for model
-    "position": 0, 
-    "exp_keys": []
+    "position": 0,
 }
 
 swarm_users: int = 3
@@ -240,7 +245,6 @@ swarm: ConfigType = {
     
     # params for model
     "position": 0,
-    "exp_keys": [],
 }
 
 fedstatic: ConfigType = {
@@ -268,7 +272,6 @@ fedstatic: ConfigType = {
 
     # params for model
     "position": 0,
-    "exp_keys": [],
 }
 
 metaL2C_cifar10: ConfigType = {
@@ -296,9 +299,7 @@ metaL2C_cifar10: ConfigType = {
 
     # params for model
     "position": 0, 
-    "inp_shape": [128, 3, 32, 32],
-
-    "exp_keys": []
+    "inp_shape": [128, 3, 32, 32]
 }
 
 fedass: ConfigType = {
@@ -324,8 +325,7 @@ fedass: ConfigType = {
     "batch_size": 16,
     
     # params for model
-    "position": 0, 
-    "exp_keys": ["strategy"]
+    "position": 0
 }
 
 feddatarepr: ConfigType = {
@@ -393,8 +393,33 @@ feddatarepr: ConfigType = {
     # "alpha_f": 10.0,
     #"dreams_keep_best": False, # Use reprs with lowest loss 
     
-    "exp_keys": ["similarity_metric", "selection_strategy", "consensus"]
 }
 
-# Assign the current configuration
-current_config: ConfigType = feddatarepr
+# List of algorithm configurations
+algo_config_list: List[ConfigType] = [
+    iid_dispfl_clients_new,
+    traditional_fl,
+    malicious_traditional_fl,
+    fedweight,
+    defkt,
+    fedavg_object_detect,
+    fediso,
+    L2C,
+    fedcentral,
+    fedval,
+    swarm,
+    fedstatic,
+    metaL2C_cifar10,
+    fedass,
+    feddatarepr
+]
+
+# Malicious List of algorithm configurations
+malicious_algo_config_list: List[ConfigType] = [
+    traditional_fl,
+    malicious_traditional_fl
+]
+
+default_config_list: List[ConfigType] = [
+    traditional_fl
+]
