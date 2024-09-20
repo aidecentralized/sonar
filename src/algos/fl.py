@@ -1,7 +1,7 @@
 from collections import OrderedDict
 import sys
 from typing import Any, Dict, List
-from torch import Tensor
+from torch import Tensor, zeros_like
 from utils.communication.comm_utils import CommunicationManager
 from utils.log_utils import LogUtils
 from algos.base_class import BaseClient, BaseServer
@@ -55,7 +55,20 @@ class FedAvgClient(BaseClient):
         """
         Share the model weights
         """
-        return self.model.state_dict() # type: ignore
+        malicious_type = self.config.get("malicious_type", "normal")
+
+        if malicious_type == "normal":
+            return self.model.state_dict() # type: ignore
+        elif malicious_type == "bad_weights":
+            # Set the weights to zero
+            # TODO: set it to the weight specified in the config
+            return OrderedDict({key: zeros_like(val) for key, val in self.model.state_dict().items()})
+        elif malicious_type == "sign_flip":
+            # Flip the sign of the weights
+            return OrderedDict({key: -1 * val for key, val in self.model.state_dict().items()})
+        else:
+            raise ValueError("Invalid malicious type")
+
 
     def set_representation(self, representation: OrderedDict[str, Tensor]):
         """
@@ -70,6 +83,7 @@ class FedAvgClient(BaseClient):
         for round in range(start_epochs, total_epochs):
             self.local_train(round)
             self.local_test()
+
             repr = self.get_representation()
             
             self.client_log_utils.log_summary("Client {} sending done signal to {}".format(self.node_id, self.server_node))
