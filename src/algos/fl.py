@@ -133,7 +133,10 @@ class FedAvgServer(BaseServer):
         avgd_wts: OrderedDict[str, Tensor] = OrderedDict()
 
         for key in model_wts[0].keys():
-            avgd_wts[key] = sum(coeff * m[key] for m in model_wts) # type: ignore
+            # move all the weights to the same device
+            # for m in model_wts:
+            #     m[key] = m[key].to(self.device)
+            avgd_wts[key] = sum(coeff * m[key].to(self.device) for m in model_wts) # type: ignore
 
         # Move to GPU only after averaging
         for key in avgd_wts.keys():

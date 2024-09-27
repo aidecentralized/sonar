@@ -41,7 +41,7 @@ def get_device_ids(num_users: int, gpus_available: List[int]) -> Dict[str, List[
         device_ids[f"node_{i}"] = [gpu_id]
     return device_ids
 
-def get_algo_configs(num_users: int, algo_configs: List[str]) -> Dict[str, str]:
+def get_algo_configs(num_users: int, algo_configs: List[str], num_malicious: int=0) -> Dict[str, str]:
     """
     Randomly assign an algorithm configuration to each node, allowing for repetition.
     """
@@ -49,7 +49,12 @@ def get_algo_configs(num_users: int, algo_configs: List[str]) -> Dict[str, str]:
     for i in range(num_users + 1):  # +1 for the super-node
         # This is commented since we need traditional_fl right now
         # but ideally every node will have different algo
-        algo_config_map[f"node_{i}"] = random.choice(algo_configs)
+        # algo_config_map[f"node_{i}"] = random.choice(algo_configs)
+        # As a proof of concept, we're only going to use the traditional fl algo
+        if i < (num_users + 1 - num_malicious):
+            algo_config_map[f"node_{i}"] = algo_configs[0]
+        else:
+            algo_config_map[f"node_{i}"] = algo_configs[1]
         # algo_config_map[f"node_{i}"] = algo_configs[2]
     return algo_config_map
 
@@ -103,7 +108,7 @@ mpi_system_config = {
     "comm": {
         "type": "MPI"
     },
-    "num_users": 3,
+    "num_users": 6,
     # "experiment_path": "./experiments/",
     "dset": "cifar10",
     "dump_dir": "./expt_dump/",
@@ -112,10 +117,10 @@ mpi_system_config = {
     # node_0 is a server currently
     # The device_ids dictionary depicts the GPUs on which the nodes reside.
     # For a single-GPU environment, the config will look as follows (as it follows a 0-based indexing):
-    "device_ids": {"node_0": [0], "node_1": [0],"node_2": [0], "node_3": [0]},
+    "device_ids": get_device_ids(num_users=6, gpus_available=[1, 2]),
     # use this when the list needs to be imported from the algo_config
     # "algo": get_algo_configs(num_users=3, algo_configs=algo_configs_list),
-    "algo": get_algo_configs(num_users=3, algo_configs=malicious_algo_config_list),
+    "algo": get_algo_configs(num_users=6, algo_configs=malicious_algo_config_list, num_malicious=1),
     "samples_per_user": 1000, #TODO: To model scenarios where different users have different number of samples
     # we need to make this a dictionary with user_id as key and number of samples as value
     "train_label_distribution": "iid", # Either "iid", "non_iid" "support" 

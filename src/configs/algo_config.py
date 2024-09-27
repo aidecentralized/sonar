@@ -57,18 +57,18 @@ iid_dispfl_clients_new: ConfigType = {
 traditional_fl: ConfigType = {
     "algo": "fedavg",
     "exp_id": 10,
-    "exp_type": "iid_clients_federated",
+    "exp_type": "test_malicious_zero_weights6",
     # Learning setup
     "epochs": 1000,
     "model": "resnet10",
     "model_lr": 3e-4,
-    "batch_size": 256,
+    "batch_size": 128,
     "malicious_type": "normal"
 }
 
 malicious_traditional_fl: ConfigType = {
     **traditional_fl,
-    "malicious_type": get_malicious_types(malicious_config_list),
+    "malicious_type": "bad_weights",
 }
 
 fedweight_users: int = 3
