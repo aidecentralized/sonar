@@ -8,24 +8,28 @@
       
       
       
-        <link rel="canonical" href="https://aidecentralized.github.io/sonar/logging/">
+        <link rel="canonical" href="https://aidecentralized.github.io/sonar/getting-started/config/">
       
       
+        <link rel="prev" href="../">
       
       
-      <link rel="icon" href="../assets/images/favicon.png">
+        <link rel="next" href="../customize/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.28">
     
     
       
-        <title>Logging Documentation - SONAR - Self-Organizing Network of Aggregated Representations</title>
+        <title>Config File - SONAR - Self-Organizing Network of Aggregated Representations</title>
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.6543a935.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.6543a935.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
       
       
 
@@ -44,11 +48,11 @@
       
     
     
-      <link rel="stylesheet" href="../docs/stylesheets/msdl.v2.css">
+      <link rel="stylesheet" href="../../docs/stylesheets/msdl.v2.css">
     
-      <link rel="stylesheet" href="../docs/stylesheets/theme.v3.css">
+      <link rel="stylesheet" href="../../docs/stylesheets/theme.v3.css">
     
-    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -74,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#logging-documentation" class="md-skip">
+        <a href="#configuration-file-overview" class="md-skip">
           Skip to content
         </a>
       
@@ -88,7 +92,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="SONAR - Self-Organizing Network of Aggregated Representations" class="md-header__button md-logo" aria-label="SONAR - Self-Organizing Network of Aggregated Representations" data-md-component="logo">
+    <a href="../.." title="SONAR - Self-Organizing Network of Aggregated Representations" class="md-header__button md-logo" aria-label="SONAR - Self-Organizing Network of Aggregated Representations" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -108,7 +112,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Logging Documentation
+              Config File
             
           </span>
         </div>
@@ -219,7 +223,7 @@
     
     
       <li class="md-tabs__item">
-        <a href=".." class="md-tabs__link">
+        <a href="../.." class="md-tabs__link">
           
   
     
@@ -235,11 +239,13 @@
         
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../getting-started/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
           
   
     
@@ -259,7 +265,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../collabench/" class="md-tabs__link">
+        <a href="../../collabench/" class="md-tabs__link">
           
   
     
@@ -279,7 +285,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../algorithms/" class="md-tabs__link">
+        <a href="../../algorithms/" class="md-tabs__link">
           
   
     
@@ -299,7 +305,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../tasks/" class="md-tabs__link">
+        <a href="../../tasks/" class="md-tabs__link">
           
   
     
@@ -319,7 +325,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../datasets/main/" class="md-tabs__link">
+        <a href="../../datasets/main/" class="md-tabs__link">
           
   
     
@@ -339,7 +345,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="logging/" class="md-tabs__link">
+        <a href="../../logging/logging/" class="md-tabs__link">
           
   
     
@@ -359,7 +365,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../development/" class="md-tabs__link">
+        <a href="../../development/" class="md-tabs__link">
           
   
     
@@ -394,7 +400,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="SONAR - Self-Organizing Network of Aggregated Representations" class="md-nav__button md-logo" aria-label="SONAR - Self-Organizing Network of Aggregated Representations" data-md-component="logo">
+    <a href="../.." title="SONAR - Self-Organizing Network of Aggregated Representations" class="md-nav__button md-logo" aria-label="SONAR - Self-Organizing Network of Aggregated Representations" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -448,7 +454,7 @@
         
   
   
-    <a href=".." class="md-nav__link">
+    <a href="../.." class="md-nav__link">
       
   
   <span class="md-ellipsis">
@@ -471,51 +477,227 @@
       
   
   
+    
   
   
-    
-    
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-      
-      
-        
-      
-    
-    
-      
-        
-        
-      
-    
-    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
-      
-        
   
-  
-    <a href="../getting-started/" class="md-nav__link">
+    
+    
       
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
   
   <span class="md-ellipsis">
     Getting Started
   </span>
   
 
-      
-        <span class="md-nav__icon md-icon"></span>
-      
-    </a>
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Getting Started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Main
+  </span>
   
 
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Config File
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Config File
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#importance-of-the-configuration-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      Importance of the Configuration File
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Importance of the Configuration File">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-this-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why This Setup?
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#purpose-of-configuration-separation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Purpose of Configuration Separation
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-use-case" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Use Case
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../customize/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Customizability
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../grpc/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Using GRPC
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
       
     </li>
   
@@ -552,7 +734,7 @@
         
   
   
-    <a href="../collabench/" class="md-nav__link">
+    <a href="../../collabench/" class="md-nav__link">
       
   
   <span class="md-ellipsis">
@@ -600,7 +782,7 @@
         
   
   
-    <a href="../algorithms/" class="md-nav__link">
+    <a href="../../algorithms/" class="md-nav__link">
       
   
   <span class="md-ellipsis">
@@ -654,7 +836,7 @@
         
   
   
-    <a href="../tasks/" class="md-nav__link">
+    <a href="../../tasks/" class="md-nav__link">
       
   
   <span class="md-ellipsis">
@@ -704,7 +886,7 @@
         
   
   
-    <a href="../datasets/main/" class="md-nav__link">
+    <a href="../../datasets/main/" class="md-nav__link">
       
   
   <span class="md-ellipsis">
@@ -754,7 +936,7 @@
         
   
   
-    <a href="logging/" class="md-nav__link">
+    <a href="../../logging/logging/" class="md-nav__link">
       
   
   <span class="md-ellipsis">
@@ -806,7 +988,7 @@
         
   
   
-    <a href="../development/" class="md-nav__link">
+    <a href="../../development/" class="md-nav__link">
       
   
   <span class="md-ellipsis">
@@ -852,27 +1034,42 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
+  <a href="#importance-of-the-configuration-file" class="md-nav__link">
     <span class="md-ellipsis">
-      Overview
+      Importance of the Configuration File
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Importance of the Configuration File">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-this-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why This Setup?
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#purpose-of-configuration-separation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Purpose of Configuration Separation
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#logging-types" class="md-nav__link">
+  <a href="#example-use-case" class="md-nav__link">
     <span class="md-ellipsis">
-      Logging Types
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#log-sources" class="md-nav__link">
-    <span class="md-ellipsis">
-      Log Sources
+      Example Use Case
     </span>
   </a>
   
@@ -896,57 +1093,25 @@
   
 
 
-<h1 id="logging-documentation">Logging Documentation</h1>
-<p>This document provides a detailed overview of what is being logged in the Sonar setup. </p>
-<!-- ## Table of Contents
-
-1. [Overview](#overview)
-2. [Logging Types](#logging-types)
-3. [Log Sources](#log-sources)
-4. [Log Details](#log-details) -->
-
-<h2 id="overview">Overview</h2>
-<p>This documentation aims to provide transparency on the logging mechanisms implemented in the Sonar project. It includes information on the types of data being logged, their sources, formats, and purposes.</p>
-<h2 id="logging-types">Logging Types</h2>
-<ul>
-<li><strong>DEBUG:</strong> Detailed information, typically of interest only when diagnosing problems.</li>
-<li><strong>INFO:</strong> Confirmation that things are working as expected.</li>
-<li><strong>Tensorboard logging</strong>: Logging specific metrics, images, and other data to TensorBoard for visualization and analysis.<ul>
-<li>Console Logging: Logs a message to the console.</li>
-<li>Scalar Logging: Logs scalar values to TensorBoard for tracking metrics(loss, accuracy) over time.</li>
-<li>Image Logging: Logs images to both a file and TensorBoard for visual analysis.</li>
-</ul>
+<h1 id="configuration-file-overview">Configuration File Overview</h1>
+<h2 id="importance-of-the-configuration-file">Importance of the Configuration File</h2>
+<p>The configuration file is the cornerstone of running our codebase, providing the necessary settings to ensure smooth execution. It combines a <strong>system configuration</strong> with an <strong>algorithm configuration</strong> to manage both infrastructure and algorithmic parameters. This separation is crucial for maintaining flexibility and clarity, allowing different aspects of the system to be configured independently.</p>
+<h3 id="why-this-setup">Why This Setup?</h3>
+<p>We intentionally chose to maintain the configuration as a Python file. The Python-based configuration allows for rapid automation and adaptation, enabling researchers to quickly iterate and customize configurations as needed. However, this flexibility comes with responsibility. It is essential to carefully manage the configuration, as it is easy to overlook critical settings such as device IDs or the number of clients. Always double-check your configuration file before running the code to avoid unintended behavior.</p>
+<h2 id="purpose-of-configuration-separation">Purpose of Configuration Separation</h2>
+<p>The configuration files are split into two main parts:</p>
+<ol>
+<li>
+<p><strong>System Configuration (<code>system_config</code>)</strong>: Manages the infrastructure-related aspects, such as client configurations, GPU device allocation, and data splits. This ensures that researchers focused on algorithm development can work without needing to adjust system-level details.</p>
 </li>
-</ul>
-<p>The tensorboard logs can be viewed by running tensorboard as follows: <code>tensorboard --logdir=expt_dump/ --host 0.0.0.0</code>. Assuming <code>expt_dump</code> is the folder where the experiment logs are stored.</p>
-<h2 id="log-sources">Log Sources</h2>
-<table>
-<thead>
-<tr>
-<th>Component/Module</th>
-<th>Data Logged</th>
-<th>Log Level</th>
-<th>Format</th>
-<th>Storage Location</th>
-<th>Frequency/Trigger</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Model Training (FL)</td>
-<td>Aggregated model metrics, client updates</td>
-<td>INFO, DEBUG</td>
-<td>Plain text</td>
-<td><code>./expt_dump/&lt;experiment_name&gt;/logs/client_&lt;client_index&gt;/summary.txt</code></td>
-<td>On every FL round</td>
-</tr>
-</tbody>
-</table>
-<!-- ## Log Details
-
-### Federated Learning
-Logs aggregated model metrics (loss and accuracy) and updates from clients to track the overall progress and performance of the federated learning process. Additionally, logs include training loss and accuracy from individual clients. Also logs communication events between the server and clients to monitor interactions and data exchange.
- -->
+<li>
+<p><strong>Algorithm Configuration (<code>algo_config</code>)</strong>: Contains settings specific to the algorithm, such as hyperparameters, learning rates, and model architecture. This configuration is designed to be independent of the system configuration, allowing for modularity and easier experimentation.</p>
+</li>
+</ol>
+<p>These two configurations are combined at runtime in the <code>scheduler.py</code> file, which orchestrates the execution of the code based on the provided settings.</p>
+<h2 id="example-use-case">Example Use Case</h2>
+<p>Consider a scenario where you need to allocate specific GPUs to different clients and define unique data splits for each. These details would be managed in the <code>system_config</code>, ensuring that they are isolated from the algorithm's logic. If a researcher wants to test a new optimization algorithm, they can do so by modifying the <code>algo_config</code> without worrying about the underlying system setup.</p>
+<p>This separation simplifies collaboration and experimentation, allowing different team members to focus on their respective domains without interfering with each other's work.</p>
 
 
 
@@ -1006,10 +1171,10 @@ Logs aggregated model metrics (loss and accuracy) and updates from clients to tr
     </div>
     
     
-    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.instant", "navigation.instant.prefetch", "navigation.path", "navigation.indexes", "navigation.top", "navigation.tabs", "navigation.sections", "navigation.tracking", "navigation.prune", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.code.select", "content.code.annotate"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.instant.prefetch", "navigation.path", "navigation.indexes", "navigation.top", "navigation.tabs", "navigation.sections", "navigation.tracking", "navigation.prune", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.code.select", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.fe8b6f2b.min.js"></script>
+      <script src="../../assets/javascripts/bundle.fe8b6f2b.min.js"></script>
       
     
   </body>

@@ -8,9 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://aidecentralized.github.io/sonar/getting-started/getting-started/">
+        <link rel="canonical" href="https://aidecentralized.github.io/sonar/getting-started/grpc/">
       
       
+        <link rel="prev" href="../customize/">
+      
+      
+        <link rel="next" href="../../collabench/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -18,7 +22,7 @@
     
     
       
-        <title>Getting Started - SONAR - Self-Organizing Network of Aggregated Representations</title>
+        <title>Using GRPC - SONAR - Self-Organizing Network of Aggregated Representations</title>
       
     
     
@@ -74,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#getting-started" class="md-skip">
+        <a href="#multi-agent-collaboration-with-grpc" class="md-skip">
           Skip to content
         </a>
       
@@ -108,7 +112,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Getting Started
+              Using GRPC
             
           </span>
         </div>
@@ -235,11 +239,13 @@
         
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../getting-started.md" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
           
   
     
@@ -359,7 +365,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../issues/issues.md" class="md-tabs__link">
+        <a href="../../development/" class="md-tabs__link">
           
   
     
@@ -471,45 +477,221 @@
       
   
   
+    
   
   
-    
-    
-      
-        
-      
-    
-    
-      
-      
-        
-      
-    
-    
-      
-        
-        
-      
-    
-    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
-      
-        
   
-  
-    <a href="../../getting-started.md" class="md-nav__link">
+    
+    
       
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
   
   <span class="md-ellipsis">
     Getting Started
   </span>
   
 
-      
-        <span class="md-nav__icon md-icon"></span>
-      
-    </a>
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Getting Started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Main
+  </span>
   
 
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../config/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Config File
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../customize/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Customizability
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Using GRPC
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Using GRPC
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-the-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      Running the code
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#protocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      Protocol
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#faq" class="md-nav__link">
+    <span class="md-ellipsis">
+      FAQ
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
       
     </li>
   
@@ -523,6 +705,8 @@
   
     
     
+      
+        
       
         
       
@@ -798,7 +982,7 @@
         
   
   
-    <a href="../../issues/issues.md" class="md-nav__link">
+    <a href="../../development/" class="md-nav__link">
       
   
   <span class="md-ellipsis">
@@ -844,9 +1028,9 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#installation" class="md-nav__link">
+  <a href="#overview" class="md-nav__link">
     <span class="md-ellipsis">
-      Installation
+      Overview
     </span>
   </a>
   
@@ -862,18 +1046,18 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#config-file" class="md-nav__link">
+  <a href="#protocol" class="md-nav__link">
     <span class="md-ellipsis">
-      Config file
+      Protocol
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#reproducability" class="md-nav__link">
+  <a href="#faq" class="md-nav__link">
     <span class="md-ellipsis">
-      Reproducability
+      FAQ
     </span>
   </a>
   
@@ -897,24 +1081,52 @@
   
 
 
-<h1 id="getting-started">Getting Started</h1>
+<h1 id="multi-agent-collaboration-with-grpc">Multi-agent collaboration with gRPC</h1>
+<p>In this tutorial, we will discuss how to use gRPC for training models across multiple machines. If you have not already read the <a href="./getting-started.md">Getting Started</a> guide, we recommend you do so before proceeding.</p>
 <blockquote>
-<p>If you would like to contribute to improving this project, please refer to our issues page where we have our open <a href="../issues/">issues</a> in the side navigation bar.</p>
+<p><strong><em>NOTE:</em></strong>  If you are running experiments on a single machine right now then MPI is easier to set up and get started.</p>
 </blockquote>
-<h2 id="installation">Installation</h2>
-<ul>
-<li><code>git clone</code> the repository</li>
-<li><code>pip install -r requirements.txt</code></li>
-</ul>
+<h2 id="overview">Overview</h2>
+<p>The main advantage of our abstract communication layer is that the same code runs regardless of the fact you are using MPI or gRPC underneath. As long as the communication layer is implemented correctly, the rest of the code remains the same. This is a huge advantage for the framework as it allows us to switch between different communication layers without changing the code.</p>
 <h2 id="running-the-code">Running the code</h2>
-<p>Let's say you want to run the model training of 3 nodes on a machine. That means there will be 4 nodes in total because there is 1 more node in addition to the clients --- server.
-The whole point of this project is to eventually transition to a distributed system where each node can be a separate machine and a server is simply another node. But for now, this is how things are done.
-You can do execute the 3 node simulation by running the following command:
-<code>mpirun -np 4 -host localhost:11 python main.py</code></p>
-<h2 id="config-file">Config file</h2>
-<p>The config file is the most important file when running the code. The current set up combines a system config with an algorithm config file. Always be sure of what config you are using. We have intentionally kept configuration files as a python file which is typically a big red flag in software engineering. But we did this because it enables plenty of quick automations and flexibility. Be very careful with the config file because it is easy to overlook some of the configurations such as device ids, number of clients etc.</p>
-<h2 id="reproducability">Reproducability</h2>
-<p>One of the awesome things about this project is that whenever you run an experiment, all the source code, logs, and model weights are saved in a separate folder. This is done to ensure that you can reproduce the results by looking at the code that was responsible for the results. The naming of the folder is based on the keys inside the config file. That also means you can not run the same experiment again without renaming/deleting the previous experimental run. The code automatically asks you to press <code>r</code> to remove and create a new folder. Be careful you are not overwriting someone else's results.</p>
+<p>Let's say you want to run the decentralized training with 80 users on 4 machines. Our implementation currently requires a coordinating node to manage the orchestration. Therefore, there will be 81 nodes in total. Make sure <code>sys_config.py</code> has <code>num_users: 80</code> in the config. You should run the following command on all 4 machines:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>main_grpc.py<span class="w"> </span>-n<span class="w"> </span><span class="m">20</span><span class="w"> </span>-host<span class="w"> </span>randomhost42.mit.edu
+</code></pre></div>
+<p>On <strong>one</strong> of the machines that you want to use as a coordinator node (let's say it is <code>randomhost43.mit.edu</code>), change the <code>peer_ids</code> with the hostname and the port you want to run the coordinator node and then run the following command:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>python<span class="w"> </span>main.py<span class="w"> </span>-super<span class="w"> </span><span class="nb">true</span>
+</code></pre></div>
+<blockquote>
+<p><strong><em>NOTE:</em></strong>  Most of the algorithms right now do not use the new communication protocol, hence you can only use the old MPI version with them. We are working on updating the algorithms to use the new communication protocol.</p>
+</blockquote>
+<h2 id="protocol">Protocol</h2>
+<ol>
+<li>Each node registers to the coordinating node and receives a unique rank.</li>
+<li>Each node then tries to find available ports to start a listener.</li>
+<li>Once a quorum has been reached, the coordinating node sends a message to all nodes with the list of all nodes and their ports.</li>
+<li>Each node then starts local training.</li>
+</ol>
+<h2 id="faq">FAQ</h2>
+<ol>
+<li><strong>Is it really decentralized if it requires a coordinating node?</strong><ul>
+<li>Yes, it is. The coordinating node is required for all nodes to discover each other. In fact, going forward, we plan to provide support for several nodes to act as coordinating nodes. This will make the system more robust and fault-tolerant. We are looking for contributors to implement a distributed hash table (DHT) to make our system more like BitTorrent. So, if you have a knack for distributed systems, please reach out to us.</li>
+</ul>
+</li>
+<li><strong>Why do I need main_grpc.py and main.py?</strong><ul>
+<li>The main.py file is the actual file. However, if you are running lots of nodes, it is easier to run the main_grpc.py file which will automatically run the main.py file <code>n</code> times. This is just a convenience script.</li>
+</ul>
+</li>
+<li><strong>How do I know if the nodes are communicating?</strong><ul>
+<li>You can check the console logs of the coordinating node. It will print out the messages it is sending and receiving. You can also check the logs of the nodes to see their local training status.</li>
+</ul>
+</li>
+<li><strong>My training is stuck or failed. How do I stop and restart?</strong><ul>
+<li>GRPC simulation starts a lot of threads and even if one of them fail right now then you will have to kill all of them and start all over. So, here is a command to get the pid of all the threads and kill them all at once:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">for</span><span class="w"> </span>pid<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">$(</span>ps<span class="w"> </span>aux<span class="p">|</span>grep<span class="w"> </span><span class="s1">&#39;python main.py&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>cut<span class="w"> </span>-b<span class="w"> </span><span class="m">10</span>-16<span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="nb">kill</span><span class="w"> </span>-9<span class="w"> </span><span class="nv">$pid</span><span class="p">;</span><span class="w"> </span><span class="k">done</span>
+</code></pre></div>
+Make sure you remove the experiment folder before starting again.</li>
+</ul>
+</li>
+</ol>
 
 
 

@@ -16,6 +16,21 @@
          <changefreq>daily</changefreq>
     </url>
     <url>
+         <loc>https://aidecentralized.github.io/sonar/development/</loc>
+         <lastmod>2024-09-28</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://aidecentralized.github.io/sonar/feature/</loc>
+         <lastmod>2024-09-28</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://aidecentralized.github.io/sonar/getting-started/</loc>
+         <lastmod>2024-09-28</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
          <loc>https://aidecentralized.github.io/sonar/logging/</loc>
          <lastmod>2024-09-28</lastmod>
          <changefreq>daily</changefreq>
@@ -36,22 +51,27 @@
          <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://aidecentralized.github.io/sonar/getting-started/getting-started/</loc>
+         <loc>https://aidecentralized.github.io/sonar/development/documentation/</loc>
          <lastmod>2024-09-28</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://aidecentralized.github.io/sonar/getting-started/issues/</loc>
+         <loc>https://aidecentralized.github.io/sonar/development/sonar/</loc>
          <lastmod>2024-09-28</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://aidecentralized.github.io/sonar/getting-started/issues/documentation/</loc>
+         <loc>https://aidecentralized.github.io/sonar/getting-started/config/</loc>
          <lastmod>2024-09-28</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://aidecentralized.github.io/sonar/getting-started/issues/sonar/</loc>
+         <loc>https://aidecentralized.github.io/sonar/getting-started/customize/</loc>
+         <lastmod>2024-09-28</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://aidecentralized.github.io/sonar/getting-started/grpc/</loc>
          <lastmod>2024-09-28</lastmod>
          <changefreq>daily</changefreq>
     </url>
