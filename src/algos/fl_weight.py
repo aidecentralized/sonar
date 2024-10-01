@@ -9,7 +9,9 @@ from utils.stats_utils import from_round_stats_per_round_per_client_to_dict_arra
 
 
 class FedWeightClient(BaseFedAvgClient):
-    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+    def __init__(
+        self, config: Dict[str, Any], comm_utils: CommunicationManager
+    ) -> None:
         super().__init__(config, comm_utils)
         self.config = config
 
@@ -94,9 +96,7 @@ class FedWeightClient(BaseFedAvgClient):
         selected_users.append(self.node_id)
 
         collaborator_dict = {
-            client_id: (
-                1 / len(selected_users) if client_id in selected_users else 0
-            )
+            client_id: (1 / len(selected_users) if client_id in selected_users else 0)
             for client_id in sim_dict.keys()
         }
 
@@ -117,9 +117,7 @@ class FedWeightClient(BaseFedAvgClient):
 
             self.round_stats = {}
 
-            self.comm_utils.receive(
-                node_ids=self.server_node, tag=self.tag.ROUND_START
-            )
+            self.comm_utils.receive(node_ids=self.server_node, tag=self.tag.ROUND_START)
             repr = self.get_representation()
 
             warmup = self.config["warmup_epochs"]
@@ -177,7 +175,9 @@ class FedWeightClient(BaseFedAvgClient):
 
 
 class FedWeightServer(BaseFedAvgServer):
-    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+    def __init__(
+        self, config: Dict[str, Any], comm_utils: CommunicationManager
+    ) -> None:
         super().__init__(config, comm_utils)
         # self.set_parameters()
         self.config = config
@@ -191,9 +191,7 @@ class FedWeightServer(BaseFedAvgServer):
 
         # Send signal to all users to start local training
         for client_node in self.users:
-            self.comm_utils.send(
-                dest=client_node, data=None, tag=self.tag.ROUND_START
-            )
+            self.comm_utils.send(dest=client_node, data=None, tag=self.tag.ROUND_START)
         self.log_utils.log_console(
             "Server waiting for all users to finish local training"
         )

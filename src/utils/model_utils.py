@@ -13,26 +13,14 @@ import resnet_in
 import yolo
 
 
-class ModelUtils():
+class ModelUtils:
     def __init__(self, device: torch.device) -> None:
         self.device = device
         self.dset = None
 
         self.models_layers_idx = {
-            "resnet10": {
-                "l1": 17,
-                "l2": 35,
-                "l3": 53,
-                "l4": 71,
-                "fc": 73
-            },
-            "resnet18": {
-                "l1": 29,
-                "l2": 59,
-                "l3": 89,
-                "l4": 119,
-                "fc": 121
-            }
+            "resnet10": {"l1": 17, "l2": 35, "l3": 53, "l4": 71, "fc": 73},
+            "resnet18": {"l1": 29, "l2": 59, "l3": 89, "l4": 119, "fc": 121},
         }
 
     def get_model(
@@ -41,8 +29,8 @@ class ModelUtils():
         dset: str,
         device: torch.device,
         device_ids: List[int],
-        pretrained:bool=False,
-        **kwargs: Any
+        pretrained: bool = False,
+        **kwargs: Any,
     ) -> nn.Module:
         self.dset = dset
         # TODO: add support for loading checkpointed models
@@ -52,14 +40,23 @@ class ModelUtils():
                 raise ValueError("Pretrained model not available for resnet10")
             model = resnet.resnet10(**kwargs)
         elif model_name == "resnet18":
-            model = resnet_in.resnet18(
-                pretrained=True, **kwargs) if pretrained else resnet.resnet18(**kwargs)
+            model = (
+                resnet_in.resnet18(pretrained=True, **kwargs)
+                if pretrained
+                else resnet.resnet18(**kwargs)
+            )
         elif model_name == "resnet34":
-            model = resnet_in.resnet34(
-                pretrained=True, **kwargs) if pretrained else resnet.resnet34(**kwargs)
+            model = (
+                resnet_in.resnet34(pretrained=True, **kwargs)
+                if pretrained
+                else resnet.resnet34(**kwargs)
+            )
         elif model_name == "resnet50":
-            model = resnet_in.resnet50(
-                pretrained=True, **kwargs) if pretrained else resnet.resnet50(**kwargs)
+            model = (
+                resnet_in.resnet50(pretrained=True, **kwargs)
+                if pretrained
+                else resnet.resnet50(**kwargs)
+            )
         elif model_name == "yolo":
             model = yolo.yolo(pretrained=False)
         else:
@@ -67,98 +64,95 @@ class ModelUtils():
         model = model.to(device)
         return model
 
-    def train(self,
-    model: nn.Module,
-    optim: torch.optim.Optimizer,
-    dloader: DataLoader[Any],
-    loss_fn: Any,
-    device: torch.device,
-    test_loader: DataLoader[Any]|None=None,
-    **kwargs: Any) -> Tuple[float,
-     float]:
-        """TODO: generate docstring
-        """
+    def train(
+        self,
+        model: nn.Module,
+        optim: torch.optim.Optimizer,
+        dloader: DataLoader[Any],
+        loss_fn: Any,
+        device: torch.device,
+        test_loader: DataLoader[Any] | None = None,
+        **kwargs: Any,
+    ) -> Tuple[float, float]:
+        """TODO: generate docstring"""
         print("started training with dset ", self.dset)
         model.train()
 
         if self.dset == "pascal":
             mean_loss, acc = self.train_object_detection(
-                model,
-                optim,
-                dloader,
-                loss_fn,
-                device,
-                test_loader=None,
-                **kwargs
+                model, optim, dloader, loss_fn, device, test_loader=None, **kwargs
             )
             return mean_loss, acc
 
         else:
             train_loss, acc = self.train_classification(
-                model,
-                optim,
-                dloader,
-                loss_fn,
-                device,
-                test_loader=None,
-                **kwargs
+                model, optim, dloader, loss_fn, device, test_loader=None, **kwargs
             )
             return train_loss, acc
-    
-    def train_object_detection(self,
-    model: nn.Module,
-    optim,
-    dloader,
-    loss_fn,
-    device: torch.device,
-    test_loader=None,
-    **kwargs) -> Tuple[float,
-     float]:
+
+    def train_object_detection(
+        self,
+        model: nn.Module,
+        optim,
+        dloader,
+        loss_fn,
+        device: torch.device,
+        test_loader=None,
+        **kwargs,
+    ) -> Tuple[float, float]:
         losses = []  # Initialize the list to store the losses
 
         for batch_idx, (data, target) in enumerate(dloader):
             data = data.to(device)
-            y0, y1, y2 = ( 
-                target[0].to(device), 
-                target[1].to(device), 
-                target[2].to(device), 
+            y0, y1, y2 = (
+                target[0].to(device),
+                target[1].to(device),
+                target[2].to(device),
             )
 
             image_size = kwargs.get("image_size", 416)
             # Grid cell sizes
             s = [image_size // 32, image_size // 16, image_size // 8]
-            
-            # Calculating the loss at each scale 
-            scaled_anchors = kwargs.get("scaled_anchors", ( 
-                torch.tensor([ [(0.28, 0.22), (0.38, 0.48), (0.9, 0.78)],
-                            [(0.07, 0.15), (0.15, 0.11), (0.14, 0.29)],
-                            [(0.02, 0.03), (0.04, 0.07), (0.08, 0.06)],]) * 
-                torch.tensor(s).unsqueeze(1).unsqueeze(1).repeat(1,3,2)).to(device) )
-            
-            with torch.cuda.amp.autocast(enabled=False):
-                # Getting the model predictions 
-                outputs = model(data) 
-            
-                loss = ( 
-                    loss_fn(outputs[0], y0, scaled_anchors[0]) 
-                    + loss_fn(outputs[1], y1, scaled_anchors[1]) 
-                    + loss_fn(outputs[2], y2, scaled_anchors[2]) 
-                ) 
 
-            # Add the loss to the list 
-            losses.append(loss.item()) 
-            
-            # Reset gradients 
-            optim.zero_grad() 
+            # Calculating the loss at each scale
+            scaled_anchors = kwargs.get(
+                "scaled_anchors",
+                (
+                    torch.tensor(
+                        [
+                            [(0.28, 0.22), (0.38, 0.48), (0.9, 0.78)],
+                            [(0.07, 0.15), (0.15, 0.11), (0.14, 0.29)],
+                            [(0.02, 0.03), (0.04, 0.07), (0.08, 0.06)],
+                        ]
+                    )
+                    * torch.tensor(s).unsqueeze(1).unsqueeze(1).repeat(1, 3, 2)
+                ).to(device),
+            )
+
+            with torch.cuda.amp.autocast(enabled=False):
+                # Getting the model predictions
+                outputs = model(data)
+
+                loss = (
+                    loss_fn(outputs[0], y0, scaled_anchors[0])
+                    + loss_fn(outputs[1], y1, scaled_anchors[1])
+                    + loss_fn(outputs[2], y2, scaled_anchors[2])
+                )
+
+            # Add the loss to the list
+            losses.append(loss.item())
+
+            # Reset gradients
+            optim.zero_grad()
             scaler = kwargs.get("scaler", torch.cuda.amp.GradScaler())
-            # Backpropagate the loss 
-            scaler.scale(loss).backward() 
-            
-            # Optimization step 
-            scaler.step(optim) 
-            
-            # Update the scaler for next iteration 
-            scaler.update() 
+            # Backpropagate the loss
+            scaler.scale(loss).backward()
+
+            # Optimization step
+            scaler.step(optim)
+
+            # Update the scaler for next iteration
+            scaler.update()
 
             # Calculate the mean loss dynamically after each batch
             mean_loss = sum(losses) / len(losses)
@@ -166,15 +160,16 @@ class ModelUtils():
 
         return mean_loss, 0  # Optionally return the mean loss at the end
 
-    def train_classification(self,
-    model: nn.Module,
-    optim,
-    dloader,
-    loss_fn,
-    device: torch.device,
-    test_loader=None,
-    **kwargs) -> Tuple[float,
-     float]:    
+    def train_classification(
+        self,
+        model: nn.Module,
+        optim,
+        dloader,
+        loss_fn,
+        device: torch.device,
+        test_loader=None,
+        **kwargs,
+    ) -> Tuple[float, float]:
         correct = 0
         train_loss = 0
         for batch_idx, (data, target) in enumerate(dloader):
@@ -187,8 +182,7 @@ class ModelUtils():
             output = model(data, position=position)
 
             if kwargs.get("apply_softmax", False):
-                output = nn.functional.log_softmax(
-                    output, dim=1)  # type: ignore
+                output = nn.functional.log_softmax(output, dim=1)  # type: ignore
 
             loss = loss_fn(output, target)
             loss.backward()
@@ -203,25 +197,25 @@ class ModelUtils():
 
             if test_loader is not None:
                 # TODO: implement test loader for pascal
-                test_loss, test_acc = self.test(
-                    model, test_loader, loss_fn, device)
+                test_loss, test_acc = self.test(model, test_loader, loss_fn, device)
                 print(
-                    f"Train Loss: {train_loss/(batch_idx+1):.6f} | Train Acc: {correct/((batch_idx+1)*len(data)):.6f} | Test Loss: {test_loss:.6f} | Test Acc: {test_acc:.6f}")
+                    f"Train Loss: {train_loss/(batch_idx+1):.6f} | Train Acc: {correct/((batch_idx+1)*len(data)):.6f} | Test Loss: {test_loss:.6f} | Test Acc: {test_acc:.6f}"
+                )
 
         acc = correct / len(dloader.dataset)
         return train_loss, acc
-        
-    def train_mask(self,
-    model: nn.Module,
-    mask,
-    optim,
-    dloader,
-    loss_fn,
-    device: torch.device,
-    **kwargs) -> Tuple[float,
-     float]:
-        """TODO: generate docstring
-        """
+
+    def train_mask(
+        self,
+        model: nn.Module,
+        mask,
+        optim,
+        dloader,
+        loss_fn,
+        device: torch.device,
+        **kwargs,
+    ) -> Tuple[float, float]:
+        """TODO: generate docstring"""
         model.train()
         train_loss = 0
         correct = 0
@@ -231,8 +225,7 @@ class ModelUtils():
             position = kwargs.get("position", 0)
             output = model(data, position=position)
             if kwargs.get("apply_softmax", False):
-                output = nn.functional.log_softmax(
-                    output, dim=1)  # type: ignore
+                output = nn.functional.log_softmax(output, dim=1)  # type: ignore
             loss = loss_fn(output, target)
             loss.backward()
             optim.step()
@@ -249,17 +242,17 @@ class ModelUtils():
         acc = correct / len(dloader.dataset)
         return train_loss, acc
 
-    def deep_mutual_train(self, models, optim, dloader,
-                          device: torch.device, **kwargs) -> Tuple[list, list]:
-        """TODO: generate docstring
-        """
+    def deep_mutual_train(
+        self, models, optim, dloader, device: torch.device, **kwargs
+    ) -> Tuple[list, list]:
+        """TODO: generate docstring"""
         num_net = len(models)
         for model in models:
             model.train()
 
         optimizers = [optim] * num_net
         criterion_CE = nn.CrossEntropyLoss()
-        criterion_KLD = nn.KLDivLoss(reduction='batchmean')
+        criterion_KLD = nn.KLDivLoss(reduction="batchmean")
         train_loss = [0] * num_net
         pred = [0] * num_net
         correct = [0] * num_net
@@ -279,9 +272,9 @@ class ModelUtils():
                 for l in range(num_net):
                     if l != k:
                         KLD_loss[k] += criterion_KLD(
-    F.log_softmax(
-        output[k], dim=1), F.softmax(
-            output[l], dim=1).detach())
+                            F.log_softmax(output[k], dim=1),
+                            F.softmax(output[l], dim=1).detach(),
+                        )
                 losses.append(CE_loss[k] + KLD_loss[k] / (num_net - 1))
             for i in range(num_net):
                 train_loss[i] = losses[i].item()
@@ -292,61 +285,81 @@ class ModelUtils():
                 losses[i].backward()
                 optimizers[i].step()
         for i in range(num_net):
-            train_accuracy[i] = 100. * correct[i] / len(dloader.dataset)
+            train_accuracy[i] = 100.0 * correct[i] / len(dloader.dataset)
         return train_loss, train_accuracy
 
-    def test(self, model: nn.Module, dloader: DataLoader[Any], loss_fn: Any, device: torch.device,
-             **kwargs: Any) -> Tuple[float, float]:
-        """TODO: generate docstring
-        """
+    def test(
+        self,
+        model: nn.Module,
+        dloader: DataLoader[Any],
+        loss_fn: Any,
+        device: torch.device,
+        **kwargs: Any,
+    ) -> Tuple[float, float]:
+        """TODO: generate docstring"""
         model.eval()
         test_loss, acc = 0, 0
         if self.dset == "pascal":
-            test_loss, acc = self.test_object_detect(model, dloader, loss_fn, device, **kwargs)
+            test_loss, acc = self.test_object_detect(
+                model, dloader, loss_fn, device, **kwargs
+            )
         else:
-            test_loss, acc = self.test_classification(model, dloader, loss_fn, device, **kwargs)
+            test_loss, acc = self.test_classification(
+                model, dloader, loss_fn, device, **kwargs
+            )
         return test_loss, acc
-    
-    def test_object_detect(self, model, dloader, loss_fn, device,
-             **kwargs) -> Tuple[float, float]:
+
+    def test_object_detect(
+        self, model, dloader, loss_fn, device, **kwargs
+    ) -> Tuple[float, float]:
         losses = []
         with torch.no_grad():
             for idx, (data, target) in enumerate(dloader):
                 data = data.to(device)
-                y0, y1, y2 = ( 
-                    target[0].to(device), 
-                    target[1].to(device), 
-                    target[2].to(device), 
+                y0, y1, y2 = (
+                    target[0].to(device),
+                    target[1].to(device),
+                    target[2].to(device),
                 )
 
                 image_size = kwargs.get("image_size", 416)
                 # Grid cell sizes
                 s = [image_size // 32, image_size // 16, image_size // 8]
-                                # Calculating the loss at each scale 
-                scaled_anchors = kwargs.get("scaled_achors", ( 
-                    torch.tensor([ [(0.28, 0.22), (0.38, 0.48), (0.9, 0.78)],
+                # Calculating the loss at each scale
+                scaled_anchors = kwargs.get(
+                    "scaled_achors",
+                    (
+                        torch.tensor(
+                            [
+                                [(0.28, 0.22), (0.38, 0.48), (0.9, 0.78)],
                                 [(0.07, 0.15), (0.15, 0.11), (0.14, 0.29)],
-                                [(0.02, 0.03), (0.04, 0.07), (0.08, 0.06)],]) * 
-                    torch.tensor(s).unsqueeze(1).unsqueeze(1).repeat(1,3,2)).to(device) )
-                
-                with torch.cuda.amp.autocast(enabled=False):
-                    # Getting the model predictions 
-                    outputs = model(data) 
-                
-                    loss = ( 
-                        loss_fn(outputs[0], y0, scaled_anchors[0]) 
-                        + loss_fn(outputs[1], y1, scaled_anchors[1]) 
-                        + loss_fn(outputs[2], y2, scaled_anchors[2]) 
-                    ) 
+                                [(0.02, 0.03), (0.04, 0.07), (0.08, 0.06)],
+                            ]
+                        )
+                        * torch.tensor(s).unsqueeze(1).unsqueeze(1).repeat(1, 3, 2)
+                    ).to(device),
+                )
 
-                # Add the loss to the list 
-                losses.append(loss.item()) 
+                with torch.cuda.amp.autocast(enabled=False):
+                    # Getting the model predictions
+                    outputs = model(data)
+
+                    loss = (
+                        loss_fn(outputs[0], y0, scaled_anchors[0])
+                        + loss_fn(outputs[1], y1, scaled_anchors[1])
+                        + loss_fn(outputs[2], y2, scaled_anchors[2])
+                    )
+
+                # Add the loss to the list
+                losses.append(loss.item())
 
                 # train loss will be average loss
-            loss = sum(losses) / len(losses) 
+            loss = sum(losses) / len(losses)
         return loss, 0
-        
-    def test_classification(self, model, dloader, loss_fn, device, **kwargs) -> Tuple[float, float]:
+
+    def test_classification(
+        self, model, dloader, loss_fn, device, **kwargs
+    ) -> Tuple[float, float]:
         test_loss = 0
         correct = 0
         with torch.no_grad():
@@ -359,10 +372,14 @@ class ModelUtils():
                 # view_as() is used to make sure the shape of pred and target
                 # are the same
                 correct += pred.eq(target.view_as(pred)).sum().item()
-        print('Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
-            test_loss, correct, len(dloader.dataset),
-            100. * correct / len(dloader.dataset)
-        ))
+        print(
+            "Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)".format(
+                test_loss,
+                correct,
+                len(dloader.dataset),
+                100.0 * correct / len(dloader.dataset),
+            )
+        )
         acc = correct / len(dloader.dataset)
         return test_loss, acc
 
@@ -373,8 +390,9 @@ class ModelUtils():
             model_ = model
         torch.save(model_.state_dict(), path)
 
-    def move_to_device(self, items: List[Tuple[torch.Tensor, torch.Tensor]],
-                       device: torch.device) -> list:
+    def move_to_device(
+        self, items: List[Tuple[torch.Tensor, torch.Tensor]], device: torch.device
+    ) -> list:
         # Expects a list of tuples with each tupe containing two tensors
         return [[item[0].to(device), item[1].to(device)] for item in items]
 
@@ -393,13 +411,14 @@ class ModelUtils():
 
         last_layer_keys = []
 
-        while (last_key is not None and last_key.startswith(last_layer + ".")):
+        while last_key is not None and last_key.startswith(last_layer + "."):
             last_layer_keys.append(last_key)
             last_key = next(reversed_model_wts, None)
         return last_layer_keys
 
     def filter_model_weights(
-        self, model_wts: OrderedDict[str, Tensor], key_to_ignore: List[str]):
+        self, model_wts: OrderedDict[str, Tensor], key_to_ignore: List[str]
+    ):
         # Assume one layer is composed of multiple weights named as "layer_name.weight_name"
 
         filtered_model_wts = OrderedDict()

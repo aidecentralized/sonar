@@ -77,7 +77,9 @@ class ModelEncoder(nn.Module):
 
 class MetaL2CClient(BaseFedAvgClient):
 
-    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+    def __init__(
+        self, config: Dict[str, Any], comm_utils: CommunicationManager
+    ) -> None:
         super().__init__(config, comm_utils)
 
         self.encoder = ModelEncoder(self.get_model_weights())
@@ -242,9 +244,7 @@ class MetaL2CClient(BaseFedAvgClient):
             )
 
             # Collect the representations from all other nodes from the server
-            reprs = self.comm_utils.receive(
-                self.server_node, tag=self.tag.REPRS_SHARE
-            )
+            reprs = self.comm_utils.receive(self.server_node, tag=self.tag.REPRS_SHARE)
             reprs_dict = {k: rep for k, (rep, _) in enumerate(reprs, 1)}
 
             # Aggregate the representations based on the collab wheigts
@@ -296,7 +296,9 @@ class MetaL2CClient(BaseFedAvgClient):
 
 class MetaL2CServer(BaseFedAvgServer):
 
-    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+    def __init__(
+        self, config: Dict[str, Any], comm_utils: CommunicationManager
+    ) -> None:
         super().__init__(config, comm_utils)
         # self.set_parameters()
         self.config = config

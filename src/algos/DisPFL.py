@@ -21,7 +21,9 @@ class CommProtocol:
     Communication protocol tags for the server and clients.
     """
 
-    DONE: int = 0  # Used to signal the server that the client is done with local training
+    DONE: int = (
+        0  # Used to signal the server that the client is done with local training
+    )
     START: int = 1  # Used to signal by the server to start the current round
     UPDATES: int = 2  # Used to send the updates from the server to the clients
     LAST_ROUND: int = 3
@@ -92,7 +94,9 @@ class DisPFLClient(BaseClient):
         """
         self.model.load_state_dict(representation)
 
-    def fire_mask(self, masks: OrderedDict[str, Tensor], round_num: int, total_round: int) -> Tuple[OrderedDict[str, Tensor], Dict[str, int]]:
+    def fire_mask(
+        self, masks: OrderedDict[str, Tensor], round_num: int, total_round: int
+    ) -> Tuple[OrderedDict[str, Tensor], Dict[str, int]]:
         """
         Fire mask method for model pruning.
         """
@@ -114,7 +118,12 @@ class DisPFLClient(BaseClient):
             new_masks[name].view(-1)[idx[: num_remove[name]]] = 0
         return new_masks, num_remove
 
-    def regrow_mask(self, masks: OrderedDict[str, Tensor], num_remove: Dict[str, int], gradient: Optional[Dict[str, Tensor]] = None) -> OrderedDict[str, Tensor]:
+    def regrow_mask(
+        self,
+        masks: OrderedDict[str, Tensor],
+        num_remove: Dict[str, int],
+        gradient: Optional[Dict[str, Tensor]] = None,
+    ) -> OrderedDict[str, Tensor]:
         """
         Regrow mask method for model pruning.
         """
@@ -142,7 +151,12 @@ class DisPFLClient(BaseClient):
                 new_masks[name].view(-1)[idx] = 1
         return new_masks
 
-    def aggregate(self, nei_indexes: List[int], weights_lstrnd: List[OrderedDict[str, Tensor]], masks_lstrnd: List[OrderedDict[str, Tensor]]) -> Tuple[OrderedDict[str, Tensor], OrderedDict[str, Tensor]]:
+    def aggregate(
+        self,
+        nei_indexes: List[int],
+        weights_lstrnd: List[OrderedDict[str, Tensor]],
+        masks_lstrnd: List[OrderedDict[str, Tensor]],
+    ) -> Tuple[OrderedDict[str, Tensor], OrderedDict[str, Tensor]]:
         """
         Aggregate the model weights.
         """
@@ -183,7 +197,13 @@ class DisPFLClient(BaseClient):
             self.comm_utils.send_signal(client_node, representation, self.tag.UPDATES)
         print(f"Node 1 sent average weight to {len(self.clients)} nodes")
 
-    def calculate_sparsities(self, params: Dict[str, Tensor], tabu: Optional[List[str]] = None, distribution: str = "ERK", sparse: float = 0.5) -> Dict[str, float]:
+    def calculate_sparsities(
+        self,
+        params: Dict[str, Tensor],
+        tabu: Optional[List[str]] = None,
+        distribution: str = "ERK",
+        sparse: float = 0.5,
+    ) -> Dict[str, float]:
         """
         Calculate sparsities for model pruning.
         """
@@ -243,7 +263,9 @@ class DisPFLClient(BaseClient):
                     sparsities[name] = 1 - epsilon * raw_probabilities[name]
         return sparsities
 
-    def init_masks(self, params: Dict[str, Tensor], sparsities: Dict[str, float]) -> OrderedDict[str, Tensor]:
+    def init_masks(
+        self, params: Dict[str, Tensor], sparsities: Dict[str, float]
+    ) -> OrderedDict[str, Tensor]:
         """
         Initialize masks for model pruning.
         """
@@ -277,7 +299,9 @@ class DisPFLClient(BaseClient):
 
         return gradient
 
-    def hamming_distance(self, mask_a: OrderedDict[str, Tensor], mask_b: OrderedDict[str, Tensor]) -> Tuple[int, int]:
+    def hamming_distance(
+        self, mask_a: OrderedDict[str, Tensor], mask_b: OrderedDict[str, Tensor]
+    ) -> Tuple[int, int]:
         """
         Calculate the Hamming distance between two masks.
         """
@@ -330,7 +354,9 @@ class DisPFLClient(BaseClient):
             )
         return client_indexes
 
-    def model_difference(self, model_a: OrderedDict[str, Tensor], model_b: OrderedDict[str, Tensor]) -> Tensor:
+    def model_difference(
+        self, model_a: OrderedDict[str, Tensor], model_b: OrderedDict[str, Tensor]
+    ) -> Tensor:
         """
         Calculate the difference between two models.
         """
@@ -388,9 +414,7 @@ class DisPFLClient(BaseClient):
                 )
             if self.num_users != self.config["neighbors"]:
                 nei_indexes = np.append(nei_indexes, self.index)
-            print(
-                f"Node {self.index}'s neighbors index:{[i + 1 for i in nei_indexes]}"
-            )
+            print(f"Node {self.index}'s neighbors index:{[i + 1 for i in nei_indexes]}")
 
             for tmp_idx in nei_indexes:
                 if tmp_idx != self.index:
@@ -472,7 +496,9 @@ class DisPFLServer(BaseServer):
         """
         return self.model.state_dict()
 
-    def send_representations(self, representations: Dict[int, OrderedDict[str, Tensor]]) -> None:
+    def send_representations(
+        self, representations: Dict[int, OrderedDict[str, Tensor]]
+    ) -> None:
         """
         Set the model.
         """
