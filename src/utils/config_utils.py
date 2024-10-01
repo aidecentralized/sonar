@@ -1,7 +1,8 @@
 from typing import Any, Dict, List
 import jmespath
 import importlib
-
+import random
+import uuid
 
 def load_config(config_path: str) -> Dict[str, Any]:
     path = ".".join(config_path.split(".")[1].split("/")[1:])
@@ -28,12 +29,13 @@ def process_config(config: Dict[str, Any]) -> Dict[str, Any]:
     else:
         dset = config["dset"]
 
-    experiment_name = "{}_{}users_{}spc_{}_{}".format(
+    unique_id = uuid.uuid4().hex[:8]
+
+    experiment_name = "{}_{}users_{}_{}".format(
         dset,
         config["num_users"],
         config["samples_per_user"],
-        config["algo"],
-        config["exp_id"],
+        unique_id
     )
 
     for exp_key in config["exp_keys"]:
@@ -60,7 +62,6 @@ def process_config(config: Dict[str, Any]) -> Dict[str, Any]:
     config["plot_path"] = plot_path
 
     return config
-
 
 def get_sliding_window_support(num_users: int, num_classes: int, num_classes_per_client: int):
     num_client_with_same_support = max(num_users // num_classes, 1)

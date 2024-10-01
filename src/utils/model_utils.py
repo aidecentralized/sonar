@@ -16,6 +16,7 @@ import yolo
 class ModelUtils():
     def __init__(self, device: torch.device) -> None:
         self.device = device
+        self.dset = None
 
         self.models_layers_idx = {
             "resnet10": {

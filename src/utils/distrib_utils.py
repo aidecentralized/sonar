@@ -9,6 +9,7 @@ from torch.nn.parallel import DataParallel
 from torch.utils.data import Subset, DataLoader
 from resnet import ResNet34, ResNet18, ResNet50
 from utils.data_utils import extr_noniid
+from typing import Dict, Any
 
 def load_weights(model_dir: str, model: nn.Module, client_num: int):
     """
@@ -31,7 +32,7 @@ class ServerObj:
     """
     Server object for federated learning.
     """
-    def __init__(self, config, obj, rank) -> None:
+    def __init__(self, config: Dict[str, Any], obj: Dict[str, Any], rank: int) -> None:
         self.num_users = config["num_users"]
         self.samples_per_user = config["samples_per_user"]
         self.device = obj["device"]
@@ -41,7 +42,7 @@ class ServerObj:
         num_channels = obj["dset_obj"].num_channels
 
         self.test_loader = DataLoader(test_dataset, batch_size=batch_size)
-        model_dict = {
+        model_dict: Dict[str, Any] = {
             "ResNet18": ResNet18(num_channels),
             "ResNet34": ResNet34(num_channels),
             "ResNet50": ResNet50(num_channels)
@@ -53,7 +54,7 @@ class ClientObj:
     """
     Client object for federated learning.
     """
-    def __init__(self, config, obj, rank) -> None:
+    def __init__(self, config: Dict[str, Any], obj: Dict[str, Any], rank: int) -> None:
         self.num_users = config["num_users"]
         self.samples_per_user = config["samples_per_user"]
         self.device = obj["device"]

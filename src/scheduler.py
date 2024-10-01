@@ -32,7 +32,6 @@ from utils.communication.comm_utils import CommunicationManager
 from utils.config_utils import load_config, process_config
 from utils.log_utils import copy_source_code, check_and_create_path
 
-
 # Mapping of algorithm names to their corresponding client and server classes so that they can be consumed by the scheduler later on.
 algo_map = {
     "fedavg": [FedAvgServer, FedAvgClient],
@@ -60,12 +59,13 @@ algo_map = {
 
 def get_node(config: Dict[str, Any], rank: int, comm_utils: CommunicationManager) -> BaseNode:
     algo_name = config["algo"]
-    return algo_map[algo_name][rank > 0](config, comm_utils)
+    node = algo_map[algo_name][rank > 0](config, comm_utils)
+    
+    return node
 
 class Scheduler():
     """ Manages the overall orchestration of experiments
     """
-
     def __init__(self) -> None:
         pass
 
@@ -79,24 +79,27 @@ class Scheduler():
         else:
             self.sys_config["comm"]["host"] = host
             self.sys_config["comm"]["rank"] = None
-        self.algo_config = load_config(algo_config_path)
-        self.merge_configs()
-
-    def merge_configs(self):
         self.config = {}
+        self.config.update(self.sys_config)
+        
+    def merge_configs(self) -> None:
         self.config.update(self.sys_config)
         self.config.update(self.algo_config)
 
     def initialize(self, copy_souce_code: bool=True) -> None:
         assert self.config is not None, "Config should be set when initializing"
         self.communication = CommunicationManager(self.config)
-
         self.config["comm"]["rank"] = self.communication.get_rank()
         # Base clients modify the seed later on
         seed = self.config["seed"]
         torch.manual_seed(seed) # type: ignore
         random.seed(seed)
         numpy.random.seed(seed)
+
+        node_name = "node_{}".format(self.communication.get_rank())
+
+        self.algo_config = self.sys_config["algo"][node_name]
+        self.merge_configs()
 
         if self.communication.get_rank() == 0:
             if copy_souce_code:

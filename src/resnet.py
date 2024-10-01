@@ -10,6 +10,8 @@ This module implements ResNet models for image classification.
 
 from torch import nn
 import torch.nn.functional as F
+import torch
+from typing import List, Type, Optional, Tuple
 
 
 class BasicBlock(nn.Module):
@@ -18,7 +20,7 @@ class BasicBlock(nn.Module):
     """
     expansion = 1
 
-    def __init__(self, in_planes, planes, stride=1):
+    def __init__(self, in_planes:int, planes:int, stride:int=1) -> None:
 
         super(BasicBlock, self).__init__()
         self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
@@ -36,7 +38,7 @@ class BasicBlock(nn.Module):
                 nn.BatchNorm2d(self.expansion * planes),
             )
 
-    def forward(self, x):
+    def forward(self, x:torch.Tensor) -> torch.Tensor:
         """
         Forward pass for the BasicBlock.
         """
@@ -52,7 +54,7 @@ class Bottleneck(nn.Module):
     """
     expansion = 4
 
-    def __init__(self, in_planes, planes, stride=1):
+    def __init__(self, in_planes:int, planes:int, stride:int=1):
         super().__init__()
         self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=1, bias=False)
         self.bn1 = nn.BatchNorm2d(planes)
@@ -70,7 +72,7 @@ class Bottleneck(nn.Module):
                 nn.BatchNorm2d(self.expansion * planes),
             )
 
-    def forward(self, x):
+    def forward(self, x:torch.Tensor) -> torch.Tensor:
         """
         Forward pass for the Bottleneck block.
         """
@@ -86,7 +88,7 @@ class ResNet(nn.Module):
     """
     A ResNet model.
     """
-    def __init__(self, block, num_blocks, num_classes=10, num_channels=3):
+    def __init__(self, block:Type[nn.Module], num_blocks:List[int], num_classes:int=10, num_channels:int=3)-> None:
         super().__init__()
         self.in_planes = 64
         self.conv1 = nn.Conv2d(
@@ -99,7 +101,7 @@ class ResNet(nn.Module):
         self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2)
         self.linear = nn.Linear(512 * block.expansion, num_classes)
 
-    def _make_layer(self, block, planes, num_blocks, stride):
+    def _make_layer(self, block:Type[nn.Module], planes:int, num_blocks:int, stride:int)-> nn.Sequential:
         strides = [stride] + [1] * (num_blocks - 1)
         layers = []
         for stride in strides:
@@ -107,7 +109,7 @@ class ResNet(nn.Module):
             self.in_planes = planes * block.expansion
         return nn.Sequential(*layers)
 
-    def forward(self, x, position=0, out_feature=False):
+    def forward(self, x:torch.Tensor, position:int=0, out_feature:bool=False) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
         """
         Forward pass for the ResNet model.
         """
@@ -139,37 +141,37 @@ class ResNet(nn.Module):
                 return x, feature
         return x
 
-def resnet10(num_channels=3, num_classes=10):
+def resnet10(num_channels:int=3, num_classes:int=10) -> ResNet:
     """
     Constructs a ResNet-10 model.
     """
     return ResNet(BasicBlock, [1, 1, 1, 1], num_classes, num_channels)
 
-def resnet18(num_channels=3, num_classes=10):
+def resnet18(num_channels:int=3, num_classes:int=10) -> ResNet:
     """
     Constructs a ResNet-18 model.
     """
     return ResNet(BasicBlock, [2, 2, 2, 2], num_classes, num_channels)
 
-def resnet34(num_channels=3, num_classes=10):
+def resnet34(num_channels:int=3, num_classes:int=10) -> ResNet:
     """
     Constructs a ResNet-34 model.
     """
     return ResNet(BasicBlock, [3, 4, 6, 3], num_classes, num_channels)
 
-def resnet50(num_channels=3, num_classes=10):
+def resnet50(num_channels:int=3, num_classes:int=10) -> ResNet:
     """
     Constructs a ResNet-50 model.
     """
     return ResNet(Bottleneck, [3, 4, 6, 3], num_classes, num_channels)
 
-def resnet101(num_channels=3, num_classes=10):
+def resnet101(num_channels:int=3, num_classes:int=10) -> ResNet:
     """
     Constructs a ResNet-101 model.
     """
     return ResNet(Bottleneck, [3, 4, 23, 3], num_classes, num_channels)
 
-def resnet152(num_channels=3, num_classes=10):
+def resnet152(num_channels:int=3, num_classes:int=10) -> ResNet:
     """
     Constructs a ResNet-152 model.
     """

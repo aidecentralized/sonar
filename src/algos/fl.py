@@ -66,10 +66,12 @@ class FedAvgClient(BaseClient):
     def run_protocol(self):
         start_epochs = self.config.get("start_epochs", 0)
         total_epochs = self.config["epochs"]
+
         for round in range(start_epochs, total_epochs):
             self.local_train(round)
             self.local_test()
             repr = self.get_representation()
+            
             self.client_log_utils.log_summary("Client {} sending done signal to {}".format(self.node_id, self.server_node))
             self.comm_utils.send(self.server_node, repr)
             self.client_log_utils.log_summary("Client {} waiting to get new model from {}".format(self.node_id, self.server_node))
