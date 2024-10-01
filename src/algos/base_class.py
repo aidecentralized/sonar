@@ -28,24 +28,27 @@ from utils.community_utils import (
     get_dset_balanced_communities,
     get_dset_communities,
 )
-import torchvision.transforms as T # type: ignore
+import torchvision.transforms as T  # type: ignore
 import os
 
 from yolo import YOLOLoss
 
+
 class BaseNode(ABC):
-    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+    def __init__(
+        self, config: Dict[str, Any], comm_utils: CommunicationManager
+    ) -> None:
         self.comm_utils = comm_utils
         self.node_id = self.comm_utils.get_rank()
 
         if self.node_id == 0:
-            self.log_dir = config['log_path']
-            config['log_path'] = f'{self.log_dir}/server'
+            self.log_dir = config["log_path"]
+            config["log_path"] = f"{self.log_dir}/server"
             try:
-                os.mkdir(config['log_path'])
+                os.mkdir(config["log_path"])
             except FileExistsError:
                 pass
-            config['load_existing'] = False
+            config["load_existing"] = False
             self.log_utils = LogUtils(config)
             self.log_utils.log_console("Config: {}".format(config))
             self.plot_utils = PlotUtils(config)
@@ -107,7 +110,7 @@ class BaseNode(ABC):
             lr=config["model_lr"],
             weight_decay=config.get("weight_decay", 0),
         )
-        if config.get('dset') == "pascal":
+        if config.get("dset") == "pascal":
             self.loss_fn = YOLOLoss()
         else:
             self.loss_fn = torch.nn.CrossEntropyLoss()
@@ -158,7 +161,9 @@ class BaseClient(BaseNode):
     Abstract class for all algorithms
     """
 
-    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+    def __init__(
+        self, config: Dict[str, Any], comm_utils: CommunicationManager
+    ) -> None:
         super().__init__(config, comm_utils)
         self.server_node = 0
         self.set_parameters(config)
@@ -382,7 +387,9 @@ class BaseClient(BaseNode):
         """
         raise NotImplementedError
 
-    def get_representation(self, **kwargs: Any) -> OrderedDict[str, Tensor] | List[Tensor] | Tensor:
+    def get_representation(
+        self, **kwargs: Any
+    ) -> OrderedDict[str, Tensor] | List[Tensor] | Tensor:
         """
         Share the model representation
         """
@@ -391,7 +398,9 @@ class BaseClient(BaseNode):
     def run_protocol(self) -> None:
         raise NotImplementedError
 
-    def print_data_summary(self, train_test: Any, test_dset: Any, val_dset: Optional[Any] = None) -> None:        
+    def print_data_summary(
+        self, train_test: Any, test_dset: Any, val_dset: Optional[Any] = None
+    ) -> None:
         """
         Print the data summary
         """
@@ -435,7 +444,9 @@ class BaseServer(BaseNode):
     Abstract class for orchestrator
     """
 
-    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+    def __init__(
+        self, config: Dict[str, Any], comm_utils: CommunicationManager
+    ) -> None:
         super().__init__(config, comm_utils)
         self.num_users = config["num_users"]
         self.users = list(range(1, self.num_users + 1))
@@ -446,7 +457,9 @@ class BaseServer(BaseNode):
         batch_size = config["batch_size"]
         self._test_loader = DataLoader(test_dset, batch_size=batch_size)
 
-    def aggregate(self, representation_list: List[OrderedDict[str, Tensor]], **kwargs: Any) -> OrderedDict[str, Tensor]:
+    def aggregate(
+        self, representation_list: List[OrderedDict[str, Tensor]], **kwargs: Any
+    ) -> OrderedDict[str, Tensor]:
         """
         Aggregate the knowledge from the users
         """
@@ -485,7 +498,13 @@ class BaseFedAvgClient(BaseClient):
     """
     Abstract class for FedAvg based algorithms
     """
-    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager, comm_protocol: type[CommProtocol] = CommProtocol) -> None:
+
+    def __init__(
+        self,
+        config: Dict[str, Any],
+        comm_utils: CommunicationManager,
+        comm_protocol: type[CommProtocol] = CommProtocol,
+    ) -> None:
         super().__init__(config, comm_utils)
         self.config = config
         self.model_save_path = "{}/saved_models/node_{}.pt".format(
@@ -541,7 +560,9 @@ class BaseFedAvgClient(BaseClient):
         """
         return {k: v.cpu() for k, v in self.model.state_dict().items()}
 
-    def set_model_weights(self, model_wts: OrderedDict[str, Tensor], keys_to_ignore: List[str] = []) -> None:
+    def set_model_weights(
+        self, model_wts: OrderedDict[str, Tensor], keys_to_ignore: List[str] = []
+    ) -> None:
         """
         Set the model weights
         """
@@ -659,10 +680,17 @@ class BaseFedAvgServer(BaseServer):
     """
     Abstract class for orchestrator
     """
-    
-    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager, comm_protocol: type[CommProtocol] = CommProtocol) -> None:
+
+    def __init__(
+        self,
+        config: Dict[str, Any],
+        comm_utils: CommunicationManager,
+        comm_protocol: type[CommProtocol] = CommProtocol,
+    ) -> None:
         super().__init__(config, comm_utils)
         self.tag = comm_protocol
 
-    def send_representations(self, representations: Dict[int, OrderedDict[str, Tensor]]):
+    def send_representations(
+        self, representations: Dict[int, OrderedDict[str, Tensor]]
+    ):
         self.comm_utils.broadcast(representations)

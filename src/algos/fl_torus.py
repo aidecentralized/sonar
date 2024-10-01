@@ -12,7 +12,7 @@ class TorusTopology:
         print(grid_size)
 
         selected_ids = []
-        
+
         num_rows = math.ceil(num_users / grid_size)
 
         # Left
@@ -51,17 +51,17 @@ class TorusTopology:
         # keep sampling identical across nodes (if same seed)
         selected_ids = list(set(selected_ids))
 
-        if(num_users == 1):
+        if num_users == 1:
             selected_ids = [1]
-        elif(num_users == 2):
-            if(node_id == 1):
+        elif num_users == 2:
+            if node_id == 1:
                 selected_ids = [2]
             else:
                 selected_ids = [1]
-        elif(num_users == 3):
-            if(node_id == 1):
+        elif num_users == 3:
+            if node_id == 1:
                 selected_ids = [2, 3]
-            elif(node_id == 2):
+            elif node_id == 2:
                 selected_ids = [1]
             else:
                 selected_ids = [1]

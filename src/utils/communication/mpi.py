@@ -2,6 +2,7 @@ from typing import Dict, Any, List
 from mpi4py import MPI
 from utils.communication.interface import CommunicationInterface
 
+
 class MPICommUtils(CommunicationInterface):
     def __init__(self, config: Dict[str, Dict[str, Any]]):
         self.comm = MPI.COMM_WORLD
@@ -11,10 +12,10 @@ class MPICommUtils(CommunicationInterface):
     def initialize(self):
         pass
 
-    def send(self, dest: str|int, data: Any):
+    def send(self, dest: str | int, data: Any):
         self.comm.send(data, dest=int(dest))
-            
-    def receive(self, node_ids: str|int) -> Any:
+
+    def receive(self, node_ids: str | int) -> Any:
         return self.comm.recv(source=int(node_ids))
 
     def broadcast(self, data: Any):
@@ -32,4 +33,4 @@ class MPICommUtils(CommunicationInterface):
         return items
 
     def finalize(self):
-        pass        
+        pass

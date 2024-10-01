@@ -115,7 +115,14 @@ class DeepGenerator(nn.Module):
 class DCGAN_Generator(nn.Module):
     """Generator from DCGAN: https://arxiv.org/abs/1511.06434"""
 
-    def __init__(self, nz: int = 100, ngf: int = 64, nc: int = 3, img_size: Union[int, List[int], Tuple[int, int]] = 64, slope: float = 0.2):
+    def __init__(
+        self,
+        nz: int = 100,
+        ngf: int = 64,
+        nc: int = 3,
+        img_size: Union[int, List[int], Tuple[int, int]] = 64,
+        slope: float = 0.2,
+    ):
         super(DCGAN_Generator, self).__init__()
         self.nz = nz
         if isinstance(img_size, (list, tuple)):
@@ -220,7 +227,9 @@ class Discriminator(nn.Module):
     def __init__(self, nc: int = 3, img_size: int = 32):
         super().__init__()
 
-        def discriminator_block(in_filters: int, out_filters: int, bn: bool = True) -> nn.ModuleList:
+        def discriminator_block(
+            in_filters: int, out_filters: int, bn: bool = True
+        ) -> nn.ModuleList:
             block = [
                 nn.Conv2d(in_filters, out_filters, 3, 2, 1),
                 nn.LeakyReLU(0.2, inplace=True),
@@ -239,10 +248,7 @@ class Discriminator(nn.Module):
 
         # The height and width of downsampled image
         ds_size = img_size // 2**4
-        self.adv_layer = nn.Sequential(
-            nn.Linear(128 * ds_size**2, 1),
-            nn.Sigmoid()
-        )
+        self.adv_layer = nn.Sequential(nn.Linear(128 * ds_size**2, 1), nn.Sigmoid())
 
     def forward(self, img: torch.Tensor) -> torch.Tensor:
         out = self.model(img)

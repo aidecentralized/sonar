@@ -2,7 +2,9 @@ import numpy as np
 from typing import Dict, List
 
 
-def get_random_communities(num_clients: int, num_communities: int) -> Dict[int, List[int]]:
+def get_random_communities(
+    num_clients: int, num_communities: int
+) -> Dict[int, List[int]]:
     assert num_clients % num_communities == 0
 
     clients_per_community = num_clients // num_communities
@@ -11,11 +13,13 @@ def get_random_communities(num_clients: int, num_communities: int) -> Dict[int, 
     support: Dict[int, List[int]] = {}
     for i, c_id in enumerate(indices):
         idx = (i // clients_per_community) * clients_per_community
-        support[c_id] = list(indices[idx: idx + clients_per_community])
+        support[c_id] = list(indices[idx : idx + clients_per_community])
     return support
 
 
-def get_dset_balanced_communities(num_clients: int, num_communities: int, num_dset: int) -> Dict[int, List[int]]:
+def get_dset_balanced_communities(
+    num_clients: int, num_communities: int, num_dset: int
+) -> Dict[int, List[int]]:
     # Assume same dset are consecutive
     assert num_clients % num_communities == 0
     assert num_clients % num_dset == 0

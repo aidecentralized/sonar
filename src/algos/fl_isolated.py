@@ -14,7 +14,9 @@ class CommProtocol(object):
 
 
 class FedIsoClient(BaseClient):
-    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+    def __init__(
+        self, config: Dict[str, Any], comm_utils: CommunicationManager
+    ) -> None:
         super().__init__(config, comm_utils)
         self.config = config
         self.tag = CommProtocol
@@ -83,13 +85,13 @@ class FedIsoClient(BaseClient):
                         round_stats["test_acc"],
                     )
                 )
-        self.comm_utils.send(
-            dest=self.server_node, data=stats, tag=self.tag.DONE
-        )
+        self.comm_utils.send(dest=self.server_node, data=stats, tag=self.tag.DONE)
 
 
 class FedIsoServer(BaseServer):
-    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+    def __init__(
+        self, config: Dict[str, Any], comm_utils: CommunicationManager
+    ) -> None:
         super().__init__(config, comm_utils)
         # self.set_parameters()
         self.config = config

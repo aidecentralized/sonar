@@ -2,6 +2,7 @@
 This module provides utility functions and classes for handling logging,
 copying source code, and normalizing images in a distributed learning setting.
 """
+
 from typing import Union
 import os
 import shutil
@@ -11,9 +12,9 @@ from glob import glob
 from shutil import copytree, copy2
 from typing import Any, Dict
 import torch
-import torchvision.transforms as T # type: ignore
-from torchvision.utils import make_grid, save_image # type: ignore
-from tensorboardX import SummaryWriter # type: ignore
+import torchvision.transforms as T  # type: ignore
+from torchvision.utils import make_grid, save_image  # type: ignore
+from tensorboardX import SummaryWriter  # type: ignore
 import numpy as np
 
 
@@ -36,8 +37,7 @@ def deprocess(img: torch.Tensor) -> torch.Tensor:
     return img.type(torch.uint8)
 
 
-
-def check_and_create_path(path: str, folder_deletion_path: str|None=None):
+def check_and_create_path(path: str, folder_deletion_path: str | None = None):
     """
     Checks if the specified path exists and prompts the user for action if it does.
     Creates the directory if it does not exist.
@@ -47,14 +47,14 @@ def check_and_create_path(path: str, folder_deletion_path: str|None=None):
     """
     if os.path.isdir(path):
         color_code = "\033[94m"  # Blue text
-        reset_code = "\033[0m"   # Reset to default color
+        reset_code = "\033[0m"  # Reset to default color
         print(f"{color_code}Experiment in {path} already present. Exiting.")
         print(f"Please do: rm -rf {path} to delete the folder.{reset_code}")
         sys.exit()
     else:
         os.makedirs(path)
         with open(folder_deletion_path, "w") as signal_file:
-            #new folder creation complete signal.
+            # new folder creation complete signal.
             signal_file.write("new")
 
 
@@ -106,6 +106,7 @@ class LogUtils:
     """
     Utility class for logging and saving experiment data.
     """
+
     def __init__(self, config: Dict[str, Any]) -> None:
         log_dir = config["log_path"]
         load_existing = config["load_existing"]
@@ -158,8 +159,10 @@ class LogUtils:
             self.summary_file.write(text + "\n")
             self.summary_file.flush()
         else:
-            raise ValueError("Summary file is not initialized. Call init_summary() first.")
-            
+            raise ValueError(
+                "Summary file is not initialized. Call init_summary() first."
+            )
+
     def log_image(self, imgs: torch.Tensor, key: str, iteration: int):
         """
         Log image to file and TensorBoard.
@@ -182,7 +185,7 @@ class LogUtils:
         """
         logging.info(msg)
 
-    def log_tb(self, key: str, value: float|int, iteration: int):
+    def log_tb(self, key: str, value: float | int, iteration: int):
         """
         Log a scalar value to TensorBoard.
 
@@ -191,7 +194,7 @@ class LogUtils:
             value (float): Value to log.
             iteration (int): Current iteration number.
         """
-        self.writer.add_scalar(key, value, iteration) # type: ignore
+        self.writer.add_scalar(key, value, iteration)  # type: ignore
 
     def log_npy(self, key: str, value: np.ndarray):
         """
@@ -203,7 +206,9 @@ class LogUtils:
         """
         np.save(f"{self.log_dir}/npy/{key}.npy", value)
 
-    def log_max_stats_per_client(self, stats_per_client: np.ndarray, round_step: int, metric: str):
+    def log_max_stats_per_client(
+        self, stats_per_client: np.ndarray, round_step: int, metric: str
+    ):
         """
         Log maximum statistics per client.
 

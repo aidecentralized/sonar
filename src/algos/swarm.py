@@ -21,7 +21,9 @@ class CommProtocol(object):
 
 
 class SWARMClient(BaseClient):
-    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+    def __init__(
+        self, config: Dict[str, Any], comm_utils: CommunicationManager
+    ) -> None:
         super().__init__(config, comm_utils)
         self.config = config
         self.tag = CommProtocol
@@ -88,7 +90,9 @@ class SWARMClient(BaseClient):
                     avgd_wts[key] += coeff * local_wts[key].to(self.device)
         return avgd_wts
 
-    def aggregate(self, representation_list: List[OrderedDict[str, Tensor]]) -> OrderedDict:
+    def aggregate(
+        self, representation_list: List[OrderedDict[str, Tensor]]
+    ) -> OrderedDict:
         """
         Aggregate the model weights
         """
@@ -134,7 +138,8 @@ class SWARMClient(BaseClient):
                     dest=self.server_node, data=self_repr, tag=self.tag.DONE
                 )
                 print("Node {} waiting signal from node 1".format(self.node_id))
-                repr = self.comm_utils.receive(node_ids=self.server_node, tag=self.tag.UPDATES
+                repr = self.comm_utils.receive(
+                    node_ids=self.server_node, tag=self.tag.UPDATES
                 )
 
             self.set_representation(repr)
@@ -144,7 +149,9 @@ class SWARMClient(BaseClient):
 
 
 class SWARMServer(BaseServer):
-    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+    def __init__(
+        self, config: Dict[str, Any], comm_utils: CommunicationManager
+    ) -> None:
         super().__init__(config, comm_utils)
         # self.set_parameters()
         self.config = config

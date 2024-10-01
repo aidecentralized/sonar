@@ -190,9 +190,7 @@ class FedValServer(BaseFedAvgServer):
         )
 
         # Collect models from all clients
-        models = self.comm_utils.wait_for_all_clients(
-            self.users, self.tag.REPR_ADVERT
-        )
+        models = self.comm_utils.wait_for_all_clients(self.users, self.tag.REPR_ADVERT)
         self.log_utils.log_console("Server received all clients models")
 
         # Broadcast the models to all clients

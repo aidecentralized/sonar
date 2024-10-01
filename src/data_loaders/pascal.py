@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 
 from PIL import Image, ImageFile
+
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 import os
@@ -14,34 +15,52 @@ import cv2
 
 # pascal dataset found here: http://host.robots.ox.ac.uk/pascal/VOC/voc2012/index.html#voc2012vs2011
 
+
 def xml2label(xml_file):
     classes = [
-    "aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat",
-    "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person",
-    "pottedplant", "sheep", "sofa", "train", "tvmonitor"
+        "aeroplane",
+        "bicycle",
+        "bird",
+        "boat",
+        "bottle",
+        "bus",
+        "car",
+        "cat",
+        "chair",
+        "cow",
+        "diningtable",
+        "dog",
+        "horse",
+        "motorbike",
+        "person",
+        "pottedplant",
+        "sheep",
+        "sofa",
+        "train",
+        "tvmonitor",
     ]
 
     tree = ET.parse(xml_file)
     root = tree.getroot()
 
-    image_width = int(root.find('size/width').text)
-    image_height = int(root.find('size/height').text)
+    image_width = int(root.find("size/width").text)
+    image_height = int(root.find("size/height").text)
 
     yolo_data = []
 
-    for obj in root.findall('object'):
-        class_name = obj.find('name').text
+    for obj in root.findall("object"):
+        class_name = obj.find("name").text
         if class_name not in classes:
             continue
 
         class_index = classes.index(class_name)
 
         # Extract bounding box coordinates
-        bndbox = obj.find('bndbox')
-        xmin = float(bndbox.find('xmin').text)
-        ymin = float(bndbox.find('ymin').text)
-        xmax = float(bndbox.find('xmax').text)
-        ymax = float(bndbox.find('ymax').text)
+        bndbox = obj.find("bndbox")
+        xmin = float(bndbox.find("xmin").text)
+        ymin = float(bndbox.find("ymin").text)
+        xmax = float(bndbox.find("xmax").text)
+        ymax = float(bndbox.find("ymax").text)
 
         # Convert to YOLO format
         x_center = (xmin + xmax) / 2 / image_width
@@ -52,6 +71,7 @@ def xml2label(xml_file):
         yolo_data.append([x_center, y_center, width, height, class_index])
 
     return yolo_data
+
 
 # Defining a function to calculate Intersection over Union (IoU)
 def iou(box1, box2, is_pred=True):
@@ -95,7 +115,9 @@ def iou(box1, box2, is_pred=True):
         # IoU score based on width and height of bounding boxes
 
         # Calculate intersection area
-        intersection_area = torch.min(box1[..., 0], box2[..., 0]) * torch.min(box1[..., 1], box2[..., 1])
+        intersection_area = torch.min(box1[..., 0], box2[..., 0]) * torch.min(
+            box1[..., 1], box2[..., 1]
+        )
 
         # Calculate union area
         box1_area = box1[..., 0] * box1[..., 1]
@@ -107,6 +129,7 @@ def iou(box1, box2, is_pred=True):
 
         # Return IoU score
         return iou_score
+
 
 # Non-maximum suppression function to remove overlapping bounding boxes
 def nms(bboxes, iou_threshold, threshold):
@@ -125,13 +148,17 @@ def nms(bboxes, iou_threshold, threshold):
 
         # Iterate over the remaining bounding boxes.
         for box in bboxes:
-        # If the bounding boxes do not overlap or if the first bounding box has
-        # a higher confidence, then add the second bounding box to the list of
-        # bounding boxes after non-maximum suppression.
-            if box[0] != first_box[0] or iou(
-                torch.tensor(first_box[2:]),
-                torch.tensor(box[2:]),
-            ) < iou_threshold:
+            # If the bounding boxes do not overlap or if the first bounding box has
+            # a higher confidence, then add the second bounding box to the list of
+            # bounding boxes after non-maximum suppression.
+            if (
+                box[0] != first_box[0]
+                or iou(
+                    torch.tensor(first_box[2:]),
+                    torch.tensor(box[2:]),
+                )
+                < iou_threshold
+            ):
                 # Check if box is not in bboxes_nms
                 if box not in bboxes_nms:
                     # Add box to bboxes_nms
@@ -139,6 +166,7 @@ def nms(bboxes, iou_threshold, threshold):
 
     # Return bounding boxes after non-maximum suppression.
     return bboxes_nms
+
 
 # Function to convert cells to bounding boxes
 def convert_cells_to_bboxes(predictions, anchors, s, is_predictions=True):
@@ -155,8 +183,7 @@ def convert_cells_to_bboxes(predictions, anchors, s, is_predictions=True):
     if is_predictions:
         anchors = anchors.reshape(1, len(anchors), 1, 1, 2)
         box_predictions[..., 0:2] = torch.sigmoid(box_predictions[..., 0:2])
-        box_predictions[..., 2:] = torch.exp(
-            box_predictions[..., 2:]) * anchors
+        box_predictions[..., 2:] = torch.exp(box_predictions[..., 2:]) * anchors
         scores = torch.sigmoid(predictions[..., 0:1])
         best_class = torch.argmax(predictions[..., 5:], dim=-1).unsqueeze(-1)
 
@@ -175,8 +202,7 @@ def convert_cells_to_bboxes(predictions, anchors, s, is_predictions=True):
 
     # Calculate x, y, width and height with proper scaling
     x = 1 / s * (box_predictions[..., 0:1] + cell_indices)
-    y = 1 / s * (box_predictions[..., 1:2] +
-                 cell_indices.permute(0, 1, 3, 2, 4))
+    y = 1 / s * (box_predictions[..., 1:2] + cell_indices.permute(0, 1, 3, 2, 4))
     width_height = 1 / s * box_predictions[..., 2:4]
 
     # Concatinating the values and reshaping them in
@@ -188,12 +214,19 @@ def convert_cells_to_bboxes(predictions, anchors, s, is_predictions=True):
     # Returning the reshaped and converted bounding box list
     return converted_bboxes.tolist()
 
+
 # Create a dataset class to load the images and labels from the folder
 class Pascal(torch.utils.data.Dataset):
     def __init__(
-        self, csv_file, image_dir, label_dir, anchors,
-        image_size=416, grid_sizes=[13, 26, 52],
-        num_classes=20, transform=None
+        self,
+        csv_file,
+        image_dir,
+        label_dir,
+        anchors,
+        image_size=416,
+        grid_sizes=[13, 26, 52],
+        num_classes=20,
+        transform=None,
     ):
 
         # Read the csv file with image names
@@ -208,8 +241,7 @@ class Pascal(torch.utils.data.Dataset):
         # Grid sizes for each scale
         self.grid_sizes = grid_sizes
         # Anchor boxes
-        self.anchors = torch.tensor(
-            anchors[0] + anchors[1] + anchors[2])
+        self.anchors = torch.tensor(anchors[0] + anchors[1] + anchors[2])
         # Number of anchor boxes
         self.num_anchors = self.anchors.shape[0]
         # Number of anchor boxes per scale
@@ -238,15 +270,14 @@ class Pascal(torch.utils.data.Dataset):
 
         # Below assumes 3 scale predictions (as paper) and same num of anchors per scale
         # target : [probabilities, x, y, width, height, class_label]
-        targets = [torch.zeros((self.num_anchors_per_scale, s, s, 6))
-                   for s in self.grid_sizes]
+        targets = [
+            torch.zeros((self.num_anchors_per_scale, s, s, 6)) for s in self.grid_sizes
+        ]
 
         # Identify anchor box and cell for each bounding box
         for box in bboxes:
             # Calculate iou of bounding box with anchor boxes
-            iou_anchors = iou(torch.tensor(box[2:4]),
-                              self.anchors,
-                              is_pred=False)
+            iou_anchors = iou(torch.tensor(box[2:4]), self.anchors, is_pred=False)
             # Selecting the best anchor box
             anchor_indices = iou_anchors.argsort(descending=True, dim=0)
             x, y, width, height, class_label = box
@@ -281,9 +312,8 @@ class Pascal(torch.utils.data.Dataset):
 
                     # Idnetify the box coordinates
                     box_coordinates = torch.tensor(
-                                        [x_cell, y_cell, width_cell,
-                                         height_cell]
-                                    )
+                        [x_cell, y_cell, width_cell, height_cell]
+                    )
 
                     # Assigning the box coordinates to the target
                     targets[scale_idx][anchor_on_scale, i, j, 1:5] = box_coordinates
@@ -296,26 +326,47 @@ class Pascal(torch.utils.data.Dataset):
 
                 # If the anchor box is already assigned, check if the
                 # IoU is greater than the threshold
-                elif not anchor_taken and iou_anchors[anchor_idx] > self.ignore_iou_thresh:
+                elif (
+                    not anchor_taken
+                    and iou_anchors[anchor_idx] > self.ignore_iou_thresh
+                ):
                     # Set the probability to -1 to ignore the anchor box
                     targets[scale_idx][anchor_on_scale, i, j, 0] = -1
 
         # Return the image and the target
         return image, tuple(targets)
-    
+
 
 class PascalDataset:
     """
     Pascal Dataset Class.
     """
+
     def __init__(self, dpath: str) -> None:
         self.image_size = 416
-        self.grid_sizes=[13, 26, 52]
+        self.grid_sizes = [13, 26, 52]
 
         classes = [
-            "aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat",
-            "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person",
-            "pottedplant", "sheep", "sofa", "train", "tvmonitor"
+            "aeroplane",
+            "bicycle",
+            "bird",
+            "boat",
+            "bottle",
+            "bus",
+            "car",
+            "cat",
+            "chair",
+            "cow",
+            "diningtable",
+            "dog",
+            "horse",
+            "motorbike",
+            "person",
+            "pottedplant",
+            "sheep",
+            "sofa",
+            "train",
+            "tvmonitor",
         ]
 
         self.num_cls = len(classes)
@@ -328,28 +379,26 @@ class PascalDataset:
                 A.LongestMaxSize(max_size=self.image_size),
                 # Pad remaining areas with zeros
                 A.PadIfNeeded(
-                    min_height=self.image_size, min_width=self.image_size, border_mode=cv2.BORDER_CONSTANT, value=0
+                    min_height=self.image_size,
+                    min_width=self.image_size,
+                    border_mode=cv2.BORDER_CONSTANT,
+                    value=0,
                 ),
                 # Random color jittering
                 A.ColorJitter(
-                    brightness=0.5, contrast=0.5,
-                    saturation=0.5, hue=0.5, p=0.5
+                    brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5, p=0.5
                 ),
                 # Flip the image horizontally
                 A.HorizontalFlip(p=0.5),
                 # Normalize the image
-                A.Normalize(
-                    mean=[0, 0, 0], std=[1, 1, 1], max_pixel_value=255
-                ),
+                A.Normalize(mean=[0, 0, 0], std=[1, 1, 1], max_pixel_value=255),
                 # Convert the image to PyTorch tensor
-                ToTensorV2()
+                ToTensorV2(),
             ],
             # Augmentation for bounding boxes
             bbox_params=A.BboxParams(
-                            format="yolo",
-                            min_visibility=0.4,
-                            label_fields=[]
-                        )
+                format="yolo", min_visibility=0.4, label_fields=[]
+            ),
         )
 
         # Transform for testing
@@ -359,21 +408,20 @@ class PascalDataset:
                 A.LongestMaxSize(max_size=self.image_size),
                 # Pad remaining areas with zeros
                 A.PadIfNeeded(
-                    min_height=self.image_size, min_width=self.image_size, border_mode=cv2.BORDER_CONSTANT, value=0
+                    min_height=self.image_size,
+                    min_width=self.image_size,
+                    border_mode=cv2.BORDER_CONSTANT,
+                    value=0,
                 ),
                 # Normalize the image
-                A.Normalize(
-                    mean=[0, 0, 0], std=[1, 1, 1], max_pixel_value=255
-                ),
+                A.Normalize(mean=[0, 0, 0], std=[1, 1, 1], max_pixel_value=255),
                 # Convert the image to PyTorch tensor
-                ToTensorV2()
+                ToTensorV2(),
             ],
             # Augmentation for bounding boxes
             bbox_params=A.BboxParams(
-                            format="yolo",
-                            min_visibility=0.4,
-                            label_fields=[]
-                        )
+                format="yolo", min_visibility=0.4, label_fields=[]
+            ),
         )
 
         # TODO: what to do about domain name?
@@ -387,7 +435,7 @@ class PascalDataset:
             csv_file=f"{dpath}ImageSets/Main/train.txt",
             image_dir=f"{dpath}JPEGImages/",
             label_dir=f"{dpath}Annotations/",
-            image_size=self.image_size, 
+            image_size=self.image_size,
             grid_sizes=self.grid_sizes,
             num_classes=self.num_cls,
             transform=train_transform,
@@ -398,7 +446,7 @@ class PascalDataset:
             csv_file=f"{dpath}ImageSets/Main/val_smol.txt",
             image_dir=f"{dpath}JPEGImages/",
             label_dir=f"{dpath}Annotations/",
-            image_size=self.image_size, 
+            image_size=self.image_size,
             grid_sizes=self.grid_sizes,
             num_classes=self.num_cls,
             transform=test_transform,

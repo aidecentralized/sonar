@@ -8,22 +8,27 @@ from algos.base_class import BaseClient, BaseServer
 import os
 import time
 
+
 class FedAvgClient(BaseClient):
-    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+    def __init__(
+        self, config: Dict[str, Any], comm_utils: CommunicationManager
+    ) -> None:
         super().__init__(config, comm_utils)
         self.config = config
 
         try:
-            config['log_path'] = f"{config['log_path']}/node_{self.node_id}"
-            os.makedirs(config['log_path'])
+            config["log_path"] = f"{config['log_path']}/node_{self.node_id}"
+            os.makedirs(config["log_path"])
         except FileExistsError:
-            color_code = "\033[91m" # Red color
-            reset_code = "\033[0m"   # Reset to default color
-            print(f"{color_code}Log directory for the node {self.node_id} already exists in {config['log_path']}")
+            color_code = "\033[91m"  # Red color
+            reset_code = "\033[0m"  # Reset to default color
+            print(
+                f"{color_code}Log directory for the node {self.node_id} already exists in {config['log_path']}"
+            )
             print(f"Exiting to prevent accidental overwrite{reset_code}")
             sys.exit(1)
 
-        config['load_existing'] = False
+        config["load_existing"] = False
         self.client_log_utils = LogUtils(config)
 
     def local_train(self, round: int, **kwargs: Any):
@@ -38,12 +43,22 @@ class FedAvgClient(BaseClient):
         time_taken = end_time - start_time
 
         self.client_log_utils.log_console(
-            "Client {} finished training with loss {:.4f}, accuracy {:.4f}, time taken {:.2f} seconds".format(self.node_id, avg_loss, avg_accuracy, time_taken)
+            "Client {} finished training with loss {:.4f}, accuracy {:.4f}, time taken {:.2f} seconds".format(
+                self.node_id, avg_loss, avg_accuracy, time_taken
             )
-        self.client_log_utils.log_summary("Client {} finished training with loss {:.4f}, accuracy {:.4f}, time taken {:.2f} seconds".format(self.node_id, avg_loss, avg_accuracy, time_taken))
+        )
+        self.client_log_utils.log_summary(
+            "Client {} finished training with loss {:.4f}, accuracy {:.4f}, time taken {:.2f} seconds".format(
+                self.node_id, avg_loss, avg_accuracy, time_taken
+            )
+        )
 
-        self.client_log_utils.log_tb(f"train_loss/client{self.node_id}", avg_loss, round)
-        self.client_log_utils.log_tb(f"train_accuracy/client{self.node_id}", avg_accuracy, round)
+        self.client_log_utils.log_tb(
+            f"train_loss/client{self.node_id}", avg_loss, round
+        )
+        self.client_log_utils.log_tb(
+            f"train_accuracy/client{self.node_id}", avg_accuracy, round
+        )
 
     def local_test(self, **kwargs: Any):
         """
@@ -55,7 +70,7 @@ class FedAvgClient(BaseClient):
         """
         Share the model weights
         """
-        return self.model.state_dict() # type: ignore
+        return self.model.state_dict()  # type: ignore
 
     def set_representation(self, representation: OrderedDict[str, Tensor]):
         """
@@ -71,18 +86,32 @@ class FedAvgClient(BaseClient):
             self.local_train(round)
             self.local_test()
             repr = self.get_representation()
-            
-            self.client_log_utils.log_summary("Client {} sending done signal to {}".format(self.node_id, self.server_node))
+
+            self.client_log_utils.log_summary(
+                "Client {} sending done signal to {}".format(
+                    self.node_id, self.server_node
+                )
+            )
             self.comm_utils.send(self.server_node, repr)
-            self.client_log_utils.log_summary("Client {} waiting to get new model from {}".format(self.node_id, self.server_node))
+            self.client_log_utils.log_summary(
+                "Client {} waiting to get new model from {}".format(
+                    self.node_id, self.server_node
+                )
+            )
             repr = self.comm_utils.receive(self.server_node)
-            self.client_log_utils.log_summary("Client {} received new model from {}".format(self.node_id, self.server_node))
+            self.client_log_utils.log_summary(
+                "Client {} received new model from {}".format(
+                    self.node_id, self.server_node
+                )
+            )
             self.set_representation(repr)
             # self.client_log_utils.log_summary("Round {} done for Client {}".format(round, self.node_id))
 
 
 class FedAvgServer(BaseServer):
-    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+    def __init__(
+        self, config: Dict[str, Any], comm_utils: CommunicationManager
+    ) -> None:
         super().__init__(config, comm_utils)
         # self.set_parameters()
         self.config = config
@@ -119,14 +148,16 @@ class FedAvgServer(BaseServer):
         avgd_wts: OrderedDict[str, Tensor] = OrderedDict()
 
         for key in model_wts[0].keys():
-            avgd_wts[key] = sum(coeff * m[key] for m in model_wts) # type: ignore
+            avgd_wts[key] = sum(coeff * m[key] for m in model_wts)  # type: ignore
 
         # Move to GPU only after averaging
         for key in avgd_wts.keys():
             avgd_wts[key] = avgd_wts[key].to(self.device)
         return avgd_wts
 
-    def aggregate(self, representation_list: List[OrderedDict[str, Tensor]], **kwargs: Any) -> OrderedDict[str, Tensor]:
+    def aggregate(
+        self, representation_list: List[OrderedDict[str, Tensor]], **kwargs: Any
+    ) -> OrderedDict[str, Tensor]:
         """
         Aggregate the model weights
         """
@@ -168,7 +199,7 @@ class FedAvgServer(BaseServer):
         # self.log_utils.log_console("Server received all clients done signal")
         avg_wts = self.aggregate(reprs)
         self.set_representation(avg_wts)
-        #Remove the signal file after confirming that all client paths have been created
+        # Remove the signal file after confirming that all client paths have been created
         if os.path.exists(self.folder_deletion_signal):
             os.remove(self.folder_deletion_signal)
 
@@ -184,7 +215,15 @@ class FedAvgServer(BaseServer):
             loss, acc, time_taken = self.test()
             self.log_utils.log_tb(f"test_acc/clients", acc, round)
             self.log_utils.log_tb(f"test_loss/clients", loss, round)
-            self.log_utils.log_console("Round: {} test_acc:{:.4f}, test_loss:{:.4f}, time taken {:.2f} seconds".format(round, acc, loss, time_taken))
+            self.log_utils.log_console(
+                "Round: {} test_acc:{:.4f}, test_loss:{:.4f}, time taken {:.2f} seconds".format(
+                    round, acc, loss, time_taken
+                )
+            )
             # self.log_utils.log_summary("Round: {} test_acc:{:.4f}, test_loss:{:.4f}, time taken {:.2f} seconds".format(round, acc, loss, time_taken))
             self.log_utils.log_console("Round {} complete".format(round))
-            self.log_utils.log_summary("Round {} complete".format(round,))
+            self.log_utils.log_summary(
+                "Round {} complete".format(
+                    round,
+                )
+            )
