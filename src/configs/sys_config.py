@@ -51,6 +51,8 @@ def get_algo_configs(num_users: int, algo_configs: List[str], num_malicious: int
         # but ideally every node will have different algo
         # algo_config_map[f"node_{i}"] = random.choice(algo_configs)
         # As a proof of concept, we're only going to use the traditional fl algo
+        # in this case, algo_configs[0] is the traditional fl algo
+        # algo_configs[1] is the malicious fl algo
         if i < (num_users + 1 - num_malicious):
             algo_config_map[f"node_{i}"] = algo_configs[0]
         else:
@@ -105,10 +107,11 @@ digit_five_dpath = {
 }
 
 mpi_system_config = {
+    "exp_id": "test_new_logging",
     "comm": {
         "type": "MPI"
     },
-    "num_users": 6,
+    "num_users": 3,
     # "experiment_path": "./experiments/",
     "dset": "cifar10",
     "dump_dir": "./expt_dump/",
@@ -117,10 +120,10 @@ mpi_system_config = {
     # node_0 is a server currently
     # The device_ids dictionary depicts the GPUs on which the nodes reside.
     # For a single-GPU environment, the config will look as follows (as it follows a 0-based indexing):
-    "device_ids": get_device_ids(num_users=6, gpus_available=[1, 2]),
+    "device_ids": get_device_ids(num_users=3, gpus_available=[1, 2]),
     # use this when the list needs to be imported from the algo_config
     # "algo": get_algo_configs(num_users=3, algo_configs=algo_configs_list),
-    "algo": get_algo_configs(num_users=6, algo_configs=malicious_algo_config_list, num_malicious=1),
+    "algos": get_algo_configs(num_users=3, algo_configs=malicious_algo_config_list, num_malicious=0),
     "samples_per_user": 1000, #TODO: To model scenarios where different users have different number of samples
     # we need to make this a dictionary with user_id as key and number of samples as value
     "train_label_distribution": "iid", # Either "iid", "non_iid" "support" 
@@ -131,6 +134,7 @@ mpi_system_config = {
 }
 
 mpi_non_iid_sys_config = {
+    "exp_id": "test1",
     "comm": {
         "type": "MPI"
     },
@@ -153,6 +157,7 @@ mpi_non_iid_sys_config = {
 
 L2C_users = 3
 mpi_L2C_sys_config = {
+    "exp_id": "test1",
     "comm": {
         "type": "MPI"
     },
@@ -175,6 +180,7 @@ mpi_L2C_sys_config = {
 }
 
 mpi_metaL2C_support_sys_config = {
+    "exp_id": "test1",
     "comm": {
         "type": "MPI"
     },
@@ -198,6 +204,7 @@ mpi_metaL2C_support_sys_config = {
 }
 
 mpi_digitfive_sys_config = {
+    "exp_id": "test1",
     "comm": {
         "type": "MPI"
     },
@@ -222,6 +229,7 @@ mpi_digitfive_sys_config = {
 
 swarm_users = 3
 mpi_domainnet_sys_config = {
+    "exp_id": "test1",
     "comm": {
         "type": "MPI"
     },
@@ -245,6 +253,7 @@ mpi_domainnet_sys_config = {
 }
 
 object_detect_system_config = {
+    "exp_id": "test1",
     "num_users": 1,
     "experiment_path": "./experiments/",
     "dset": "pascal",
@@ -267,6 +276,7 @@ object_detect_system_config = {
 num_users = 20
 gpu_ids = [1, 2, 3, 4, 5, 6, 7]
 grpc_system_config = {
+    "exp_id": "test1",
     "num_users": num_users,
     "comm": {
         "type": "GRPC",
