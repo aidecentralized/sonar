@@ -146,7 +146,12 @@ L2C_users: int = 3
 L2C: ConfigType = {
     "algo": "l2c",
     "sharing": "weights",
+<<<<<<< HEAD
     "alpha_lr": 0.1,
+=======
+
+    "alpha_lr": 0.1, 
+>>>>>>> 3564905 (config fix for get malicious configs, moving exp_id to sys_config)
     "alpha_weight_decay": 0.01,
     # Clients selection
     "target_users_before_T_0": 0,  # Only used if adapted_to_assumption True otherwise all users are kept
@@ -168,6 +173,10 @@ L2C: ConfigType = {
 
 fedcentral: ConfigType = {
     "algo": "centralized",
+<<<<<<< HEAD
+=======
+
+>>>>>>> 3564905 (config fix for get malicious configs, moving exp_id to sys_config)
     "mask_last_layer": False,
     "fine_tune_last_layer": False,
     "epochs_per_round": 5,
@@ -250,7 +259,12 @@ fedstatic: ConfigType = {
 
 metaL2C_cifar10: ConfigType = {
     "algo": "metal2c",
+<<<<<<< HEAD
     "sharing": "weights",  # "updates"
+=======
+    "sharing": "weights", #"updates"
+
+>>>>>>> 3564905 (config fix for get malicious configs, moving exp_id to sys_config)
     # Client selection
     "target_users_before_T_0": 0,
     "target_users_after_T_0": 1,
