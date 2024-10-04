@@ -4,7 +4,9 @@ from PIL import Image
 import torchvision.transforms as T
 
 
-def read_domainnet_data(dataset_path: str, domain_name: str, split: str = "train", labels_to_keep=None):
+def read_domainnet_data(
+    dataset_path: str, domain_name: str, split: str = "train", labels_to_keep=None
+):
     """
     Reads DomainNet data.
     """
@@ -34,13 +36,14 @@ class DomainNet:
     """
     DomainNet Dataset Class.
     """
+
     def __init__(self, data_paths, data_labels, transforms, domain_name, cache=False):
         self.data_paths = data_paths
         self.data_labels = data_labels
         self.transforms = transforms
         self.domain_name = domain_name
         self.cached_data = []
-        
+
         if cache:
             for idx, _ in enumerate(data_paths):
                 self.cached_data.append(self.__read_data__(idx))
@@ -69,24 +72,37 @@ class DomainNetDataset:
     """
     DomainNet Dataset Class.
     """
+
     def __init__(self, dpath: str, domain_name: str) -> None:
         self.image_size = 32
         self.crop_scale = 0.75
         self.image_resize = int(np.ceil(self.image_size / self.crop_scale))
 
         labels_to_keep = [
-            "suitcase", "teapot", "pillow", "streetlight", "table",
-            "bathtub", "wine_glass", "vase", "umbrella", "bench"
+            "suitcase",
+            "teapot",
+            "pillow",
+            "streetlight",
+            "table",
+            "bathtub",
+            "wine_glass",
+            "vase",
+            "umbrella",
+            "bench",
         ]
         self.num_cls = len(labels_to_keep)
         self.num_channels = 3
 
-        train_transform = T.Compose([
-            T.Resize((self.image_resize, self.image_resize), antialias=True),
-        ])
-        test_transform = T.Compose([
-            T.Resize((self.image_size, self.image_size), antialias=True),
-        ])
+        train_transform = T.Compose(
+            [
+                T.Resize((self.image_resize, self.image_resize), antialias=True),
+            ]
+        )
+        test_transform = T.Compose(
+            [
+                T.Resize((self.image_size, self.image_size), antialias=True),
+            ]
+        )
         train_data_paths, train_data_labels = read_domainnet_data(
             dpath, domain_name, split="train", labels_to_keep=labels_to_keep
         )

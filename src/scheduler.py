@@ -36,16 +36,14 @@ from utils.log_utils import copy_source_code, check_and_create_path
 algo_map = {
     "fedavg": [FedAvgServer, FedAvgClient],
     "isolated": [IsolatedServer],
-
-#    "fedran": [FedRanServer, FedRanClient],
-#    "fedgrid": [FedGridServer, FedGridClient],
-#    "fedtorus": [FedTorusServer, FedTorusClient],
+    #    "fedran": [FedRanServer, FedRanClient],
+    #    "fedgrid": [FedGridServer, FedGridClient],
+    #    "fedtorus": [FedTorusServer, FedTorusClient],
     "fedass": [FedAssServer, FedAssClient],
     "fediso": [FedIsoServer, FedIsoClient],
     "fedweight": [FedWeightServer, FedWeightClient],
-#    "fedring": [FedRingServer, FedRingClient],
+    #    "fedring": [FedRingServer, FedRingClient],
     "fedstatic": [FedStaticServer, FedStaticClient],
-
     "swarm": [SWARMServer, SWARMClient],
     "dispfl": [DisPFLServer, DisPFLClient],
     "defkt": [DefKTServer, DefKTClient],
@@ -57,22 +55,32 @@ algo_map = {
     "fedval": [FedValServer, FedValClient],
 }
 
-def get_node(config: Dict[str, Any], rank: int, comm_utils: CommunicationManager) -> BaseNode:
+
+def get_node(
+    config: Dict[str, Any], rank: int, comm_utils: CommunicationManager
+) -> BaseNode:
     algo_name = config["algo"]
     node = algo_map[algo_name][rank > 0](config, comm_utils)
-    
+
     return node
 
-class Scheduler():
-    """ Manages the overall orchestration of experiments
-    """
+
+class Scheduler:
+    """Manages the overall orchestration of experiments"""
+
     def __init__(self) -> None:
         pass
 
     def install_config(self) -> None:
         self.config: Dict[str, Any] = process_config(self.config)
 
-    def assign_config_by_path(self, sys_config_path: str, algo_config_path: str, is_super_node: bool|None = None, host: str|None = None) -> None:
+    def assign_config_by_path(
+        self,
+        sys_config_path: str,
+        algo_config_path: str,
+        is_super_node: bool | None = None,
+        host: str | None = None,
+    ) -> None:
         self.sys_config = load_config(sys_config_path)
         if is_super_node:
             self.sys_config["comm"]["rank"] = 0
@@ -81,20 +89,20 @@ class Scheduler():
             self.sys_config["comm"]["rank"] = None
         self.config = {}
         self.config.update(self.sys_config)
-        
+
     def merge_configs(self) -> None:
         self.config.update(self.sys_config)
         node_name = "node_{}".format(self.communication.get_rank())
         self.algo_config = self.sys_config["algos"][node_name]
         self.config.update(self.algo_config)
 
-    def initialize(self, copy_souce_code: bool=True) -> None:
+    def initialize(self, copy_souce_code: bool = True) -> None:
         assert self.config is not None, "Config should be set when initializing"
         self.communication = CommunicationManager(self.config)
         self.config["comm"]["rank"] = self.communication.get_rank()
         # Base clients modify the seed later on
         seed = self.config["seed"]
-        torch.manual_seed(seed) # type: ignore
+        torch.manual_seed(seed)  # type: ignore
         random.seed(seed)
         numpy.random.seed(seed)
         self.merge_configs()
@@ -108,7 +116,11 @@ class Scheduler():
                 os.mkdir(self.config["saved_models"])
                 os.mkdir(self.config["log_path"])
 
-        self.node = get_node(self.config, rank=self.communication.get_rank(), comm_utils=self.communication)
+        self.node = get_node(
+            self.config,
+            rank=self.communication.get_rank(),
+            comm_utils=self.communication,
+        )
 
     def run_job(self) -> None:
         self.node.run_protocol()

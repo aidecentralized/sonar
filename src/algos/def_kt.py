@@ -19,7 +19,9 @@ class CommProtocol:
     Communication protocol tags for the server and clients
     """
 
-    DONE: int = 0  # Used to signal the server that the client is done with local training
+    DONE: int = (
+        0  # Used to signal the server that the client is done with local training
+    )
     START: int = 1  # Used to signal by the server to start the current round
     UPDATES: int = 2  # Used to send the updates from the server to the clients
     FINISH: int = 3  # Used to signal the server to finish the current round
@@ -29,11 +31,16 @@ class DefKTClient(BaseClient):
     """
     Client class for DefKT (Deep Mutual Learning with Knowledge Transfer)
     """
-    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+
+    def __init__(
+        self, config: Dict[str, Any], comm_utils: CommunicationManager
+    ) -> None:
         super().__init__(config, comm_utils)
         self.config = config
         self.tag = CommProtocol
-        self.model_save_path = f"{self.config['results_path']}/saved_models/node_{self.node_id}.pt"
+        self.model_save_path = (
+            f"{self.config['results_path']}/saved_models/node_{self.node_id}.pt"
+        )
         self.server_node = 1  # leader node
         self.best_acc = 0.0  # Initialize best accuracy attribute
         if self.node_id == 1:
@@ -83,7 +90,9 @@ class DefKTClient(BaseClient):
         """
         self.model.load_state_dict(representation)
 
-    def fed_avg(self, model_wts: List[OrderedDict[str, Tensor]]) -> OrderedDict[str, Tensor]:
+    def fed_avg(
+        self, model_wts: List[OrderedDict[str, Tensor]]
+    ) -> OrderedDict[str, Tensor]:
         """
         Federated averaging of model weights
         """
@@ -101,7 +110,9 @@ class DefKTClient(BaseClient):
                     avgd_wts[key] += coeff * local_wts[key].to(self.device)
         return avgd_wts
 
-    def aggregate(self, representation_list: List[OrderedDict[str, Tensor]]) -> OrderedDict[str, Tensor]:
+    def aggregate(
+        self, representation_list: List[OrderedDict[str, Tensor]]
+    ) -> OrderedDict[str, Tensor]:
         """
         Aggregate the model weights
         """
@@ -116,7 +127,9 @@ class DefKTClient(BaseClient):
             self.comm_utils.send(client_node, representation, tag=self.tag.UPDATES)
         print(f"Node 1 sent average weight to {len(self.clients)} nodes")
 
-    def single_round(self, self_repr: OrderedDict[str, Tensor]) -> OrderedDict[str, Tensor]:
+    def single_round(
+        self, self_repr: OrderedDict[str, Tensor]
+    ) -> OrderedDict[str, Tensor]:
         """
         Runs a single training round
         """
@@ -157,11 +170,15 @@ class DefKTClient(BaseClient):
             if self.status == "teacher":
                 self.local_train()
                 self_repr = self.get_representation()
-                self.comm_utils.send(dest=self.pair_id, data=self_repr, tag=self.tag.DONE)
+                self.comm_utils.send(
+                    dest=self.pair_id, data=self_repr, tag=self.tag.DONE
+                )
                 print(f"Node {self.node_id} sent repr to student node {self.pair_id}")
             elif self.status == "student":
                 teacher_repr = self.comm_utils.receive(self.pair_id, tag=self.tag.DONE)
-                print(f"Node {self.node_id} received repr from teacher node {self.pair_id}")
+                print(
+                    f"Node {self.node_id} received repr from teacher node {self.pair_id}"
+                )
                 self.deep_mutual_train(teacher_repr)
             else:
                 print(f"Node {self.node_id} do nothing")
@@ -174,15 +191,22 @@ class DefKTServer(BaseServer):
     """
     Server class for DefKT (Deep Mutual Learning with Knowledge Transfer)
     """
-    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+
+    def __init__(
+        self, config: Dict[str, Any], comm_utils: CommunicationManager
+    ) -> None:
         super().__init__(config, comm_utils)
         self.config = config
         self.set_model_parameters(config)
         self.tag = CommProtocol
-        self.model_save_path = f"{self.config['results_path']}/saved_models/node_{self.node_id}.pt"
+        self.model_save_path = (
+            f"{self.config['results_path']}/saved_models/node_{self.node_id}.pt"
+        )
         self.best_acc = 0.0  # Initialize best accuracy attribute
 
-    def send_representations(self, representations: Dict[int, OrderedDict[str, Tensor]]) -> None:
+    def send_representations(
+        self, representations: Dict[int, OrderedDict[str, Tensor]]
+    ) -> None:
         """
         Send the model representations to the clients
         """
