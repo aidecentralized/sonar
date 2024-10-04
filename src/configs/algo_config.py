@@ -250,7 +250,7 @@ fedstatic: ConfigType = {
 
 metaL2C_cifar10: ConfigType = {
     "algo": "metal2c",
-    "sharing": "weights", #"updates"
+    "sharing": "weights",  # "updates"
     # Client selection
     "target_users_before_T_0": 0,
     "target_users_after_T_0": 1,

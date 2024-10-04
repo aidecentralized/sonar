@@ -74,14 +74,18 @@ class FedAvgClient(BaseClient):
         malicious_type = self.config.get("malicious_type", "normal")
 
         if malicious_type == "normal":
-            return self.model.state_dict() # type: ignore
+            return self.model.state_dict()  # type: ignore
         elif malicious_type == "bad_weights":
             # Set the weights to zero
             # TODO: set it to the weight specified in the config
-            return OrderedDict({key: zeros_like(val) for key, val in self.model.state_dict().items()})
+            return OrderedDict(
+                {key: zeros_like(val) for key, val in self.model.state_dict().items()}
+            )
         elif malicious_type == "sign_flip":
             # Flip the sign of the weights
-            return OrderedDict({key: -1 * val for key, val in self.model.state_dict().items()})
+            return OrderedDict(
+                {key: -1 * val for key, val in self.model.state_dict().items()}
+            )
         else:
             raise ValueError("Invalid malicious type")
 
@@ -164,7 +168,7 @@ class FedAvgServer(BaseServer):
         avgd_wts: OrderedDict[str, Tensor] = OrderedDict()
 
         for key in model_wts[0].keys():
-            avgd_wts[key] = sum(coeff * m[key].to(self.device) for m in model_wts) # type: ignore
+            avgd_wts[key] = sum(coeff * m[key].to(self.device) for m in model_wts)  # type: ignore
 
         # Move to GPU only after averaging
         for key in avgd_wts.keys():

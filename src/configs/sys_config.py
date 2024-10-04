@@ -52,7 +52,9 @@ def get_device_ids(num_users: int, gpus_available: List[int]) -> Dict[str, List[
     return device_ids
 
 
-def get_algo_configs(num_users: int, algo_configs: List[str], num_malicious: int=0) -> Dict[str, str]:
+def get_algo_configs(
+    num_users: int, algo_configs: List[str], num_malicious: int = 0
+) -> Dict[str, str]:
     """
     Randomly assign an algorithm configuration to each node, allowing for repetition.
     """
@@ -129,9 +131,7 @@ digit_five_dpath = {
 
 mpi_system_config = {
     "exp_id": "test_new_logging",
-    "comm": {
-        "type": "MPI"
-    },
+    "comm": {"type": "MPI"},
     "num_users": 3,
     # "experiment_path": "./experiments/",
     "dset": "cifar10",
@@ -145,8 +145,10 @@ mpi_system_config = {
     "device_ids": get_device_ids(num_users=3, gpus_available=[1, 2]),
     # use this when the list needs to be imported from the algo_config
     # "algo": get_algo_configs(num_users=3, algo_configs=algo_configs_list),
-    "algos": get_algo_configs(num_users=3, algo_configs=malicious_algo_config_list, num_malicious=0),
-    "samples_per_user": 1000, #TODO: To model scenarios where different users have different number of samples
+    "algos": get_algo_configs(
+        num_users=3, algo_configs=malicious_algo_config_list, num_malicious=0
+    ),
+    "samples_per_user": 1000,  # TODO: To model scenarios where different users have different number of samples
     # we need to make this a dictionary with user_id as key and number of samples as value
     "train_label_distribution": "iid",  # Either "iid", "non_iid" "support"
     "test_label_distribution": "iid",  # Either "iid", "non_iid" "support"
@@ -157,9 +159,7 @@ mpi_system_config = {
 
 mpi_non_iid_sys_config = {
     "exp_id": "test1",
-    "comm": {
-        "type": "MPI"
-    },
+    "comm": {"type": "MPI"},
     "seed": 1,
     "num_users": 3,
     # "experiment_path": "./experiments/",
@@ -180,9 +180,7 @@ mpi_non_iid_sys_config = {
 L2C_users = 3
 mpi_L2C_sys_config = {
     "exp_id": "test1",
-    "comm": {
-        "type": "MPI"
-    },
+    "comm": {"type": "MPI"},
     "seed": 1,
     "num_users": 3,
     # "experiment_path": "./experiments/",
@@ -203,9 +201,7 @@ mpi_L2C_sys_config = {
 
 mpi_metaL2C_support_sys_config = {
     "exp_id": "test1",
-    "comm": {
-        "type": "MPI"
-    },
+    "comm": {"type": "MPI"},
     "seed": 1,
     "num_users": 3,
     # "experiment_path": "./experiments/",
@@ -227,9 +223,7 @@ mpi_metaL2C_support_sys_config = {
 
 mpi_digitfive_sys_config = {
     "exp_id": "test1",
-    "comm": {
-        "type": "MPI"
-    },
+    "comm": {"type": "MPI"},
     "seed": 1,
     "num_users": 3,
     "load_existing": False,
@@ -253,9 +247,7 @@ mpi_digitfive_sys_config = {
 swarm_users = 3
 mpi_domainnet_sys_config = {
     "exp_id": "test1",
-    "comm": {
-        "type": "MPI"
-    },
+    "comm": {"type": "MPI"},
     "seed": 1,
     "num_users": 3,
     "load_existing": False,
