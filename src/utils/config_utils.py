@@ -1,8 +1,6 @@
 from typing import Any, Dict, List
 import jmespath
 import importlib
-import random
-import uuid
 
 
 def load_config(config_path: str) -> Dict[str, Any]:
@@ -30,10 +28,11 @@ def process_config(config: Dict[str, Any]) -> Dict[str, Any]:
     else:
         dset = config["dset"]
 
-    unique_id = uuid.uuid4().hex[:8]
-
     experiment_name = "{}_{}users_{}_{}".format(
-        dset, config["num_users"], config["samples_per_user"], unique_id
+        dset,
+        config["num_users"],
+        config["samples_per_user"],
+        config["exp_id"],
     )
 
     for exp_key in config["exp_keys"]:

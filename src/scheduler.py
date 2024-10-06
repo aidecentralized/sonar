@@ -92,6 +92,8 @@ class Scheduler:
 
     def merge_configs(self) -> None:
         self.config.update(self.sys_config)
+        node_name = "node_{}".format(self.communication.get_rank())
+        self.algo_config = self.sys_config["algos"][node_name]
         self.config.update(self.algo_config)
 
     def initialize(self, copy_souce_code: bool = True) -> None:
@@ -103,10 +105,6 @@ class Scheduler:
         torch.manual_seed(seed)  # type: ignore
         random.seed(seed)
         numpy.random.seed(seed)
-
-        node_name = "node_{}".format(self.communication.get_rank())
-
-        self.algo_config = self.sys_config["algo"][node_name]
         self.merge_configs()
 
         if self.communication.get_rank() == 0:

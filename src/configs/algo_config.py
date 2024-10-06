@@ -48,7 +48,6 @@ def get_malicious_types(malicious_config_list: List[ConfigType]) -> Dict[str, st
 
 iid_dispfl_clients_new: ConfigType = {
     "algo": "dispfl",
-    "exp_id": 12,
     "exp_type": "iid_dispfl",
     "neighbors": 2,
     "active_rate": 0.8,
@@ -63,10 +62,9 @@ iid_dispfl_clients_new: ConfigType = {
 
 traditional_fl: ConfigType = {
     "algo": "fedavg",
-    "exp_id": 10,
-    "exp_type": "iid_clients_federated",
+    "exp_type": "",
     # Learning setup
-    "epochs": 1000,
+    "epochs": 10,
     "model": "resnet10",
     "model_lr": 3e-4,
     "batch_size": 256,
@@ -75,13 +73,12 @@ traditional_fl: ConfigType = {
 
 malicious_traditional_fl: ConfigType = {
     **traditional_fl,
-    "malicious_type": get_malicious_types(malicious_config_list),
+    "malicious_type": "bad_weights",
 }
 
-fedweight_users: int = 3
+
 fedweight: ConfigType = {
     "algo": "fedweight",
-    "exp_id": "test1",
     "num_rep": 1,
     # Client selection
     "target_users": 3,
@@ -89,7 +86,7 @@ fedweight: ConfigType = {
     # "community_type": "dataset",
     "with_sim_consensus": True,
     # Learning setup
-    "rounds": 210,
+    "rounds": 10,
     "epochs_per_round": 5,
     "warmup_epochs": 50,
     "model": "resnet10",
@@ -107,7 +104,6 @@ fedweight: ConfigType = {
 
 defkt: ConfigType = {
     "algo": "defkt",
-    "exp_id": "defkt_test9",
     "central_client": 1,
     "mask_last_layer": False,
     "fine_tune_last_layer": False,
@@ -125,8 +121,7 @@ defkt: ConfigType = {
 
 fedavg_object_detect: ConfigType = {
     "algo": "fedavg",
-    "exp_id": "test_modular_yolo",
-    "exp_type": "test",
+    "exp_type": "",
     # Learning setup
     "epochs": 10,
     "model": "yolo",
@@ -136,7 +131,6 @@ fedavg_object_detect: ConfigType = {
 
 fediso: ConfigType = {
     "algo": "fediso",
-    "exp_id": "test3",
     "num_rep": 1,
     # Learning setup
     "rounds": 100,
@@ -152,7 +146,6 @@ L2C_users: int = 3
 L2C: ConfigType = {
     "algo": "l2c",
     "sharing": "weights",
-    "exp_id": "test3",
     "alpha_lr": 0.1,
     "alpha_weight_decay": 0.01,
     # Clients selection
@@ -174,9 +167,7 @@ L2C: ConfigType = {
 }
 
 fedcentral: ConfigType = {
-    "seed": 1,
     "algo": "centralized",
-    "exp_id": "test5",
     "mask_last_layer": False,
     "fine_tune_last_layer": False,
     "epochs_per_round": 5,
@@ -191,7 +182,6 @@ fedcentral: ConfigType = {
 
 fedval: ConfigType = {
     "algo": "fedval",
-    "exp_id": "",
     "num_rep": 1,
     # Clients selection
     "selection_strategy": "highest",  # lowest,
@@ -216,7 +206,6 @@ fedval: ConfigType = {
 swarm_users: int = 3
 swarm: ConfigType = {
     "algo": "swarm",
-    "exp_id": "test2",
     "num_rep": 1,
     # Clients selection
     "target_users": 2,
@@ -239,7 +228,6 @@ swarm: ConfigType = {
 
 fedstatic: ConfigType = {
     "algo": "fedstatic",
-    "exp_id": "test_fedtorus_5",
     "num_rep": 1,
     "topology": "torus",
     # Clients selection
@@ -263,7 +251,6 @@ fedstatic: ConfigType = {
 metaL2C_cifar10: ConfigType = {
     "algo": "metal2c",
     "sharing": "weights",  # "updates"
-    "exp_id": "",
     # Client selection
     "target_users_before_T_0": 0,
     "target_users_after_T_0": 1,
@@ -287,7 +274,6 @@ metaL2C_cifar10: ConfigType = {
 
 fedass: ConfigType = {
     "algo": "fedass",
-    "exp_id": "",
     "num_rep": 1,
     "load_existing": False,
     # Clients selection
@@ -310,7 +296,6 @@ fedass: ConfigType = {
 
 feddatarepr: ConfigType = {
     "algo": "feddatarepr",
-    "exp_id": "try2",
     "num_rep": 1,
     "load_existing": False,
     # Similarity params
