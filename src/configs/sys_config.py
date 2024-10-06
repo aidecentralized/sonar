@@ -130,8 +130,15 @@ digit_five_dpath = {
 }
 
 mpi_system_config = {
+<<<<<<< HEAD
     "exp_id": "test_new_logging",
     "comm": {"type": "MPI"},
+=======
+    "exp_id": "",
+    "comm": {
+        "type": "MPI"
+    },
+>>>>>>> 36bd771 (got rid of exp ids)
     "num_users": 3,
     # "experiment_path": "./experiments/",
     "dset": "cifar10",
@@ -158,8 +165,15 @@ mpi_system_config = {
 }
 
 mpi_non_iid_sys_config = {
+<<<<<<< HEAD
     "exp_id": "test1",
     "comm": {"type": "MPI"},
+=======
+    "exp_id": "",
+    "comm": {
+        "type": "MPI"
+    },
+>>>>>>> 36bd771 (got rid of exp ids)
     "seed": 1,
     "num_users": 3,
     # "experiment_path": "./experiments/",
@@ -179,8 +193,15 @@ mpi_non_iid_sys_config = {
 
 L2C_users = 3
 mpi_L2C_sys_config = {
+<<<<<<< HEAD
     "exp_id": "test1",
     "comm": {"type": "MPI"},
+=======
+    "exp_id": "",
+    "comm": {
+        "type": "MPI"
+    },
+>>>>>>> 36bd771 (got rid of exp ids)
     "seed": 1,
     "num_users": 3,
     # "experiment_path": "./experiments/",
@@ -200,8 +221,15 @@ mpi_L2C_sys_config = {
 }
 
 mpi_metaL2C_support_sys_config = {
+<<<<<<< HEAD
     "exp_id": "test1",
     "comm": {"type": "MPI"},
+=======
+    "exp_id": "",
+    "comm": {
+        "type": "MPI"
+    },
+>>>>>>> 36bd771 (got rid of exp ids)
     "seed": 1,
     "num_users": 3,
     # "experiment_path": "./experiments/",
@@ -222,8 +250,15 @@ mpi_metaL2C_support_sys_config = {
 }
 
 mpi_digitfive_sys_config = {
+<<<<<<< HEAD
     "exp_id": "test1",
     "comm": {"type": "MPI"},
+=======
+    "exp_id": "",
+    "comm": {
+        "type": "MPI"
+    },
+>>>>>>> 36bd771 (got rid of exp ids)
     "seed": 1,
     "num_users": 3,
     "load_existing": False,
@@ -246,8 +281,15 @@ mpi_digitfive_sys_config = {
 
 swarm_users = 3
 mpi_domainnet_sys_config = {
+<<<<<<< HEAD
     "exp_id": "test1",
     "comm": {"type": "MPI"},
+=======
+    "exp_id": "",
+    "comm": {
+        "type": "MPI"
+    },
+>>>>>>> 36bd771 (got rid of exp ids)
     "seed": 1,
     "num_users": 3,
     "load_existing": False,
@@ -269,7 +311,7 @@ mpi_domainnet_sys_config = {
 }
 
 object_detect_system_config = {
-    "exp_id": "test1",
+    "exp_id": "",
     "num_users": 1,
     "experiment_path": "./experiments/",
     "dset": "pascal",
@@ -292,7 +334,7 @@ object_detect_system_config = {
 num_users = 20
 gpu_ids = [1, 2, 3, 4, 5, 6, 7]
 grpc_system_config = {
-    "exp_id": "test1",
+    "exp_id": "",
     "num_users": num_users,
     "comm": {"type": "GRPC", "peer_ids": ["localhost:50050"]},  # The super-node
     "dset": "cifar10",
