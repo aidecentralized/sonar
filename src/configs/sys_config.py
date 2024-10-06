@@ -131,9 +131,7 @@ digit_five_dpath = {
 
 mpi_system_config = {
     "exp_id": "",
-    "comm": {
-        "type": "MPI"
-    },
+    "comm": {"type": "MPI"},
     "num_users": 3,
     # "experiment_path": "./experiments/",
     "dset": "cifar10",
@@ -161,9 +159,7 @@ mpi_system_config = {
 
 mpi_non_iid_sys_config = {
     "exp_id": "",
-    "comm": {
-        "type": "MPI"
-    },
+    "comm": {"type": "MPI"},
     "seed": 1,
     "num_users": 3,
     # "experiment_path": "./experiments/",
@@ -184,9 +180,7 @@ mpi_non_iid_sys_config = {
 L2C_users = 3
 mpi_L2C_sys_config = {
     "exp_id": "",
-    "comm": {
-        "type": "MPI"
-    },
+    "comm": {"type": "MPI"},
     "seed": 1,
     "num_users": 3,
     # "experiment_path": "./experiments/",
@@ -207,9 +201,7 @@ mpi_L2C_sys_config = {
 
 mpi_metaL2C_support_sys_config = {
     "exp_id": "",
-    "comm": {
-        "type": "MPI"
-    },
+    "comm": {"type": "MPI"},
     "seed": 1,
     "num_users": 3,
     # "experiment_path": "./experiments/",
@@ -231,9 +223,7 @@ mpi_metaL2C_support_sys_config = {
 
 mpi_digitfive_sys_config = {
     "exp_id": "",
-    "comm": {
-        "type": "MPI"
-    },
+    "comm": {"type": "MPI"},
     "seed": 1,
     "num_users": 3,
     "load_existing": False,
@@ -257,9 +247,7 @@ mpi_digitfive_sys_config = {
 swarm_users = 3
 mpi_domainnet_sys_config = {
     "exp_id": "",
-    "comm": {
-        "type": "MPI"
-    },
+    "comm": {"type": "MPI"},
     "seed": 1,
     "num_users": 3,
     "load_existing": False,
