@@ -1,7 +1,8 @@
 # System Configuration
 # TODO: Set up multiple non-iid configurations here. The goal of a separate system config
 # is to simulate different real-world scenarios without changing the algorithm configuration.
-from typing import TypeAlias, Dict, List, Union, Tuple, Optional
+from typing import Dict, List, Optional
+from utils.types import ConfigType
 
 # from utils.config_utils import get_sliding_window_support, get_device_ids
 from .algo_config import (
@@ -10,22 +11,6 @@ from .algo_config import (
     default_config_list,
 )
 import random
-
-ConfigType: TypeAlias = Dict[
-    str,
-    Union[
-        str,
-        float,
-        int,
-        bool,
-        List[str],
-        List[int],
-        List[float],
-        List[bool],
-        Tuple[Union[int, str, float, bool, None], ...],
-        Optional[List[int]],
-    ],
-]
 
 sliding_window_8c_4cpc_support = {
     "1": [0, 1, 2, 3],

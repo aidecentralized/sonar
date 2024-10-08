@@ -1,23 +1,7 @@
 from collections import OrderedDict
 from torch import Tensor
-from typing import TypeAlias, Dict, List, Union, Tuple, Optional
 import random
-
-ConfigType: TypeAlias = Dict[
-    str,
-    Union[
-        str,
-        float,
-        int,
-        bool,
-        List[str],
-        List[int],
-        List[float],
-        List[bool],
-        Tuple[Union[int, str, float, bool, None], ...],
-        Optional[List[int]],
-    ],
-]
+from utils.types import ConfigType
 
 class AddNoiseAttack:
     '''

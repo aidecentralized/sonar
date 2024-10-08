@@ -1,23 +1,7 @@
 from collections import OrderedDict
 from torch import Tensor
-from typing import TypeAlias, Dict, List, Union, Tuple, Optional
+from utils.types import ConfigType
 import random
-
-ConfigType: TypeAlias = Dict[
-    str,
-    Union[
-        str,
-        float,
-        int,
-        bool,
-        List[str],
-        List[int],
-        List[float],
-        List[bool],
-        Tuple[Union[int, str, float, bool, None], ...],
-        Optional[List[int]],
-    ],
-]
 
 class SignFlipAttack:
     def __init__(self, config: ConfigType, state_dict: OrderedDict[str, Tensor]) -> None:
