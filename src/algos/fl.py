@@ -8,6 +8,11 @@ from algos.base_class import BaseClient, BaseServer
 import os
 import time
 
+# import the possible attacks
+from algos.attack_add_noise import AddNoiseAttack
+from algos.attack_bad_weights import BadWeightsAttack
+from algos.attack_sign_flip import SignFlipAttack
+
 
 class FedAvgClient(BaseClient):
     def __init__(
@@ -76,20 +81,16 @@ class FedAvgClient(BaseClient):
         if malicious_type == "normal":
             return self.model.state_dict()  # type: ignore
         elif malicious_type == "bad_weights":
-            # Set the weights to zero
-            # TODO: set it to the weight specified in the config
-            return OrderedDict(
-                {key: zeros_like(val) for key, val in self.model.state_dict().items()}
-            )
+            # Corrupt the weights
+            return BadWeightsAttack(self.config, self.model.state_dict()).get_representation()
         elif malicious_type == "sign_flip":
-            # Flip the sign of the weights
-            return OrderedDict(
-                {key: -1 * val for key, val in self.model.state_dict().items()}
-            )
+            # Flip the sign of the weights, also TODO: consider label flipping
+            return SignFlipAttack(self.config, self.model.state_dict()).get_representation()
+        elif malicious_type == "add_noise":
+            # Add noise to the weights
+            return AddNoiseAttack(self.config, self.model.state_dict()).get_representation()
         else:
             raise ValueError("Invalid malicious type")
-
-        return self.model.state_dict()  # type: ignore
 
     def set_representation(self, representation: OrderedDict[str, Tensor]):
         """
