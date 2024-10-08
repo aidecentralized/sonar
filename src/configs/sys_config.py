@@ -38,9 +38,11 @@ def get_device_ids(num_users: int, gpus_available: List[int]) -> Dict[str, List[
 
 
 def get_algo_configs(
-    num_users: int, 
-    algo_configs: List[str], 
-    assignment_method: Literal["sequential", "random", "mapping", "distribution"] = "sequential",
+    num_users: int,
+    algo_configs: List[str],
+    assignment_method: Literal[
+        "sequential", "random", "mapping", "distribution"
+    ] = "sequential",
     mapping: Optional[List[int]] = None,
     distribution: Optional[Dict[int, int]] = None,
 ) -> Dict[str, str]:
@@ -60,12 +62,12 @@ def get_algo_configs(
         for i in range(1, num_users + 1):
             algo_config_map[f"node_{i}"] = random.choice(algo_configs)
     elif assignment_method == "mapping":
-        assert(len(mapping) == num_users)
+        assert len(mapping) == num_users
         for i in range(1, num_users + 1):
-            algo_config_map[f"node_{i}"] = algo_configs[mapping[i-1]]
+            algo_config_map[f"node_{i}"] = algo_configs[mapping[i - 1]]
     elif assignment_method == "distribution":
         total_users = sum(distribution.values())
-        assert(total_users == num_users)
+        assert total_users == num_users
         current_index = 1
         for algo_index, num_nodes in distribution.items():
             for i in range(num_nodes):
@@ -73,7 +75,7 @@ def get_algo_configs(
                 current_index += 1
     else:
         raise ValueError(f"Invalid assignment method: {assignment_method}")
-    print("algo config mapping is: ",  algo_config_map)
+    print("algo config mapping is: ", algo_config_map)
     return algo_config_map
 
 
@@ -149,7 +151,10 @@ mpi_system_config = {
     # use this when the list needs to be imported from the algo_config
     # "algo": get_algo_configs(num_users=3, algo_configs=algo_configs_list),
     "algos": get_algo_configs(
-        num_users=3, algo_configs=malicious_algo_config_list, assignment_method="distribution", distribution={0: 1, 1: 1, 2: 1}
+        num_users=3,
+        algo_configs=malicious_algo_config_list,
+        assignment_method="distribution",
+        distribution={0: 1, 1: 1, 2: 1},
     ),
     "samples_per_user": 1000,  # TODO: To model scenarios where different users have different number of samples
     # we need to make this a dictionary with user_id as key and number of samples as value
