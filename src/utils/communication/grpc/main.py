@@ -106,6 +106,9 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
         self, request: comm_pb2.PeerIds, context: grpc.ServicerContext
     ) -> comm_pb2.Empty:
         with self.lock:
+            # FIXME: This is a security vulnerability because
+            # any node can update the ip and port of any other node
+            self.peer_ids[request.rank.rank]["ip"] = request.ip  # type: ignore
             self.peer_ids[request.rank.rank]["port"] = request.port.port  # type: ignore
             return comm_pb2.Empty()  # type: ignore
 
@@ -153,7 +156,6 @@ class GRPCCommunication(CommunicationInterface):
             # get hostname based on ip address
             self.host: str = config["comm"]["host"]
             pass
-        self.listener: Any = None
         self.servicer = Servicer(self.super_node_host)
 
     @staticmethod
@@ -184,7 +186,7 @@ class GRPCCommunication(CommunicationInterface):
             stub.update_port(peer_id)  # type: ignore
 
     def start_listener(self):
-        self.listener = grpc.server(
+        self.listener: grpc.Server = grpc.server( # type: ignore
             futures.ThreadPoolExecutor(max_workers=4),
             options=[  # type: ignore
                 ("grpc.max_send_message_length", 100 * 1024 * 1024),  # 100MB
@@ -301,5 +303,5 @@ class GRPCCommunication(CommunicationInterface):
 
     def finalize(self):
         if self.listener:
-            self.listener.stop(0)
+            self.listener.stop(0) # type: ignore
             print(f"Stopped server on port {self.port}")

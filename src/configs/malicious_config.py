@@ -1,5 +1,6 @@
 # Malicious Configuration
 from utils.types import ConfigType
+from typing import List
 
 label_flipping: ConfigType = {
     "flip_rate": 0.3,  # 30% of the labels are flipped

@@ -5,6 +5,7 @@ Usage: python main_grpc.py -n <number of nodes>
 
 import argparse
 import subprocess
+from typing import List
 
 parser = argparse.ArgumentParser(description="Number of nodes to run on this machine")
 parser.add_argument(
@@ -23,7 +24,7 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-command_list = ["python", "main.py", "-host", args.host]
+command_list: List[str] = ["python", "main.py", "-host", args.host]
 # if the super-node is to be started on this machine
 
 for i in range(args.n):
