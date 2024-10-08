@@ -186,7 +186,7 @@ class GRPCCommunication(CommunicationInterface):
             stub.update_port(peer_id)  # type: ignore
 
     def start_listener(self):
-        self.listener: grpc.Server = grpc.server( # type: ignore
+        self.listener: grpc.Server = grpc.server(  # type: ignore
             futures.ThreadPoolExecutor(max_workers=4),
             options=[  # type: ignore
                 ("grpc.max_send_message_length", 100 * 1024 * 1024),  # 100MB
@@ -303,5 +303,5 @@ class GRPCCommunication(CommunicationInterface):
 
     def finalize(self):
         if self.listener:
-            self.listener.stop(0) # type: ignore
+            self.listener.stop(0)  # type: ignore
             print(f"Stopped server on port {self.port}")

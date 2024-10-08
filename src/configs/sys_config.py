@@ -160,7 +160,7 @@ mpi_system_config: ConfigType = {
         algo_configs=malicious_algo_config_list,
         assignment_method="distribution",
         distribution={0: 1, 1: 1, 2: 1},
-    ), # type: ignore
+    ),  # type: ignore
     "samples_per_user": 1000,  # TODO: To model scenarios where different users have different number of samples
     # we need to make this a dictionary with user_id as key and number of samples as value
     "train_label_distribution": "iid",  # Either "iid", "non_iid" "support"
@@ -181,7 +181,7 @@ mpi_non_iid_sys_config: ConfigType = {
     "dpath": "./datasets/imgs/cifar10/",
     "load_existing": False,
     "device_ids": get_device_ids(num_users=3, gpus_available=[0, 3]),
-    "algo": get_algo_configs(num_users=3, algo_configs=default_config_list), # type: ignore
+    "algo": get_algo_configs(num_users=3, algo_configs=default_config_list),  # type: ignore
     "train_label_distribution": "non_iid",  # Either "iid", "non_iid" "support",
     "test_label_distribution": "non_iid",  # Either "iid" "support",
     "samples_per_user": 256,
@@ -202,7 +202,7 @@ mpi_L2C_sys_config: ConfigType = {
     "dpath": "./datasets/imgs/cifar10/",
     "load_existing": False,
     "device_ids": get_device_ids(num_users=3, gpus_available=[1, 2]),
-    "algo": get_algo_configs(num_users=3, algo_configs=default_config_list), # type: ignore
+    "algo": get_algo_configs(num_users=3, algo_configs=default_config_list),  # type: ignore
     "train_label_distribution": "iid",  # Either "iid", "non_iid" "support",
     "test_label_distribution": "iid",  # Either "iid" "support",
     "samples_per_user": 32,
@@ -223,7 +223,7 @@ mpi_metaL2C_support_sys_config: ConfigType = {
     "dpath": "./datasets/imgs/cifar10/",
     "load_existing": False,
     "device_ids": get_device_ids(num_users=3, gpus_available=[1, 2]),
-    "algo": get_algo_configs(num_users=3, algo_configs=default_config_list), # type: ignore
+    "algo": get_algo_configs(num_users=3, algo_configs=default_config_list),  # type: ignore
     "train_label_distribution": "support",  # Either "iid", "non_iid" "support",
     "test_label_distribution": "support",  # Either "iid" "support",
     "support": sliding_window_8c_4cpc_support,
@@ -242,7 +242,7 @@ mpi_digitfive_sys_config: ConfigType = {
     "load_existing": False,
     "dump_dir": "./expt_dump/",
     "device_ids": get_device_ids(num_users=3, gpus_available=[6, 7]),
-    "algo": get_algo_configs(num_users=3, algo_configs=default_config_list), # type: ignore
+    "algo": get_algo_configs(num_users=3, algo_configs=default_config_list),  # type: ignore
     # Dataset params
     "dset": get_digit_five_support(
         3
@@ -266,7 +266,7 @@ mpi_domainnet_sys_config: ConfigType = {
     "load_existing": False,
     "dump_dir": "./expt_dump/",
     "device_ids": get_device_ids(num_users=swarm_users, gpus_available=[3, 4]),
-    "algo": get_algo_configs(num_users=swarm_users, algo_configs=default_config_list), # type: ignore
+    "algo": get_algo_configs(num_users=swarm_users, algo_configs=default_config_list),  # type: ignore
     # Dataset params
     "dset": get_domainnet_support(
         swarm_users
@@ -293,7 +293,7 @@ object_detect_system_config: ConfigType = {
     # The device_ids dictionary depicts the GPUs on which the nodes reside.
     # For a single-GPU environment, the config will look as follows (as it follows a 0-based indexing):
     "device_ids": {"node_0": [1], "node_1": [2]},
-    "algo": get_algo_configs(num_users=2, algo_configs=default_config_list), # type: ignore
+    "algo": get_algo_configs(num_users=2, algo_configs=default_config_list),  # type: ignore
     "samples_per_user": 100,  # TODO: To model scenarios where different users have different number of samples
     # we need to make this a dictionary with user_id as key and number of samples as value
     "train_label_distribution": "iid",
@@ -313,7 +313,7 @@ grpc_system_config: ConfigType = {
     "dpath": "./datasets/imgs/cifar10/",
     "seed": 2,
     "device_ids": get_device_ids(num_users, gpu_ids),
-    "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list), # type: ignore
+    "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
     # "algo": get_algo_configs(num_users=num_users, algo_configs=default_config_list),
     "samples_per_user": 50000 // num_users,  # distributed equally
     "train_label_distribution": "iid",
