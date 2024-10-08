@@ -53,24 +53,42 @@ def get_device_ids(num_users: int, gpus_available: List[int]) -> Dict[str, List[
 
 
 def get_algo_configs(
-    num_users: int, algo_configs: List[str], num_malicious: int = 0
+    num_users: int, 
+    algo_configs: List[str], 
+    assignment_method: Literal["sequential", "random", "mapping", "distribution"] = "sequential",
+    mapping: Optional[List[int]] = None,
+    distribution: Optional[Dict[int, int]] = None,
 ) -> Dict[str, str]:
     """
-    Randomly assign an algorithm configuration to each node, allowing for repetition.
+    Assign an algorithm configuration to each node, allowing for repetition.
+    sequential: Assigns the algo_configs sequentially to the nodes
+    random: Assigns the algo_configs randomly to the nodes
+    mapping: Assigns the algo_configs based on the mapping of node index to algo index provided
+    distribution: Assigns the algo_configs based on the distribution of algo index to number of nodes provided
     """
     algo_config_map: Dict[str, str] = {}
-    for i in range(num_users + 1):  # +1 for the super-node
-        # This is commented since we need traditional_fl right now
-        # but ideally every node will have different algo
-        # algo_config_map[f"node_{i}"] = random.choice(algo_configs)
-        # As a proof of concept, we're only going to use the traditional fl algo
-        # in this case, algo_configs[0] is the traditional fl algo
-        # algo_configs[1] is the malicious fl algo
-        if i < (num_users + 1 - num_malicious):
-            algo_config_map[f"node_{i}"] = algo_configs[0]
-        else:
-            algo_config_map[f"node_{i}"] = algo_configs[1]
-        # algo_config_map[f"node_{i}"] = algo_configs[2]
+    algo_config_map["node_0"] = algo_configs[0]  # Super-node
+    if assignment_method == "sequential":
+        for i in range(1, num_users + 1):
+            algo_config_map[f"node_{i}"] = algo_configs[i % len(algo_configs)]
+    elif assignment_method == "random":
+        for i in range(1, num_users + 1):
+            algo_config_map[f"node_{i}"] = random.choice(algo_configs)
+    elif assignment_method == "mapping":
+        assert(len(mapping) == num_users)
+        for i in range(1, num_users + 1):
+            algo_config_map[f"node_{i}"] = algo_configs[mapping[i-1]]
+    elif assignment_method == "distribution":
+        total_users = sum(distribution.values())
+        assert(total_users == num_users)
+        current_index = 1
+        for algo_index, num_nodes in distribution.items():
+            for i in range(num_nodes):
+                algo_config_map[f"node_{current_index}"] = algo_configs[algo_index]
+                current_index += 1
+    else:
+        raise ValueError(f"Invalid assignment method: {assignment_method}")
+    print("algo config mapping is: ",  algo_config_map)
     return algo_config_map
 
 
@@ -146,7 +164,7 @@ mpi_system_config = {
     # use this when the list needs to be imported from the algo_config
     # "algo": get_algo_configs(num_users=3, algo_configs=algo_configs_list),
     "algos": get_algo_configs(
-        num_users=3, algo_configs=malicious_algo_config_list, num_malicious=0
+        num_users=3, algo_configs=malicious_algo_config_list, assignment_method="distribution", distribution={0: 1, 1: 1, 2: 1}
     ),
     "samples_per_user": 1000,  # TODO: To model scenarios where different users have different number of samples
     # we need to make this a dictionary with user_id as key and number of samples as value
