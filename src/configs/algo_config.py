@@ -1,23 +1,7 @@
-from typing import TypeAlias, Dict, List, Union, Tuple, Optional
+from typing import Dict, List
 from .malicious_config import malicious_config_list
 import random
-
-# Correcting the type for configuration to handle all possible types
-ConfigType: TypeAlias = Dict[
-    str,
-    Union[
-        str,
-        float,
-        int,
-        bool,
-        List[str],
-        List[int],
-        List[float],
-        List[bool],
-        Tuple[Union[int, str, float, bool, None], ...],
-        Optional[List[int]],
-    ],
-]
+from utils.types import ConfigType
 
 
 def assign_colab(clients):
@@ -71,9 +55,14 @@ traditional_fl: ConfigType = {
     "malicious_type": "normal",
 }
 
-malicious_traditional_fl: ConfigType = {
+malicious_traditional_bad_weights: ConfigType = {
     **traditional_fl,
     "malicious_type": "bad_weights",
+}
+
+malicious_traditional_flip_signs: ConfigType = {
+    **traditional_fl,
+    "malicious_type": "sign_flip",
 }
 
 
@@ -355,7 +344,8 @@ feddatarepr: ConfigType = {
 algo_config_list: List[ConfigType] = [
     iid_dispfl_clients_new,
     traditional_fl,
-    malicious_traditional_fl,
+    malicious_traditional_bad_weights,
+    malicious_traditional_flip_signs,
     fedweight,
     defkt,
     fedavg_object_detect,
@@ -373,7 +363,8 @@ algo_config_list: List[ConfigType] = [
 # Malicious List of algorithm configurations
 malicious_algo_config_list: List[ConfigType] = [
     traditional_fl,
-    malicious_traditional_fl,
+    malicious_traditional_bad_weights,
+    malicious_traditional_flip_signs,
 ]
 
 default_config_list: List[ConfigType] = [traditional_fl]
