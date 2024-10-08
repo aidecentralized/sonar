@@ -21,10 +21,15 @@ class FedStaticClient(BaseFedAvgClient):
     """
     Federated Static Client Class.
     """
-    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+
+    def __init__(
+        self, config: Dict[str, Any], comm_utils: CommunicationManager
+    ) -> None:
         super().__init__(config, comm_utils)
 
-    def get_collaborator_weights(self, reprs_dict: Dict[int, Any], rnd: int) -> Dict[int, float]:
+    def get_collaborator_weights(
+        self, reprs_dict: Dict[int, Any], rnd: int
+    ) -> Dict[int, float]:
         """
         Returns the weights of the collaborators for the current round.
         """
@@ -47,18 +52,22 @@ class FedStaticClient(BaseFedAvgClient):
                 own_aggr_weight, rnd, total_rounds
             )
 
-            collab_weights[idx] = self._calculate_collab_weight(idx, own_aggr_weight, selected_ids)
+            collab_weights[idx] = self._calculate_collab_weight(
+                idx, own_aggr_weight, selected_ids
+            )
 
         return collab_weights
 
-    def _decay_within_sampling(self, strategy: str, p: float, rnd: int, total_rounds: int) -> float:
+    def _decay_within_sampling(
+        self, strategy: str, p: float, rnd: int, total_rounds: int
+    ) -> float:
         """
         Applies the within-community sampling decay strategy.
         """
         if strategy == "linear_inc":
-            p *= (rnd / total_rounds)
+            p *= rnd / total_rounds
         elif strategy == "linear_dec":
-            p *= (1 - rnd / total_rounds)
+            p *= 1 - rnd / total_rounds
         elif strategy == "exp_inc":
             alpha = np.log((1 - p) / p)
             p *= np.exp(alpha * rnd / total_rounds)
@@ -76,7 +85,9 @@ class FedStaticClient(BaseFedAvgClient):
         """
         if algo == "random":
             topology = RandomTopology()
-            return topology.get_selected_ids(self.node_id, self.config, self.reprs_dict, self.communities)
+            return topology.get_selected_ids(
+                self.node_id, self.config, self.reprs_dict, self.communities
+            )
         if algo == "ring":
             topology = RingTopology()
             return topology.get_selected_ids(self.node_id, self.config)
@@ -88,7 +99,9 @@ class FedStaticClient(BaseFedAvgClient):
             return topology.get_selected_ids(self.node_id, self.config)
         return []
 
-    def _apply_aggr_weight_strategy(self, weight: float, rnd: int, total_rounds: int) -> float:
+    def _apply_aggr_weight_strategy(
+        self, weight: float, rnd: int, total_rounds: int
+    ) -> float:
         """
         Applies the aggregation weight strategy.
         """
@@ -98,15 +111,26 @@ class FedStaticClient(BaseFedAvgClient):
             target_weight = 0.5
             if strategy == "linear":
                 target_round = total_rounds // 2
-                weight = 1 - (init_weight + (target_weight - init_weight) * (min(1, rnd / target_round)))
+                weight = 1 - (
+                    init_weight
+                    + (target_weight - init_weight) * (min(1, rnd / target_round))
+                )
             elif strategy == "log":
                 alpha = 0.05
-                weight = 1 - (init_weight + (target_weight - init_weight) * (np.log(alpha * (rnd / total_rounds) + 1) / np.log(alpha + 1)))
+                weight = 1 - (
+                    init_weight
+                    + (target_weight - init_weight)
+                    * (np.log(alpha * (rnd / total_rounds) + 1) / np.log(alpha + 1))
+                )
             else:
-                raise ValueError(f"Aggregation weight strategy {strategy} not implemented")
+                raise ValueError(
+                    f"Aggregation weight strategy {strategy} not implemented"
+                )
         return weight
 
-    def _calculate_collab_weight(self, idx: int, own_aggr_weight: float, selected_ids: List[int]) -> float:
+    def _calculate_collab_weight(
+        self, idx: int, own_aggr_weight: float, selected_ids: List[int]
+    ) -> float:
         """
         Calculates the collaborator weight.
         """
@@ -156,7 +180,9 @@ class FedStaticClient(BaseFedAvgClient):
         params = [repr_dict[key].view(-1) for key in repr_dict.keys()]
         return torch.cat(params)
 
-    def compute_pseudo_grad_norm(self, prev_wts: Dict[str, torch.Tensor], new_wts: Dict[str, torch.Tensor]) -> float:
+    def compute_pseudo_grad_norm(
+        self, prev_wts: Dict[str, torch.Tensor], new_wts: Dict[str, torch.Tensor]
+    ) -> float:
         """
         Computes the pseudo gradient norm.
         """
@@ -169,7 +195,9 @@ class FedStaticClient(BaseFedAvgClient):
         print(f"Client {self.node_id} ready to start training")
         start_round = self.config.get("start_round", 0)
         if start_round != 0:
-            raise NotImplementedError("Start round different from 0 not implemented yet")
+            raise NotImplementedError(
+                "Start round different from 0 not implemented yet"
+            )
         total_rounds = self.config["rounds"]
         epochs_per_round = self.config["epochs_per_round"]
         for rnd in range(start_round, total_rounds):
@@ -183,13 +211,19 @@ class FedStaticClient(BaseFedAvgClient):
 
             # Train locally and send the representation to the server
             if not self.config.get("local_train_after_aggr", False):
-                stats["train_loss"], stats["train_acc"] = self.local_train(epochs_per_round)
+                stats["train_loss"], stats["train_acc"] = self.local_train(
+                    epochs_per_round
+                )
 
             repr_dict = self.get_representation()
-            self.comm_utils.send(dest=self.server_node, data=repr_dict, tag=self.tag.REPR_ADVERT)
+            self.comm_utils.send(
+                dest=self.server_node, data=repr_dict, tag=self.tag.REPR_ADVERT
+            )
 
             # Collect the representations from all other nodes from the server
-            reprs = self.comm_utils.receive(node_ids=self.server_node, tag=self.tag.REPRS_SHARE)
+            reprs = self.comm_utils.receive(
+                node_ids=self.server_node, tag=self.tag.REPRS_SHARE
+            )
             reprs_dict = {k: v for k, v in enumerate(reprs, 1)}
 
             # Aggregate the representations based on the collaborator weights
@@ -202,10 +236,17 @@ class FedStaticClient(BaseFedAvgClient):
             if inter_commu_last_layer_to_aggr is not None and len(
                 set(self.communities[self.node_id]).intersection(active_collab)
             ) != len(active_collab):
-                layer_idx = self.model_utils.models_layers_idx[self.config["model"]][inter_commu_last_layer_to_aggr]
-                layers_to_ignore = self.model_keys_to_ignore + list(list(models_wts.values())[0].keys())[layer_idx + 1:]
+                layer_idx = self.model_utils.models_layers_idx[self.config["model"]][
+                    inter_commu_last_layer_to_aggr
+                ]
+                layers_to_ignore = (
+                    self.model_keys_to_ignore
+                    + list(list(models_wts.values())[0].keys())[layer_idx + 1 :]
+                )
 
-            avg_wts = self.weighted_aggregate(models_wts, collab_weights_dict, keys_to_ignore=layers_to_ignore)
+            avg_wts = self.weighted_aggregate(
+                models_wts, collab_weights_dict, keys_to_ignore=layers_to_ignore
+            )
             self.set_model_weights(avg_wts, layers_to_ignore)
 
             if self.config.get("train_only_fc", False):
@@ -219,9 +260,13 @@ class FedStaticClient(BaseFedAvgClient):
             # Train locally and send the representation to the server
             if self.config.get("local_train_after_aggr", False):
                 prev_wts = self.get_model_weights()
-                stats["train_loss"], stats["train_acc"] = self.local_train(epochs_per_round)
+                stats["train_loss"], stats["train_acc"] = self.local_train(
+                    epochs_per_round
+                )
                 new_wts = self.get_model_weights()
-                stats["pseudo grad norm"] = self.compute_pseudo_grad_norm(prev_wts, new_wts)
+                stats["pseudo grad norm"] = self.compute_pseudo_grad_norm(
+                    prev_wts, new_wts
+                )
                 stats["test_acc_after_training"] = self.local_test()
 
             collab_weight = np.zeros(self.config["num_users"])
@@ -229,24 +274,33 @@ class FedStaticClient(BaseFedAvgClient):
                 collab_weight[k - 1] = v
             stats["Collaborator weights"] = collab_weight
 
-            self.comm_utils.send(dest=self.server_node, data=stats, tag=self.tag.ROUND_STATS)
+            self.comm_utils.send(
+                dest=self.server_node, data=stats, tag=self.tag.ROUND_STATS
+            )
 
 
 class FedStaticServer(BaseFedAvgServer):
     """
     Federated Static Server Class.
     """
-    def __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+
+    def __init__(
+        self, config: Dict[str, Any], comm_utils: CommunicationManager
+    ) -> None:
         super().__init__(config, comm_utils)
         self.config = config
         self.set_model_parameters(config)
-        self.model_save_path = f"{self.config['results_path']}/saved_models/node_{self.node_id}.pt"
+        self.model_save_path = (
+            f"{self.config['results_path']}/saved_models/node_{self.node_id}.pt"
+        )
 
     def test(self) -> float:
         """
         Test the model on the server.
         """
-        _, acc = self.model_utils.test(self.model, self._test_loader, self.loss_fn, self.device)
+        _, acc = self.model_utils.test(
+            self.model, self._test_loader, self.loss_fn, self.device
+        )
         if acc > self.best_acc:
             self.best_acc = acc
             self.model_utils.save_model(self.model, self.model_save_path)
@@ -258,7 +312,9 @@ class FedStaticServer(BaseFedAvgServer):
         """
         for client_node in self.users:
             self.comm_utils.send(dest=client_node, data=None, tag=self.tag.ROUND_START)
-        self.log_utils.log_console("Server waiting for all clients to finish local training")
+        self.log_utils.log_console(
+            "Server waiting for all clients to finish local training"
+        )
 
         models = self.comm_utils.all_gather(self.tag.REPR_ADVERT)
         self.log_utils.log_console("Server received all clients models")
@@ -267,7 +323,9 @@ class FedStaticServer(BaseFedAvgServer):
         clients_round_stats = self.comm_utils.all_gather(self.tag.ROUND_STATS)
         self.log_utils.log_console("Server received all clients stats")
 
-        self.log_utils.log_tb_round_stats(clients_round_stats, ["Collaborator weights"], self.round)
+        self.log_utils.log_tb_round_stats(
+            clients_round_stats, ["Collaborator weights"], self.round
+        )
 
         self.log_utils.log_console(
             f"Round test acc before local training {[stats['test_acc_before_training'] for stats in clients_round_stats]}"

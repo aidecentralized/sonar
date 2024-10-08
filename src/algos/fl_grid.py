@@ -1,5 +1,4 @@
 import numpy as np
-import math
 
 
 class GridTopology:
@@ -26,17 +25,17 @@ class GridTopology:
         if node_id <= num_users - grid_size:
             selected_ids.append(node_id + grid_size)
 
-        if(num_users == 1):
+        if num_users == 1:
             selected_ids = [1]
-        elif(num_users == 2):
-            if(node_id == 1):
+        elif num_users == 2:
+            if node_id == 1:
                 selected_ids = [2]
             else:
                 selected_ids = [1]
-        elif(num_users == 3):
-            if(node_id == 1):
+        elif num_users == 3:
+            if node_id == 1:
                 selected_ids = [2, 3]
-            elif(node_id == 2):
+            elif node_id == 2:
                 selected_ids = [1]
             else:
                 selected_ids = [1]

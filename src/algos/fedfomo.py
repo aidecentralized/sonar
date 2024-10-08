@@ -3,7 +3,6 @@ Module for FedFomo algorithm.
 """
 
 from collections import OrderedDict
-from typing import List
 from torch import Tensor
 import torch
 import torch.nn as nn
@@ -38,7 +37,9 @@ class FedFomoClient(BaseClient):
         super().__init__(config)
         self.config = config
         self.tag = CommProtocol
-        self.model_save_path = f"{self.config['results_path']}/saved_models/node_{self.node_id}.pt"
+        self.model_save_path = (
+            f"{self.config['results_path']}/saved_models/node_{self.node_id}.pt"
+        )
         self.dense_ratio = self.config["dense_ratio"]
         self.anneal_factor = self.config["anneal_factor"]
         self.dis_gradient_check = self.config["dis_gradient_check"]
@@ -124,9 +125,7 @@ class FedFomoClient(BaseClient):
                     torch.abs(gradient[name]).to(self.device),
                     -100000 * torch.ones_like(gradient[name]).to(self.device),
                 )
-                _, idx = torch.sort(
-                    temp.view(-1).to(self.device), descending=True
-                )
+                _, idx = torch.sort(temp.view(-1).to(self.device), descending=True)
                 new_masks[name].view(-1)[idx[: num_remove[name]]] = 1
             else:
                 temp = torch.where(
@@ -199,7 +198,9 @@ class FedFomoClient(BaseClient):
         log_probs = model.forward(x)
         loss = criterion(log_probs, labels.long())
         loss.backward()
-        gradient = {name: param.grad.to("cpu") for name, param in self.model.named_parameters()}
+        gradient = {
+            name: param.grad.to("cpu") for name, param in self.model.named_parameters()
+        }
         return gradient
 
     def hamming_distance(self, mask_a, mask_b):
@@ -325,9 +326,7 @@ class FedFomoClient(BaseClient):
             if self.num_users != self.config["neighbors"]:
                 nei_indexs = np.append(nei_indexs, self.index)
             nei_indexs = np.sort(nei_indexs)
-            print(
-                f"Node {self.index}'s neighbors index: {[i + 1 for i in nei_indexs]}"
-            )
+            print(f"Node {self.index}'s neighbors index: {[i + 1 for i in nei_indexs]}")
 
             weights_locals = self.update_weight(
                 self.index,
@@ -364,7 +363,9 @@ class FedFomoServer(BaseServer):
         self.config = config
         self.set_model_parameters(config)
         self.tag = CommProtocol
-        self.model_save_path = f"{self.config['results_path']}/saved_models/node_{self.node_id}.pt"
+        self.model_save_path = (
+            f"{self.config['results_path']}/saved_models/node_{self.node_id}.pt"
+        )
         self.dense_ratio = self.config["dense_ratio"]
         self.num_users = self.config["num_users"]
         self.reprs = None

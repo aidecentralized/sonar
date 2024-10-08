@@ -1,5 +1,5 @@
-from collections import OrderedDict, defaultdict
-from typing import Any, Optional, Union
+from collections import defaultdict
+from typing import Any
 from utils.communication.comm_utils import CommunicationManager
 import torch
 import numpy as np
@@ -12,7 +12,9 @@ from algos.base_class import BaseFedAvgClient, BaseFedAvgServer
 
 
 class L2CClient(BaseFedAvgClient):
-    def __init__(self, config: dict[str, Any], comm_utils: CommunicationManager) -> None:
+    def __init__(
+        self, config: dict[str, Any], comm_utils: CommunicationManager
+    ) -> None:
         super().__init__(config, comm_utils)
         self.init_collab_weights()
         self.sharing_mode: str = self.config["sharing"]
@@ -79,7 +81,9 @@ class L2CClient(BaseFedAvgClient):
             weight_decay=self.config["alpha_weight_decay"],
         )
 
-    def learn_collab_weights(self, models_update_wts: dict[int, dict[str, Tensor]]) -> tuple[float, float]:
+    def learn_collab_weights(
+        self, models_update_wts: dict[int, dict[str, Tensor]]
+    ) -> tuple[float, float]:
         self.model.eval()
         alpha_loss: float = 0
         correct: int = 0
@@ -92,7 +96,9 @@ class L2CClient(BaseFedAvgClient):
             loss = self.loss_fn(output, target)
             loss.backward()
 
-            grad_dict: dict[str, Tensor] = {k: v.grad for k, v in self.model.named_parameters()}
+            grad_dict: dict[str, Tensor] = {
+                k: v.grad for k, v in self.model.named_parameters()
+            }
 
             collab_weights_grads: list[Tensor] = []
             for id in self.neighbors_id_to_idx.keys():
@@ -100,9 +106,13 @@ class L2CClient(BaseFedAvgClient):
                 for key in grad_dict.keys():
                     if key not in self.model_keys_to_ignore:
                         if self.sharing_mode == "updates":
-                            cw_grad -= (models_update_wts[id][key] * grad_dict[key].cpu()).sum()
+                            cw_grad -= (
+                                models_update_wts[id][key] * grad_dict[key].cpu()
+                            ).sum()
                         elif self.sharing_mode == "weights":
-                            cw_grad += (models_update_wts[id][key] * grad_dict[key].cpu()).sum()
+                            cw_grad += (
+                                models_update_wts[id][key] * grad_dict[key].cpu()
+                            ).sum()
                         else:
                             raise ValueError("Unknown sharing mode")
                 collab_weights_grads.append(cw_grad)
@@ -125,9 +135,13 @@ class L2CClient(BaseFedAvgClient):
         r: int = torch.cuda.memory_reserved(0)
         a: int = torch.cuda.memory_allocated(0)
         f: int = r - a  # free inside reserved
-        print(f"Client {self.node_id} :GPU memory: reserved {r}, allocated {a}, free {f}")
+        print(
+            f"Client {self.node_id} :GPU memory: reserved {r}, allocated {a}, free {f}"
+        )
 
-    def get_collaborator_weights(self, reprs_dict: dict[int, Tensor]) -> dict[int, float]:
+    def get_collaborator_weights(
+        self, reprs_dict: dict[int, Tensor]
+    ) -> dict[int, float]:
         """
         Returns the weights of the collaborators for the current round.
         """
@@ -170,14 +184,24 @@ class L2CClient(BaseFedAvgClient):
             round_stats: dict[str, Any] = {"collab_weights": cw}
 
             self.comm_utils.receive(node_ids=self.server_node, tag=self.tag.ROUND_START)
-            round_stats["train_loss"], round_stats["train_acc"] = self.local_train(epochs_per_round)
+            round_stats["train_loss"], round_stats["train_acc"] = self.local_train(
+                epochs_per_round
+            )
             repr: dict[str, Tensor] = self.get_representation()
-            self.comm_utils.send(dest=self.server_node, data=repr, tag=self.tag.REPR_ADVERT)
+            self.comm_utils.send(
+                dest=self.server_node, data=repr, tag=self.tag.REPR_ADVERT
+            )
 
-            reprs: list[dict[str, Tensor]] = self.comm_utils.receive(node_ids=self.server_node, tag=self.tag.REPRS_SHARE)
-            reprs_dict: dict[int, dict[str, Tensor]] = {k: v for k, v in enumerate(reprs, 1)}
+            reprs: list[dict[str, Tensor]] = self.comm_utils.receive(
+                node_ids=self.server_node, tag=self.tag.REPRS_SHARE
+            )
+            reprs_dict: dict[int, dict[str, Tensor]] = {
+                k: v for k, v in enumerate(reprs, 1)
+            }
 
-            collab_weights_dict: dict[int, float] = self.get_collaborator_weights(reprs_dict)
+            collab_weights_dict: dict[int, float] = self.get_collaborator_weights(
+                reprs_dict
+            )
             models_update_wts: dict[int, dict[str, Tensor]] = reprs_dict
 
             new_wts: dict[str, Tensor] = self.weighted_aggregate(
@@ -185,31 +209,43 @@ class L2CClient(BaseFedAvgClient):
             )
 
             if self.sharing_mode == "updates":
-                new_wts = self.model_utils.substract_model_weights(self.prev_model, new_wts)
+                new_wts = self.model_utils.substract_model_weights(
+                    self.prev_model, new_wts
+                )
 
             self.set_model_weights(new_wts, self.model_keys_to_ignore)
             round_stats["test_acc"] = self.local_test()
-            round_stats["validation_loss"], round_stats["validation_acc"] = self.learn_collab_weights(models_update_wts)
+            round_stats["validation_loss"], round_stats["validation_acc"] = (
+                self.learn_collab_weights(models_update_wts)
+            )
 
             print(f"node {self.node_id} weight: {self.collab_weights}")
             if round == self.config["T_0"]:
                 self.filter_out_worse_neighbors(self.config["target_users_after_T_0"])
 
-            self.comm_utils.send(dest=self.server_node, data=round_stats, tag=self.tag.ROUND_STATS)
+            self.comm_utils.send(
+                dest=self.server_node, data=round_stats, tag=self.tag.ROUND_STATS
+            )
 
 
 class L2CServer(BaseFedAvgServer):
-    def __init__(self, config: dict[str, Any], comm_utils: CommunicationManager) -> None:
+    def __init__(
+        self, config: dict[str, Any], comm_utils: CommunicationManager
+    ) -> None:
         super().__init__(config, comm_utils)
         self.config = config
         self.set_model_parameters(config)
-        self.model_save_path: str = f"{self.config['results_path']}/saved_models/node_{self.node_id}.pt"
+        self.model_save_path: str = (
+            f"{self.config['results_path']}/saved_models/node_{self.node_id}.pt"
+        )
 
     def test(self) -> float:
         """
         Test the model on the server
         """
-        test_loss, acc = self.model_utils.test(self.model, self._test_loader, self.loss_fn, self.device)
+        test_loss, acc = self.model_utils.test(
+            self.model, self._test_loader, self.loss_fn, self.device
+        )
         return acc
 
     def single_round(self) -> list[dict[str, Any]]:
@@ -218,16 +254,24 @@ class L2CServer(BaseFedAvgServer):
         """
         for client_node in self.users:
             self.comm_utils.send(dest=client_node, data=None, tag=self.tag.ROUND_START)
-        self.log_utils.log_console("Server waiting for all clients to finish local training")
+        self.log_utils.log_console(
+            "Server waiting for all clients to finish local training"
+        )
 
-        reprs: list[dict[str, Tensor]] = self.comm_utils.all_gather(self.tag.REPR_ADVERT)
+        reprs: list[dict[str, Tensor]] = self.comm_utils.all_gather(
+            self.tag.REPR_ADVERT
+        )
         self.log_utils.log_console("Server received all clients models")
         self.send_representations(reprs)
 
-        round_stats: list[dict[str, Any]] = self.comm_utils.all_gather(self.tag.ROUND_STATS)
+        round_stats: list[dict[str, Any]] = self.comm_utils.all_gather(
+            self.tag.ROUND_STATS
+        )
         self.log_utils.log_console("Server received all clients stats")
         self.log_utils.log_tb_round_stats(round_stats, ["collab_weights"], self.round)
-        self.log_utils.log_console(f"Round test acc {[stats['test_acc'] for stats in round_stats]}")
+        self.log_utils.log_console(
+            f"Round test acc {[stats['test_acc'] for stats in round_stats]}"
+        )
 
         return round_stats
 
@@ -247,4 +291,3 @@ class L2CServer(BaseFedAvgServer):
         stats_dict["round_step"] = 1
         self.log_utils.log_experiments_stats(stats_dict)
         self.plot_utils.plot_experiments_stats(stats_dict)
-
