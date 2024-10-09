@@ -12,8 +12,8 @@ ConfigType: TypeAlias = Dict[
         List[str],
         List[int],
         Dict[str, List[int]],
-        Tuple[Union[int, str, float, bool, None], ...]
-    ]
+        Tuple[Union[int, str, float, bool, None], ...],
+    ],
 ]
 
 # Configurations

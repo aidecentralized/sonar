@@ -1,13 +1,17 @@
 from collections import OrderedDict
 import sys
 from typing import Any, Dict, List
-from torch import Tensor
+from torch import Tensor, zeros_like
 from utils.communication.comm_utils import CommunicationManager
 from utils.log_utils import LogUtils
 from algos.base_class import BaseClient, BaseServer
 import os
 import time
 
+# import the possible attacks
+from algos.attack_add_noise import AddNoiseAttack
+from algos.attack_bad_weights import BadWeightsAttack
+from algos.attack_sign_flip import SignFlipAttack
 
 class FedAvgClient(BaseClient):
     def __init__(
@@ -69,7 +73,28 @@ class FedAvgClient(BaseClient):
         """
         Share the model weights
         """
-        return self.model.state_dict()  # type: ignore
+
+        malicious_type = self.config.get("malicious_type", "normal")
+
+        if malicious_type == "normal":
+            return self.model.state_dict()  # type: ignore
+        elif malicious_type == "bad_weights":
+            # Corrupt the weights
+            return BadWeightsAttack(
+                self.config, self.model.state_dict()
+            ).get_representation()
+        elif malicious_type == "sign_flip":
+            # Flip the sign of the weights, also TODO: consider label flipping
+            return SignFlipAttack(
+                self.config, self.model.state_dict()
+            ).get_representation()
+        elif malicious_type == "add_noise":
+            # Add noise to the weights
+            return AddNoiseAttack(
+                self.config, self.model.state_dict()
+            ).get_representation()
+        else:
+            raise ValueError("Invalid malicious type")
 
     def set_representation(self, representation: OrderedDict[str, Tensor]):
         """
@@ -84,6 +109,7 @@ class FedAvgClient(BaseClient):
         for round in range(start_epochs, total_epochs):
             self.local_train(round)
             self.local_test()
+
             repr = self.get_representation()
 
             self.client_log_utils.log_summary(
@@ -147,7 +173,7 @@ class FedAvgServer(BaseServer):
         avgd_wts: OrderedDict[str, Tensor] = OrderedDict()
 
         for key in model_wts[0].keys():
-            avgd_wts[key] = sum(coeff * m[key] for m in model_wts)  # type: ignore
+            avgd_wts[key] = sum(coeff * m[key].to(self.device) for m in model_wts)  # type: ignore
 
         # Move to GPU only after averaging
         for key in avgd_wts.keys():

@@ -1,8 +1,7 @@
 from typing import Any, Dict, List
 import jmespath
 import importlib
-import random
-import uuid
+
 
 def load_config(config_path: str) -> Dict[str, Any]:
     path = ".".join(config_path.split(".")[1].split("/")[1:])
@@ -29,13 +28,11 @@ def process_config(config: Dict[str, Any]) -> Dict[str, Any]:
     else:
         dset = config["dset"]
 
-    unique_id = uuid.uuid4().hex[:8]
-
     experiment_name = "{}_{}users_{}_{}".format(
         dset,
         config["num_users"],
         config["samples_per_user"],
-        unique_id
+        config["exp_id"],
     )
 
     for exp_key in config["exp_keys"]:
@@ -63,7 +60,10 @@ def process_config(config: Dict[str, Any]) -> Dict[str, Any]:
 
     return config
 
-def get_sliding_window_support(num_users: int, num_classes: int, num_classes_per_client: int):
+
+def get_sliding_window_support(
+    num_users: int, num_classes: int, num_classes_per_client: int
+):
     num_client_with_same_support = max(num_users // num_classes, 1)
     support: Dict[str, List[int]] = {}
     # Slide window by 1, clients with same support are consecutive
@@ -75,9 +75,7 @@ def get_sliding_window_support(num_users: int, num_classes: int, num_classes_per
     return support
 
 
-def get_device_ids(
-    num_users: int, num_client_per_gpu: int, available_gpus: list[int]
-):
+def get_device_ids(num_users: int, num_client_per_gpu: int, available_gpus: list[int]):
     assert num_users <= len(available_gpus) * num_client_per_gpu
     device_ids: Dict[str, List[int]] = {}
 

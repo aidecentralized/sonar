@@ -17,6 +17,7 @@ class WildsDset:
     """
     WILDS Dataset Class.
     """
+
     def __init__(self, dset, transform=None):
         self.dset = dset
         self.transform = transform
@@ -36,31 +37,39 @@ class WildsDataset:
     """
     WILDS Dataset Class.
     """
+
     def __init__(self, dset_name: str, dpath: str, domain: int) -> None:
         dset = wilds.get_dataset(dset_name, download=False, root_dir=dpath)
         self.num_cls = len(list(np.unique(dset.y_array)))
 
         domain_key = WILDS_DOMAINS_DICT[dset_name]
         (idx,) = np.where(
-            (dset.metadata_array[:, dset.metadata_fields.index(domain_key)].numpy() == domain) & 
-            (dset.split_array == 0)
+            (
+                dset.metadata_array[:, dset.metadata_fields.index(domain_key)].numpy()
+                == domain
+            )
+            & (dset.split_array == 0)
         )
 
         self.mean = np.array((0.4914, 0.4822, 0.4465))
         self.std = np.array((0.2023, 0.1994, 0.2010))
         self.num_channels = 3
 
-        train_transform = T.Compose([
-            T.RandomResizedCrop(32),
-            T.RandomHorizontalFlip(),
-            T.ToTensor(),
-            T.Normalize(self.mean, self.std),
-        ])
-        test_transform = T.Compose([
-            T.Resize(32),
-            T.ToTensor(),
-            T.Normalize(self.mean, self.std),
-        ])
+        train_transform = T.Compose(
+            [
+                T.RandomResizedCrop(32),
+                T.RandomHorizontalFlip(),
+                T.ToTensor(),
+                T.Normalize(self.mean, self.std),
+            ]
+        )
+        test_transform = T.Compose(
+            [
+                T.Resize(32),
+                T.ToTensor(),
+                T.Normalize(self.mean, self.std),
+            ]
+        )
 
         num_samples_domain = len(idx)
         train_samples = int(num_samples_domain * 0.8)

@@ -1,22 +1,11 @@
 # Malicious Configuration
-from typing import TypeAlias, Dict, List, Union, Tuple, Optional
-
-ConfigType: TypeAlias = Dict[str, Union[
-    str, 
-    float, 
-    int, 
-    bool, 
-    List[str], 
-    List[int], 
-    List[float], 
-    List[bool], 
-    Tuple[Union[int, str, float, bool, None], ...], 
-    Optional[List[int]]]]
+from utils.types import ConfigType
+from typing import List
 
 label_flipping: ConfigType = {
     "flip_rate": 0.3,  # 30% of the labels are flipped
-    "target_label": 1, 
-    "source_labels": [0, 2, 3]
+    "target_label": 1,
+    "source_labels": [0, 2, 3],
 }
 
 bad_weights: ConfigType = {
@@ -26,7 +15,7 @@ bad_weights: ConfigType = {
 data_poisoning: ConfigType = {
     "poison_rate": 0.1,  # 10% of the data is poisoned
     "poison_method": "label_swap",
-    "target_class": 1
+    "target_class": 1,
 }
 
 backdoor_attack: ConfigType = {
@@ -36,8 +25,8 @@ backdoor_attack: ConfigType = {
 
 # List of Malicious node configurations
 malicious_config_list: List[ConfigType] = [
-   label_flipping,
+    label_flipping,
     bad_weights,
     data_poisoning,
-    backdoor_attack
+    backdoor_attack,
 ]

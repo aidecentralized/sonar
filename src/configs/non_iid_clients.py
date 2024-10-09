@@ -85,8 +85,13 @@ domainnet_9c_support = {
 
 from typing import List, Dict, Union
 
-def get_domain_support(num_clients: int, base: str, domains: List[Union[str, int]]) -> Dict[str, str]:
-    assert num_clients % len(domains) == 0, "Number of clients must be divisible by number of domains."
+
+def get_domain_support(
+    num_clients: int, base: str, domains: List[Union[str, int]]
+) -> Dict[str, str]:
+    assert (
+        num_clients % len(domains) == 0
+    ), "Number of clients must be divisible by number of domains."
 
     clients_per_domain = num_clients // len(domains)
     support: Dict[str, str] = {}
@@ -99,35 +104,52 @@ def get_domain_support(num_clients: int, base: str, domains: List[Union[str, int
 CIFAR10_ROT_DMN: List[str] = ["r0", "r90", "r180", "r270"]
 
 
-def get_cifar10_rot_support(num_clients: int, domains: List[str] = CIFAR10_ROT_DMN) -> Dict[str, str]:
+def get_cifar10_rot_support(
+    num_clients: int, domains: List[str] = CIFAR10_ROT_DMN
+) -> Dict[str, str]:
     return get_domain_support(num_clients, "cifar10", domains)
 
 
 DOMAINNET_DMN: List[str] = ["real", "sketch", "clipart"]
 
 
-def get_domainnet_support(num_clients: int, domains: List[str] = DOMAINNET_DMN) -> Dict[str, str]:
+def get_domainnet_support(
+    num_clients: int, domains: List[str] = DOMAINNET_DMN
+) -> Dict[str, str]:
     return get_domain_support(num_clients, "domainnet", domains)
 
 
-DOMAINNET_DMN_FULL: List[str] = ["real", "sketch", "clipart", "infograph", "quickdraw", "painting"]
+DOMAINNET_DMN_FULL: List[str] = [
+    "real",
+    "sketch",
+    "clipart",
+    "infograph",
+    "quickdraw",
+    "painting",
+]
 
 
-def get_domainnet_support_full(num_clients: int, domains: List[str] = DOMAINNET_DMN_FULL) -> Dict[str, str]:
+def get_domainnet_support_full(
+    num_clients: int, domains: List[str] = DOMAINNET_DMN_FULL
+) -> Dict[str, str]:
     return get_domain_support(num_clients, "domainnet", domains)
 
 
 DOMAINNET_DMN_V2: List[str] = ["infograph", "quickdraw", "painting"]
 
 
-def get_domainnet_support_v2(num_clients: int, domains: List[str] = DOMAINNET_DMN_V2) -> Dict[str, str]:
+def get_domainnet_support_v2(
+    num_clients: int, domains: List[str] = DOMAINNET_DMN_V2
+) -> Dict[str, str]:
     return get_domain_support(num_clients, "domainnet", domains)
 
 
 IWILDCAM_DMN: List[int] = list(range(1, 5))  # 245 possible
 
 
-def get_iwildcam_support(num_clients: int, domains: List[int] = IWILDCAM_DMN) -> Dict[str, str]:
+def get_iwildcam_support(
+    num_clients: int, domains: List[int] = IWILDCAM_DMN
+) -> Dict[str, str]:
     return get_domain_support(num_clients, "wilds_iwildcam", domains)
 
 
@@ -136,8 +158,11 @@ def get_iwildcam_support(num_clients: int, domains: List[int] = IWILDCAM_DMN) ->
 CAMELYON17_DMN: List[int] = [0, 3, 4]  # + 1, 2 in test set
 
 
-def get_camelyon17_support(num_clients: int, domains: List[int] = CAMELYON17_DMN) -> Dict[str, str]:
+def get_camelyon17_support(
+    num_clients: int, domains: List[int] = CAMELYON17_DMN
+) -> Dict[str, str]:
     return get_domain_support(num_clients, "wilds_camelyon17", domains)
+
 
 # Issue every of the 1139 classes has only 1 sample per domain => how to create in domain test set ?
 RXRX1_DMN = [
@@ -162,7 +187,7 @@ def get_fmow_support(num_clients, domains=FMOW_DMN):
     return get_domain_support(num_clients, "wilds_fmow", domains)
 
 
-wilds_dpath : defaultdict = defaultdict(lambda: "imgs")
+wilds_dpath: defaultdict = defaultdict(lambda: "imgs")
 
 domainnet_base_dir = "/u/abhi24/matlaberp2/p2p/imgs/domainnet/"
 domainnet_dpath = {
@@ -452,7 +477,7 @@ defkt = {
 }
 
 
-def assign_colab(clients : int) -> Dict[int, list[int]]:
+def assign_colab(clients: int) -> Dict[int, list[int]]:
     groups = [3, 3, 3, 4]
     dict = {}
     client = 1

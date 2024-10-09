@@ -1,19 +1,8 @@
-from typing import TypeAlias, Dict, List, Union, Tuple, Optional
+from typing import Dict, List
 from .malicious_config import malicious_config_list
 import random
+from utils.types import ConfigType
 
-# Correcting the type for configuration to handle all possible types
-ConfigType: TypeAlias = Dict[str, Union[
-    str, 
-    float, 
-    int, 
-    bool, 
-    List[str], 
-    List[int], 
-    List[float], 
-    List[bool], 
-    Tuple[Union[int, str, float, bool, None], ...], 
-    Optional[List[int]]]]
 
 def assign_colab(clients):
     groups = [1, 2]
@@ -30,6 +19,7 @@ def assign_colab(clients):
                 dict[c] = group
     return dict
 
+
 def get_malicious_types(malicious_config_list: List[ConfigType]) -> Dict[str, str]:
     """
     Assign a random malicious type to a single node.
@@ -37,11 +27,11 @@ def get_malicious_types(malicious_config_list: List[ConfigType]) -> Dict[str, st
     malicious_type = random.choice(malicious_config_list)
     return malicious_type
 
+
 # Algorithm Configuration
 
 iid_dispfl_clients_new: ConfigType = {
     "algo": "dispfl",
-    "exp_id": 12,
     "exp_type": "iid_dispfl",
     "neighbors": 2,
     "active_rate": 0.8,
@@ -51,39 +41,41 @@ iid_dispfl_clients_new: ConfigType = {
     "epochs": 1000,
     "model": "resnet34",
     "model_lr": 3e-4,
-    "batch_size": 128
+    "batch_size": 128,
 }
 
 traditional_fl: ConfigType = {
     "algo": "fedavg",
-    "exp_id": 10,
-    "exp_type": "iid_clients_federated",
+    "exp_type": "",
     # Learning setup
-    "epochs": 1000,
+    "epochs": 10,
     "model": "resnet10",
     "model_lr": 3e-4,
     "batch_size": 256,
-    "malicious_type": "normal"
+    "malicious_type": "normal",
 }
 
-malicious_traditional_fl: ConfigType = {
+malicious_traditional_bad_weights: ConfigType = {
     **traditional_fl,
-    "malicious_type": get_malicious_types(malicious_config_list),
+    "malicious_type": "bad_weights",
 }
 
-fedweight_users: int = 3
+malicious_traditional_flip_signs: ConfigType = {
+    **traditional_fl,
+    "malicious_type": "sign_flip",
+}
+
+
 fedweight: ConfigType = {
     "algo": "fedweight",
-    "exp_id": "test1",
     "num_rep": 1,
-
     # Client selection
     "target_users": 3,
     "similarity": "CosineSimilarity",  # "EuclideanDistance", "CosineSimilarity",
     # "community_type": "dataset",
     "with_sim_consensus": True,
     # Learning setup
-    "rounds": 210,
+    "rounds": 10,
     "epochs_per_round": 5,
     "warmup_epochs": 50,
     "model": "resnet10",
@@ -101,7 +93,6 @@ fedweight: ConfigType = {
 
 defkt: ConfigType = {
     "algo": "defkt",
-    "exp_id": "defkt_test9",
     "central_client": 1,
     "mask_last_layer": False,
     "fine_tune_last_layer": False,
@@ -119,102 +110,84 @@ defkt: ConfigType = {
 
 fedavg_object_detect: ConfigType = {
     "algo": "fedavg",
-    "exp_id": "test_modular_yolo",
-    "exp_type": "test",
+    "exp_type": "",
     # Learning setup
     "epochs": 10,
     "model": "yolo",
     "model_lr": 1e-5,
-    "batch_size": 8
+    "batch_size": 8,
 }
 
 fediso: ConfigType = {
     "algo": "fediso",
-    "exp_id": "test3",
     "num_rep": 1,
-
     # Learning setup
-    "rounds": 100, 
+    "rounds": 100,
     "epochs_per_round": 5,
     "model": "resnet10",
-    "model_lr": 1e-4, 
+    "model_lr": 1e-4,
     "batch_size": 16,
-
     # params for model
-    "position": 0
+    "position": 0,
 }
 
 L2C_users: int = 3
 L2C: ConfigType = {
     "algo": "l2c",
     "sharing": "weights",
-    "exp_id": "test3",
-
-    "alpha_lr": 0.1, 
+    "alpha_lr": 0.1,
     "alpha_weight_decay": 0.01,
-
     # Clients selection
     "target_users_before_T_0": 0,  # Only used if adapted_to_assumption True otherwise all users are kept
-    "target_users_after_T_0": round((L2C_users-1)*0.1),
+    "target_users_after_T_0": round((L2C_users - 1) * 0.1),
     "T_0": 10,  # round after which only target_users_after_T_0 peers are kept
-
     "epochs_per_round": 5,
     "warmup_epochs": 5,
-    "rounds": 210, 
+    "rounds": 210,
     "model": "resnet10",
     "average_last_layer": True,
-    "model_lr": 1e-4, 
+    "model_lr": 1e-4,
     "batch_size": 32,
     "weight_decay": 5e-4,
     "adapted_to_assumption": False,
-
     # params for model
-    "position": 0, 
+    "position": 0,
     "inp_shape": [128, 3, 32, 32],  # This should be a List[int]
 }
 
 fedcentral: ConfigType = {
-    "seed": 1,
     "algo": "centralized",
-    "exp_id": "test5",
-
     "mask_last_layer": False,
     "fine_tune_last_layer": False,
     "epochs_per_round": 5,
-    "rounds": 100, 
+    "rounds": 100,
     "model": "resnet10",
-    "model_lr": 1e-4, 
+    "model_lr": 1e-4,
     "batch_size": 16,
-
     # params for model
-    "position": 0, 
+    "position": 0,
     "inp_shape": [128, 3, 32, 32],
 }
 
 fedval: ConfigType = {
     "algo": "fedval",
-    "exp_id": "",
     "num_rep": 1,
-
     # Clients selection
     "selection_strategy": "highest",  # lowest,
     "target_users_before_T_0": 1,
     "target_users_after_T_0": 1,
     "T_0": 400,  # round after which only target_users_after_T_0 peers are kept
     "community_type": None,  # "dataset",
-    
     # Learning setup
-    "rounds": 200, 
+    "rounds": 200,
     "epochs_per_round": 5,
     "model": "resnet10",
     "local_train_after_aggr": False,
-    "model_lr": 1e-4, 
+    "model_lr": 1e-4,
     "batch_size": 16,
-    
     # Knowledge transfer params
     "average_last_layer": True,
     "mask_finetune_last_layer": False,
-
     # params for model
     "position": 0,
 }
@@ -222,14 +195,11 @@ fedval: ConfigType = {
 swarm_users: int = 3
 swarm: ConfigType = {
     "algo": "swarm",
-    "exp_id": "test2",
     "num_rep": 1,
-
     # Clients selection
     "target_users": 2,
     "similarity": "CosineSimilarity",  # "EuclideanDistance", "CosineSimilarity",
     "with_sim_consensus": True,
-
     # Learning setup
     "epochs": 210,
     "rounds": 210,
@@ -238,26 +208,21 @@ swarm: ConfigType = {
     "local_train_after_aggr": True,
     "model_lr": 1e-4,
     "batch_size": 16,
-    
     # Knowledge transfer params
     "average_last_layer": True,
     "mask_finetune_last_layer": False,
-    
     # params for model
     "position": 0,
 }
 
 fedstatic: ConfigType = {
     "algo": "fedstatic",
-    "exp_id": "test_fedtorus_5",
     "num_rep": 1,
     "topology": "torus",
-
     # Clients selection
     "num_users_to_select": 1,
     "leader_mode": False,
     "community_type": "dataset",
-
     # Learning setup
     "rounds": 210,
     "epochs_per_round": 5,
@@ -265,141 +230,122 @@ fedstatic: ConfigType = {
     "local_train_after_aggr": True,
     "model_lr": 1e-4,
     "batch_size": 16,
-
     # Knowledge transfer params
     "average_last_layer": True,
     "mask_finetune_last_layer": False,
-
     # params for model
     "position": 0,
 }
 
 metaL2C_cifar10: ConfigType = {
     "algo": "metal2c",
-    "sharing": "weights", #"updates"
-    "exp_id": "",
-
+    "sharing": "weights",  # "updates"
     # Client selection
     "target_users_before_T_0": 0,
     "target_users_after_T_0": 1,
     "T_0": 2,
     "K_0": 0,  # number of peers to keep as neighbors at T_0 (!) inverse that in L2C paper
-    "T_0": 250,   # round after wich only K_0 peers are kept
-    "alpha_lr": 0.1, 
+    "T_0": 250,  # round after wich only K_0 peers are kept
+    "alpha_lr": 0.1,
     "alpha_weight_decay": 0.01,
-
     "epochs_per_round": 5,
-    "rounds": 3, 
+    "rounds": 3,
     "model": "resnet18",
     "average_last_layer": False,
-    "model_lr": 1e-4, 
+    "model_lr": 1e-4,
     "batch_size": 64,
     "optimizer": "sgd",
     "weight_decay": 5e-4,
-
     # params for model
-    "position": 0, 
-    "inp_shape": [128, 3, 32, 32]
+    "position": 0,
+    "inp_shape": [128, 3, 32, 32],
 }
 
 fedass: ConfigType = {
     "algo": "fedass",
-    "exp_id": "",
     "num_rep": 1,
     "load_existing": False,
-
     # Clients selection
-    "strategy": "random_among_assigned", # fixed, direct_expo
+    "strategy": "random_among_assigned",  # fixed, direct_expo
     "assigned_collaborators": assign_colab(3),
-    "target_users_before_T_0": 0, 
+    "target_users_before_T_0": 0,
     "target_users_after_T_0": 1,
-    "T_0": 10,   # round after wich only target_users_after_T_0 peers are kept
-    
+    "T_0": 10,  # round after wich only target_users_after_T_0 peers are kept
     # Learning setup
-    "rounds": 10, 
+    "rounds": 10,
     "epochs_per_round": 5,
     "model": "resnet10",
     # "pretrained": True,
     # "train_only_fc": True,
-    "model_lr": 1e-4, 
+    "model_lr": 1e-4,
     "batch_size": 16,
-    
     # params for model
-    "position": 0
+    "position": 0,
 }
 
 feddatarepr: ConfigType = {
     "algo": "feddatarepr",
-    "exp_id": "try2",
     "num_rep": 1,
     "load_existing": False,
-
     # Similarity params
-    "representation": "train_data", # "test_data", "train_data", "dreams"
+    "representation": "train_data",  # "test_data", "train_data", "dreams"
     "num_repr_samples": 16,
-    # "CTLR_KL" Collaborator is Teacher using Learner Representation 
+    # "CTLR_KL" Collaborator is Teacher using Learner Representation
     # "CTCR_KL" Collaborator is Teacher using Collaborator Representation - Default row
     # "LTLR_KL" Collaborator is Learner using Learner Representation - Default column
     # "CTAR_KL" Collaborator is Teacher using ALL Representations (from every other client)
     # "train_loss_inv" : 1-loss/total
-    # "train_loss_sm": 1-softmax(losses) 
+    # "train_loss_sm": 1-softmax(losses)
     "similarity_metric": "train_loss_inv",
-    
     # Memory params
     "sim_running_average": 10,
-    "sim_exclude_first": (5, 5), # (first rounds, first rounds after T0)
-    
+    "sim_exclude_first": (5, 5),  # (first rounds, first rounds after T0)
     # Clients selection
-    "target_users_before_T_0": 0, #feddatarepr_users-1,
+    "target_users_before_T_0": 0,  # feddatarepr_users-1,
     "target_users_after_T_0": 1,
-    "T_0": 10,   # round after wich only target_users_after_T_0 peers are kept
+    "T_0": 10,  # round after wich only target_users_after_T_0 peers are kept
     # highest, lowest, [lower_exp]_sim_sampling, top_x, xth, uniform_rdm
-    "selection_strategy": "uniform_rdm",#"uniform_rdm", 
-    #"eps_greedy": 0.1,
+    "selection_strategy": "uniform_rdm",  # "uniform_rdm",
+    # "eps_greedy": 0.1,
     # "num_users_top_x" : 1, # Ideally: size community-1
     # "selection_temperature": 0.5, # For all strategy with temperature
-    
-    
     # Consensus params
     # "sim_averaging", "sim_of_sim", "vote_1hop", "affinity_propagation_clustering", "mean_shift_clustering", "club"
-    "consensus":"mean_shift_clustering",# "affinity_propagation_clustering",
-    # "affinity_precomputed": False, # If False similarity row are treated as data points and not as similarity values    
+    "consensus": "mean_shift_clustering",  # "affinity_propagation_clustering",
+    # "affinity_precomputed": False, # If False similarity row are treated as data points and not as similarity values
     # "club_weak_link_strategy": "own_cluster_and_pointing_to", #"own_cluster_and_pointing_to", pointing_to, own_cluster
     # "vote_consensus": (2,2), #( num_voter, num_vote_per_voter)
     # "sim_consensus_top_a": 3,
-
-    #"community_type": "dataset", 
-    #"num_communities": len(domainnet_classes),
-    
+    # "community_type": "dataset",
+    # "num_communities": len(domainnet_classes),
     # Learning setup
     "warmup_epochs": 5,
     "epochs_per_round": 5,
-    "rounds_per_selection": 1, # Number of rounds before selecting new collaborator(s)
-    "rounds": 10, 
+    "rounds_per_selection": 1,  # Number of rounds before selecting new collaborator(s)
+    "rounds": 10,
     "model": "resnet10",
     "average_last_layer": True,
     "mask_finetune_last_layer": False,
-    "model_lr": 1e-4, 
+    "model_lr": 1e-4,
     "batch_size": 16,
-    
     # Dreams params
     # "reprs_position": 0,
-    # "inp_shape": [3, 32, 32] , 
-    # "inv_lr": 1e-1, 
-    # "inv_epochs": 500, 
-    # "alpha_preds": 0.1, 
-    # "alpha_tv": 2.5e-3, 
-    # "alpha_l2": 1e-7, 
+    # "inp_shape": [3, 32, 32] ,
+    # "inv_lr": 1e-1,
+    # "inv_epochs": 500,
+    # "alpha_preds": 0.1,
+    # "alpha_tv": 2.5e-3,
+    # "alpha_l2": 1e-7,
     # "alpha_f": 10.0,
-    #"dreams_keep_best": False, # Use reprs with lowest loss 
-    
+    # "dreams_keep_best": False, # Use reprs with lowest loss
 }
 
 # List of algorithm configurations
 algo_config_list: List[ConfigType] = [
     iid_dispfl_clients_new,
     traditional_fl,
-    malicious_traditional_fl,
+    malicious_traditional_bad_weights,
+    malicious_traditional_flip_signs,
     fedweight,
     defkt,
     fedavg_object_detect,
@@ -411,15 +357,14 @@ algo_config_list: List[ConfigType] = [
     fedstatic,
     metaL2C_cifar10,
     fedass,
-    feddatarepr
+    feddatarepr,
 ]
 
 # Malicious List of algorithm configurations
 malicious_algo_config_list: List[ConfigType] = [
     traditional_fl,
-    malicious_traditional_fl
+    malicious_traditional_bad_weights,
+    malicious_traditional_flip_signs,
 ]
 
-default_config_list: List[ConfigType] = [
-    traditional_fl
-]
+default_config_list: List[ConfigType] = [traditional_fl]
