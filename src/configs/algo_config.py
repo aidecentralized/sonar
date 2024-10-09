@@ -57,12 +57,12 @@ traditional_fl: ConfigType = {
 
 malicious_traditional_bad_weights: ConfigType = {
     **traditional_fl,
-    "malicious_type": "bad_weights",
+    **malicious_config_list["bad_weights"],
 }
 
 malicious_traditional_flip_signs: ConfigType = {
     **traditional_fl,
-    "malicious_type": "sign_flip",
+    **malicious_config_list["sign_flip"],
 }
 
 
