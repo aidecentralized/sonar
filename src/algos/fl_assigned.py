@@ -1,6 +1,6 @@
 import numpy as np
 import math
-from typing import Any, Dict, List
+from typing import Any, Dict
 from utils.communication.comm_utils import CommunicationManager
 from algos.base_class import BaseFedAvgClient, BaseFedAvgServer
 

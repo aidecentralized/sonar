@@ -13,7 +13,6 @@ from algos.attack_add_noise import AddNoiseAttack
 from algos.attack_bad_weights import BadWeightsAttack
 from algos.attack_sign_flip import SignFlipAttack
 
-
 class FedAvgClient(BaseClient):
     def __init__(
         self, config: Dict[str, Any], comm_utils: CommunicationManager
@@ -69,7 +68,6 @@ class FedAvgClient(BaseClient):
         """
         Test the model locally, not to be used in the traditional FedAvg
         """
-        pass
 
     def get_representation(self, **kwargs: Any) -> OrderedDict[str, Tensor]:
         """

@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from typing import Any, Dict, List
+from typing import Any, Dict
 from utils.communication.comm_utils import CommunicationManager
 
 from algos.base_class import BaseFedAvgClient, BaseFedAvgServer

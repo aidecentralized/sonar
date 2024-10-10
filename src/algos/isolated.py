@@ -18,7 +18,7 @@ class IsolatedServer(BaseServer):
 
     def set_training_data(self, config):
         train_dset = self.dset_obj.train_dset
-        test_dset = self.dset_obj.test_dset
+        self.dset_obj.test_dset
         samples_per_user = config["samples_per_user"]
         batch_size = config["batch_size"]
         client_idx = self.node_id

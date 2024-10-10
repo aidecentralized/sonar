@@ -1,17 +1,16 @@
 """
-This module defines the DisPFLClient and DisPFLServer classes for distributed personalized federated learning.
+This module defines the DisPFLClient and DisPFLServer 
+classes for distributed personalized federated learning.
 """
 
 import copy
 import math
-import random
 from collections import OrderedDict
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
-import torch.nn as nn
-from torch import Tensor, from_numpy, numel, randperm, zeros_like
+from torch import Tensor, nn
 
 from algos.base_class import BaseClient, BaseServer
 
@@ -114,8 +113,8 @@ class DisPFLClient(BaseClient):
                 torch.abs(weights[name]),
                 100000 * torch.ones_like(weights[name]),
             )
-            x, idx = torch.sort(temp_weights.view(-1).to(self.device))
-            new_masks[name].view(-1)[idx[: num_remove[name]]] = 0
+            idx = torch.sort(temp_weights.view(-1).to(self.device))
+            new_masks[name].view(-1)[idx[1][: num_remove[name]]] = 0
         return new_masks, num_remove
 
     def regrow_mask(
@@ -179,7 +178,7 @@ class DisPFLClient(BaseClient):
             w_tmp[k] = w_tmp[k] - w_tmp[k]
             for clnt in self.neighbors:
                 if k in self.params:
-                    w_tmp[k] += from_numpy(count_mask[k]).to(
+                    w_tmp[k] += torch.from_numpy(count_mask[k]).to(
                         self.device
                     ) * weights_lstrnd[clnt][k].to(self.device)
                 else:
@@ -271,11 +270,11 @@ class DisPFLClient(BaseClient):
         """
         masks = OrderedDict()
         for name in params:
-            masks[name] = zeros_like(params[name])
+            masks[name] = torch.zeros_like(params[name])
             dense_numel = int((1 - sparsities[name]) * masks[name].numel())
             if dense_numel > 0:
                 temp = masks[name].view(-1)
-                perm = randperm(len(temp))
+                perm = torch.randperm(len(temp))
                 perm = perm[:dense_numel]
                 temp[perm] = 1
         return masks
@@ -376,7 +375,7 @@ class DisPFLClient(BaseClient):
             self.params, sparse=self.dense_ratio
         )  # calculate sparsity to create masks
         self.mask = self.init_masks(self.params, sparsities)  # mask_per_local
-        dist_locals = np.zeros(shape=(self.num_users))
+        dist_locals = np.zeros(shape=self.num_users)
         self.index = self.node_id - 1
         masks_lstrnd = [self.mask for i in range(self.num_users)]
         weights_lstrnd = [

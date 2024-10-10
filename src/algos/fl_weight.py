@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Any, Dict, List
+from typing import Any, Dict
 from utils.communication.comm_utils import CommunicationManager
 from torch import Tensor, cat
 import torch.nn as nn

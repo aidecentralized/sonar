@@ -1,10 +1,15 @@
-from collections import OrderedDict, defaultdict
-from typing import Any, Optional, Union
+"""Insert some kind of docstring here"""
+
+from collections import defaultdict
+from typing import Any
+
 from utils.communication.comm_utils import CommunicationManager
-import torch
+
 import numpy as np
-from torch import Tensor, cat, tensor, optim
-import torch.nn as nn
+
+import torch
+from torch import Tensor, optim
+# from torch import nn
 import torch.nn.functional as F
 
 from utils.stats_utils import from_round_stats_per_round_per_client_to_dict_arrays
@@ -12,14 +17,24 @@ from algos.base_class import BaseFedAvgClient, BaseFedAvgServer
 
 
 class L2CClient(BaseFedAvgClient):
+    """Put some kind of docstring here"""
     def __init__(
         self, config: dict[str, Any], comm_utils: CommunicationManager
     ) -> None:
         super().__init__(config, comm_utils)
         self.init_collab_weights()
         self.sharing_mode: str = self.config["sharing"]
+        self.neighbors_id_to_idx: dict[int, int] = {idx + 1: idx for idx in range(self.config["num_users"])}
+        self.alpha: Tensor = torch.ones(self.config["num_users"], requires_grad=True)
+        self.collab_weights: Tensor = F.softmax(self.alpha, dim=0)
+        self.alpha_optim: optim.Optimizer = optim.Adam(
+            [self.alpha],
+            lr=self.config["alpha_lr"],
+            weight_decay=self.config["alpha_weight_decay"],
+        )
 
     def init_collab_weights(self) -> None:
+        """Put some kind of docstring here"""
         n: int = self.config["num_users"]
         # Neighbors id = [1, ..., num_users]
         # Neighbors idx = [0, ..., num_users - 1]
@@ -84,6 +99,7 @@ class L2CClient(BaseFedAvgClient):
     def learn_collab_weights(
         self, models_update_wts: dict[int, dict[str, Tensor]]
     ) -> tuple[float, float]:
+        """Put some kind of docstring here"""
         self.model.eval()
         alpha_loss: float = 0
         correct: int = 0
@@ -101,17 +117,17 @@ class L2CClient(BaseFedAvgClient):
             }
 
             collab_weights_grads: list[Tensor] = []
-            for id in self.neighbors_id_to_idx.keys():
-                cw_grad: Tensor = tensor(0.0)
+            for i in self.neighbors_id_to_idx.keys():
+                cw_grad: Tensor = torch.tensor(0.0)
                 for key in grad_dict.keys():
                     if key not in self.model_keys_to_ignore:
                         if self.sharing_mode == "updates":
                             cw_grad -= (
-                                models_update_wts[id][key] * grad_dict[key].cpu()
+                                models_update_wts[i][key] * grad_dict[key].cpu()
                             ).sum()
                         elif self.sharing_mode == "weights":
                             cw_grad += (
-                                models_update_wts[id][key] * grad_dict[key].cpu()
+                                models_update_wts[i][key] * grad_dict[key].cpu()
                             ).sum()
                         else:
                             raise ValueError("Unknown sharing mode")
@@ -132,6 +148,7 @@ class L2CClient(BaseFedAvgClient):
         return alpha_loss, acc
 
     def print_GPU_memory(self) -> None:
+        """Put some kind of docstring here"""
         r: int = torch.cuda.memory_reserved(0)
         a: int = torch.cuda.memory_allocated(0)
         f: int = r - a  # free inside reserved
@@ -149,12 +166,13 @@ class L2CClient(BaseFedAvgClient):
             raise ValueError("Own model not included in representations")
 
         collab_weights_dict: dict[int, float] = defaultdict(lambda: 0.0)
-        for id, idx in self.neighbors_id_to_idx.items():
-            collab_weights_dict[id] = self.collab_weights[idx]
+        for i, idx in self.neighbors_id_to_idx.items():
+            collab_weights_dict[i] = self.collab_weights[idx]
 
         return collab_weights_dict
 
     def get_model_weights_without_keys_to_ignore(self) -> dict[str, Tensor]:
+        """Put some kind of docstring here"""
         return self.model_utils.filter_model_weights(
             self.get_model_weights(), self.model_keys_to_ignore
         )
@@ -164,40 +182,40 @@ class L2CClient(BaseFedAvgClient):
             return self.model_utils.substract_model_weights(
                 self.prev_model, self.get_model_weights_without_keys_to_ignore()
             )
-        elif self.sharing_mode == "weights":
+        if self.sharing_mode == "weights":
             return self.get_model_weights()
-        else:
-            raise ValueError("Unknown sharing mode")
+        
+        raise ValueError("Unknown sharing mode")
 
     def run_protocol(self) -> None:
         start_round: int = self.config.get("start_round", 0)
         total_rounds: int = self.config["rounds"]
         epochs_per_round: int = self.config["epochs_per_round"]
 
-        for round in range(start_round, total_rounds):
+        for round_id in range(start_round, total_rounds):
             if self.sharing_mode == "updates":
                 self.prev_model = self.get_model_weights_without_keys_to_ignore()
 
             cw: np.ndarray = np.zeros(self.config["num_users"])
-            for id, idx in self.neighbors_id_to_idx.items():
-                cw[id - 1] = self.collab_weights[idx]
+            for i, idx in self.neighbors_id_to_idx.items():
+                cw[i - 1] = self.collab_weights[idx]
             round_stats: dict[str, Any] = {"collab_weights": cw}
 
             self.comm_utils.receive(node_ids=self.server_node, tag=self.tag.ROUND_START)
             round_stats["train_loss"], round_stats["train_acc"] = self.local_train(
                 epochs_per_round
             )
-            repr: dict[str, Tensor] = self.get_representation()
+            representation: dict[str, Tensor] = self.get_representation()
             self.comm_utils.send(
-                dest=self.server_node, data=repr, tag=self.tag.REPR_ADVERT
+                dest=self.server_node, data=representation, tag=self.tag.REPR_ADVERT
             )
 
             reprs: list[dict[str, Tensor]] = self.comm_utils.receive(
                 node_ids=self.server_node, tag=self.tag.REPRS_SHARE
             )
-            reprs_dict: dict[int, dict[str, Tensor]] = {
-                k: v for k, v in enumerate(reprs, 1)
-            }
+            
+            reprs_dict: dict[int, dict[str, Tensor]] = dict(enumerate(reprs, 1))
+
 
             collab_weights_dict: dict[int, float] = self.get_collaborator_weights(
                 reprs_dict
@@ -220,7 +238,7 @@ class L2CClient(BaseFedAvgClient):
             )
 
             print(f"node {self.node_id} weight: {self.collab_weights}")
-            if round == self.config["T_0"]:
+            if round_id == self.config["T_0"]:
                 self.filter_out_worse_neighbors(self.config["target_users_after_T_0"])
 
             self.comm_utils.send(
@@ -229,6 +247,7 @@ class L2CClient(BaseFedAvgClient):
 
 
 class L2CServer(BaseFedAvgServer):
+    """Put a docstring here"""
     def __init__(
         self, config: dict[str, Any], comm_utils: CommunicationManager
     ) -> None:
@@ -243,10 +262,10 @@ class L2CServer(BaseFedAvgServer):
         """
         Test the model on the server
         """
-        test_loss, acc = self.model_utils.test(
+        acc = self.model_utils.test(
             self.model, self._test_loader, self.loss_fn, self.device
         )
-        return acc
+        return acc[1]
 
     def single_round(self) -> list[dict[str, Any]]:
         """
@@ -281,9 +300,9 @@ class L2CServer(BaseFedAvgServer):
         total_rounds: int = self.config["rounds"]
 
         stats: list[dict[str, Any]] = []
-        for round in range(start_round, total_rounds):
-            self.round = round
-            self.log_utils.log_console(f"Starting round {round}")
+        for round_id in range(start_round, total_rounds):
+            self.round = round_id
+            self.log_utils.log_console(f"Starting round {round_id}")
             round_stats: list[dict[str, Any]] = self.single_round()
             stats.append(round_stats)
 

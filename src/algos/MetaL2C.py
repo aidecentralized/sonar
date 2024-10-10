@@ -1,10 +1,12 @@
-from typing import Any, Dict, List
+from typing import Any, Dict
 from utils.communication.comm_utils import CommunicationManager
 import math
 import torch
 import numpy as np
-from torch import Tensor, cat, tensor, optim
-import torch.nn as nn
+
+from torch import optim
+# from torch import Tensor, cat, tensor, optim
+from torch import nn
 import torch.nn.functional as F
 import copy
 
@@ -16,6 +18,11 @@ from algos.base_class import BaseFedAvgClient, BaseFedAvgServer
 # Encode conv layers and batch norm layers, last linear layer is ignored
 # by default
 class ModelEncoder(nn.Module):
+    """
+    Takes RestNet18 weights and returns a encoded vector
+    Encode conv layers and batch norm layers, last linear layer is ignored
+    by default
+    """
 
     def __init__(self, model_dict):
         super(ModelEncoder, self).__init__()
@@ -170,7 +177,8 @@ class MetaL2CClient(BaseFedAvgClient):
                 collab_weights_tensor_dict[cw_id].grad = cw_grad
                 collab_weights_tensor_dict[cw_id].backward(retain_graph=True)
 
-            # w = self.encoder.encoder_weights[self.encoder.weight_key_converter(self.encoder.ordered_keys[0])]
+            # w = self.encoder.encoder_weights[self.encoder.weight_key_converter(
+            # self.encoder.ordered_keys[0])]
             # print(f"Encoder grad: {w.grad}, {w.grad_fn}")
 
             self.encoder_optim.step()

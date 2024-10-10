@@ -31,7 +31,9 @@ jobs:
         uses: wearerequired/lint-action@v2
         with:
           auto_fix: true
-          black: true
-          black_auto_fix: true
-          flake8: true
+          black: false
+          black_auto_fix: false
+          flake8: false
           flake8_auto_fix: false
+          pylint: true
+          pylint_auto_fix: false

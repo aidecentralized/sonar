@@ -3,7 +3,6 @@ Module for FedFomo algorithm.
 """
 
 from collections import OrderedDict
-from typing import List
 from torch import Tensor
 import torch
 import torch.nn as nn
