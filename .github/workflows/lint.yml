@@ -10,6 +10,8 @@ on:
     branches:
       - main
 
+permissions: write-all
+  
 jobs:
   run-linters:
     name: Run linters
@@ -25,7 +27,7 @@ jobs:
           python-version: 3.8
 
       - name: Install Python dependencies
-        run: pip install black flake8
+        run: pip install black flake8 pylint
 
       - name: Run linters
         uses: wearerequired/lint-action@v2
@@ -37,3 +39,4 @@ jobs:
           flake8_auto_fix: false
           pylint: true
           pylint_auto_fix: false
+
