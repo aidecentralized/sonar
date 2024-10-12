@@ -73,7 +73,6 @@ def get_algo_configs(
                 current_index += 1
     else:
         raise ValueError(f"Invalid assignment method: {assignment_method}")
-    print("algo config mapping is: ",  algo_config_map)
     return algo_config_map
 
 
@@ -132,25 +131,26 @@ digit_five_dpath = {
     "synth_digits": "./imgs/syn_digit",
 }
 
-num_users = 18
+num_users = 40
+num_malicious = 8
 mpi_system_config = {
-    "exp_id": f"{num_users}_users_1_malicious",
+    "exp_id": f"{num_users}_users_{num_malicious}_malicious",
     "comm": {"type": "MPI"},
     "num_users": num_users,
     # "experiment_path": "./experiments/",
     "dset": "cifar10",
     "dump_dir": "./expt_dump/",
     "dpath": "./datasets/imgs/cifar10/",
-    "seed": 1,
+    "seed": 2,
     # node_0 is a server currently
     # The device_ids dictionary depicts the GPUs on which the nodes reside.
     # For a single-GPU environment, the config will look as follows (as it follows a 0-based indexing):
     #  "device_ids": {"node_0": [0], "node_1": [0], "node_2": [0], "node_3": [0]},
-    "device_ids": get_device_ids(num_users=num_users, gpus_available=[0, 2, 3]),
+    "device_ids": get_device_ids(num_users=num_users, gpus_available=[0, 1, 2, 3, 4, 5, 6, 7]),
     # use this when the list needs to be imported from the algo_config
     # "algo": get_algo_configs(num_users=3, algo_configs=algo_configs_list),
     "algos": get_algo_configs(
-        num_users=num_users, algo_configs=malicious_algo_config_list, assignment_method="distribution", distribution={0: num_users-1, 1: 1}
+        num_users=num_users, algo_configs=malicious_algo_config_list, assignment_method="distribution", distribution={0: num_users-num_malicious, 1: num_malicious}
     ),
     "samples_per_user": 1000,  # TODO: To model scenarios where different users have different number of samples
     # we need to make this a dictionary with user_id as key and number of samples as value
@@ -314,3 +314,5 @@ grpc_system_config = {
 
 # current_config = grpc_system_config
 current_config: ConfigType = mpi_system_config
+
+print("algo config mapping is: ",  current_config["algos"])

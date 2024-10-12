@@ -48,10 +48,10 @@ traditional_fl: ConfigType = {
     "algo": "fedavg",
     "exp_type": "",
     # Learning setup
-    "epochs": 10,
+    "epochs": 200,
     "model": "resnet10",
     "model_lr": 3e-4,
-    "batch_size": 256,
+    "batch_size": 128,
     "malicious_type": "normal",
 }
 
