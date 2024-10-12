@@ -1,6 +1,8 @@
+"""Add docstring here"""
+
 from abc import ABC, abstractmethod
 import torch
-import numpy
+import numpy as np
 from torch.utils.data import DataLoader, Subset
 
 from collections import OrderedDict
@@ -8,7 +10,6 @@ from typing import Any, Dict, List, Optional, Tuple
 from torch import Tensor
 import copy
 import random
-import numpy as np
 
 from utils.communication.comm_utils import CommunicationManager
 from utils.plot_utils import PlotUtils
@@ -35,9 +36,11 @@ from yolo import YOLOLoss
 
 
 class BaseNode(ABC):
+    """Add docstring here"""
     def __init__(
         self, config: Dict[str, Any], comm_utils: CommunicationManager
     ) -> None:
+        """Add docstring here"""
         self.comm_utils = comm_utils
         self.node_id = self.comm_utils.get_rank()
 
@@ -50,7 +53,7 @@ class BaseNode(ABC):
                 pass
             config["load_existing"] = False
             self.log_utils = LogUtils(config)
-            self.log_utils.log_console("Config: {}".format(config))
+            self.log_utils.log_console(f"Config: {config}")
             self.plot_utils = PlotUtils(config)
 
         # Support user specific dataset
@@ -69,31 +72,34 @@ class BaseNode(ABC):
         self.set_constants()
 
     def set_constants(self) -> None:
+        """Add docstring here"""
         self.best_acc = 0.0
 
     def setup_cuda(self, config: Dict[str, Any]) -> None:
+        """add docstring here"""
         # Need a mapping from rank to device id
         device_ids_map = config["device_ids"]
-        node_name = "node_{}".format(self.node_id)
+        node_name = f"node_{self.node_id}"
         self.device_ids = device_ids_map[node_name]
         gpu_id = self.device_ids[0]
 
         if torch.cuda.is_available():
-            self.device = torch.device("cuda:{}".format(gpu_id))
-            print("Using GPU: cuda:{}".format(gpu_id))
+            self.device = torch.device(f"cuda:{gpu_id}")
+            print(f"Using GPU: cuda:{gpu_id}")
         else:
             self.device = torch.device("cpu")
             print("Using CPU")
 
     def set_model_parameters(self, config: Dict[str, Any]) -> None:
         # Model related parameters
+        """Add docstring here"""
         optim_name = config.get("optimizer", "adam")
         if optim_name == "adam":
             optim = torch.optim.Adam
         elif optim_name == "sgd":
             optim = torch.optim.SGD
         else:
-            raise ValueError("Unknown optimizer: {}.".format(optim_name))
+            raise ValueError(f"Unknown optimizer: {optim_name}.")
         num_classes = self.dset_obj.num_cls
         num_channels = self.dset_obj.num_channels
         self.model = self.model_utils.get_model(
@@ -116,7 +122,7 @@ class BaseNode(ABC):
             self.loss_fn = torch.nn.CrossEntropyLoss()
 
     def set_shared_exp_parameters(self, config: Dict[str, Any]) -> None:
-
+        """Add docstring here"""
         if self.node_id != 0:
             community_type, number_of_communities = config.get(
                 "community_type", None
@@ -147,12 +153,13 @@ class BaseNode(ABC):
                     config["num_users"], number_of_communities, num_dset
                 )
             else:
-                raise ValueError("Unknown community type: {}.".format(community_type))
+                raise ValueError(f"Unknown community type: {community_type}.")
         if self.node_id == 0:
-            self.log_utils.log_console("Communities: {}".format(self.communities))
+            self.log_utils.log_console(f"Communities: {self.communities}")
 
     @abstractmethod
     def run_protocol(self) -> None:
+        """Add docstring here"""
         raise NotImplementedError
 
 
@@ -164,6 +171,7 @@ class BaseClient(BaseNode):
     def __init__(
         self, config: Dict[str, Any], comm_utils: CommunicationManager
     ) -> None:
+        """Add docstring here"""
         super().__init__(config, comm_utils)
         self.server_node = 0
         self.set_parameters(config)
@@ -179,7 +187,7 @@ class BaseClient(BaseNode):
         seed = config["seed"]
         torch.manual_seed(seed)
         random.seed(seed)
-        numpy.random.seed(seed)
+        np.random.seed(seed)
 
         self.set_shared_exp_parameters(config)
 
@@ -190,7 +198,7 @@ class BaseClient(BaseNode):
             )
             torch.manual_seed(seed)
             random.seed(seed)
-            numpy.random.seed(seed)
+            np.random.seed(seed)
 
         self.set_data_parameters(config)
         # Number of random operation not the same across users with different datasets
@@ -202,7 +210,7 @@ class BaseClient(BaseNode):
         seed = config["seed"] + self.node_id
         torch.manual_seed(seed)
         random.seed(seed)
-        numpy.random.seed(seed)
+        np.random.seed(seed)
 
         self.set_model_parameters(config)
 
@@ -212,9 +220,10 @@ class BaseClient(BaseNode):
             seed = config["seed"]
             torch.manual_seed(seed)
             random.seed(seed)
-            numpy.random.seed(seed)
+            np.random.seed(seed)
 
     def set_data_parameters(self, config: Dict[str, Any]) -> None:
+        """Add docstring here"""
 
         # Train set and test set from original dataset
         train_dset = self.dset_obj.train_dset
@@ -253,7 +262,7 @@ class BaseClient(BaseNode):
         # If iid, each user has random samples from the whole dataset (no
         # overlap between users)
         if config["train_label_distribution"] == "iid":
-            indices = numpy.random.permutation(len(train_dset))
+            indices = np.random.permutation(len(train_dset))
             train_indices = indices[
                 user_idx * samples_per_user : (user_idx + 1) * samples_per_user
             ]
@@ -296,16 +305,18 @@ class BaseClient(BaseNode):
             )
             train_indices = train_idx_split[self.node_id - 1]
             train_dset = Subset(train_dset, train_indices)
-            classes = numpy.unique(train_y[user_idx]).tolist()
+            classes = np.unique(train_y[user_idx]).tolist()
             # One plot per dataset
             # if user_idx == 0:
             #     print("using non_iid_balanced", alpha)
-            #     self.plot_utils.plot_training_distribution(train_y, self.dset, users_with_same_dset)
+            #     self.plot_utils.plot_training_distribution(train_y,
+            # self.dset, users_with_same_dset)
         elif config["train_label_distribution"] == "shard":
             raise NotImplementedError
             # classes_per_user = config["shards"]["classes_per_user"]
             # samples_per_shard = samples_per_user // classes_per_user
-            # train_dset = build_shards_dataset(train_dset, samples_per_shard, classes_per_user, self.node_id)
+            # train_dset = build_shards_dataset(train_dset, samples_per_shard,
+            # classes_per_user, self.node_id)
         else:
             raise ValueError(
                 "Unknown train label distribution: {}.".format(
@@ -335,7 +346,8 @@ class BaseClient(BaseNode):
             train_dset, val_dset = torch.utils.data.random_split(
                 train_dset, [train_size, val_size]
             )
-            # self.val_dloader = DataLoader(val_dset, batch_size=batch_size*len(self.device_ids), shuffle=True)
+            # self.val_dloader = DataLoader(val_dset, batch_size=batch_size*len(self.device_ids),
+            # shuffle=True)
             self.val_dloader = DataLoader(val_dset, batch_size=batch_size, shuffle=True)
 
         self.train_indices = train_indices
@@ -447,12 +459,14 @@ class BaseServer(BaseNode):
     def __init__(
         self, config: Dict[str, Any], comm_utils: CommunicationManager
     ) -> None:
+        """Add docstring here"""
         super().__init__(config, comm_utils)
         self.num_users = config["num_users"]
         self.users = list(range(1, self.num_users + 1))
         self.set_data_parameters(config)
 
     def set_data_parameters(self, config: Dict[str, Any]) -> None:
+        """Add docstring here"""
         test_dset = self.dset_obj.test_dset
         batch_size = config["batch_size"]
         self._test_loader = DataLoader(test_dset, batch_size=batch_size)
@@ -505,11 +519,10 @@ class BaseFedAvgClient(BaseClient):
         comm_utils: CommunicationManager,
         comm_protocol: type[CommProtocol] = CommProtocol,
     ) -> None:
+        """Add docstring here"""
         super().__init__(config, comm_utils)
         self.config = config
-        self.model_save_path = "{}/saved_models/node_{}.pt".format(
-            self.config["results_path"], self.node_id
-        )
+        self.model_save_path = f"{self.config['results_path']}/saved_models/node_{self.node_id}.pt"
         self.tag = comm_protocol
 
         self.model_keys_to_ignore = []
@@ -670,9 +683,11 @@ class BaseFedAvgClient(BaseClient):
     def get_collaborator_weights(
         self, reprs_dict: Dict[int, OrderedDict[int, Tensor]]
     ) -> Dict[int, float]:
+        """Add docstring here"""
         raise NotImplementedError
 
     def run_protocol(self) -> None:
+        """Add docstring here"""
         raise NotImplementedError
 
 
