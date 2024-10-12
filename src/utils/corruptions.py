@@ -19,9 +19,8 @@ import cv2
 from scipy.ndimage import zoom as scizoom
 from scipy.ndimage.interpolation import map_coordinates
 import warnings
-import os
 from pkg_resources import resource_filename
-from typing import Union, Tuple, List, Dict
+from typing import Union, Tuple, List, Dict, Any
 
 warnings.simplefilter("ignore", UserWarning)
 
@@ -446,7 +445,7 @@ def corrupt(x, severity=1, corruption_name=None, corruption_number=-1):
     else:
         return
 
-corrupt_mapping: Dict[str, function] = {
+corrupt_mapping: Dict[str, Any] = {
     "gaussian_noise": gaussian_noise,
     "shot_noise": shot_noise,
     "impulse_noise": impulse_noise,

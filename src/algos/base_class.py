@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 import torch
 import numpy
 from torch.utils.data import DataLoader, Subset
-from utils.corrupt_data_utils import CorruptDataset
 
 from collections import OrderedDict
 from typing import Any, Dict, List, Optional, Tuple
@@ -21,6 +20,7 @@ from utils.data_utils import (
     balanced_subset,
     CacheDataset,
     TransformDataset,
+    CorruptDataset,
 )
 from utils.log_utils import LogUtils
 from utils.model_utils import ModelUtils
@@ -328,8 +328,8 @@ class BaseClient(BaseNode):
 
         if config.get("malicious_type", None) == "corrupt_data":
             corruption_fn_name = config.get("corruption_fn", "gaussian_noise")
-            severity = config.get("severity", 1)
-            train_dset = CorruptDataset(train_dset, corruption_fn_name, severity)
+            severity = config.get("corrupt_severity", 1)
+            train_dset = CorruptDataset(CacheDataset(train_dset), corruption_fn_name, severity)
             print("created train dataset with corruption function: ", corruption_fn_name)
 
         self.classes_of_interest = classes
