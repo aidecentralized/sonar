@@ -94,7 +94,7 @@ class FedAvgClient(BaseClient):
                 self.config, self.model.state_dict()
             ).get_representation()
         else:
-            raise ValueError("Invalid malicious type")
+            return self.model.state_dict()  # type: ignore
 
     def set_representation(self, representation: OrderedDict[str, Tensor]):
         """
