@@ -152,7 +152,7 @@ mpi_system_config: ConfigType = {
     # The device_ids dictionary depicts the GPUs on which the nodes reside.
     # For a single-GPU environment, the config will look as follows (as it follows a 0-based indexing):
     #  "device_ids": {"node_0": [0], "node_1": [0], "node_2": [0], "node_3": [0]},
-    "device_ids": get_device_ids(num_users=3, gpus_available=[1, 2]),
+    "device_ids": get_device_ids(num_users=3, gpus_available=[1, 2, 3]),
     # use this when the list needs to be imported from the algo_config
     # "algo": get_algo_configs(num_users=3, algo_configs=algo_configs_list),
     "algos": get_algo_configs(
