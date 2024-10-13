@@ -5,6 +5,7 @@ syntax = "proto3";
 service CommunicationServer {
   rpc send_data (Data) returns (Empty) {}
   rpc get_rank (Empty) returns (Rank) {}
+  rpc get_model (Empty) returns (Model) {}
   rpc update_port (PeerId) returns (Empty) {}
   rpc send_peer_ids (PeerIds) returns (Empty) {}
   rpc send_quorum (Quorum) returns (Empty) {}

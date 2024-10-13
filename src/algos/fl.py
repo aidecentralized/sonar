@@ -1,7 +1,7 @@
 from collections import OrderedDict
 import sys
 from typing import Any, Dict, List
-from torch import Tensor, zeros_like
+from torch import Tensor
 from utils.communication.comm_utils import CommunicationManager
 from utils.log_utils import LogUtils
 from algos.base_class import BaseClient, BaseServer
@@ -118,13 +118,12 @@ class FedAvgClient(BaseClient):
                     self.node_id, self.server_node
                 )
             )
-            self.comm_utils.send(self.server_node, repr)
             self.client_log_utils.log_summary(
                 "Client {} waiting to get new model from {}".format(
                     self.node_id, self.server_node
                 )
             )
-            repr = self.comm_utils.receive(self.server_node)
+            repr = self.comm_utils.receive([self.server_node])[0]
             self.client_log_utils.log_summary(
                 "Client {} received new model from {}".format(
                     self.node_id, self.server_node
@@ -145,7 +144,6 @@ class FedAvgServer(BaseServer):
         self.model_save_path = "{}/saved_models/node_{}.pt".format(
             self.config["results_path"], self.node_id
         )
-        self.folder_deletion_signal = config["folder_deletion_signal_path"]
 
     # def fed_avg(self, model_wts: List[OrderedDict[str, Tensor]]):
     #     # All models are sampled currently at every round
@@ -194,8 +192,6 @@ class FedAvgServer(BaseServer):
         """
         Set the model
         """
-        self.comm_utils.broadcast(representation)
-        print("braodcasted")
         self.model.load_state_dict(representation)
 
     def test(self, **kwargs: Any) -> List[float]:
@@ -219,15 +215,9 @@ class FedAvgServer(BaseServer):
         """
         Runs the whole training procedure
         """
-        # calculate how much memory torch is occupying right now
-        # self.log_utils.log_console("Server waiting for all clients to finish")
         reprs = self.comm_utils.all_gather()
-        # self.log_utils.log_console("Server received all clients done signal")
         avg_wts = self.aggregate(reprs)
         self.set_representation(avg_wts)
-        # Remove the signal file after confirming that all client paths have been created
-        if os.path.exists(self.folder_deletion_signal):
-            os.remove(self.folder_deletion_signal)
 
     def run_protocol(self):
         self.log_utils.log_console("Starting clients federated averaging")

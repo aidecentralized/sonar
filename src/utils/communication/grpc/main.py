@@ -1,3 +1,4 @@
+from __future__ import annotations
 from concurrent import futures
 from queue import Queue
 import random
@@ -5,9 +6,10 @@ import re
 import threading
 import time
 import socket
-from typing import Any, Dict, List, OrderedDict, Union
+from typing import Any, Callable, Dict, List, OrderedDict, Union, TYPE_CHECKING
 from urllib.parse import unquote
-import grpc  # type: ignore
+import grpc # type: ignore
+from torch import Tensor
 from utils.communication.grpc.grpc_utils import deserialize_model, serialize_model
 import os
 import sys
@@ -20,6 +22,11 @@ import comm_pb2 as comm_pb2
 import comm_pb2_grpc as comm_pb2_grpc
 from utils.communication.interface import CommunicationInterface
 
+if TYPE_CHECKING:
+    from algos.base_class import BaseNode
+
+
+MAX_MESSAGE_LENGTH = 200 * 1024 * 1024 # 200MB
 
 # TODO: Several changes needed to improve the quality of the code
 # 1. We need to improve comm.proto and get rid of singletons like Rank, Port etc.
@@ -80,15 +87,19 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
         self.quorum: Queue[bool] = Queue()
         port = int(super_node_host.split(":")[1])
         ip = super_node_host.split(":")[0]
+        self.base_node: BaseNode | None = None
         self.peer_ids: OrderedDict[int, Dict[str, int | str]] = OrderedDict(
             {0: {"rank": 0, "port": port, "ip": ip}}
         )
+
+    def register_self(self, obj: "BaseNode"):
+        self.base_node = obj
 
     def send_data(self, request, context) -> comm_pb2.Empty:  # type: ignore
         self.received_data.put(deserialize_model(request.model.buffer))  # type: ignore
         return comm_pb2.Empty()  # type: ignore
 
-    def get_rank(self, request: comm_pb2.Empty, context: grpc.ServicerContext) -> comm_pb2.Rank:  # type: ignore
+    def get_rank(self, request: comm_pb2.Empty, context: grpc.ServicerContext) -> comm_pb2.Rank | None:  
         try:
             with self.lock:
                 peer = context.peer()  # type: ignore
@@ -102,6 +113,14 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
         except Exception as e:
             context.abort(grpc.StatusCode.INTERNAL, f"Error in get_rank: {str(e)}")  # type: ignore
 
+    def get_model(self, request: comm_pb2.Empty, context: grpc.ServicerContext) -> comm_pb2.Model | None:
+        if not self.base_node:
+            context.abort(grpc.StatusCode.INTERNAL, "Base node not registered") # type: ignore
+            raise Exception("Base node not registered")
+        with self.lock:
+            model = comm_pb2.Model(buffer=serialize_model(self.base_node.model.state_dict()))
+            return model
+
     def update_port(
         self, request: comm_pb2.PeerIds, context: grpc.ServicerContext
     ) -> comm_pb2.Empty:
@@ -112,7 +131,7 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
             self.peer_ids[request.rank.rank]["port"] = request.port.port  # type: ignore
             return comm_pb2.Empty()  # type: ignore
 
-    def send_peer_ids(self, request, context) -> comm_pb2.Empty:  # type: ignore
+    def send_peer_ids(self, request: comm_pb2.PeerIds, context) -> comm_pb2.Empty:  # type: ignore
         """
         Used by the super node to update all peers with the peer_ids
         after achieving quorum.
@@ -165,24 +184,47 @@ class GRPCCommunication(CommunicationInterface):
             [peer_id for peer_id, values in peer_ids.items() if values.get("port") != 0]
         )
 
-    def register(self):
-        with grpc.insecure_channel(self.super_node_host) as channel:  # type: ignore
+    def register_self(self, obj: "BaseNode"):
+        self.servicer.register_self(obj)
+
+    def recv_with_retries(self, host: str, callback: Callable[[comm_pb2_grpc.CommunicationServerStub], Any]) -> Any:
+        with grpc.insecure_channel(host, options=[ # type: ignore
+        ('grpc.max_send_message_length', MAX_MESSAGE_LENGTH),
+        ('grpc.max_receive_message_length', MAX_MESSAGE_LENGTH),
+    ]) as channel:
             stub = comm_pb2_grpc.CommunicationServerStub(channel)
             max_tries = 10
             while max_tries > 0:
                 try:
-                    self.rank = stub.get_rank(comm_pb2.Empty()).rank  # type: ignore
-                    break
+                    result = callback(stub)
                 except grpc.RpcError as e:
-                    print(f"RPC failed: {e}", "Retrying...")
+                    print(f"RPC failed {10 - max_tries} times: {e}", "Retrying...")
                     # sleep for a random time between 1 and 10 seconds
                     random_time = random.randint(1, 10)
                     time.sleep(random_time)
                     max_tries -= 1
-            self.port = get_port(self.rank, self.num_users)  # type: ignore because we are setting it in the register method
-            rank = comm_pb2.Rank(rank=self.rank)  # type: ignore
-            port = comm_pb2.Port(port=self.port)
-            peer_id = comm_pb2.PeerId(rank=rank, port=port, ip=self.host)
+                else:
+                    return result
+
+    def register(self):
+        """
+        The registration protocol is as follows:
+        1. Every node sends a request to the super node to get a rank
+        2. The super node assigns a rank to the node and sends it back
+        3. The node updates its port and sends the updated peer_ids to the super node
+        """
+        def callback_fn(stub: comm_pb2_grpc.CommunicationServerStub) -> int:
+            rank_data = stub.get_rank(comm_pb2.Empty()) # type: ignore
+            return rank_data.rank # type: ignore
+
+        self.rank = self.recv_with_retries(self.super_node_host, callback_fn)
+        self.port = get_port(self.rank, self.num_users)  # type: ignore because we are setting it in the register method
+        rank = comm_pb2.Rank(rank=self.rank)  # type: ignore
+        port = comm_pb2.Port(port=self.port)
+        peer_id = comm_pb2.PeerId(rank=rank, port=port, ip=self.host)
+
+        with grpc.insecure_channel(self.super_node_host) as channel:  # type: ignore
+            stub = comm_pb2_grpc.CommunicationServerStub(channel)
             stub.update_port(peer_id)  # type: ignore
 
     def start_listener(self):
@@ -257,7 +299,7 @@ class GRPCCommunication(CommunicationInterface):
                 return self.servicer.peer_ids[peer_id].get("ip") + ":" + str(self.servicer.peer_ids[peer_id].get("port"))  # type: ignore
         raise Exception(f"Rank {rank} not found in peer_ids")
 
-    def send(self, dest: str | int, data: OrderedDict[str, Any]):
+    def send(self, dest: str | int, data: OrderedDict[str, Tensor]):
         """
         data should be a torch model
         """
@@ -276,10 +318,22 @@ class GRPCCommunication(CommunicationInterface):
             print(f"RPC failed: {e}")
             sys.exit(1)
 
-    def receive(self, node_ids: str | int) -> Any:
-        # this .get() will block until
-        # at least 1 item is received in the queue
-        return self.servicer.received_data.get()
+    # TODO: We are using Any because we want to support any type of data
+    # However, it is sensible to restrict the type and make different functions
+    # for different types of data because we probably only have three categories
+    # 1. Model weights
+    # 2. Tensor data
+    # 3. Metadata (strings, ints etc.)
+    def receive(self, node_ids: List[int]) -> List[Any]:
+        items: List[Any] = []
+        def callback_fn(stub: comm_pb2_grpc.CommunicationServerStub) -> OrderedDict[str, Tensor]:
+            model = stub.get_model(comm_pb2.Empty()) # type: ignore
+            return deserialize_model(model.buffer) # type: ignore
+
+        for id in node_ids:
+            rank = self.get_host_from_rank(id)
+            items.append(self.recv_with_retries(rank, callback_fn))
+        return items
 
     def is_own_id(self, peer_id: int) -> bool:
         rank = self.servicer.peer_ids[peer_id].get("rank")
@@ -298,7 +352,7 @@ class GRPCCommunication(CommunicationInterface):
         items: List[Any] = []
         for peer_id in self.servicer.peer_ids:
             if not self.is_own_id(peer_id):
-                items.append(self.receive(peer_id))
+                items.append(self.receive([peer_id])[0])
         return items
 
     def finalize(self):

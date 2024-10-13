@@ -30,10 +30,18 @@ from utils.community_utils import (
     get_dset_balanced_communities,
     get_dset_communities,
 )
+from utils.types import ConfigType
+
 import torchvision.transforms as T  # type: ignore
 import os
 
 from yolo import YOLOLoss
+
+
+def set_seed(seed: int) -> None:
+    torch.manual_seed(seed)  # type: ignore
+    random.seed(seed)
+    numpy.random.seed(seed)
 
 
 class BaseNode(ABC):
@@ -44,6 +52,7 @@ class BaseNode(ABC):
         """Add docstring here"""
         self.comm_utils = comm_utils
         self.node_id = self.comm_utils.get_rank()
+        self.comm_utils.register_node(self)
 
         if self.node_id == 0:
             self.log_dir = config["log_path"]
@@ -122,8 +131,8 @@ class BaseNode(ABC):
         else:
             self.loss_fn = torch.nn.CrossEntropyLoss()
 
-    def set_shared_exp_parameters(self, config: Dict[str, Any]) -> None:
-        """Add docstring here"""
+    def set_shared_exp_parameters(self, config: Dict[str, ConfigType]) -> None:
+        self.num_collaborators: int = config["num_collaborators"] # type: ignore
         if self.node_id != 0:
             community_type, number_of_communities = config.get(
                 "community_type", None
@@ -186,45 +195,12 @@ class BaseClient(BaseNode):
         # parameters so that all users have the same data splits and shared
         # params
         seed = config["seed"]
-        torch.manual_seed(seed)
-        random.seed(seed)
-        np.random.seed(seed)
-
-        self.set_shared_exp_parameters(config)
-
-        # Set different seeds for different domain (dataset)
-        if isinstance(config["dset"], dict):
-            seed += sorted(config["dset"].values()).index(
-                config["dset"][str(self.node_id)]
-            )
-            torch.manual_seed(seed)
-            random.seed(seed)
-            np.random.seed(seed)
-
-        self.set_data_parameters(config)
-        # Number of random operation not the same across users with different datasets
-        # Random state is not expected to be the same across users after this
-        # point
-
-        # Use different seeds for the rest of the experiment
-        # Add rank so that every node has a different seed
-        seed = config["seed"] + self.node_id
-        torch.manual_seed(seed)
-        random.seed(seed)
-        np.random.seed(seed)
-
+        set_seed(seed)
         self.set_model_parameters(config)
+        self.set_shared_exp_parameters(config)
+        self.set_data_parameters(config)
 
-        # If leader_mode on all node need to choose same random node at each
-        # round
-        if config.get("leader_mode", False):
-            seed = config["seed"]
-            torch.manual_seed(seed)
-            random.seed(seed)
-            np.random.seed(seed)
-
-    def set_data_parameters(self, config: Dict[str, Any]) -> None:
-        """Add docstring here"""
+    def set_data_parameters(self, config: ConfigType) -> None:
 
         # Train set and test set from original dataset
         train_dset = self.dset_obj.train_dset
@@ -538,7 +514,7 @@ class BaseFedAvgClient(BaseClient):
         ):  # By default include last layer
             keys = self.model_utils.get_last_layer_keys(self.get_model_weights())
             self.model_keys_to_ignore.extend(keys)
-
+ 
     def local_train(self, epochs: int) -> Tuple[float, float]:
         """
         Train the model locally
@@ -562,7 +538,7 @@ class BaseFedAvgClient(BaseClient):
 
         return avg_loss, avg_acc
 
-    def local_test(self, **kwargs: Any) -> float:
+    def local_test(self, **kwargs: Any) -> Tuple[float, float]:
         """
         Test the model locally, not to be used in the traditional FedAvg
         """
@@ -572,13 +548,13 @@ class BaseFedAvgClient(BaseClient):
         if acc > self.best_acc:
             self.best_acc = acc
             self.model_utils.save_model(self.model, self.model_save_path)
-        return acc
+        return test_loss, acc
 
     def get_model_weights(self) -> OrderedDict[str, Tensor]:
         """
         Share the model weights (on the cpu)
         """
-        return {k: v.cpu() for k, v in self.model.state_dict().items()}
+        return OrderedDict({k: v.cpu() for k, v in self.model.state_dict().items()})
 
     def set_model_weights(
         self, model_wts: OrderedDict[str, Tensor], keys_to_ignore: List[str] = []
@@ -598,94 +574,43 @@ class BaseFedAvgClient(BaseClient):
 
         self.model.load_state_dict(model_wts, strict=len(keys_to_ignore) == 0)
 
-    def weighted_aggregate(
+    def aggregate(
         self,
-        models_wts: Dict[int, OrderedDict[str, Tensor]],
-        collab_weights_dict: Dict[int, float],
+        models_wts: List[OrderedDict[str, Tensor]],
+        collab_weights: Optional[List[float]] = None,
         keys_to_ignore: List[str] = [],
-        label_dict: Optional[Dict[int, Dict[str, int]]] = None,
-    ) -> OrderedDict[str, Tensor]:
+    ) -> None:
+        """ Aggregate the model weights using the collab_weights and then updates its own model weights
+        If the collab_weights are not provided, then equal weights are assumed
+        Args:
+            models_wts (Dict[int, OrderedDict[str, Tensor]]): A dictionary where the key is the model ID and the value is an 
+                ordered dictionary of model weights.
+            collab_weights (Optional[List[float]]): A list of weights for each model. If not provided, equal weights are assumed.
+            keys_to_ignore (List[str]): A list of keys to ignore during the aggregation process.
+
+        Returns:
+            None
         """
-        Aggregate the model weights
-        """
-
-        selected_collab = [id for id, w in collab_weights_dict.items() if w > 0]
-
-        first_model = models_wts[selected_collab[0]]
-
-        models_coeffs = [
-            (id, models_wts[id], collab_weights_dict[id]) for id in selected_collab
-        ]
-
-        last_layer_keys = []
-        if label_dict is not None:
-            last_layer_keys = [
-                key
-                for key in self.model_utils.get_last_layer_keys(
-                    models_wts[self.node_id]
-                )
-            ]
-            keys_to_ignore.extend(last_layer_keys)
+        models_coeffs: List[Tuple[OrderedDict[str, Tensor], float]] = []
+        models_wts[self.node_id] = self.get_model_weights()
+        if collab_weights is None:
+            collab_weights = [1.0 / len(models_wts) for _ in models_wts]
+        for idx, model_wts in enumerate(models_wts):
+            models_coeffs.append((model_wts, collab_weights[idx]))
 
         is_init = False
-        agg_wts = OrderedDict()
-        for _, model, coeff in models_coeffs:
-            if coeff == 0:
-                continue
-            for key in first_model.keys():
+        agg_wts: OrderedDict[str, Tensor] = OrderedDict()
+        for model, coeff in models_coeffs:
+            for key in self.model.keys():
                 if key in keys_to_ignore:
                     continue
                 if not is_init:
                     agg_wts[key] = coeff * model[key]
                 else:
-                    agg_wts[key] += coeff * model[key]
+                    agg_wts[key] += coeff * model[key].to(self.device)
             is_init = True
-
-        if label_dict is not None:
-            last_layer_weight_key = [key for key in last_layer_keys if "weight" in key]
-            last_layer_bias_key = [key for key in last_layer_keys if "bias" in key]
-            if len(last_layer_weight_key) != 1 and len(last_layer_bias_key) != 1:
-                raise ValueError(
-                    "Unsupported last layer format, expected one weights layer and one bias."
-                )
-
-            last_layer_weight_key = last_layer_weight_key[0]
-            last_layer_bias_key = last_layer_bias_key[0]
-
-            # Host is the user's model
-            # Ext are incoming models
-            host_label_to_idx = label_dict[self.node_id]
-            labels_coeff_sum = {
-                host_idx: 0.0 for host_idx in label_dict[self.node_id].values()
-            }
-
-            # Match and aggregate weights of the last layer based on each
-            # node's label dictionary
-            host_model = models_wts[self.node_id]
-            agg_wts[last_layer_weight_key] = torch.zeros_like(
-                host_model[last_layer_weight_key]
-            )
-            for id, ext_model, coeff in models_coeffs:
-                ext_last_layer = coeff * ext_model[last_layer_weight_key]
-                ext_label_to_idx = label_dict[id]
-                labels_map = [
-                    (ext_idx, host_label_to_idx[ext_label])
-                    for ext_label, ext_idx in ext_label_to_idx.items()
-                    if ext_label in host_label_to_idx
-                ]
-                for ext_idx, host_idx in labels_map:
-                    labels_coeff_sum[host_idx] += coeff
-                    agg_wts[last_layer_weight_key][host_idx] += ext_last_layer[ext_idx]
-
-            # Normalize the aggregated weights
-            for label_idx, coeff_sum in labels_coeff_sum.items():
-                if coeff_sum > 0:
-                    agg_wts[last_layer_weight_key][label_idx] /= coeff_sum
-
-            # TODO Bias aggregation ?
-            agg_wts[last_layer_bias_key] = host_model[last_layer_bias_key]
-
-        return agg_wts
+        self.model.load_state_dict(agg_wts)
+        return None
 
     def get_collaborator_weights(
         self, reprs_dict: Dict[int, OrderedDict[int, Tensor]]

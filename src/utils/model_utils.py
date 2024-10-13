@@ -35,7 +35,7 @@ class ModelUtils:
         device_ids: List[int],
         pretrained: bool = False,
         **kwargs: Any,
-    ) -> nn.Module:
+    ):
         self.dset = dset
         # TODO: add support for loading checkpointed models
         model_name = model_name.lower()

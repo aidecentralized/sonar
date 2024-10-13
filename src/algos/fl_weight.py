@@ -155,7 +155,7 @@ class FedWeightClient(BaseFedAvgClient):
             self.log_clients_stats(collab_weights_dict, "Collaborator weights")
 
             models_wts = reprs_dict
-            avg_wts = self.weighted_aggregate(
+            avg_wts = self.aggregate(
                 models_wts, collab_weights_dict, self.model_keys_to_ignore
             )
 

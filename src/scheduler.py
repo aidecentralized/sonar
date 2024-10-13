@@ -17,7 +17,7 @@ from algos.isolated import IsolatedServer
 from algos.fl_assigned import FedAssClient, FedAssServer
 from algos.fl_isolated import FedIsoClient, FedIsoServer
 from algos.fl_weight import FedWeightClient, FedWeightServer
-from algos.fl_static import FedStaticClient, FedStaticServer
+from algos.fl_static import FedStaticNode
 from algos.swarm import SWARMClient, SWARMServer
 from algos.DisPFL import DisPFLClient, DisPFLServer
 from algos.def_kt import DefKTClient, DefKTServer
@@ -43,7 +43,7 @@ algo_map = {
     "fediso": [FedIsoServer, FedIsoClient],
     "fedweight": [FedWeightServer, FedWeightClient],
     #    "fedring": [FedRingServer, FedRingClient],
-    "fedstatic": [FedStaticServer, FedStaticClient],
+    "fedstatic": [FedStaticNode],
     "swarm": [SWARMServer, SWARMClient],
     "dispfl": [DisPFLServer, DisPFLClient],
     "defkt": [DefKTServer, DefKTClient],
