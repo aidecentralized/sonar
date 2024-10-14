@@ -63,7 +63,7 @@ class BaseNode(ABC):
             self.dset = config["dset"]
 
         self.setup_cuda(config)
-        self.model_utils = ModelUtils(self.device)
+        self.model_utils = ModelUtils(self.device, config)
 
         self.dset_obj = get_dataset(self.dset, dpath=config["dpath"])
         self.set_constants()
