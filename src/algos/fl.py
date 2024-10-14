@@ -41,7 +41,7 @@ class FedAvgClient(BaseClient):
         """
         start_time = time.time()
         avg_loss, avg_accuracy = self.model_utils.train(
-            self.model, self.optim, self.dloader, self.loss_fn, self.device
+            self.model, self.optim, self.dloader, self.loss_fn, self.device, malicious_type=self.config.get("malicious_type", "normal"), config=self.config,
         )
         end_time = time.time()
         time_taken = end_time - start_time
@@ -203,7 +203,7 @@ class FedAvgServer(BaseServer):
         """
         start_time = time.time()
         test_loss, test_acc = self.model_utils.test(
-            self.model, self._test_loader, self.loss_fn, self.device
+            self.model, self._test_loader, self.loss_fn, self.device,
         )
         end_time = time.time()
         time_taken = end_time - start_time
