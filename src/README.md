@@ -35,3 +35,10 @@ Client Metrics
 Server Metrics
 <img src="../resources/images/Server_metrics.png" width=50% height=50%>
 
+### Flow of the code
+1. First all the nodes start independently as a python process.
+2. Then we "install" the config. This is just an indirection for processing the config file. Later on we might do other things like setting up the environment etc.
+3. Then `initialize` is called for the scheduler that performs a lot of setup tasks so let's discuss it in detail.
+3.1 First it initializes a Communication object which is responsible for all the communication between the nodes. For gRPC communication interface, the communication manager waits until the super-node is available and gives it a unique rank and "quorum" to be set. The latter means every node will wait until the super-node sends the list of all nodes that have registered with it. The super-node sends this list when all the nodes have registered with it. Later on, we might change this to a more dynamic system where nodes can join and leave the system at any time.
+3.2 Then we merge the configs. The reason we did not merge the configs before is because communication manager is the one who provides each node a rank and the algorithm config can be different for different nodes. So we merge the configs here.
+3.3 

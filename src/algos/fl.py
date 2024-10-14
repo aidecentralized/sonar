@@ -1,11 +1,8 @@
 from collections import OrderedDict
-import sys
 from typing import Any, Dict, List
 from torch import Tensor
 from utils.communication.comm_utils import CommunicationManager
-from utils.log_utils import LogUtils
 from algos.base_class import BaseClient, BaseServer
-import os
 import time
 
 # import the possible attacks
@@ -20,21 +17,6 @@ class FedAvgClient(BaseClient):
         super().__init__(config, comm_utils)
         self.config = config
 
-        try:
-            config["log_path"] = f"{config['log_path']}/node_{self.node_id}"
-            os.makedirs(config["log_path"])
-        except FileExistsError:
-            color_code = "\033[91m"  # Red color
-            reset_code = "\033[0m"  # Reset to default color
-            print(
-                f"{color_code}Log directory for the node {self.node_id} already exists in {config['log_path']}"
-            )
-            print(f"Exiting to prevent accidental overwrite{reset_code}")
-            sys.exit(1)
-
-        config["load_existing"] = False
-        self.client_log_utils = LogUtils(config)
-
     def local_train(self, round: int, **kwargs: Any):
         """
         Train the model locally
@@ -46,21 +28,21 @@ class FedAvgClient(BaseClient):
         end_time = time.time()
         time_taken = end_time - start_time
 
-        self.client_log_utils.log_console(
+        self.log_utils.log_console(
             "Client {} finished training with loss {:.4f}, accuracy {:.4f}, time taken {:.2f} seconds".format(
                 self.node_id, avg_loss, avg_accuracy, time_taken
             )
         )
-        self.client_log_utils.log_summary(
+        self.log_utils.log_summary(
             "Client {} finished training with loss {:.4f}, accuracy {:.4f}, time taken {:.2f} seconds".format(
                 self.node_id, avg_loss, avg_accuracy, time_taken
             )
         )
 
-        self.client_log_utils.log_tb(
+        self.log_utils.log_tb(
             f"train_loss/client{self.node_id}", avg_loss, round
         )
-        self.client_log_utils.log_tb(
+        self.log_utils.log_tb(
             f"train_accuracy/client{self.node_id}", avg_accuracy, round
         )
 
@@ -69,7 +51,7 @@ class FedAvgClient(BaseClient):
         Test the model locally, not to be used in the traditional FedAvg
         """
 
-    def get_representation(self, **kwargs: Any) -> OrderedDict[str, Tensor]:
+    def get_representation(self, **kwargs: Any) -> Dict[str, Tensor]:
         """
         Share the model weights
         """
@@ -104,27 +86,27 @@ class FedAvgClient(BaseClient):
         self.model.load_state_dict(representation)
 
     def run_protocol(self):
-        start_epochs = self.config.get("start_epochs", 0)
-        total_epochs = self.config["epochs"]
+        start_rounds = self.config.get("start_rounds", 0)
+        total_rounds = self.config["rounds"]
 
-        for round in range(start_epochs, total_epochs):
+        for round in range(start_rounds, total_rounds):
             self.local_train(round)
             self.local_test()
 
             repr = self.get_representation()
 
-            self.client_log_utils.log_summary(
+            self.log_utils.log_summary(
                 "Client {} sending done signal to {}".format(
                     self.node_id, self.server_node
                 )
             )
-            self.client_log_utils.log_summary(
+            self.log_utils.log_summary(
                 "Client {} waiting to get new model from {}".format(
                     self.node_id, self.server_node
                 )
             )
             repr = self.comm_utils.receive([self.server_node])[0]
-            self.client_log_utils.log_summary(
+            self.log_utils.log_summary(
                 "Client {} received new model from {}".format(
                     self.node_id, self.server_node
                 )
@@ -144,27 +126,6 @@ class FedAvgServer(BaseServer):
         self.model_save_path = "{}/saved_models/node_{}.pt".format(
             self.config["results_path"], self.node_id
         )
-
-    # def fed_avg(self, model_wts: List[OrderedDict[str, Tensor]]):
-    #     # All models are sampled currently at every round
-    #     # Each model is assumed to have equal amount of data and hence
-    #     # coeff is same for everyone
-    #     num_users = len(model_wts)
-    #     coeff = 1 / num_users # this assumes each node has equal amount of data
-    #     avgd_wts: OrderedDict[str, Tensor] = OrderedDict()
-    #     first_model = model_wts[0]
-
-    #     for node_num in range(num_users):
-    #         local_wts = model_wts[node_num]
-    #         for key in first_model.keys():
-    #             if node_num == 0:
-    #                 avgd_wts[key] = coeff * local_wts[key].to('cpu')
-    #             else:
-    #                 avgd_wts[key] += coeff * local_wts[key].to('cpu')
-    #     # put the model back to the device
-    #     for key in avgd_wts.keys():
-    #         avgd_wts[key] = avgd_wts[key].to(self.device)
-    #     return avgd_wts
 
     def fed_avg(self, model_wts: List[OrderedDict[str, Tensor]]):
         num_users = len(model_wts)
@@ -221,9 +182,9 @@ class FedAvgServer(BaseServer):
 
     def run_protocol(self):
         self.log_utils.log_console("Starting clients federated averaging")
-        start_epochs = self.config.get("start_epochs", 0)
-        total_epochs = self.config["epochs"]
-        for round in range(start_epochs, total_epochs):
+        start_rounds = self.config.get("start_rounds", 0)
+        total_rounds = self.config["rounds"]
+        for round in range(start_rounds, total_rounds):
             self.log_utils.log_console("Starting round {}".format(round))
             self.log_utils.log_summary("Starting round {}".format(round))
             self.single_round()

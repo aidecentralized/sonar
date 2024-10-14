@@ -4,7 +4,8 @@ This module manages the orchestration of federated learning experiments.
 """
 
 import os
-from typing import Any, Dict
+import time
+from typing import Any, Dict, List
 
 import torch
 
@@ -17,7 +18,7 @@ from algos.isolated import IsolatedServer
 from algos.fl_assigned import FedAssClient, FedAssServer
 from algos.fl_isolated import FedIsoClient, FedIsoServer
 from algos.fl_weight import FedWeightClient, FedWeightServer
-from algos.fl_static import FedStaticNode
+from algos.fl_static import FedStaticNode, FedStaticServer
 from algos.swarm import SWARMClient, SWARMServer
 from algos.DisPFL import DisPFLClient, DisPFLServer
 from algos.def_kt import DefKTClient, DefKTServer
@@ -33,17 +34,13 @@ from utils.config_utils import load_config, process_config
 from utils.log_utils import copy_source_code, check_and_create_path
 
 # Mapping of algorithm names to their corresponding client and server classes so that they can be consumed by the scheduler later on.
-algo_map = {
+algo_map: Dict[str, List[FedAvgClient]] = { # type: ignore
     "fedavg": [FedAvgServer, FedAvgClient],
-    "isolated": [IsolatedServer],
-    #    "fedran": [FedRanServer, FedRanClient],
-    #    "fedgrid": [FedGridServer, FedGridClient],
-    #    "fedtorus": [FedTorusServer, FedTorusClient],
+    "isolated": [IsolatedServer, IsolatedServer],
     "fedass": [FedAssServer, FedAssClient],
     "fediso": [FedIsoServer, FedIsoClient],
     "fedweight": [FedWeightServer, FedWeightClient],
-    #    "fedring": [FedRingServer, FedRingClient],
-    "fedstatic": [FedStaticNode],
+    "fedstatic": [FedStaticServer, FedStaticNode],
     "swarm": [SWARMServer, SWARMClient],
     "dispfl": [DisPFLServer, DisPFLClient],
     "defkt": [DefKTServer, DefKTClient],
@@ -60,9 +57,9 @@ def get_node(
     config: Dict[str, Any], rank: int, comm_utils: CommunicationManager
 ) -> BaseNode:
     algo_name = config["algo"]
-    node = algo_map[algo_name][rank > 0](config, comm_utils)
-
-    return node
+    node_class = algo_map[algo_name][rank > 0]
+    node = node_class(config, comm_utils) # type: ignore
+    return node # type: ignore
 
 
 class Scheduler:
@@ -115,6 +112,13 @@ class Scheduler:
                 check_and_create_path(path)
                 os.mkdir(self.config["saved_models"])
                 os.mkdir(self.config["log_path"])
+        else:
+            # wait for 10 seconds for the super node to create the directories
+            # the reason we do not wait indefinitely is because we need
+            # ordinary nodes to make directories as well if they are running
+            # from a different machine
+            print("Waiting for 10 seconds for the super node to create directories")
+            time.sleep(10)
 
         self.node = get_node(
             self.config,

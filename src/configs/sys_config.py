@@ -9,6 +9,7 @@ from utils.types import ConfigType
 from .algo_config import (
     malicious_algo_config_list,
     default_config_list,
+    fedstatic,
 )
 
 sliding_window_8c_4cpc_support = {
@@ -301,10 +302,10 @@ object_detect_system_config: ConfigType = {
     "exp_keys": [],
 }
 
-num_users = 4
+num_users = 9
 gpu_ids = [2, 3, 5, 6]
 grpc_system_config: ConfigType = {
-    "exp_id": "",
+    "exp_id": "static",
     "num_users": num_users,
     "num_collaborators": NUM_COLLABORATORS,
     "comm": {"type": "GRPC", "peer_ids": ["localhost:50050"]},  # The super-node
@@ -313,8 +314,8 @@ grpc_system_config: ConfigType = {
     "dpath": CIAR10_DPATH,
     "seed": 2,
     "device_ids": get_device_ids(num_users, gpu_ids),
-    "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
-    # "algo": get_algo_configs(num_users=num_users, algo_configs=default_config_list),
+    # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
+    "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
     "samples_per_user": 50000 // num_users,  # distributed equally
     "train_label_distribution": "iid",
     "test_label_distribution": "iid",

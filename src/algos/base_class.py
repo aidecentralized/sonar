@@ -1,8 +1,10 @@
 """Add docstring here"""
 
 from abc import ABC, abstractmethod
+import sys
 import torch
 import numpy as np
+import torch.utils
 from torch.utils.data import DataLoader, Subset
 
 from collections import OrderedDict
@@ -10,6 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from torch import Tensor
 import copy
 import random
+import torch.utils.data
 
 from utils.communication.comm_utils import CommunicationManager
 from utils.plot_utils import PlotUtils
@@ -41,36 +44,64 @@ from yolo import YOLOLoss
 def set_seed(seed: int) -> None:
     torch.manual_seed(seed)  # type: ignore
     random.seed(seed)
-    numpy.random.seed(seed)
+    np.random.seed(seed)
 
 
 class BaseNode(ABC):
-    """Add docstring here"""
+    """BaseNode is an abstract base class that provides foundational functionalities for nodes in a distributed system. It handles configuration, logging, CUDA setup, model parameter settings, and shared experiment parameters.
+
+    Attributes:
+        comm_utils (CommunicationManager): Utility for communication management.
+        node_id (int): Unique identifier for the node.
+        dset (str): Dataset identifier for the node.
+        device (torch.device): Device (CPU/GPU) to be used for computation.
+        model_utils (ModelUtils): Utility for model-related operations.
+        dset_obj (Dataset): Dataset object for the node.
+        best_acc (float): Best accuracy achieved by the node.
+        plot_utils (PlotUtils): Utility for plotting.
+        log_utils (LogUtils): Utility for logging.
+        device_ids (List[int]): List of device IDs for CUDA.
+        model (torch.nn.Module): Model used by the node.
+        optim (torch.optim.Optimizer): Optimizer for the model.
+        loss_fn (torch.nn.Module): Loss function for the model.
+        num_collaborators (int): Number of collaborators in the experiment.
+        communities (Dict[int, List[int]]): Mapping of users to their communities.
+
+    Methods:
+        __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+            Initializes the BaseNode with the given configuration and communication utilities.
+
+        set_constants(self) -> None:
+            Sets constant attributes for the node.
+
+        setup_logging(self, config: Dict[str, ConfigType]) -> None:
+
+        setup_cuda(self, config: Dict[str, ConfigType]) -> None:
+            Sets up CUDA devices for the node based on the configuration.
+
+        set_model_parameters(self, config: Dict[str, Any]) -> None:
+            Sets model-related parameters including the model, optimizer, and loss function.
+
+        set_shared_exp_parameters(self, config: Dict[str, ConfigType]) -> None:
+            Sets shared experiment parameters including the number of collaborators and community settings.
+
+        run_protocol(self) -> None:
+            Abstract method to be implemented by subclasses, defining the protocol to be run by the node.
+    """
     def __init__(
         self, config: Dict[str, Any], comm_utils: CommunicationManager
     ) -> None:
-        """Add docstring here"""
         self.comm_utils = comm_utils
         self.node_id = self.comm_utils.get_rank()
         self.comm_utils.register_node(self)
 
-        if self.node_id == 0:
-            self.log_dir = config["log_path"]
-            config["log_path"] = f"{self.log_dir}/server"
-            try:
-                os.mkdir(config["log_path"])
-            except FileExistsError:
-                pass
-            config["load_existing"] = False
-            self.log_utils = LogUtils(config)
-            self.log_utils.log_console(f"Config: {config}")
-            self.plot_utils = PlotUtils(config)
+        self.setup_logging(config)
 
         # Support user specific dataset
         if isinstance(config["dset"], dict):
             if self.node_id != 0:
-                config["dset"].pop("0")
-            self.dset = str(config["dset"][str(self.node_id)])
+                config["dset"].pop("0") # type: ignore
+            self.dset = str(config["dset"][str(self.node_id)]) # type: ignore
             config["dpath"] = config["dpath"][self.dset]
         else:
             self.dset = config["dset"]
@@ -85,7 +116,44 @@ class BaseNode(ABC):
         """Add docstring here"""
         self.best_acc = 0.0
 
-    def setup_cuda(self, config: Dict[str, Any]) -> None:
+    def setup_logging(self, config: Dict[str, ConfigType]) -> None:
+        """
+        Sets up logging for the node by creating necessary directories and initializing logging utilities.
+
+        Args:
+            config (Dict[str, ConfigType]): Configuration dictionary containing logging and plotting paths.
+
+        Raises:
+            SystemExit: If the log directory for the node already exists to prevent accidental overwrite.
+
+        Side Effects:
+            - Creates a log directory specific to the node.
+            - Initializes PlotUtils and LogUtils with the given configuration.
+            - Logs the configuration to the console if the node ID is 0.
+        """
+        try:
+            config["log_path"] = f"{config['log_path']}/node_{self.node_id}" # type: ignore
+            os.makedirs(config["log_path"])
+        except FileExistsError:
+            color_code = "\033[91m"  # Red color
+            reset_code = "\033[0m"  # Reset to default color
+            print(
+                f"{color_code}Log directory for the node {self.node_id} already exists in {config['log_path']}"
+            )
+            print(f"Exiting to prevent accidental overwrite{reset_code}")
+            sys.exit(1)
+
+        # TODO: Check if the plot directory should be unique to each node
+        try:
+            self.plot_utils = PlotUtils(config)
+        except FileExistsError:
+            print(f"Plot directory for the node {self.node_id} already exists")
+
+        self.log_utils = LogUtils(config)
+        if self.node_id == 0:
+            self.log_utils.log_console("Config: {}".format(config))
+
+    def setup_cuda(self, config: Dict[str, ConfigType]) -> None:
         """add docstring here"""
         # Need a mapping from rank to device id
         device_ids_map = config["device_ids"]
@@ -213,7 +281,7 @@ class BaseClient(BaseNode):
             test_dset, _ = balanced_subset(test_dset, config["test_samples_per_class"])
 
         samples_per_user = config["samples_per_user"]
-        batch_size = config["batch_size"]
+        batch_size: int = config["batch_size"] # type: ignore
         print(f"samples per user: {samples_per_user}, batch size: {batch_size}")
 
         # Support user specific dataset
@@ -333,10 +401,10 @@ class BaseClient(BaseNode):
             # shuffle=True)
             self.val_dloader = DataLoader(val_dset, batch_size=batch_size, shuffle=True)
 
+        assert isinstance(train_dset, torch.utils.data.Dataset), "train_dset must be a Dataset"
         self.train_indices = train_indices
         self.train_dset = train_dset
-        # self.dloader = DataLoader(train_dset, batch_size=batch_size*len(self.device_ids), shuffle=True)
-        self.dloader = DataLoader(train_dset, batch_size=batch_size, shuffle=True)
+        self.dloader = DataLoader(train_dset, batch_size=batch_size, shuffle=True) # type: ignore
 
         if config["test_label_distribution"] == "iid":
             pass
@@ -384,7 +452,7 @@ class BaseClient(BaseNode):
 
     def get_representation(
         self, **kwargs: Any
-    ) -> OrderedDict[str, Tensor] | List[Tensor] | Tensor:
+    ) -> Dict[str, Tensor] | List[Tensor] | Tensor:
         """
         Share the model representation
         """
@@ -592,7 +660,8 @@ class BaseFedAvgClient(BaseClient):
             None
         """
         models_coeffs: List[Tuple[OrderedDict[str, Tensor], float]] = []
-        models_wts[self.node_id] = self.get_model_weights()
+        # insert the current model weights at the position self.node_id
+        models_wts.insert(self.node_id - 1, self.get_model_weights())
         if collab_weights is None:
             collab_weights = [1.0 / len(models_wts) for _ in models_wts]
         for idx, model_wts in enumerate(models_wts):
@@ -601,11 +670,11 @@ class BaseFedAvgClient(BaseClient):
         is_init = False
         agg_wts: OrderedDict[str, Tensor] = OrderedDict()
         for model, coeff in models_coeffs:
-            for key in self.model.keys():
+            for key in self.model.state_dict().keys():
                 if key in keys_to_ignore:
                     continue
                 if not is_init:
-                    agg_wts[key] = coeff * model[key]
+                    agg_wts[key] = coeff * model[key].to(self.device)
                 else:
                     agg_wts[key] += coeff * model[key].to(self.device)
             is_init = True

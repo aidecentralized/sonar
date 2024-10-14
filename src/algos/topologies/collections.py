@@ -1,6 +1,7 @@
 from algos.topologies.base import BaseTopology
 from utils.types import ConfigType
 
+from math import ceil
 import networkx as nx
 
 
@@ -31,10 +32,21 @@ class FullyConnectedTopology(BaseTopology):
 class GridTopology(BaseTopology):
     def __init__(self, config: ConfigType, rank: int):
         super().__init__(config, rank)
+        if self.num_users**0.5 != int(self.num_users**0.5):
+            raise ValueError("Number of users should be a perfect square for grid topology")
 
     def generate_graph(self) -> None:
-        self.graph = nx.grid_2d_graph(int(self.num_users**0.5), int(self.num_users**0.5)) # type: ignore
+        self.graph = nx.grid_2d_graph(ceil(self.num_users**0.5), ceil(self.num_users**0.5)) # type: ignore
 
+
+class TorusTopology(BaseTopology):
+    def __init__(self, config: ConfigType, rank: int):
+        super().__init__(config, rank)
+        if self.num_users**0.5 != int(self.num_users**0.5):
+            raise ValueError("Number of users should be a perfect square for grid topology")
+
+    def generate_graph(self) -> None:
+        self.graph = nx.grid_2d_graph(ceil(self.num_users**0.5), ceil(self.num_users**0.5), periodic=True) # type: ignore
 
 class CircleLadderTopology(BaseTopology):
     def __init__(self, config: ConfigType, rank: int):
@@ -80,6 +92,8 @@ def select_topology(config: ConfigType, rank: int) -> BaseTopology:
         return StarTopology(config, rank)
     if topology_name == "grid":
         return GridTopology(config, rank)
+    if topology_name == "torus":
+        return TorusTopology(config, rank)
     if topology_name == "fully_connected":
         return FullyConnectedTopology(config, rank)
     if topology_name == "circle_ladder":

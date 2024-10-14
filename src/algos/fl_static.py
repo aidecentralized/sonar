@@ -19,6 +19,7 @@ class FedStaticNode(BaseFedAvgClient):
     ) -> None:
         super().__init__(config, comm_utils)
         self.topology = select_topology(config, self.node_id)
+        self.topology.initialize()
 
     def get_representation(self, **kwargs: Any) -> OrderedDict[str, torch.Tensor]:
         """
@@ -38,8 +39,8 @@ class FedStaticNode(BaseFedAvgClient):
                 "Start round different from 0 not implemented yet"
             )
         total_rounds = self.config["rounds"]
-        epochs_per_round = self.config["epochs_per_round"]
-        for _ in range(start_round, total_rounds):
+        epochs_per_round = self.config.get("epochs_per_round", 1)
+        for it in range(start_round, total_rounds):
             # Train locally and send the representation to the server
             stats["train_loss"], stats["train_acc"] = self.local_train(
                 epochs_per_round
@@ -57,3 +58,22 @@ class FedStaticNode(BaseFedAvgClient):
 
             # evaluate the model on the test data
             stats["test_loss"], stats["test_acc"] = self.local_test()
+            self.log_utils.log_console("Round {} done for Node {}, stats {}".format(it, self.node_id, stats))
+            self.log_utils.log_tb(key="train/loss", value=stats["train_loss"], iteration=it)
+            self.log_utils.log_tb(key="train/accuracy", value=stats["train_acc"], iteration=it)
+            self.log_utils.log_tb(key="test/loss", value=stats["test_loss"], iteration=it)
+            self.log_utils.log_tb(key="test/accuracy", value=stats["test_acc"], iteration=it)
+
+
+class FedStaticServer(BaseFedAvgClient):
+    """
+    Federated Static Server Class. It does not do anything.
+    It just exists to keep the code compatible across different algorithms.
+    """
+    def __init__(
+        self, config: Dict[str, Any], comm_utils: CommunicationManager
+    ) -> None:
+        pass
+
+    def run_protocol(self) -> None:
+        pass

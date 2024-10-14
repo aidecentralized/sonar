@@ -1,23 +1,6 @@
 from typing import Dict, List
-from .malicious_config import malicious_config_list
 import random
 from utils.types import ConfigType
-
-
-def assign_colab(clients):
-    groups = [1, 2]
-
-    dict = {}
-    client = 1
-    while client <= clients:
-        for size in groups:
-            group = []
-            for i in range(size):
-                group.append(client)
-                client += 1
-            for c in group:
-                dict[c] = group
-    return dict
 
 
 def get_malicious_types(malicious_config_list: List[ConfigType]) -> Dict[str, str]:
@@ -25,7 +8,7 @@ def get_malicious_types(malicious_config_list: List[ConfigType]) -> Dict[str, st
     Assign a random malicious type to a single node.
     """
     malicious_type = random.choice(malicious_config_list)
-    return malicious_type
+    return malicious_type # type: ignore
 
 
 # Algorithm Configuration
@@ -45,10 +28,11 @@ iid_dispfl_clients_new: ConfigType = {
 }
 
 traditional_fl: ConfigType = {
+    # Collaboration setup
     "algo": "fedavg",
-    "exp_type": "",
-    # Learning setup
-    "epochs": 100,
+
+    # Model parameters
+    "rounds": 100,
     "model": "resnet10",
     "model_lr": 3e-4,
     "batch_size": 256,
@@ -204,25 +188,15 @@ swarm: ConfigType = {
 }
 
 fedstatic: ConfigType = {
+    # Collaboration setup
     "algo": "fedstatic",
-    "num_rep": 1,
     "topology": "torus",
-    # Clients selection
-    "num_users_to_select": 1,
-    "leader_mode": False,
-    "community_type": "dataset",
-    # Learning setup
+
+    # Model parameters
     "rounds": 210,
-    "epochs_per_round": 5,
     "model": "resnet10",
-    "local_train_after_aggr": True,
-    "model_lr": 1e-4,
-    "batch_size": 16,
-    # Knowledge transfer params
-    "average_last_layer": True,
-    "mask_finetune_last_layer": False,
-    # params for model
-    "position": 0,
+    "model_lr": 3e-4,
+    "batch_size": 256,
 }
 
 metaL2C_cifar10: ConfigType = {
@@ -249,27 +223,6 @@ metaL2C_cifar10: ConfigType = {
     "inp_shape": [128, 3, 32, 32],
 }
 
-fedass: ConfigType = {
-    "algo": "fedass",
-    "num_rep": 1,
-    "load_existing": False,
-    # Clients selection
-    "strategy": "random_among_assigned",  # fixed, direct_expo
-    "assigned_collaborators": assign_colab(3),
-    "target_users_before_T_0": 0,
-    "target_users_after_T_0": 1,
-    "T_0": 10,  # round after wich only target_users_after_T_0 peers are kept
-    # Learning setup
-    "rounds": 10,
-    "epochs_per_round": 5,
-    "model": "resnet10",
-    # "pretrained": True,
-    # "train_only_fc": True,
-    "model_lr": 1e-4,
-    "batch_size": 16,
-    # params for model
-    "position": 0,
-}
 
 feddatarepr: ConfigType = {
     "algo": "feddatarepr",
@@ -363,7 +316,6 @@ algo_config_list: List[ConfigType] = [
     swarm,
     fedstatic,
     metaL2C_cifar10,
-    fedass,
     feddatarepr,
 ]
 
