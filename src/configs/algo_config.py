@@ -350,6 +350,8 @@ malicious_traditional_model_poisoning_attack: ConfigType = {
 algo_config_list: List[ConfigType] = [
     iid_dispfl_clients_new,
     traditional_fl,
+    malicious_traditional_data_poisoning_attack,
+    malicious_traditional_model_poisoning_attack,
     malicious_traditional_model_update_attack,
     fedweight,
     defkt,
@@ -368,9 +370,10 @@ algo_config_list: List[ConfigType] = [
 # Malicious List of algorithm configurations
 malicious_algo_config_list: List[ConfigType] = [
     traditional_fl,
-    malicious_traditional_model_poisoning_attack
+    malicious_traditional_data_poisoning_attack,
+    malicious_traditional_model_poisoning_attack,
+    malicious_traditional_model_update_attack,
 ]
-
 
 
 default_config_list: List[ConfigType] = [traditional_fl]
