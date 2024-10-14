@@ -11,10 +11,11 @@ import resnet
 import resnet_in
 
 import yolo
+from utils.types import ConfigType
 
 
 class ModelUtils:
-    def __init__(self, device: torch.device) -> None:
+    def __init__(self, device: torch.device, config: ConfigType) -> None:
         self.device = device
         self.dset = None
 
@@ -22,6 +23,9 @@ class ModelUtils:
             "resnet10": {"l1": 17, "l2": 35, "l3": 53, "l4": 71, "fc": 73},
             "resnet18": {"l1": 29, "l2": 59, "l3": 89, "l4": 119, "fc": 121},
         }
+
+        self.config = config
+        self.malicious_type = config.get("malicious_type", "normal")
 
     def get_model(
         self,
@@ -83,7 +87,7 @@ class ModelUtils:
                 model, optim, dloader, loss_fn, device, test_loader=None, **kwargs
             )
             return mean_loss, acc
-        elif kwargs.get("malicious_type", None) == "backdoor_attack" or kwargs.get("malicious_type", None) == "gradient_attack":
+        elif self.malicious_type == "backdoor_attack" or self.malicious_type == "gradient_attack":
             train_loss, acc = self.train_classification_malicious(
                 model, optim, dloader, loss_fn, device, test_loader=None, **kwargs
             )
@@ -222,8 +226,6 @@ class ModelUtils:
         correct = 0
         train_loss = 0
 
-        config = kwargs.get("config", None)
-
         for batch_idx, (data, target) in enumerate(dloader):
             data = data.to(device)
             target = target.to(device)
@@ -236,9 +238,9 @@ class ModelUtils:
             if kwargs.get("apply_softmax", False):
                 output = nn.functional.log_softmax(output, dim=1)  # type: ignore
 
-            if kwargs.get("malicious_type", None) == "backdoor_attack":
-                target_labels = config.get("target_labels", [])
-                additional_loss = config.get("additional_loss", 10)
+            if self.malicious_type == "backdoor_attack":
+                target_labels = self.config.get("target_labels", [])
+                additional_loss = self.config.get("additional_loss", 10)
                 
                 # Modify loss if target labels are part of the current batch
                 loss = loss_fn(output, target)  # Initial standard loss computation
@@ -258,9 +260,9 @@ class ModelUtils:
                 loss.backward()
 
             # scale the gradients if this is a gradient attack:
-            if kwargs.get("malicious_type", None) == "gradient_attack":
-                scaling_factor = config.get("scaling_factor", None)
-                noise_factor = config.get("noise_factor", None)
+            if self.malicious_type == "gradient_attack":
+                scaling_factor = self.config.get("scaling_factor", None)
+                noise_factor = self.config.get("noise_factor", None)
 
                 for param in self.model.parameters():
                     if param.grad is not None:
