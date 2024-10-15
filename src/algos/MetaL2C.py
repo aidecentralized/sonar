@@ -143,10 +143,9 @@ class MetaL2CClient(BaseFedAvgClient):
             Dict[str, torch.Tensor]: A dictionary containing the model's weight 
             representations.
         """
-        repr = self.model_utils.substract_model_weights(
+        return self.model_utils.substract_model_weights(
             self.get_model_weights(), self.model_init
         )
-        return repr
 
     def get_knowledge_sharing_artifact(self) -> Dict[str, torch.Tensor]:
         """
@@ -160,7 +159,7 @@ class MetaL2CClient(BaseFedAvgClient):
             return self.model_utils.substract_model_weights(
                 self.prev_model, self.get_model_weights()
             )
-        elif self.sharing_mode == "weights":
+        if self.sharing_mode == "weights":
             return self.get_model_weights()
         else:
             raise ValueError("Unknown sharing mode")
@@ -180,12 +179,12 @@ class MetaL2CClient(BaseFedAvgClient):
         ids = self.neighbors_ids + [self.node_id]
         collab_weights = torch.zeros(len(ids))
         self.own_embedding = self.encoder(self.get_representation())
-        for idx, id in enumerate(ids):
-            collab_weights[idx] = self.encoder(reprs_dict[id]).dot(self.own_embedding)
+        for idx, idy in enumerate(ids):
+            collab_weights[idx] = self.encoder(reprs_dict[idy]).dot(self.own_embedding)
 
         collab_weights = F.softmax(collab_weights, dim=0)
 
-        collab_weights_dict = {id: collab_weights[idx] for idx, id in enumerate(ids)}
+        collab_weights_dict = {idy: collab_weights[idx] for idx, idy in enumerate(ids)}
 
         return collab_weights_dict
 
@@ -268,9 +267,9 @@ class MetaL2CClient(BaseFedAvgClient):
         epochs_per_round = self.config["epochs_per_round"]
         collab_weights_dict = {id: 1 for id in self.neighbors_ids}
 
-        for round in range(start_round, total_rounds):
+        for cur_round in range(start_round, total_rounds):
 
-            if round == self.config["T_0"]:
+            if cur_round == self.config["T_0"]:
                 self.filter_out_worse_neighbors(
                     self.config["target_users_after_T_0"], collab_weights_dict
                 )
@@ -286,7 +285,7 @@ class MetaL2CClient(BaseFedAvgClient):
                 self.encoder.load_state_dict(avg_alpha)
 
             round_stats["train_loss"], round_stats["train_acc"] = self.local_train(epochs_per_round)
-            repr = self.get_representation()
+            representation = self.get_representation()
             ks_artifact = self.get_knowledge_sharing_artifact()
             self.comm_utils.send(dest=self.server_node, data=(repr, ks_artifact), tag=self.tag.REPR_ADVERT)
 
@@ -309,8 +308,8 @@ class MetaL2CClient(BaseFedAvgClient):
             round_stats["validation_loss"], round_stats["validation_acc"] = self.learn_collab_weights(models_update_wts, collab_weights_tensor_dict)
 
             cws = np.zeros(self.config["num_users"])
-            for id, cw in collab_weights_dict.items():
-                cws[id - 1] = cw
+            for idx, cw in collab_weights_dict.items():
+                cws[idx - 1] = cw
             round_stats["collab_weights"] = cws
 
             alpha = self.encoder.state_dict()
@@ -333,8 +332,8 @@ class MetaL2CServer(BaseFedAvgServer):
         super().__init__(config, comm_utils)
         self.config = config
         self.set_model_parameters(config)
-        self.model_save_path = "{}/saved_models/node_{}.pt".format(self.config["results_path"], self.node_id)
-
+        self.model_save_path = f"{self.config['results_path']}/saved_models/node_{self.node_id}.pt"
+        
     def average_state_dicts(self, state_dicts: list) -> Dict[str, torch.Tensor]:
         """
         Averages a list of model state dictionaries.
@@ -398,10 +397,10 @@ class MetaL2CServer(BaseFedAvgServer):
 
         stats = []
         avg_alpha = None
-        for round in range(start_round, total_rounds):
-            self.round = round
-            self.log_utils.log_console("Starting round {}".format(round))
-
+        for cur_round in range(start_round, total_rounds):
+            self.round = cur_round
+            self.log_utils.log_console(f"Starting round {cur_round}")
+                                       
             round_stats, avg_alpha = self.single_round(avg_alpha)
             stats.append(round_stats)
 

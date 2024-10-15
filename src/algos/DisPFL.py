@@ -189,6 +189,9 @@ class DisPFLClient(BaseClient):
                 sort_temp, idx = torch.sort(
                     temp.view(-1).to(self.device), descending=True
                 )
+                
+                del sort_temp
+                
                 new_masks[name].view(-1)[idx[: num_remove[name]]] = 1
             else:
                 temp = torch.where(
@@ -560,22 +563,22 @@ class DisPFLClient(BaseClient):
             # locally train
             print(f"Node {self.node_id} local train")
             self.local_train()
-            loss, acc = self.local_test()
-            print(f"Node {self.node_id} local test: {acc}")
-            repr = self.get_representation()
+            acc = self.local_test()
+            print(f"Node {self.node_id} local test: {acc[1]}")
+            representation = self.get_representation()
             if not self.config["static"]:
                 if not self.dis_gradient_check:
                     gradient = self.screen_gradient()
                 self.mask, num_remove = self.fire_mask(self.mask, epoch, total_epochs)
                 self.mask = self.regrow_mask(self.mask, num_remove, gradient)
             self.comm_utils.send_signal(
-                dest=0, data=copy.deepcopy(repr), tag=self.tag.SHARE_WEIGHTS
+                dest=0, data=copy.deepcopy(representation), tag=self.tag.SHARE_WEIGHTS
             )
 
             # test updated model
-            self.set_representation(repr)
-            loss, acc = self.local_test()
-            self.comm_utils.send_signal(dest=0, data=acc, tag=self.tag.FINISH)
+            self.set_representation(representation)
+            acc = self.local_test()
+            self.comm_utils.send_signal(dest=0, data=acc[1], tag=self.tag.FINISH)
 
 
 class DisPFLServer(BaseServer):
@@ -644,14 +647,14 @@ class DisPFLServer(BaseServer):
         Returns:
             float: The accuracy of the model on the test set.
         """
-        test_loss, acc = self.model_utils.test(
+        acc = self.model_utils.test(
             self.model, self._test_loader, self.loss_fn, self.device
         )
         # TODO save the model if the accuracy is better than the best accuracy so far
-        if acc > self.best_acc:
-            self.best_acc = acc
+        if acc[1] > self.best_acc:
+            self.best_acc = acc[1]
             self.model_utils.save_model(self.model, self.model_save_path)
-        return acc
+        return acc[1]
 
     def single_round(self, epoch: int, active_ths_rnd: np.ndarray) -> None:
         """
