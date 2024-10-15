@@ -66,4 +66,3 @@ class BadWeightsAttack:
                 for key, val in self.state_dict.items()
             }
         )
-

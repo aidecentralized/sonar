@@ -123,11 +123,11 @@ class L2CClient(BaseFedAvgClient):
                     if key not in self.model_keys_to_ignore:
                         if self.sharing_mode == "updates":
                             cw_grad -= (
-                                models_update_wts[i][key] * grad_dict[key].cpu()
+                                models_update_wts[id][key] * grad_dict[key].cpu()
                             ).sum()
                         elif self.sharing_mode == "weights":
                             cw_grad += (
-                                models_update_wts[i][key] * grad_dict[key].cpu()
+                                models_update_wts[id][key] * grad_dict[key].cpu()
                             ).sum()
                         else:
                             raise ValueError("Unknown sharing mode")
@@ -205,17 +205,15 @@ class L2CClient(BaseFedAvgClient):
             round_stats["train_loss"], round_stats["train_acc"] = self.local_train(
                 epochs_per_round
             )
-            representation: dict[str, Tensor] = self.get_representation()
+            repr: dict[str, Tensor] = self.get_representation()
             self.comm_utils.send(
-                dest=self.server_node, data=representation, tag=self.tag.REPR_ADVERT
+                dest=self.server_node, data=repr, tag=self.tag.REPR_ADVERT
             )
 
             reprs: list[dict[str, Tensor]] = self.comm_utils.receive(
                 node_ids=self.server_node, tag=self.tag.REPRS_SHARE
             )
-            
             reprs_dict: dict[int, dict[str, Tensor]] = dict(enumerate(reprs, 1))
-
 
             collab_weights_dict: dict[int, float] = self.get_collaborator_weights(
                 reprs_dict
@@ -262,10 +260,10 @@ class L2CServer(BaseFedAvgServer):
         """
         Test the model on the server
         """
-        acc = self.model_utils.test(
+        test_loss, acc = self.model_utils.test(
             self.model, self._test_loader, self.loss_fn, self.device
         )
-        return acc[1]
+        return acc
 
     def single_round(self) -> list[dict[str, Any]]:
         """
