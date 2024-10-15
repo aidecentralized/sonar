@@ -52,19 +52,7 @@ traditional_fl: ConfigType = {
     "model": "resnet10",
     "model_lr": 3e-4,
     "batch_size": 256,
-    "malicious_type": "normal",
 }
-
-malicious_traditional_bad_weights: ConfigType = {
-    **traditional_fl,
-    "malicious_type": "bad_weights",
-}
-
-malicious_traditional_flip_signs: ConfigType = {
-    **traditional_fl,
-    "malicious_type": "sign_flip",
-}
-
 
 fedweight: ConfigType = {
     "algo": "fedweight",
@@ -340,12 +328,31 @@ feddatarepr: ConfigType = {
     # "dreams_keep_best": False, # Use reprs with lowest loss
 }
 
+# Malicious Algorithm Configuration
+malicious_traditional_model_update_attack: ConfigType = {
+    **traditional_fl,
+    **malicious_config_list["bad_weights"],
+}
+
+malicious_traditional_data_poisoning_attack: ConfigType = {
+    **traditional_fl,
+    **malicious_config_list["data_poisoning"],
+}
+
+malicious_traditional_model_poisoning_attack: ConfigType = {
+    **traditional_fl,
+    **malicious_config_list["backdoor_attack"],
+}
+
+
+
 # List of algorithm configurations
 algo_config_list: List[ConfigType] = [
     iid_dispfl_clients_new,
     traditional_fl,
-    malicious_traditional_bad_weights,
-    malicious_traditional_flip_signs,
+    malicious_traditional_data_poisoning_attack,
+    malicious_traditional_model_poisoning_attack,
+    malicious_traditional_model_update_attack,
     fedweight,
     defkt,
     fedavg_object_detect,
@@ -363,8 +370,10 @@ algo_config_list: List[ConfigType] = [
 # Malicious List of algorithm configurations
 malicious_algo_config_list: List[ConfigType] = [
     traditional_fl,
-    malicious_traditional_bad_weights,
-    malicious_traditional_flip_signs,
+    malicious_traditional_data_poisoning_attack,
+    malicious_traditional_model_poisoning_attack,
+    malicious_traditional_model_update_attack,
 ]
+
 
 default_config_list: List[ConfigType] = [traditional_fl]

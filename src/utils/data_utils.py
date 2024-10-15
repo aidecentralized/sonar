@@ -3,7 +3,10 @@ from typing import Any, List, Sequence, Tuple, Optional
 import numpy as np
 import torch
 import torchvision.transforms as T
+from torchvision import datasets, transforms
 from torch.utils.data import Subset, Dataset
+from torch import Tensor
+from utils.corruptions import corrupt_mapping
 
 
 class CacheDataset:
@@ -39,6 +42,28 @@ class TransformDataset:
         return img, label
 
     def __len__(self):
+        return len(self.dset)
+    
+# Custom dataset wrapper to apply corruption
+class CorruptDataset:
+    def __init__(self, dset: CacheDataset, corruption_fn_name, severity: int = 1):
+        print("Initialized CorruptDataset with corruption_fn_name: ", corruption_fn_name)
+        self.dset = dset # Original dataset
+        self.corruption_fn = corrupt_mapping[corruption_fn_name]  # Corruption function
+        self.severity = severity  # Corruption severity
+
+    def __getitem__(self, index: int) -> Tuple[np.ndarray, int]:
+        data, target = self.dset[index]  # Get a single image and label
+        data_np = np.array(data)  # Convert image to NumPy
+
+        # Transpose the data from (channels, height, width) to (height, width, channels)
+        # data_np = data_np.transpose(1, 2, 0)
+
+        data_np = self.corruption_fn(data_np, severity=self.severity)  # Apply corruption
+        data_np = data_np.astype(np.float32)
+        return data_np, target
+
+    def __len__(self) -> int:
         return len(self.dset)
 
 

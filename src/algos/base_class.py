@@ -21,6 +21,7 @@ from utils.data_utils import (
     balanced_subset,
     CacheDataset,
     TransformDataset,
+    CorruptDataset,
 )
 from utils.log_utils import LogUtils
 from utils.model_utils import ModelUtils
@@ -66,7 +67,7 @@ class BaseNode(ABC):
             self.dset = config["dset"]
 
         self.setup_cuda(config)
-        self.model_utils = ModelUtils(self.device)
+        self.model_utils = ModelUtils(self.device, config)
 
         self.dset_obj = get_dataset(self.dset, dpath=config["dpath"])
         self.set_constants()
@@ -335,6 +336,12 @@ class BaseClient(BaseNode):
 
             # Cache before transform to preserve transform randomness
             train_dset = TransformDataset(CacheDataset(train_dset), train_transform)
+
+        if config.get("malicious_type", None) == "corrupt_data":
+            corruption_fn_name = config.get("corruption_fn", "gaussian_noise")
+            severity = config.get("corrupt_severity", 1)
+            train_dset = CorruptDataset(CacheDataset(train_dset), corruption_fn_name, severity)
+            print("created train dataset with corruption function: ", corruption_fn_name)
 
         self.classes_of_interest = classes
 
