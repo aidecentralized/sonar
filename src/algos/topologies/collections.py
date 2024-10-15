@@ -85,7 +85,7 @@ def select_topology(config: ConfigType, rank: int) -> BaseTopology:
     """
     Selects the topology based on the configuration.
     """
-    topology_name = config.get("topology", "ring")
+    topology_name = config["topology"]["name"] # type: ignore
     if topology_name == "ring":
         return RingTopology(config, rank)
     if topology_name == "star":

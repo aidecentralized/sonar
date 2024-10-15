@@ -128,3 +128,4 @@ class Scheduler:
 
     def run_job(self) -> None:
         self.node.run_protocol()
+        self.communication.finalize()

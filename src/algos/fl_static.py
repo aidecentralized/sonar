@@ -45,6 +45,7 @@ class FedStaticNode(BaseFedAvgClient):
             stats["train_loss"], stats["train_acc"] = self.local_train(
                 epochs_per_round
             )
+            self.local_round_done()
 
             # Collect the representations from all other nodes from the server
             neighbors = self.topology.sample_neighbours(self.num_collaborators)

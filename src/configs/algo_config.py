@@ -30,9 +30,9 @@ iid_dispfl_clients_new: ConfigType = {
 traditional_fl: ConfigType = {
     # Collaboration setup
     "algo": "fedavg",
+    "rounds": 200,
 
     # Model parameters
-    "rounds": 100,
     "model": "resnet10",
     "model_lr": 3e-4,
     "batch_size": 256,
@@ -190,10 +190,10 @@ swarm: ConfigType = {
 fedstatic: ConfigType = {
     # Collaboration setup
     "algo": "fedstatic",
-    "topology": "torus",
+    "topology": {"name": "watts_strogatz", "k": 3, "p": 0.2}, # type: ignore
+    "rounds": 20,
 
     # Model parameters
-    "rounds": 210,
     "model": "resnet10",
     "model_lr": 3e-4,
     "batch_size": 256,
@@ -205,7 +205,6 @@ metaL2C_cifar10: ConfigType = {
     # Client selection
     "target_users_before_T_0": 0,
     "target_users_after_T_0": 1,
-    "T_0": 2,
     "K_0": 0,  # number of peers to keep as neighbors at T_0 (!) inverse that in L2C paper
     "T_0": 250,  # round after wich only K_0 peers are kept
     "alpha_lr": 0.1,

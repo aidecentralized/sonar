@@ -54,6 +54,11 @@ class CommunicationServerStub(object):
                 request_serializer=comm__pb2.Empty.SerializeToString,
                 response_deserializer=comm__pb2.Model.FromString,
                 _registered_method=True)
+        self.get_current_round = channel.unary_unary(
+                '/CommunicationServer/get_current_round',
+                request_serializer=comm__pb2.Empty.SerializeToString,
+                response_deserializer=comm__pb2.Round.FromString,
+                _registered_method=True)
         self.update_port = channel.unary_unary(
                 '/CommunicationServer/update_port',
                 request_serializer=comm__pb2.PeerId.SerializeToString,
@@ -67,6 +72,11 @@ class CommunicationServerStub(object):
         self.send_quorum = channel.unary_unary(
                 '/CommunicationServer/send_quorum',
                 request_serializer=comm__pb2.Quorum.SerializeToString,
+                response_deserializer=comm__pb2.Empty.FromString,
+                _registered_method=True)
+        self.send_finished = channel.unary_unary(
+                '/CommunicationServer/send_finished',
+                request_serializer=comm__pb2.Rank.SerializeToString,
                 response_deserializer=comm__pb2.Empty.FromString,
                 _registered_method=True)
 
@@ -92,6 +102,12 @@ class CommunicationServerServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def get_current_round(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def update_port(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -105,6 +121,12 @@ class CommunicationServerServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def send_quorum(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def send_finished(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -128,6 +150,11 @@ def add_CommunicationServerServicer_to_server(servicer, server):
                     request_deserializer=comm__pb2.Empty.FromString,
                     response_serializer=comm__pb2.Model.SerializeToString,
             ),
+            'get_current_round': grpc.unary_unary_rpc_method_handler(
+                    servicer.get_current_round,
+                    request_deserializer=comm__pb2.Empty.FromString,
+                    response_serializer=comm__pb2.Round.SerializeToString,
+            ),
             'update_port': grpc.unary_unary_rpc_method_handler(
                     servicer.update_port,
                     request_deserializer=comm__pb2.PeerId.FromString,
@@ -141,6 +168,11 @@ def add_CommunicationServerServicer_to_server(servicer, server):
             'send_quorum': grpc.unary_unary_rpc_method_handler(
                     servicer.send_quorum,
                     request_deserializer=comm__pb2.Quorum.FromString,
+                    response_serializer=comm__pb2.Empty.SerializeToString,
+            ),
+            'send_finished': grpc.unary_unary_rpc_method_handler(
+                    servicer.send_finished,
+                    request_deserializer=comm__pb2.Rank.FromString,
                     response_serializer=comm__pb2.Empty.SerializeToString,
             ),
     }
@@ -236,6 +268,33 @@ class CommunicationServer(object):
             _registered_method=True)
 
     @staticmethod
+    def get_current_round(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/CommunicationServer/get_current_round',
+            comm__pb2.Empty.SerializeToString,
+            comm__pb2.Round.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
     def update_port(request,
             target,
             options=(),
@@ -305,6 +364,33 @@ class CommunicationServer(object):
             target,
             '/CommunicationServer/send_quorum',
             comm__pb2.Quorum.SerializeToString,
+            comm__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def send_finished(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/CommunicationServer/send_finished',
+            comm__pb2.Rank.SerializeToString,
             comm__pb2.Empty.FromString,
             options,
             channel_credentials,

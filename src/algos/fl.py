@@ -51,9 +51,11 @@ class FedAvgClient(BaseClient):
         Test the model locally, not to be used in the traditional FedAvg
         """
 
-    def get_representation(self, **kwargs: Any) -> Dict[str, Tensor]:
+    def get_model_weights(self, **kwargs: Any) -> Dict[str, Tensor]:
         """
-        Share the model weights
+        Overwrite the get_model_weights method of the BaseNode
+        to add malicious attacks
+        TODO: this should be moved to BaseClient
         """
 
         malicious_type = self.config.get("malicious_type", "normal")
@@ -92,25 +94,9 @@ class FedAvgClient(BaseClient):
         for round in range(start_rounds, total_rounds):
             self.local_train(round)
             self.local_test()
+            self.local_round_done()
 
-            repr = self.get_representation()
-
-            self.log_utils.log_summary(
-                "Client {} sending done signal to {}".format(
-                    self.node_id, self.server_node
-                )
-            )
-            self.log_utils.log_summary(
-                "Client {} waiting to get new model from {}".format(
-                    self.node_id, self.server_node
-                )
-            )
             repr = self.comm_utils.receive([self.server_node])[0]
-            self.log_utils.log_summary(
-                "Client {} received new model from {}".format(
-                    self.node_id, self.server_node
-                )
-            )
             self.set_representation(repr)
             # self.client_log_utils.log_summary("Round {} done for Client {}".format(round, self.node_id))
 
@@ -165,8 +151,6 @@ class FedAvgServer(BaseServer):
         )
         end_time = time.time()
         time_taken = end_time - start_time
-        # TODO save the model if the accuracy is better than the best accuracy
-        # so far
         if test_acc > self.best_acc:
             self.best_acc = test_acc
             self.model_utils.save_model(self.model, self.model_save_path)
@@ -187,11 +171,12 @@ class FedAvgServer(BaseServer):
         for round in range(start_rounds, total_rounds):
             self.log_utils.log_console("Starting round {}".format(round))
             self.log_utils.log_summary("Starting round {}".format(round))
+            self.local_round_done()
             self.single_round()
             self.log_utils.log_console("Server testing the model")
             loss, acc, time_taken = self.test()
-            self.log_utils.log_tb(f"test_acc/clients", acc, round)
-            self.log_utils.log_tb(f"test_loss/clients", loss, round)
+            self.log_utils.log_tb("test_acc/clients", acc, round)
+            self.log_utils.log_tb("test_loss/clients", loss, round)
             self.log_utils.log_console(
                 "Round: {} test_acc:{:.4f}, test_loss:{:.4f}, time taken {:.2f} seconds".format(
                     round, acc, loss, time_taken

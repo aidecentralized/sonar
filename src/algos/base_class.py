@@ -115,6 +115,7 @@ class BaseNode(ABC):
     def set_constants(self) -> None:
         """Add docstring here"""
         self.best_acc = 0.0
+        self.round = 0
 
     def setup_logging(self, config: Dict[str, ConfigType]) -> None:
         """
@@ -234,6 +235,18 @@ class BaseNode(ABC):
                 raise ValueError(f"Unknown community type: {community_type}.")
         if self.node_id == 0:
             self.log_utils.log_console(f"Communities: {self.communities}")
+
+    def local_round_done(self) -> None:
+        self.round += 1
+
+    def get_model_weights(self) -> Dict[str, Tensor]:
+        """
+        Share the model weights
+        """
+        return self.model.state_dict()
+
+    def get_local_rounds(self) -> int:
+        return self.round
 
     @abstractmethod
     def run_protocol(self) -> None:
@@ -447,14 +460,6 @@ class BaseClient(BaseNode):
     def local_test(self, **kwargs: Any) -> float | Tuple[float, float] | None:
         """
         Test the model locally
-        """
-        raise NotImplementedError
-
-    def get_representation(
-        self, **kwargs: Any
-    ) -> Dict[str, Tensor] | List[Tensor] | Tensor:
-        """
-        Share the model representation
         """
         raise NotImplementedError
 
