@@ -95,6 +95,7 @@ class FedAvgClient(BaseClient):
             ).get_representation()
         else:
             return self.model.state_dict()  # type: ignore
+        return self.model.state_dict()  # type: ignore
 
     def set_representation(self, representation: OrderedDict[str, Tensor]):
         """
@@ -173,7 +174,7 @@ class FedAvgServer(BaseServer):
         avgd_wts: OrderedDict[str, Tensor] = OrderedDict()
 
         for key in model_wts[0].keys():
-            avgd_wts[key] = sum(coeff * m[key].to(self.device) for m in model_wts)  # type: ignore
+            avgd_wts[key] = sum(coeff * m[key] for m in model_wts)  # type: ignore
 
         # Move to GPU only after averaging
         for key in avgd_wts.keys():
