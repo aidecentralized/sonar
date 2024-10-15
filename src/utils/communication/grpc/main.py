@@ -273,6 +273,7 @@ class GRPCCommunication(CommunicationInterface):
 
         # wait for the quorum to be set
         if self.rank != 0:
+            print(f"{self.rank} Waiting for quorum to be set")
             status = self.servicer.quorum.get()
             if not status:
                 print("Quorum became false!")
@@ -294,10 +295,10 @@ class GRPCCommunication(CommunicationInterface):
             print("All users have registered", self.servicer.peer_ids)
             for peer_id in self.servicer.peer_ids:
                 host_ip = self.servicer.peer_ids[peer_id].get("ip")
-                own_ip = self.servicer.peer_ids[0].get("ip")
-                if host_ip != own_ip:
+                if peer_id != self.rank:
                     port = self.servicer.peer_ids[peer_id].get("port")
                     address = f"{host_ip}:{port}"
+                    print(f"Sending peer_ids to {address}")
                     with grpc.insecure_channel(address) as channel:  # type: ignore
                         stub = comm_pb2_grpc.CommunicationServerStub(channel)
                         proto_msg = comm_pb2.PeerIds(
