@@ -1,0 +1,32 @@
+name: Type Checking with Mypy
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  type-check:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Step 1: Checkout the code
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    # Step 2: Set up Python
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'  # Specify the Python version you're using
+
+    # Step 3: Install dependencies (including Mypy)
+    - name: Install dependencies
+      run: pip install mypy
+
+    # Step 4: Run Mypy with --ignore-missing-imports and --warn-unused-ignores
+    - name: Run Mypy
+      run: mypy . --ignore-missing-imports --warn-unused-ignores  # Adjust directory as needed
