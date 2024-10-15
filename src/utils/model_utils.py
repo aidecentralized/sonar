@@ -35,7 +35,7 @@ class ModelUtils:
         device_ids: List[int],
         pretrained: bool = False,
         **kwargs: Any,
-    ) -> nn.Module:
+    ):
         self.dset = dset
         # TODO: add support for loading checkpointed models
         model_name = model_name.lower()
@@ -79,7 +79,6 @@ class ModelUtils:
         **kwargs: Any,
     ) -> Tuple[float, float]:
         """TODO: generate docstring"""
-        print("started training with dset ", self.dset)
         model.train()
 
         if self.dset == "pascal":
@@ -171,12 +170,12 @@ class ModelUtils:
     def train_classification(
         self,
         model: nn.Module,
-        optim,
-        dloader,
-        loss_fn,
+        optim: torch.optim.Optimizer,
+        dloader: DataLoader[Any],
+        loss_fn: Any,
         device: torch.device,
-        test_loader=None,
-        **kwargs,
+        test_loader: DataLoader[Any] | None = None,
+        **kwargs: Any,
     ) -> Tuple[float, float]:
         correct = 0
         train_loss = 0
@@ -458,14 +457,6 @@ class ModelUtils:
                 # view_as() is used to make sure the shape of pred and target
                 # are the same
                 correct += pred.eq(target.view_as(pred)).sum().item()
-        print(
-            "Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)".format(
-                test_loss,
-                correct,
-                len(dloader.dataset),
-                100.0 * correct / len(dloader.dataset),
-            )
-        )
         acc = correct / len(dloader.dataset)
         return test_loss, acc
 

@@ -297,7 +297,9 @@ class MetaL2CClient(BaseFedAvgClient):
 
             models_update_wts = {k: ks_art for k, (_, ks_art) in enumerate(reprs, 1)}
 
-            new_wts = self.weighted_aggregate(models_update_wts, collab_weights_dict, self.model_keys_to_ignore)
+            new_wts = self.aggregate(
+                models_update_wts, collab_weights_dict, self.model_keys_to_ignore
+            )
 
             if self.sharing_mode == "updates":
                 new_wts = self.model_utils.substract_model_weights(self.prev_model, new_wts)
