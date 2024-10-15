@@ -1,10 +1,10 @@
 import numpy as np
-from typing import Dict, List, Union
+from typing import Any, Dict, List, Union
 
 
 def from_round_stats_per_round_per_client_to_dict_arrays(
-    stats: List[List[Dict[str, Union[np.ndarray, float]]]]
-) -> Dict[str, np.ndarray]:
+    stats: List[List[Dict[str, Union[np.ndarray[Any, Any], float]]]]
+) -> Dict[str, np.ndarray[Any, Any]]:
     """
     Convert round statistics per client to a dictionary of arrays.
 
@@ -13,11 +13,11 @@ def from_round_stats_per_round_per_client_to_dict_arrays(
         where each round contains stats for each client.
 
     Returns:
-        Dict[str, np.ndarray]: Dictionary of stats name to an array of stats per client per round.
+        Dict[str, np.ndarray[Any, Any]]: Dictionary of stats name to an array of stats per client per round.
     """
     num_rounds = len(stats)
     num_clients = len(stats[0])
-    stats_dict: Dict[str, np.ndarray] = {}
+    stats_dict: Dict[str, np.ndarray[Any, Any]] = {}
 
     for round_idx, rounds_stats in enumerate(stats):
         for client_idx, client_stats in enumerate(rounds_stats):
@@ -34,8 +34,8 @@ def from_round_stats_per_round_per_client_to_dict_arrays(
 
 
 def from_rounds_stats_per_client_per_round_to_dict_arrays(
-    stats: List[List[Dict[str, Union[np.ndarray, float]]]]
-) -> Dict[str, np.ndarray]:
+    stats: List[List[Dict[str, Union[np.ndarray[Any, Any], float]]]]
+) -> Dict[str, np.ndarray[Any, Any]]:
     """
     Convert list of client-specific round stats to a dictionary of arrays.
 
@@ -47,7 +47,7 @@ def from_rounds_stats_per_client_per_round_to_dict_arrays(
         Dict[str, np.ndarray]: Dictionary of stats name to an array of stats per client per round.
     """
     round_stats_per_round_per_client: List[
-        List[Dict[str, Union[np.ndarray, float]]]
+        List[Dict[str, Union[np.ndarray[Any, Any], float]]]
     ] = []
     for client_stats in stats:
         for round_idx, round_stats in enumerate(client_stats):

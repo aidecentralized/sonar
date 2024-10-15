@@ -286,7 +286,7 @@ class L2CClient(BaseFedAvgClient):
             )
             models_update_wts: dict[int, dict[str, Tensor]] = reprs_dict
 
-            new_wts: dict[str, Tensor] = self.weighted_aggregate(
+            new_wts: dict[str, Tensor] = self.aggregate(
                 models_update_wts, collab_weights_dict, self.model_keys_to_ignore
             )
 

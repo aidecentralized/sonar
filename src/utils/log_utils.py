@@ -3,9 +3,7 @@ This module provides utility functions and classes for handling logging,
 copying source code, and normalizing images in a distributed learning setting.
 """
 
-from typing import Union
 import os
-import shutil
 import logging
 import sys
 from glob import glob
@@ -37,7 +35,7 @@ def deprocess(img: torch.Tensor) -> torch.Tensor:
     return img.type(torch.uint8)
 
 
-def check_and_create_path(path: str, folder_deletion_path: str | None = None):
+def check_and_create_path(path: str):
     """
     Checks if the specified path exists and prompts the user for action if it does.
     Creates the directory if it does not exist.
@@ -53,9 +51,6 @@ def check_and_create_path(path: str, folder_deletion_path: str | None = None):
         sys.exit()
     else:
         os.makedirs(path)
-        with open(folder_deletion_path, "w") as signal_file:
-            # new folder creation complete signal.
-            signal_file.write("new")
 
 
 def copy_source_code(config: Dict[str, Any]) -> None:
@@ -66,12 +61,11 @@ def copy_source_code(config: Dict[str, Any]) -> None:
         config (dict): Configuration dictionary with the results path.
     """
     path = config["results_path"]
-    folder_deletion_path = config["folder_deletion_signal_path"]
     print("exp path:", path)
     if config["load_existing"]:
         print("Continue with loading checkpoint")
         return
-    check_and_create_path(path, folder_deletion_path)
+    check_and_create_path(path)
     denylist = [
         "./__pycache__/",
         "./.ipynb_checkpoints/",

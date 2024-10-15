@@ -1,3 +1,4 @@
+from __future__ import annotations
 from concurrent import futures
 from queue import Queue
 import random
@@ -5,9 +6,10 @@ import re
 import threading
 import time
 import socket
-from typing import Any, Dict, List, OrderedDict, Union
+from typing import Any, Callable, Dict, List, OrderedDict, Union, TYPE_CHECKING
 from urllib.parse import unquote
-import grpc  # type: ignore
+import grpc # type: ignore
+from torch import Tensor
 from utils.communication.grpc.grpc_utils import deserialize_model, serialize_model
 import os
 import sys
@@ -16,10 +18,15 @@ grpc_generated_dir = os.path.dirname(os.path.abspath(__file__))
 if grpc_generated_dir not in sys.path:
     sys.path.append(grpc_generated_dir)
 
-import comm_pb2 as comm_pb2
-import comm_pb2_grpc as comm_pb2_grpc
-from utils.communication.interface import CommunicationInterface
+import comm_pb2 as comm_pb2  # noqa: E402
+import comm_pb2_grpc as comm_pb2_grpc  # noqa: E402
+from utils.communication.interface import CommunicationInterface  # noqa: E402
 
+if TYPE_CHECKING:
+    from algos.base_class import BaseNode
+
+
+MAX_MESSAGE_LENGTH = 200 * 1024 * 1024 # 200MB
 
 # TODO: Several changes needed to improve the quality of the code
 # 1. We need to improve comm.proto and get rid of singletons like Rank, Port etc.
@@ -78,17 +85,22 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
         self.condition = threading.Condition(self.lock)
         self.received_data: Queue[Any] = Queue()
         self.quorum: Queue[bool] = Queue()
+        self.finished: Queue[int] = Queue()
         port = int(super_node_host.split(":")[1])
         ip = super_node_host.split(":")[0]
+        self.base_node: BaseNode | None = None
         self.peer_ids: OrderedDict[int, Dict[str, int | str]] = OrderedDict(
             {0: {"rank": 0, "port": port, "ip": ip}}
         )
+
+    def register_self(self, obj: "BaseNode"):
+        self.base_node = obj
 
     def send_data(self, request, context) -> comm_pb2.Empty:  # type: ignore
         self.received_data.put(deserialize_model(request.model.buffer))  # type: ignore
         return comm_pb2.Empty()  # type: ignore
 
-    def get_rank(self, request: comm_pb2.Empty, context: grpc.ServicerContext) -> comm_pb2.Rank:  # type: ignore
+    def get_rank(self, request: comm_pb2.Empty, context: grpc.ServicerContext) -> comm_pb2.Rank | None:  
         try:
             with self.lock:
                 peer = context.peer()  # type: ignore
@@ -102,6 +114,22 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
         except Exception as e:
             context.abort(grpc.StatusCode.INTERNAL, f"Error in get_rank: {str(e)}")  # type: ignore
 
+    def get_model(self, request: comm_pb2.Empty, context: grpc.ServicerContext) -> comm_pb2.Model | None:
+        if not self.base_node:
+            context.abort(grpc.StatusCode.INTERNAL, "Base node not registered") # type: ignore
+            raise Exception("Base node not registered")
+        with self.lock:
+            model = comm_pb2.Model(buffer=serialize_model(self.base_node.get_model_weights()))
+            return model
+
+    def get_current_round(self, request: comm_pb2.Empty, context: grpc.ServicerContext) -> comm_pb2.Round | None:
+        if not self.base_node:
+            context.abort(grpc.StatusCode.INTERNAL, "Base node not registered") # type: ignore
+            raise Exception("Base node not registered")
+        with self.lock:
+            round = comm_pb2.Round(round=self.base_node.get_local_rounds())
+            return round
+
     def update_port(
         self, request: comm_pb2.PeerIds, context: grpc.ServicerContext
     ) -> comm_pb2.Empty:
@@ -112,7 +140,7 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
             self.peer_ids[request.rank.rank]["port"] = request.port.port  # type: ignore
             return comm_pb2.Empty()  # type: ignore
 
-    def send_peer_ids(self, request, context) -> comm_pb2.Empty:  # type: ignore
+    def send_peer_ids(self, request: comm_pb2.PeerIds, context) -> comm_pb2.Empty:  # type: ignore
         """
         Used by the super node to update all peers with the peer_ids
         after achieving quorum.
@@ -132,6 +160,9 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
         self.quorum.put(request.quorum)  # type: ignore
         return comm_pb2.Empty()  # type: ignore
 
+    def send_finished(self, request, context) -> comm_pb2.Empty: # type: ignore
+        self.finished.put(request.rank)  # type: ignore
+        return comm_pb2.Empty()  # type: ignore
 
 class GRPCCommunication(CommunicationInterface):
     def __init__(self, config: Dict[str, Dict[str, Any]]):
@@ -148,6 +179,7 @@ class GRPCCommunication(CommunicationInterface):
         self.rank: int | None = config["comm"]["rank"]
         # TODO: Get rid of peer_ids now that we are passing [comm][host]
         self.super_node_host: str = config["comm"]["peer_ids"][0]
+        self.synchronous: bool = config["comm"].get("synchronous", True)
         if self.rank == 0:
             node_id: List[str] = self.super_node_host.split(":")
             self.host: str = node_id[0]
@@ -165,24 +197,47 @@ class GRPCCommunication(CommunicationInterface):
             [peer_id for peer_id, values in peer_ids.items() if values.get("port") != 0]
         )
 
-    def register(self):
-        with grpc.insecure_channel(self.super_node_host) as channel:  # type: ignore
+    def register_self(self, obj: "BaseNode"):
+        self.servicer.register_self(obj)
+
+    def recv_with_retries(self, host: str, callback: Callable[[comm_pb2_grpc.CommunicationServerStub], Any]) -> Any:
+        with grpc.insecure_channel(host, options=[ # type: ignore
+        ('grpc.max_send_message_length', MAX_MESSAGE_LENGTH),
+        ('grpc.max_receive_message_length', MAX_MESSAGE_LENGTH),
+    ]) as channel:
             stub = comm_pb2_grpc.CommunicationServerStub(channel)
             max_tries = 10
             while max_tries > 0:
                 try:
-                    self.rank = stub.get_rank(comm_pb2.Empty()).rank  # type: ignore
-                    break
+                    result = callback(stub)
                 except grpc.RpcError as e:
-                    print(f"RPC failed: {e}", "Retrying...")
+                    print(f"RPC failed {10 - max_tries} times: {e}", "Retrying...")
                     # sleep for a random time between 1 and 10 seconds
                     random_time = random.randint(1, 10)
                     time.sleep(random_time)
                     max_tries -= 1
-            self.port = get_port(self.rank, self.num_users)  # type: ignore because we are setting it in the register method
-            rank = comm_pb2.Rank(rank=self.rank)  # type: ignore
-            port = comm_pb2.Port(port=self.port)
-            peer_id = comm_pb2.PeerId(rank=rank, port=port, ip=self.host)
+                else:
+                    return result
+
+    def register(self):
+        """
+        The registration protocol is as follows:
+        1. Every node sends a request to the super node to get a rank
+        2. The super node assigns a rank to the node and sends it back
+        3. The node updates its port and sends the updated peer_ids to the super node
+        """
+        def callback_fn(stub: comm_pb2_grpc.CommunicationServerStub) -> int:
+            rank_data = stub.get_rank(comm_pb2.Empty()) # type: ignore
+            return rank_data.rank # type: ignore
+
+        self.rank = self.recv_with_retries(self.super_node_host, callback_fn)
+        self.port = get_port(self.rank, self.num_users)  # type: ignore because we are setting it in the register method
+        rank = comm_pb2.Rank(rank=self.rank)  # type: ignore
+        port = comm_pb2.Port(port=self.port)
+        peer_id = comm_pb2.PeerId(rank=rank, port=port, ip=self.host)
+
+        with grpc.insecure_channel(self.super_node_host) as channel:  # type: ignore
+            stub = comm_pb2_grpc.CommunicationServerStub(channel)
             stub.update_port(peer_id)  # type: ignore
 
     def start_listener(self):
@@ -218,6 +273,7 @@ class GRPCCommunication(CommunicationInterface):
 
         # wait for the quorum to be set
         if self.rank != 0:
+            print(f"{self.rank} Waiting for quorum to be set")
             status = self.servicer.quorum.get()
             if not status:
                 print("Quorum became false!")
@@ -239,10 +295,10 @@ class GRPCCommunication(CommunicationInterface):
             print("All users have registered", self.servicer.peer_ids)
             for peer_id in self.servicer.peer_ids:
                 host_ip = self.servicer.peer_ids[peer_id].get("ip")
-                own_ip = self.servicer.peer_ids[0].get("ip")
-                if host_ip != own_ip:
+                if peer_id != self.rank:
                     port = self.servicer.peer_ids[peer_id].get("port")
                     address = f"{host_ip}:{port}"
+                    print(f"Sending peer_ids to {address}")
                     with grpc.insecure_channel(address) as channel:  # type: ignore
                         stub = comm_pb2_grpc.CommunicationServerStub(channel)
                         proto_msg = comm_pb2.PeerIds(
@@ -257,12 +313,12 @@ class GRPCCommunication(CommunicationInterface):
                 return self.servicer.peer_ids[peer_id].get("ip") + ":" + str(self.servicer.peer_ids[peer_id].get("port"))  # type: ignore
         raise Exception(f"Rank {rank} not found in peer_ids")
 
-    def send(self, dest: str | int, data: OrderedDict[str, Any]):
+    def send(self, dest: str | int, data: OrderedDict[str, Tensor]):
         """
         data should be a torch model
         """
         dest_host: str = ""
-        if type(dest) == int:
+        if type(dest) is int:
             dest_host = self.get_host_from_rank(dest)
         else:
             dest_host = str(dest)
@@ -276,10 +332,56 @@ class GRPCCommunication(CommunicationInterface):
             print(f"RPC failed: {e}")
             sys.exit(1)
 
-    def receive(self, node_ids: str | int) -> Any:
-        # this .get() will block until
-        # at least 1 item is received in the queue
-        return self.servicer.received_data.get()
+    def wait_until_rounds_match(self, id: int):
+        """
+        Wait until the rounds match with the given id
+        """
+        if not self.servicer.base_node:
+            raise Exception("Base node not registered")
+        self_round = self.servicer.base_node.get_local_rounds()
+        def callback_fn(stub: comm_pb2_grpc.CommunicationServerStub) -> int:
+            round = stub.get_current_round(comm_pb2.Empty()) # type: ignore
+            return round.round # type: ignore
+        
+        while True:
+            host = self.get_host_from_rank(id)
+            round = self.recv_with_retries(host, callback_fn)
+            if round >= self_round:
+                # Strict equality can not be enforced because
+                # the communication is not symmetric
+                # For example, if node 1 goes ahead with round 3
+                # after getting weights from node 2 and then node 3
+                # tries to get weights from node 1, it will be stuck
+                # this will be only possible if everyone waits for their
+                # 'subscribers' to catch up.
+                break
+            self.servicer.base_node.log_utils.log_console(
+                f"Node {self.rank} Waiting for round {self_round} to match with Node {id}"
+            )
+            time.sleep(2)
+
+    # TODO: We are using Any because we want to support any type of data
+    # However, it is sensible to restrict the type and make different functions
+    # for different types of data because we probably only have three categories
+    # 1. Model weights - Dictionary of tensors
+    # 2. Tensor data - Tensors
+    # 3. Metadata - JSON format
+    def receive(self, node_ids: List[int]) -> List[Any]:
+        if self.synchronous:
+            for id in node_ids:
+                self.wait_until_rounds_match(id)
+        items: List[Any] = []
+        def callback_fn(stub: comm_pb2_grpc.CommunicationServerStub) -> OrderedDict[str, Tensor]:
+            model = stub.get_model(comm_pb2.Empty()) # type: ignore
+            return deserialize_model(model.buffer) # type: ignore
+
+        for id in node_ids:
+            rank = self.get_host_from_rank(id)
+            item = self.recv_with_retries(rank, callback_fn)
+            if item is None:
+                raise Exception(f"Received None from node {id} by node {self.rank}", "Exiting...")
+            items.append(item)
+        return items
 
     def is_own_id(self, peer_id: int) -> bool:
         rank = self.servicer.peer_ids[peer_id].get("rank")
@@ -298,10 +400,47 @@ class GRPCCommunication(CommunicationInterface):
         items: List[Any] = []
         for peer_id in self.servicer.peer_ids:
             if not self.is_own_id(peer_id):
-                items.append(self.receive(peer_id))
+                items.append(self.receive([peer_id])[0])
         return items
 
+    def get_num_finished(self) -> int:
+        num_finished = self.servicer.finished.qsize()
+        return num_finished
+
     def finalize(self):
+        # 1. All nodes send finished to the super node
+        # 2. super node will wait for all nodes to send finished
+        # 3. super node will then send bye to all nodes
+        # 4. all nodes will wait for the bye and then exit
+        # this is to ensure that all nodes have finished
+        # and no one leaves early
+        if self.rank == 0:
+            quorum_threshold = self.num_users  # No +1 for the super node because it doesn't send finished
+            num_finished = self.get_num_finished()
+            while num_finished < quorum_threshold:
+                # sleep for 5 seconds
+                print(
+                    f"Waiting for {quorum_threshold} users to finish, {num_finished} have finished so far"
+                )
+                time.sleep(5)
+                num_finished = self.get_num_finished()
+
+            # send quorum to all nodes
+            for peer_id in self.servicer.peer_ids:
+                if not self.is_own_id(peer_id):
+                    host = self.get_host_from_rank(peer_id)
+                    with grpc.insecure_channel(host) as channel: # type: ignore
+                        stub = comm_pb2_grpc.CommunicationServerStub(channel)
+                        stub.send_quorum(comm_pb2.Quorum(quorum=True)) # type: ignore
+        else:
+            # send finished to the super node
+            with grpc.insecure_channel(self.super_node_host) as channel: # type: ignore
+                stub = comm_pb2_grpc.CommunicationServerStub(channel)
+                stub.send_finished(comm_pb2.Rank(rank=self.rank)) # type: ignore
+            status = self.servicer.quorum.get()
+            if not status:
+                print("Quorum became false!")
+                sys.exit(1)
         if self.listener:
             self.listener.stop(0)  # type: ignore
             print(f"Stopped server on port {self.port}")

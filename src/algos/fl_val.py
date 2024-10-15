@@ -127,7 +127,7 @@ class FedValClient(BaseFedAvgClient):
             # knowledge
             models_wts = reprs_dict
 
-            avg_wts = self.weighted_aggregate(
+            avg_wts = self.aggregate(
                 models_wts, collab_weights_dict, self.model_keys_to_ignore
             )
 
