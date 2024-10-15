@@ -1,12 +1,24 @@
 ### Running the code
-With the current configs, the following command will work off-the-shelf
-`mpirun -np 4 -host localhost:4 python main.py`
+First start the super node by running the following command:<br>
+`python main.py -super true`
 
-Let's say you want to run the model training of 10 nodes on a machine. That means there will be 11 nodes in total because there is 1 extra node in addition to the clients --- server.
-The whole point of this project is to eventually transition to a distributed system where each node can be a separate machine and a server is simply another node. But for now, this is how things are done.
+Then run 9 nodes by running the following command:<br>
+`python main_grpc.py -n 9 -host localhost`
 
-You can execute the 10 node simulation by running the following command:<br>
-`mpirun -np 10 -host localhost:11 python main.py`
+Let's say you want to collaboratively train 50 nodes on a machine. That means there will be 51 nodes in total because there is 1 extra node in --- super-node.
+
+So once again, start the super node by running the following command:<br>
+`python main.py -super true`
+
+Then run 50 nodes by running the following command:<br>
+`python main_grpc.py -n 50 -host localhost`
+
+You don't have to run all the nodes on the same machine. You can run them on different machines as well. For example - if you want to run 50 nodes on 5 different machines, you can run 10 nodes on each machine. First start, the super node on one of the machines by running the following command:<br>
+`python main.py -super true`
+
+Then run 10 nodes on each machine. You can do this by running the following command on each machine:<br>
+`python main_grpc.py -n 10 -host <hostname>`
+where `<hostname>` is the IP address or domain name of the machine.
 
 Depending on the environment you're running the experiment on, you may have to update the config files based on the number of GPUs available. Refer to the [Config file](#config-file) section for more information.
 

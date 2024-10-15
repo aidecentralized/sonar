@@ -1,4 +1,5 @@
 from typing import Dict, List
+from .malicious_config import malicious_config_list
 import random
 from utils.types import ConfigType
 
@@ -30,7 +31,7 @@ iid_dispfl_clients_new: ConfigType = {
 traditional_fl: ConfigType = {
     # Collaboration setup
     "algo": "fedavg",
-    "rounds": 200,
+    "rounds": 2,
 
     # Model parameters
     "model": "resnet10",
