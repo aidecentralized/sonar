@@ -58,7 +58,7 @@ jobs:
             if [[ -s "$ERRORS_AND_FATALS_FILE" ]]; then
                 printf "Errors and fatals found. Check %s for details:\n\n" "$ERRORS_AND_FATALS_FILE"
                 cat "$ERRORS_AND_FATALS_FILE"
-                return 1 # Fail if errors or fatals are found
+                # Continue, don't return here. We want to always print the code quality score.
             else
                 printf "No errors or fatals found.\n"
             fi
@@ -81,11 +81,13 @@ jobs:
         main() {
             if run_pylint_on_all_py_files; then
                 extract_errors_and_fatals
-                extract_code_quality
             else
                 printf "Pylint failed to run.\n" >&2
                 return 1
             fi
+
+            # Always extract and print the code quality score
+            extract_code_quality
         }
 
         # Execute main
