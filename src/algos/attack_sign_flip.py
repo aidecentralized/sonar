@@ -13,38 +13,41 @@ Usage:
     flipped_weights = attack.get_representation()
 """
 
-import random
 from collections import OrderedDict
+from algos.base_attack import BaseAttack
 from typing import Dict
 from torch import Tensor
 from utils.types import ConfigType
 
 
-class SignFlipAttack:
+class SignFlipAttack(BaseAttack):
     """
     A class that flips the sign of a portion of model weights based on a configured 
     flip rate. This can simulate an adversarial attack that introduces significant 
     changes to the model's weights.
 
     Attributes:
+        node_id (int): The unique identifier of the node used to set the seed.
         state_dict (OrderedDict[str, Tensor]): A dictionary containing the model's state (weights).
         flip_rate (float): The probability that the sign of a weight will be flipped. 
                            A float between 0 and 1, where 1 means all weights are flipped.
     """
 
     def __init__(
-        self, config: ConfigType, state_dict: Dict[str, Tensor]
+        self, node_id: int, config: ConfigType, state_dict: Dict[str, Tensor]
     ) -> None:
         """
         Initializes the SignFlipAttack class with the provided configuration and model state.
 
         Args:
+            node_id (int): The unique identifier of the node used to set the seed.
             config (ConfigType): A configuration dictionary that contains 'flip_rate', 
                                  which determines the probability of flipping the sign 
                                  of a weight.
             state_dict (OrderedDict[str, Tensor]): A dictionary containing the model's state 
                                                    (weights).
         """
+        super().__init__(node_id, config)
         self.state_dict = state_dict
         self.flip_rate = float(config.get("flip_rate", 1)) # type: ignore
         # TODO: Add conditions such as target label, source label, start/end epochs, or rounds for the attack.
@@ -60,7 +63,7 @@ class SignFlipAttack:
         """
         return OrderedDict(
             {
-                key: -1 * val if random.random() < self.flip_rate else val
+                key: -1 * val if self.rng.random() < self.flip_rate else val
                 for key, val in self.state_dict.items()
             }
         )
