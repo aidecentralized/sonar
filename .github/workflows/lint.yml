@@ -27,7 +27,6 @@ jobs:
 
     - name: Run Pylint
       run: |
-        #!/bin/bash
         # Global variables
         PYLINT_OUTPUT_FILE="pylint_output.txt"
         ERRORS_AND_FATALS_FILE="pylint_errors_and_fatals.txt"
