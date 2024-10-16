@@ -15,20 +15,21 @@ Usage:
     noisy_weights = attack.get_representation()
 """
 
-import random
 from collections import OrderedDict
+from algos.base_attack import BaseAttack
 from typing import Dict
 from torch import Tensor
 from utils.types import ConfigType
 
 
-class AddNoiseAttack:
+class AddNoiseAttack(BaseAttack):
     """
     A class that adds Gaussian noise to model weights. This can be used as a form of attack, 
     often referred to as a 'backdoor attack', where the noise is introduced without causing 
     significant noticeable changes in model performance.
     
     Attributes:
+        node_id (int): The unique identifier of the node used to set the seed.
         state_dict (OrderedDict[str, Tensor]): A dictionary containing the model's state (weights).
         noise_rate (float): The probability that noise will be added to each weight.
         noise_mean (float): The mean of the Gaussian noise.
@@ -36,7 +37,7 @@ class AddNoiseAttack:
     """
 
     def __init__(
-        self, config: ConfigType, state_dict: Dict[str, Tensor]
+        self, node_id: int, config: ConfigType, state_dict: Dict[str, Tensor]
     ) -> None:
         """
         Initializes the AddNoiseAttack class with the provided configuration and model state.
@@ -48,6 +49,7 @@ class AddNoiseAttack:
             state_dict (OrderedDict[str, Tensor]): A dictionary containing the model's state 
                                                    (weights).
         """
+        super().__init__(node_id, config)
         self.state_dict = state_dict
         self.noise_rate = float(config.get("noise_rate", 1)) # type: ignore
         self.noise_mean = float(config.get("noise_mean", 0)) # type: ignore
@@ -67,8 +69,8 @@ class AddNoiseAttack:
         return OrderedDict(
             {
                 key: (
-                    val + self.noise_std * random.gauss(self.noise_mean, self.noise_std)
-                    if random.random() < self.noise_rate
+                    val + self.noise_std * self.rng.gauss(self.noise_mean, self.noise_std)
+                    if self.rng.random() < self.noise_rate
                     else val
                 )
                 for key, val in self.state_dict.items()

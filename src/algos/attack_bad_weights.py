@@ -13,31 +13,33 @@ Usage:
     corrupted_weights = attack.get_representation()
 """
 
-import random
 from collections import OrderedDict
+from algos.base_attack import BaseAttack
 from typing import Dict
 from torch import Tensor
 from utils.types import ConfigType
 
 
-class BadWeightsAttack:
+class BadWeightsAttack(BaseAttack):
     """
     A class that applies corruption to a portion of the model's weights by scaling them with 
     a predefined factor ('weight'). This can be used to simulate malicious attacks on the model.
 
     Attributes:
+        node_id (int): The unique identifier of the node used to set the seed.
         state_dict (OrderedDict[str, Tensor]): A dictionary containing the model's state (weights).
         weight (float): A factor by which corrupted weights are scaled. Default is 0.
         corrupt_portion (float): The proportion of weights to corrupt. A float between 0 and 1.
     """
 
     def __init__(
-        self, config: ConfigType, state_dict: Dict[str, Tensor]
+        self, node_id: int, config: ConfigType, state_dict: Dict[str, Tensor]
     ) -> None:
         """
         Initializes the BadWeightsAttack class with the provided configuration and model state.
 
         Args:
+            node_id (int): The unique identifier of the node used to set the seed.
             config (ConfigType): A configuration dictionary containing 'weight' and 
                                  'corrupt_portion'. 'weight' specifies the factor to 
                                  scale corrupted weights, and 'corrupt_portion' defines 
@@ -45,6 +47,7 @@ class BadWeightsAttack:
             state_dict (OrderedDict[str, Tensor]): A dictionary containing the model's state 
                                                    (weights).
         """
+        super().__init__(node_id, config)
         self.state_dict = state_dict
         self.weight = config.get("weight", 0)
         self.corrupt_portion = float(config.get("corrupt_portion", 1)) # type: ignore
@@ -62,7 +65,7 @@ class BadWeightsAttack:
         return OrderedDict(
             {
                 key: (
-                    val * self.weight if random.random() < self.corrupt_portion else val
+                    val * self.weight if self.rng.random() < self.corrupt_portion else val
                 )
                 for key, val in self.state_dict.items()
             }

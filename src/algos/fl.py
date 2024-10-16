@@ -65,20 +65,18 @@ class FedAvgClient(BaseClient):
         elif malicious_type == "bad_weights":
             # Corrupt the weights
             return BadWeightsAttack(
-                self.config, self.model.state_dict()
+                self.node_id, self.config, self.model.state_dict()
             ).get_representation()
         elif malicious_type == "sign_flip":
             # Flip the sign of the weights, also TODO: consider label flipping
             return SignFlipAttack(
-                self.config, self.model.state_dict()
+                self.node_id, self.config, self.model.state_dict()
             ).get_representation()
         elif malicious_type == "add_noise":
             # Add noise to the weights
             return AddNoiseAttack(
-                self.config, self.model.state_dict()
+                self.node_id, self.config, self.model.state_dict()
             ).get_representation()
-        else:
-            return self.model.state_dict()  # type: ignore
         return self.model.state_dict()  # type: ignore
 
     def set_representation(self, representation: OrderedDict[str, Tensor]):
