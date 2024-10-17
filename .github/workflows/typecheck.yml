@@ -1,4 +1,4 @@
-name: Type Checking with Mypy
+name: Type Checking with Pyright
 
 on:
   push:
@@ -21,12 +21,12 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.x'  # Specify the Python version you're using
+        python-version: '3.8'  # Specify the Python version you're using
 
-    # Step 3: Install dependencies (including Mypy)
+    # Step 3: Install dependencies 
     - name: Install dependencies
-      run: pip install mypy
+      run: pip install pyright
 
-    # Step 4: Run Mypy with --ignore-missing-imports and --warn-unused-ignores
-    - name: Run Mypy
-      run: mypy . --ignore-missing-imports --warn-unused-ignores  # Adjust directory as needed
+    # Step 4: Run Pyright 
+    - name: Run Pyright
+      run: pyright .
