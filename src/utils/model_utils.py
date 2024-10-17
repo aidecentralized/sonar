@@ -62,7 +62,7 @@ class ModelUtils:
                 else resnet.resnet50(**kwargs)
             )
         elif model_name == "yolo":
-            model = yolo.yolo(pretrained=False)
+            model = yolo.yolo(pretrained=False) 
         else:
             raise ValueError(f"Model name {model_name} not supported")
         model = model.to(device)
@@ -313,7 +313,7 @@ class ModelUtils:
                 output = nn.functional.log_softmax(output, dim=1)  # type: ignore
             loss = loss_fn(output, target)
             loss.backward()
-            optim.step()
+            optim.step() 
             train_loss += loss.item()
             for name, param in model.named_parameters():
                 if name in mask:
@@ -372,6 +372,82 @@ class ModelUtils:
         for i in range(num_net):
             train_accuracy[i] = 100.0 * correct[i] / len(dloader.dataset)
         return train_loss, train_accuracy
+    
+    def per_sample_grads(self, model: nn.Module, x: torch.Tensor, y: torch.Tensor, criterion: Any) -> List[torch.Tensor]:
+        """Computes per-sample gradients for the batch."""
+        batch_size = x.size(0)
+        outputs = model(x)
+        loss = criterion(outputs, y)
+        
+        # Calculate the gradients with respect to model parameters
+        grads = torch.autograd.grad(loss, model.parameters(), create_graph=True)
+
+        per_sample_grads = []
+        for g in grads:
+            # Check the number of dimensions
+            if g.dim() > 1:
+                # Try to flatten starting from the second dimension
+                total_elements = g.numel()
+                if total_elements % batch_size == 0:
+                    per_sample_grads.append(g.view(batch_size, -1))
+                else:
+                    print(f"Warning: Gradient of size {total_elements} cannot be reshaped into [batch_size={batch_size}, -1].")
+                    per_sample_grads.append(g.flatten(start_dim=1))
+            else:
+                # If the gradient is 1D, just append it as is
+                per_sample_grads.append(g)
+
+        return per_sample_grads
+
+    def dpsgd_step(self, model: nn.Module, per_sample_grads: List[torch.Tensor], optimizer: torch.optim.Optimizer, 
+                   noise_multiplier: float, batch_size: int, l2_norm_clip: float) -> None:
+        with torch.no_grad():
+            for param, g in zip(model.parameters(), per_sample_grads):
+                if param.grad is None:
+                    continue
+                grad_norm = torch.norm(g, dim=1)
+                clipped_grads = torch.stack([torch.clamp(grad, max=l2_norm_clip / norm)
+                                             for grad, norm in zip(g, grad_norm)])
+                aggregated_grad = clipped_grads.mean(dim=0)
+                noise = torch.randn_like(aggregated_grad) * (noise_multiplier * l2_norm_clip / batch_size)
+                aggregated_grad.add_(noise)
+                param.add_(aggregated_grad.view_as(param), alpha=-optimizer.param_groups[0]['lr'])
+
+    def train_with_dpsgd(
+        self,
+        model: nn.Module,
+        optimizer: torch.optim.Optimizer,
+        dloader: DataLoader[Any],
+        loss_fn: Any,
+        device: torch.device,
+        noise_multiplier: float = 1.0,
+        l2_norm_clip: float = 1.0,
+        epochs: int = 5,
+        **kwargs: Any,
+    ) -> Tuple[float, float]:
+        model.train()
+        batch_size = dloader.batch_size if dloader.batch_size is not None else len(dloader.dataset)
+        
+        for epoch in range(epochs):
+            total_loss = 0
+            correct = 0
+            for batch_idx, (data, target) in enumerate(dloader):
+                data, target = data.to(device), target.to(device)
+                per_sample_grads = self.per_sample_grads(model, data, target, loss_fn)
+                self.dpsgd_step(model, per_sample_grads, optimizer, noise_multiplier, batch_size, l2_norm_clip)
+                
+                with torch.no_grad():
+                    output = model(data)
+                    loss = loss_fn(output, target)
+                    total_loss += loss.item()
+                    pred = output.argmax(dim=1, keepdim=True)
+                    correct += pred.eq(target.view_as(pred)).sum().item()
+            
+            avg_loss = total_loss / len(dloader)
+            accuracy = correct / len(dloader.dataset)
+            print(f'Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4f}')
+        
+        return avg_loss, accuracy
 
     def train_with_dpsgd(
         self,
