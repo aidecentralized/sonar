@@ -1,4 +1,4 @@
-name: Type Checking with Mypy
+name: Type Checking with Pyright
 
 on:
   push:
@@ -25,8 +25,8 @@ jobs:
 
     # Step 3: Install dependencies 
     - name: Install dependencies
-      run: pip install mypy
+      run: pip install pyright
 
-    # Step 4: Run Mypy 
-    - name: Run Mypy
-      run: mypy .
+    # Step 4: Run Pyright 
+    - name: Run Pyright
+      run: pyright .
