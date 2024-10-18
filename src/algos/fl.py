@@ -1,3 +1,4 @@
+import random
 from collections import OrderedDict
 from typing import Any, Dict, List
 from torch import Tensor
@@ -92,12 +93,19 @@ class FedAvgClient(BaseClient):
         total_rounds = self.config["rounds"]
 
         for round in range(start_rounds, total_rounds):
-            self.local_train(round)
+            is_working = self.get_and_set_working(round)
+            if is_working:
+                self.local_train(round)
+            else:
+                # sleep for a while to simulate the time taken for training
+                time.sleep(2)
+
             self.local_test()
             self.local_round_done()
 
-            repr = self.comm_utils.receive([self.server_node])[0]
-            self.set_representation(repr)
+            if is_working:
+                repr = self.comm_utils.receive([self.server_node])[0]
+                self.set_representation(repr)
             # self.client_log_utils.log_summary("Round {} done for Client {}".format(round, self.node_id))
 
 
@@ -161,8 +169,12 @@ class FedAvgServer(BaseServer):
         Runs the whole training procedure
         """
         reprs = self.comm_utils.all_gather()
-        avg_wts = self.aggregate(reprs)
-        self.set_representation(avg_wts)
+        reprs, _ = self.strip_empty_models(reprs)
+        if len(reprs):
+            avg_wts = self.aggregate(reprs)
+            self.set_representation(avg_wts)
+        else:
+            self.log_utils.log_console("No clients participated in this round")
 
     def run_protocol(self):
         self.log_utils.log_console("Starting clients federated averaging")

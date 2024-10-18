@@ -75,3 +75,6 @@ class CommunicationManager:
 
     def finalize(self):
         self.comm.finalize()
+
+    def set_is_working(self, is_working: bool):
+        self.comm.set_is_working(is_working)
