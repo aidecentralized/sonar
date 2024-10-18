@@ -45,6 +45,9 @@ class FedAvgClient(BaseClient):
         self.log_utils.log_tb(
             f"train_accuracy/client{self.node_id}", avg_accuracy, round
         )
+        self.log_utils.log_tb(
+            f"time/client{self.node_id}", time_taken, round
+        )
 
     def local_test(self, **kwargs: Any):
         """
@@ -165,6 +168,9 @@ class FedAvgServer(BaseServer):
         self.set_representation(avg_wts)
 
     def run_protocol(self):
+        """
+        Run the federated averaging protocol
+        """
         self.log_utils.log_console("Starting clients federated averaging")
         start_rounds = self.config.get("start_rounds", 0)
         total_rounds = self.config["rounds"]
@@ -177,6 +183,7 @@ class FedAvgServer(BaseServer):
             loss, acc, time_taken = self.test()
             self.log_utils.log_tb("test_acc/clients", acc, round)
             self.log_utils.log_tb("test_loss/clients", loss, round)
+            self.log_utils.log_tb("time/clients", time_taken, round)
             self.log_utils.log_console(
                 "Round: {} test_acc:{:.4f}, test_loss:{:.4f}, time taken {:.2f} seconds".format(
                     round, acc, loss, time_taken
