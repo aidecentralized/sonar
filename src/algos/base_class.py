@@ -299,6 +299,32 @@ class BaseNode(ABC):
                 imgs=stats["images"], key="sample_images", iteration=iteration
             )
 
+    def strip_empty_models(self,  models_wts: List[OrderedDict[str, Tensor]],
+        collab_weights: Optional[List[float]] = None) -> Any:
+        repr_list = []
+        if collab_weights is not None:
+            weight_list = []
+            for i, model_wts in enumerate(models_wts):
+                if len(model_wts) > 0 and collab_weights[i] > 0:
+                    repr_list.append(model_wts)
+                    weight_list.append(collab_weights[i])
+            return repr_list, weight_list
+        else:
+            for model_wts in models_wts:
+                if len(model_wts) > 0:
+                    repr_list.append(model_wts)
+            return repr_list, None
+
+    def get_and_set_working(self, round: Optional[int] = None) -> bool:
+        is_working = self.dropout.is_available()
+        if not is_working:
+            self.log_utils.log_console(
+                f"Client {self.node_id} is not working {'in round ' if round else 'in this round'}."
+            )
+            self.comm_utils.set_is_working(False)
+        else:
+            self.comm_utils.set_is_working(True)
+        return is_working
 
 class BaseClient(BaseNode):
     """
@@ -715,6 +741,11 @@ class BaseFedAvgClient(BaseClient):
         models_wts.insert(self.node_id - 1, self.get_model_weights())
         if collab_weights is None:
             collab_weights = [1.0 / len(models_wts) for _ in models_wts]
+
+        # Handle dropouts and re-normalize the weights
+        models_wts, collab_weights = self.strip_empty_models(models_wts, collab_weights)
+        collab_weights = [w / sum(collab_weights) for w in collab_weights]
+
         for idx, model_wts in enumerate(models_wts):
             models_coeffs.append((model_wts, collab_weights[idx]))
 

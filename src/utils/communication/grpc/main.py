@@ -129,6 +129,7 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
             if self.is_working:
                 model = comm_pb2.Model(buffer=serialize_model(self.base_node.get_model_weights()))
             else:
+                assert self.base_node.dropout.dropout_enabled, "Empty models are only supported when Dropout is enabled."
                 model = comm_pb2.Model(buffer=EMPTY_MODEL_TAG)
             return model
 
@@ -390,7 +391,7 @@ class GRPCCommunication(CommunicationInterface):
         for id in node_ids:
             rank = self.get_host_from_rank(id)
             item = self.recv_with_retries(rank, callback_fn)
-            if item is None:
+            if len(item) == 0:
                 self.servicer.base_node.log_utils.log_console(f"Received None from node {id} by node {self.rank}")
             items.append(item)
         return items
@@ -413,8 +414,7 @@ class GRPCCommunication(CommunicationInterface):
         for peer_id in self.servicer.peer_ids:
             if not self.is_own_id(peer_id):
                 received_model = self.receive([peer_id])[0]
-                if len(received_model) > 0:
-                    items.append(received_model)
+                items.append(received_model)
         return items
 
     def get_num_finished(self) -> int:

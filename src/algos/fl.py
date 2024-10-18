@@ -88,7 +88,7 @@ class FedAvgClient(BaseClient):
         total_rounds = self.config["rounds"]
 
         for round in range(start_rounds, total_rounds):
-<<<<<<< HEAD
+            is_working = self.get_and_set_working(round)
             stats["train_loss"], stats["train_acc"], stats["train_time"] = self.local_train(round)
             stats["test_loss"], stats["test_acc"], stats["test_time"] = self.local_test()
             self.local_round_done()
@@ -96,26 +96,6 @@ class FedAvgClient(BaseClient):
             repr = self.comm_utils.receive([self.server_node])[0]
             self.set_representation(repr)
             self.log_metrics(stats=stats, iteration=round)
-            
-=======
-            is_working = self.dropout.is_available()
-            if not is_working:
-                self.log_utils.log_console(
-                    f"Client {self.node_id} is not working in round {round}."
-                )
-                self.comm_utils.set_is_working(False)
-            else:
-                self.comm_utils.set_is_working(True)
-                self.local_train(round)
-
-            self.local_test()
-            self.local_round_done()
-
-            if is_working:
-                repr = self.comm_utils.receive([self.server_node])[0]
-                self.set_representation(repr)
-            # self.client_log_utils.log_summary("Round {} done for Client {}".format(round, self.node_id))
->>>>>>> Provisional Dropouts | support for FL clients
 
 
 class FedAvgServer(BaseServer):
@@ -178,6 +158,7 @@ class FedAvgServer(BaseServer):
         Runs the whole training procedure
         """
         reprs = self.comm_utils.all_gather()
+        reprs, _ = self.strip_empty_models(reprs)
         if len(reprs):
             avg_wts = self.aggregate(reprs)
             self.set_representation(avg_wts)

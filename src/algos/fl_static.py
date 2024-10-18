@@ -4,6 +4,7 @@ Module for FedStaticClient and FedStaticServer in Federated Learning.
 from typing import Any, Dict, OrderedDict
 from utils.communication.comm_utils import CommunicationManager
 import torch
+import time
 
 from algos.base_class import BaseFedAvgClient
 from algos.topologies.collections import select_topology
@@ -42,9 +43,14 @@ class FedStaticNode(BaseFedAvgClient):
         epochs_per_round = self.config.get("epochs_per_round", 1)
         for it in range(start_round, total_rounds):
             # Train locally and send the representation to the server
-            stats["train_loss"], stats["train_acc"] = self.local_train(
-                epochs_per_round
-            )
+            is_working = self.get_and_set_working(it)
+            if is_working:
+                stats["train_loss"], stats["train_acc"] = self.local_train(
+                    epochs_per_round
+                )
+            else:
+                time.sleep(2)
+                stats["train_loss"], stats["train_acc"] = float('nan'), float('nan') # Did not train, can be modified to something else
             self.local_round_done()
 
             # Collect the representations from all other nodes from the server
