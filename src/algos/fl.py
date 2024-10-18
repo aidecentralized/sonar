@@ -168,6 +168,9 @@ class FedAvgServer(BaseServer):
         self.set_representation(avg_wts)
 
     def run_protocol(self):
+        """
+        Run the federated averaging protocol
+        """
         self.log_utils.log_console("Starting clients federated averaging")
         start_rounds = self.config.get("start_rounds", 0)
         total_rounds = self.config["rounds"]
