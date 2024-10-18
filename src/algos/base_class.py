@@ -91,6 +91,7 @@ class BaseNode(ABC):
     def __init__(
         self, config: Dict[str, Any], comm_utils: CommunicationManager
     ) -> None:
+        self.set_constants()
         self.comm_utils = comm_utils
         self.node_id = self.comm_utils.get_rank()
         self.comm_utils.register_node(self)
@@ -110,7 +111,6 @@ class BaseNode(ABC):
         self.model_utils = ModelUtils(self.device, config)
 
         self.dset_obj = get_dataset(self.dset, dpath=config["dpath"])
-        self.set_constants()
 
     def set_constants(self) -> None:
         """Add docstring here"""
