@@ -10,6 +10,7 @@ from .algo_config import (
     malicious_algo_config_list,
     default_config_list,
     fedstatic,
+    traditional_fl
 )
 
 sliding_window_8c_4cpc_support = {
@@ -307,6 +308,20 @@ object_detect_system_config: ConfigType = {
 }
 
 num_users = 9
+
+dropout_dict = {
+    "distribution_dict": {
+        "method": "uniform",  # "uniform", "normal"
+        "parameters": {} # "mean": 0.5, "std": 0.1 in case of normal distribution
+    },
+    "dropout_rate": 0.0, # cutoff for dropout
+    "dropout_correlation": 0.0, # correlation between dropouts of successive rounds
+}
+
+dropout_dicts = {"node_0": {}}
+for i in range(1, num_users + 1):
+    dropout_dicts[f"node_{i}"] = dropout_dict
+
 gpu_ids = [2, 3, 5, 6]
 grpc_system_config: ConfigType = {
     "exp_id": "static",
@@ -319,11 +334,12 @@ grpc_system_config: ConfigType = {
     "seed": 2,
     "device_ids": get_device_ids(num_users, gpu_ids),
     # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
-    "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
+    "algos": get_algo_configs(num_users=num_users, algo_configs=[traditional_fl]),  # type: ignore
     "samples_per_user": 50000 // num_users,  # distributed equally
     "train_label_distribution": "iid",
     "test_label_distribution": "iid",
     "exp_keys": [],
+    "dropout_dicts": dropout_dicts,
 }
 
 current_config = grpc_system_config

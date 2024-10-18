@@ -92,6 +92,11 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
         self.peer_ids: OrderedDict[int, Dict[str, int | str]] = OrderedDict(
             {0: {"rank": 0, "port": port, "ip": ip}}
         )
+        self.is_working = True
+
+    def set_is_working(self, is_working: bool):
+        with self.lock:
+            self.is_working = is_working
 
     def register_self(self, obj: "BaseNode"):
         self.base_node = obj
@@ -119,7 +124,10 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
             context.abort(grpc.StatusCode.INTERNAL, "Base node not registered") # type: ignore
             raise Exception("Base node not registered")
         with self.lock:
-            model = comm_pb2.Model(buffer=serialize_model(self.base_node.get_model_weights()))
+            if self.is_working:
+                model = comm_pb2.Model(buffer=serialize_model(self.base_node.get_model_weights()))
+            else:
+                model = comm_pb2.Empty()
             return model
 
     def get_current_round(self, request: comm_pb2.Empty, context: grpc.ServicerContext) -> comm_pb2.Round | None:
@@ -373,13 +381,15 @@ class GRPCCommunication(CommunicationInterface):
         items: List[Any] = []
         def callback_fn(stub: comm_pb2_grpc.CommunicationServerStub) -> OrderedDict[str, Tensor]:
             model = stub.get_model(comm_pb2.Empty()) # type: ignore
+            if isinstance(model, comm_pb2.Empty):
+                return OrderedDict()
             return deserialize_model(model.buffer) # type: ignore
 
         for id in node_ids:
             rank = self.get_host_from_rank(id)
             item = self.recv_with_retries(rank, callback_fn)
             if item is None:
-                raise Exception(f"Received None from node {id} by node {self.rank}", "Exiting...")
+                self.servicer.base_node.log_utils.log_console(f"Received None from node {id} by node {self.rank}")
             items.append(item)
         return items
 
@@ -400,6 +410,9 @@ class GRPCCommunication(CommunicationInterface):
         items: List[Any] = []
         for peer_id in self.servicer.peer_ids:
             if not self.is_own_id(peer_id):
+                received_model = self.receive([peer_id])[0]
+                if received_model is not None:
+                    items.append(received_model)
                 items.append(self.receive([peer_id])[0])
         return items
 

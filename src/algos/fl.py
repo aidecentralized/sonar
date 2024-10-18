@@ -1,3 +1,4 @@
+import random
 from collections import OrderedDict
 from typing import Any, Dict, List
 from torch import Tensor
@@ -87,6 +88,7 @@ class FedAvgClient(BaseClient):
         total_rounds = self.config["rounds"]
 
         for round in range(start_rounds, total_rounds):
+<<<<<<< HEAD
             stats["train_loss"], stats["train_acc"], stats["train_time"] = self.local_train(round)
             stats["test_loss"], stats["test_acc"], stats["test_time"] = self.local_test()
             self.local_round_done()
@@ -95,6 +97,25 @@ class FedAvgClient(BaseClient):
             self.set_representation(repr)
             self.log_metrics(stats=stats, iteration=round)
             
+=======
+            is_working = self.dropout.is_available()
+            if not is_working:
+                self.log_utils.log_console(
+                    f"Client {self.node_id} is not working this round"
+                )
+                self.comm_utils.servicer.set_is_working(self.node_id, False)
+            else:
+                self.comm_utils.servicer.set_is_working(self.node_id, True)
+                self.local_train(round)
+
+            self.local_test()
+            self.local_round_done()
+
+            if is_working:
+                repr = self.comm_utils.receive([self.server_node])[0]
+                self.set_representation(repr)
+            # self.client_log_utils.log_summary("Round {} done for Client {}".format(round, self.node_id))
+>>>>>>> Provisional Dropouts | support for FL clients
 
 
 class FedAvgServer(BaseServer):
@@ -157,8 +178,11 @@ class FedAvgServer(BaseServer):
         Runs the whole training procedure
         """
         reprs = self.comm_utils.all_gather()
-        avg_wts = self.aggregate(reprs)
-        self.set_representation(avg_wts)
+        if len(reprs):
+            avg_wts = self.aggregate(reprs)
+            self.set_representation(avg_wts)
+        else:
+            self.log_utils.log_console("No clients participated in this round")
 
     def run_protocol(self):
         stats: Dict[str, Any] = {}
