@@ -92,6 +92,7 @@ class Scheduler:
         node_name = "node_{}".format(self.communication.get_rank())
         self.algo_config = self.sys_config["algos"][node_name]
         self.config.update(self.algo_config)
+        self.config["dropout_dicts"] = self.sys_config.get("dropout_dicts", {}).get(node_name, {})
 
     def initialize(self, copy_souce_code: bool = True) -> None:
         assert self.config is not None, "Config should be set when initializing"

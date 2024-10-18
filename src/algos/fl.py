@@ -101,11 +101,11 @@ class FedAvgClient(BaseClient):
             is_working = self.dropout.is_available()
             if not is_working:
                 self.log_utils.log_console(
-                    f"Client {self.node_id} is not working this round"
+                    f"Client {self.node_id} is not working in round {round}."
                 )
-                self.comm_utils.servicer.set_is_working(self.node_id, False)
+                self.comm_utils.set_is_working(False)
             else:
-                self.comm_utils.servicer.set_is_working(self.node_id, True)
+                self.comm_utils.set_is_working(True)
                 self.local_train(round)
 
             self.local_test()

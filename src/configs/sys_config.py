@@ -310,12 +310,12 @@ object_detect_system_config: ConfigType = {
 num_users = 9
 
 dropout_dict = {
-    "distribution_dict": {
+    "distribution_dict": { # leave dict empty to disable dropout
         "method": "uniform",  # "uniform", "normal"
         "parameters": {} # "mean": 0.5, "std": 0.1 in case of normal distribution
     },
-    "dropout_rate": 0.0, # cutoff for dropout
-    "dropout_correlation": 0.0, # correlation between dropouts of successive rounds
+    "dropout_rate": 0.0, # cutoff for dropout: [0,1]
+    "dropout_correlation": 0.0, # correlation between dropouts of successive rounds: [0,1]
 }
 
 dropout_dicts = {"node_0": {}}
