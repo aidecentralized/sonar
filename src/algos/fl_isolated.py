@@ -1,6 +1,6 @@
 from algos.base_class import BaseClient, BaseServer
 from utils.stats_utils import from_rounds_stats_per_client_per_round_to_dict_arrays
-from typing import Any, Dict, List
+from typing import Any, Dict
 from utils.communication.comm_utils import CommunicationManager
 
 

@@ -3,8 +3,6 @@ from typing import Any, Dict, List
 from utils.communication.comm_utils import CommunicationManager
 from torch import Tensor, cat
 import torch.nn as nn
-import random
-import os
 from algos.base_class import BaseClient, BaseServer
 import numpy as np
 

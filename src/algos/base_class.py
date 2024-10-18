@@ -1,6 +1,10 @@
+"""Add docstring here"""
+
 from abc import ABC, abstractmethod
+import sys
 import torch
-import numpy
+import numpy as np
+import torch.utils
 from torch.utils.data import DataLoader, Subset
 
 from collections import OrderedDict
@@ -8,7 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from torch import Tensor
 import copy
 import random
-import numpy as np
+import torch.utils.data
 
 from utils.communication.comm_utils import CommunicationManager
 from utils.plot_utils import PlotUtils
@@ -20,6 +24,7 @@ from utils.data_utils import (
     balanced_subset,
     CacheDataset,
     TransformDataset,
+    CorruptDataset,
 )
 from utils.log_utils import LogUtils
 from utils.model_utils import ModelUtils
@@ -28,72 +33,152 @@ from utils.community_utils import (
     get_dset_balanced_communities,
     get_dset_communities,
 )
+from utils.types import ConfigType
+
 import torchvision.transforms as T  # type: ignore
 import os
 
 from yolo import YOLOLoss
 
 
+def set_seed(seed: int) -> None:
+    torch.manual_seed(seed)  # type: ignore
+    random.seed(seed)
+    np.random.seed(seed)
+
+
 class BaseNode(ABC):
+    """BaseNode is an abstract base class that provides foundational functionalities for nodes in a distributed system. It handles configuration, logging, CUDA setup, model parameter settings, and shared experiment parameters.
+
+    Attributes:
+        comm_utils (CommunicationManager): Utility for communication management.
+        node_id (int): Unique identifier for the node.
+        dset (str): Dataset identifier for the node.
+        device (torch.device): Device (CPU/GPU) to be used for computation.
+        model_utils (ModelUtils): Utility for model-related operations.
+        dset_obj (Dataset): Dataset object for the node.
+        best_acc (float): Best accuracy achieved by the node.
+        plot_utils (PlotUtils): Utility for plotting.
+        log_utils (LogUtils): Utility for logging.
+        device_ids (List[int]): List of device IDs for CUDA.
+        model (torch.nn.Module): Model used by the node.
+        optim (torch.optim.Optimizer): Optimizer for the model.
+        loss_fn (torch.nn.Module): Loss function for the model.
+        num_collaborators (int): Number of collaborators in the experiment.
+        communities (Dict[int, List[int]]): Mapping of users to their communities.
+
+    Methods:
+        __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+            Initializes the BaseNode with the given configuration and communication utilities.
+
+        set_constants(self) -> None:
+            Sets constant attributes for the node.
+
+        setup_logging(self, config: Dict[str, ConfigType]) -> None:
+
+        setup_cuda(self, config: Dict[str, ConfigType]) -> None:
+            Sets up CUDA devices for the node based on the configuration.
+
+        set_model_parameters(self, config: Dict[str, Any]) -> None:
+            Sets model-related parameters including the model, optimizer, and loss function.
+
+        set_shared_exp_parameters(self, config: Dict[str, ConfigType]) -> None:
+            Sets shared experiment parameters including the number of collaborators and community settings.
+
+        run_protocol(self) -> None:
+            Abstract method to be implemented by subclasses, defining the protocol to be run by the node.
+    """
     def __init__(
         self, config: Dict[str, Any], comm_utils: CommunicationManager
     ) -> None:
+        self.set_constants()
         self.comm_utils = comm_utils
         self.node_id = self.comm_utils.get_rank()
+        self.comm_utils.register_node(self)
 
-        if self.node_id == 0:
-            self.log_dir = config["log_path"]
-            config["log_path"] = f"{self.log_dir}/server"
-            try:
-                os.mkdir(config["log_path"])
-            except FileExistsError:
-                pass
-            config["load_existing"] = False
-            self.log_utils = LogUtils(config)
-            self.log_utils.log_console("Config: {}".format(config))
-            self.plot_utils = PlotUtils(config)
+        self.setup_logging(config)
 
         # Support user specific dataset
         if isinstance(config["dset"], dict):
             if self.node_id != 0:
-                config["dset"].pop("0")
-            self.dset = str(config["dset"][str(self.node_id)])
+                config["dset"].pop("0") # type: ignore
+            self.dset = str(config["dset"][str(self.node_id)]) # type: ignore
             config["dpath"] = config["dpath"][self.dset]
         else:
             self.dset = config["dset"]
 
         self.setup_cuda(config)
-        self.model_utils = ModelUtils(self.device)
+        self.model_utils = ModelUtils(self.device, config)
 
         self.dset_obj = get_dataset(self.dset, dpath=config["dpath"])
-        self.set_constants()
 
     def set_constants(self) -> None:
+        """Add docstring here"""
         self.best_acc = 0.0
+        self.round = 0
 
-    def setup_cuda(self, config: Dict[str, Any]) -> None:
+    def setup_logging(self, config: Dict[str, ConfigType]) -> None:
+        """
+        Sets up logging for the node by creating necessary directories and initializing logging utilities.
+
+        Args:
+            config (Dict[str, ConfigType]): Configuration dictionary containing logging and plotting paths.
+
+        Raises:
+            SystemExit: If the log directory for the node already exists to prevent accidental overwrite.
+
+        Side Effects:
+            - Creates a log directory specific to the node.
+            - Initializes PlotUtils and LogUtils with the given configuration.
+            - Logs the configuration to the console if the node ID is 0.
+        """
+        try:
+            config["log_path"] = f"{config['log_path']}/node_{self.node_id}" # type: ignore
+            os.makedirs(config["log_path"])
+        except FileExistsError:
+            color_code = "\033[91m"  # Red color
+            reset_code = "\033[0m"  # Reset to default color
+            print(
+                f"{color_code}Log directory for the node {self.node_id} already exists in {config['log_path']}"
+            )
+            print(f"Exiting to prevent accidental overwrite{reset_code}")
+            sys.exit(1)
+
+        # TODO: Check if the plot directory should be unique to each node
+        try:
+            self.plot_utils = PlotUtils(config)
+        except FileExistsError:
+            print(f"Plot directory for the node {self.node_id} already exists")
+
+        self.log_utils = LogUtils(config)
+        if self.node_id == 0:
+            self.log_utils.log_console("Config: {}".format(config))
+
+    def setup_cuda(self, config: Dict[str, ConfigType]) -> None:
+        """add docstring here"""
         # Need a mapping from rank to device id
         device_ids_map = config["device_ids"]
-        node_name = "node_{}".format(self.node_id)
+        node_name = f"node_{self.node_id}"
         self.device_ids = device_ids_map[node_name]
         gpu_id = self.device_ids[0]
 
         if torch.cuda.is_available():
-            self.device = torch.device("cuda:{}".format(gpu_id))
-            print("Using GPU: cuda:{}".format(gpu_id))
+            self.device = torch.device(f"cuda:{gpu_id}")
+            print(f"Using GPU: cuda:{gpu_id}")
         else:
             self.device = torch.device("cpu")
             print("Using CPU")
 
     def set_model_parameters(self, config: Dict[str, Any]) -> None:
         # Model related parameters
+        """Add docstring here"""
         optim_name = config.get("optimizer", "adam")
         if optim_name == "adam":
             optim = torch.optim.Adam
         elif optim_name == "sgd":
             optim = torch.optim.SGD
         else:
-            raise ValueError("Unknown optimizer: {}.".format(optim_name))
+            raise ValueError(f"Unknown optimizer: {optim_name}.")
         num_classes = self.dset_obj.num_cls
         num_channels = self.dset_obj.num_channels
         self.model = self.model_utils.get_model(
@@ -115,8 +200,8 @@ class BaseNode(ABC):
         else:
             self.loss_fn = torch.nn.CrossEntropyLoss()
 
-    def set_shared_exp_parameters(self, config: Dict[str, Any]) -> None:
-
+    def set_shared_exp_parameters(self, config: Dict[str, ConfigType]) -> None:
+        self.num_collaborators: int = config["num_collaborators"] # type: ignore
         if self.node_id != 0:
             community_type, number_of_communities = config.get(
                 "community_type", None
@@ -147,12 +232,25 @@ class BaseNode(ABC):
                     config["num_users"], number_of_communities, num_dset
                 )
             else:
-                raise ValueError("Unknown community type: {}.".format(community_type))
+                raise ValueError(f"Unknown community type: {community_type}.")
         if self.node_id == 0:
-            self.log_utils.log_console("Communities: {}".format(self.communities))
+            self.log_utils.log_console(f"Communities: {self.communities}")
+
+    def local_round_done(self) -> None:
+        self.round += 1
+
+    def get_model_weights(self) -> Dict[str, Tensor]:
+        """
+        Share the model weights
+        """
+        return self.model.state_dict()
+
+    def get_local_rounds(self) -> int:
+        return self.round
 
     @abstractmethod
     def run_protocol(self) -> None:
+        """Add docstring here"""
         raise NotImplementedError
 
 
@@ -164,6 +262,7 @@ class BaseClient(BaseNode):
     def __init__(
         self, config: Dict[str, Any], comm_utils: CommunicationManager
     ) -> None:
+        """Add docstring here"""
         super().__init__(config, comm_utils)
         self.server_node = 0
         self.set_parameters(config)
@@ -177,44 +276,12 @@ class BaseClient(BaseNode):
         # parameters so that all users have the same data splits and shared
         # params
         seed = config["seed"]
-        torch.manual_seed(seed)
-        random.seed(seed)
-        numpy.random.seed(seed)
-
-        self.set_shared_exp_parameters(config)
-
-        # Set different seeds for different domain (dataset)
-        if isinstance(config["dset"], dict):
-            seed += sorted(config["dset"].values()).index(
-                config["dset"][str(self.node_id)]
-            )
-            torch.manual_seed(seed)
-            random.seed(seed)
-            numpy.random.seed(seed)
-
-        self.set_data_parameters(config)
-        # Number of random operation not the same across users with different datasets
-        # Random state is not expected to be the same across users after this
-        # point
-
-        # Use different seeds for the rest of the experiment
-        # Add rank so that every node has a different seed
-        seed = config["seed"] + self.node_id
-        torch.manual_seed(seed)
-        random.seed(seed)
-        numpy.random.seed(seed)
-
+        set_seed(seed)
         self.set_model_parameters(config)
+        self.set_shared_exp_parameters(config)
+        self.set_data_parameters(config)
 
-        # If leader_mode on all node need to choose same random node at each
-        # round
-        if config.get("leader_mode", False):
-            seed = config["seed"]
-            torch.manual_seed(seed)
-            random.seed(seed)
-            numpy.random.seed(seed)
-
-    def set_data_parameters(self, config: Dict[str, Any]) -> None:
+    def set_data_parameters(self, config: ConfigType) -> None:
 
         # Train set and test set from original dataset
         train_dset = self.dset_obj.train_dset
@@ -227,7 +294,7 @@ class BaseClient(BaseNode):
             test_dset, _ = balanced_subset(test_dset, config["test_samples_per_class"])
 
         samples_per_user = config["samples_per_user"]
-        batch_size = config["batch_size"]
+        batch_size: int = config["batch_size"] # type: ignore
         print(f"samples per user: {samples_per_user}, batch size: {batch_size}")
 
         # Support user specific dataset
@@ -253,7 +320,7 @@ class BaseClient(BaseNode):
         # If iid, each user has random samples from the whole dataset (no
         # overlap between users)
         if config["train_label_distribution"] == "iid":
-            indices = numpy.random.permutation(len(train_dset))
+            indices = np.random.permutation(len(train_dset))
             train_indices = indices[
                 user_idx * samples_per_user : (user_idx + 1) * samples_per_user
             ]
@@ -296,16 +363,18 @@ class BaseClient(BaseNode):
             )
             train_indices = train_idx_split[self.node_id - 1]
             train_dset = Subset(train_dset, train_indices)
-            classes = numpy.unique(train_y[user_idx]).tolist()
+            classes = np.unique(train_y[user_idx]).tolist()
             # One plot per dataset
             # if user_idx == 0:
             #     print("using non_iid_balanced", alpha)
-            #     self.plot_utils.plot_training_distribution(train_y, self.dset, users_with_same_dset)
+            #     self.plot_utils.plot_training_distribution(train_y,
+            # self.dset, users_with_same_dset)
         elif config["train_label_distribution"] == "shard":
             raise NotImplementedError
             # classes_per_user = config["shards"]["classes_per_user"]
             # samples_per_shard = samples_per_user // classes_per_user
-            # train_dset = build_shards_dataset(train_dset, samples_per_shard, classes_per_user, self.node_id)
+            # train_dset = build_shards_dataset(train_dset, samples_per_shard,
+            # classes_per_user, self.node_id)
         else:
             raise ValueError(
                 "Unknown train label distribution: {}.".format(
@@ -325,6 +394,12 @@ class BaseClient(BaseNode):
             # Cache before transform to preserve transform randomness
             train_dset = TransformDataset(CacheDataset(train_dset), train_transform)
 
+        if config.get("malicious_type", None) == "corrupt_data":
+            corruption_fn_name = config.get("corruption_fn", "gaussian_noise")
+            severity = config.get("corrupt_severity", 1)
+            train_dset = CorruptDataset(CacheDataset(train_dset), corruption_fn_name, severity)
+            print("created train dataset with corruption function: ", corruption_fn_name)
+
         self.classes_of_interest = classes
 
         val_prop = config.get("validation_prop", 0)
@@ -335,13 +410,14 @@ class BaseClient(BaseNode):
             train_dset, val_dset = torch.utils.data.random_split(
                 train_dset, [train_size, val_size]
             )
-            # self.val_dloader = DataLoader(val_dset, batch_size=batch_size*len(self.device_ids), shuffle=True)
+            # self.val_dloader = DataLoader(val_dset, batch_size=batch_size*len(self.device_ids),
+            # shuffle=True)
             self.val_dloader = DataLoader(val_dset, batch_size=batch_size, shuffle=True)
 
+        assert isinstance(train_dset, torch.utils.data.Dataset), "train_dset must be a Dataset"
         self.train_indices = train_indices
         self.train_dset = train_dset
-        # self.dloader = DataLoader(train_dset, batch_size=batch_size*len(self.device_ids), shuffle=True)
-        self.dloader = DataLoader(train_dset, batch_size=batch_size, shuffle=True)
+        self.dloader = DataLoader(train_dset, batch_size=batch_size, shuffle=True) # type: ignore
 
         if config["test_label_distribution"] == "iid":
             pass
@@ -384,14 +460,6 @@ class BaseClient(BaseNode):
     def local_test(self, **kwargs: Any) -> float | Tuple[float, float] | None:
         """
         Test the model locally
-        """
-        raise NotImplementedError
-
-    def get_representation(
-        self, **kwargs: Any
-    ) -> OrderedDict[str, Tensor] | List[Tensor] | Tensor:
-        """
-        Share the model representation
         """
         raise NotImplementedError
 
@@ -447,12 +515,14 @@ class BaseServer(BaseNode):
     def __init__(
         self, config: Dict[str, Any], comm_utils: CommunicationManager
     ) -> None:
+        """Add docstring here"""
         super().__init__(config, comm_utils)
         self.num_users = config["num_users"]
         self.users = list(range(1, self.num_users + 1))
         self.set_data_parameters(config)
 
     def set_data_parameters(self, config: Dict[str, Any]) -> None:
+        """Add docstring here"""
         test_dset = self.dset_obj.test_dset
         batch_size = config["batch_size"]
         self._test_loader = DataLoader(test_dset, batch_size=batch_size)
@@ -505,11 +575,10 @@ class BaseFedAvgClient(BaseClient):
         comm_utils: CommunicationManager,
         comm_protocol: type[CommProtocol] = CommProtocol,
     ) -> None:
+        """Add docstring here"""
         super().__init__(config, comm_utils)
         self.config = config
-        self.model_save_path = "{}/saved_models/node_{}.pt".format(
-            self.config["results_path"], self.node_id
-        )
+        self.model_save_path = f"{self.config['results_path']}/saved_models/node_{self.node_id}.pt"
         self.tag = comm_protocol
 
         self.model_keys_to_ignore = []
@@ -518,7 +587,7 @@ class BaseFedAvgClient(BaseClient):
         ):  # By default include last layer
             keys = self.model_utils.get_last_layer_keys(self.get_model_weights())
             self.model_keys_to_ignore.extend(keys)
-
+ 
     def local_train(self, epochs: int) -> Tuple[float, float]:
         """
         Train the model locally
@@ -542,7 +611,7 @@ class BaseFedAvgClient(BaseClient):
 
         return avg_loss, avg_acc
 
-    def local_test(self, **kwargs: Any) -> float:
+    def local_test(self, **kwargs: Any) -> Tuple[float, float]:
         """
         Test the model locally, not to be used in the traditional FedAvg
         """
@@ -552,13 +621,13 @@ class BaseFedAvgClient(BaseClient):
         if acc > self.best_acc:
             self.best_acc = acc
             self.model_utils.save_model(self.model, self.model_save_path)
-        return acc
+        return test_loss, acc
 
     def get_model_weights(self) -> OrderedDict[str, Tensor]:
         """
         Share the model weights (on the cpu)
         """
-        return {k: v.cpu() for k, v in self.model.state_dict().items()}
+        return OrderedDict({k: v.cpu() for k, v in self.model.state_dict().items()})
 
     def set_model_weights(
         self, model_wts: OrderedDict[str, Tensor], keys_to_ignore: List[str] = []
@@ -578,101 +647,53 @@ class BaseFedAvgClient(BaseClient):
 
         self.model.load_state_dict(model_wts, strict=len(keys_to_ignore) == 0)
 
-    def weighted_aggregate(
+    def aggregate(
         self,
-        models_wts: Dict[int, OrderedDict[str, Tensor]],
-        collab_weights_dict: Dict[int, float],
+        models_wts: List[OrderedDict[str, Tensor]],
+        collab_weights: Optional[List[float]] = None,
         keys_to_ignore: List[str] = [],
-        label_dict: Optional[Dict[int, Dict[str, int]]] = None,
-    ) -> OrderedDict[str, Tensor]:
+    ) -> None:
+        """ Aggregate the model weights using the collab_weights and then updates its own model weights
+        If the collab_weights are not provided, then equal weights are assumed
+        Args:
+            models_wts (Dict[int, OrderedDict[str, Tensor]]): A dictionary where the key is the model ID and the value is an 
+                ordered dictionary of model weights.
+            collab_weights (Optional[List[float]]): A list of weights for each model. If not provided, equal weights are assumed.
+            keys_to_ignore (List[str]): A list of keys to ignore during the aggregation process.
+
+        Returns:
+            None
         """
-        Aggregate the model weights
-        """
-
-        selected_collab = [id for id, w in collab_weights_dict.items() if w > 0]
-
-        first_model = models_wts[selected_collab[0]]
-
-        models_coeffs = [
-            (id, models_wts[id], collab_weights_dict[id]) for id in selected_collab
-        ]
-
-        last_layer_keys = []
-        if label_dict is not None:
-            last_layer_keys = [
-                key
-                for key in self.model_utils.get_last_layer_keys(
-                    models_wts[self.node_id]
-                )
-            ]
-            keys_to_ignore.extend(last_layer_keys)
+        models_coeffs: List[Tuple[OrderedDict[str, Tensor], float]] = []
+        # insert the current model weights at the position self.node_id
+        models_wts.insert(self.node_id - 1, self.get_model_weights())
+        if collab_weights is None:
+            collab_weights = [1.0 / len(models_wts) for _ in models_wts]
+        for idx, model_wts in enumerate(models_wts):
+            models_coeffs.append((model_wts, collab_weights[idx]))
 
         is_init = False
-        agg_wts = OrderedDict()
-        for _, model, coeff in models_coeffs:
-            if coeff == 0:
-                continue
-            for key in first_model.keys():
+        agg_wts: OrderedDict[str, Tensor] = OrderedDict()
+        for model, coeff in models_coeffs:
+            for key in self.model.state_dict().keys():
                 if key in keys_to_ignore:
                     continue
                 if not is_init:
-                    agg_wts[key] = coeff * model[key]
+                    agg_wts[key] = coeff * model[key].to(self.device)
                 else:
-                    agg_wts[key] += coeff * model[key]
+                    agg_wts[key] += coeff * model[key].to(self.device)
             is_init = True
-
-        if label_dict is not None:
-            last_layer_weight_key = [key for key in last_layer_keys if "weight" in key]
-            last_layer_bias_key = [key for key in last_layer_keys if "bias" in key]
-            if len(last_layer_weight_key) != 1 and len(last_layer_bias_key) != 1:
-                raise ValueError(
-                    "Unsupported last layer format, expected one weights layer and one bias."
-                )
-
-            last_layer_weight_key = last_layer_weight_key[0]
-            last_layer_bias_key = last_layer_bias_key[0]
-
-            # Host is the user's model
-            # Ext are incoming models
-            host_label_to_idx = label_dict[self.node_id]
-            labels_coeff_sum = {
-                host_idx: 0.0 for host_idx in label_dict[self.node_id].values()
-            }
-
-            # Match and aggregate weights of the last layer based on each
-            # node's label dictionary
-            host_model = models_wts[self.node_id]
-            agg_wts[last_layer_weight_key] = torch.zeros_like(
-                host_model[last_layer_weight_key]
-            )
-            for id, ext_model, coeff in models_coeffs:
-                ext_last_layer = coeff * ext_model[last_layer_weight_key]
-                ext_label_to_idx = label_dict[id]
-                labels_map = [
-                    (ext_idx, host_label_to_idx[ext_label])
-                    for ext_label, ext_idx in ext_label_to_idx.items()
-                    if ext_label in host_label_to_idx
-                ]
-                for ext_idx, host_idx in labels_map:
-                    labels_coeff_sum[host_idx] += coeff
-                    agg_wts[last_layer_weight_key][host_idx] += ext_last_layer[ext_idx]
-
-            # Normalize the aggregated weights
-            for label_idx, coeff_sum in labels_coeff_sum.items():
-                if coeff_sum > 0:
-                    agg_wts[last_layer_weight_key][label_idx] /= coeff_sum
-
-            # TODO Bias aggregation ?
-            agg_wts[last_layer_bias_key] = host_model[last_layer_bias_key]
-
-        return agg_wts
+        self.model.load_state_dict(agg_wts)
+        return None
 
     def get_collaborator_weights(
         self, reprs_dict: Dict[int, OrderedDict[int, Tensor]]
     ) -> Dict[int, float]:
+        """Add docstring here"""
         raise NotImplementedError
 
     def run_protocol(self) -> None:
+        """Add docstring here"""
         raise NotImplementedError
 
 

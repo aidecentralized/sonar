@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from typing import Any, Dict, List
+from typing import Any, Dict
 from utils.communication.comm_utils import CommunicationManager
 
 from algos.base_class import BaseFedAvgClient, BaseFedAvgServer
@@ -1372,7 +1372,7 @@ class FedDataRepClient(BaseFedAvgClient):
                 node_ids=self.server_node, tag=self.tag.KNLDG_SHARE
             )
 
-            avg_wts = self.weighted_aggregate(
+            avg_wts = self.aggregate(
                 models_wts, collab_weights_dict, self.model_keys_to_ignore
             )
 

@@ -32,13 +32,13 @@ parser.add_argument(
     "-super",
     nargs="?",
     type=bool,
-    help=f"whether to run the super node",
+    help="whether to run the super node",
 )
 parser.add_argument(
     "-host",
     nargs="?",
     type=str,
-    help=f"host address of the nodes",
+    help="host address of the nodes",
 )
 
 args: argparse.Namespace = parser.parse_args()

@@ -1,37 +1,94 @@
-name: Lint
+name: Pylint Code Quality Check
 
 on:
-  # Trigger the workflow on push or pull request,
-  # but only for the main branch
+  # Run the workflow when pushing to or creating a pull request to the main branch
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
-  run-linters:
-    name: Run linters
+  pylint_check:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out Git repository
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v1
-        with:
-          python-version: 3.8
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
 
-      - name: Install Python dependencies
-        run: pip install black flake8
+    - name: Install pylint
+      run: |
+        python -m pip install --upgrade pip
+        pip install pylint
 
-      - name: Run linters
-        uses: wearerequired/lint-action@v2
-        with:
-          auto_fix: true
-          black: true
-          black_auto_fix: true
-          flake8: true
-          flake8_auto_fix: false
+    - name: Run Pylint
+      run: |
+        # Global variables
+        PYLINT_OUTPUT_FILE="pylint_output.txt"
+        ERRORS_AND_FATALS_FILE="pylint_errors_and_fatals.txt"
+        CODE_QUALITY_FILE="pylint_code_quality.txt"
+
+        # Function to run pylint on all Python files in the current directory and subdirectories
+        run_pylint_on_all_py_files() {
+            local py_files
+            py_files=$(find . -type f -name "*.py")
+            
+            if [[ -z "$py_files" ]]; then
+                printf "No Python files found in the current directory and subdirectories.\n" >&2
+                return 1
+            fi
+
+            # Run pylint with the rating option and save the output to a file
+            pylint --exit-zero --score=y $py_files > "$PYLINT_OUTPUT_FILE" 2>&1
+            if [[ $? -ne 0 ]]; then
+                printf "Pylint encountered issues. Check the output in %s\n" "$PYLINT_OUTPUT_FILE"
+            fi
+
+            return 0
+        }
+
+        # Function to extract errors and fatal messages
+        extract_errors_and_fatals() {
+            grep -E ":[[:space:]](E|F)" "$PYLINT_OUTPUT_FILE" > "$ERRORS_AND_FATALS_FILE"
+            
+            if [[ -s "$ERRORS_AND_FATALS_FILE" ]]; then
+                printf "Errors and fatals found. Check %s for details:\n\n" "$ERRORS_AND_FATALS_FILE"
+                cat "$ERRORS_AND_FATALS_FILE"
+                # Continue, don't return here. We want to always print the code quality score.
+            else
+                printf "No errors or fatals found.\n"
+            fi
+        }
+
+        # Function to extract the code quality score
+        extract_code_quality() {
+            local score
+            score=$(grep "Your code has been rated at" "$PYLINT_OUTPUT_FILE" | awk '{print $7}' | cut -d'/' -f1)
+            printf "Code quality score: %s\n" "$score"
+            if (( $(echo "$score < 6" | bc -l) )); then
+                printf "Code quality is below acceptable threshold (6/10).\n"
+                return 1 # Fail if the score is below 6
+            else
+                printf "Code quality meets the acceptable threshold.\n"
+            fi
+        }
+
+        # Main function
+        main() {
+            if run_pylint_on_all_py_files; then
+                extract_errors_and_fatals
+            else
+                printf "Pylint failed to run.\n" >&2
+                return 1
+            fi
+
+            # Always extract and print the code quality score
+            extract_code_quality
+        }
+
+        # Execute main
+        main

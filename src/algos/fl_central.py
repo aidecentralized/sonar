@@ -1,7 +1,7 @@
 from collections import OrderedDict
 import torch
 from torch import Tensor
-from typing import Any, Dict, List
+from typing import Any, Dict
 from utils.communication.comm_utils import CommunicationManager
 
 from torch.utils.data import DataLoader, Subset
