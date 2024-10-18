@@ -34,6 +34,7 @@ from utils.community_utils import (
     get_dset_communities,
 )
 from utils.types import ConfigType
+from utils.dropout_utils import NodeDropout
 
 import torchvision.transforms as T  # type: ignore
 import os
@@ -111,6 +112,10 @@ class BaseNode(ABC):
         self.model_utils = ModelUtils(self.device, config)
 
         self.dset_obj = get_dataset(self.dset, dpath=config["dpath"])
+
+        dropout_seed = 1 * config.get("num_users", 9) + self.node_id * config.get("num_users", 9) + config.get("seed", 20) # arbitrarily chosen
+        dropout_rng = random.Random(dropout_seed)
+        self.dropout = NodeDropout(self.node_id, config["dropout_dicts"], dropout_rng)
 
     def set_constants(self) -> None:
         """Add docstring here"""
