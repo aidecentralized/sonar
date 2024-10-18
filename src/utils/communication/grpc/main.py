@@ -14,6 +14,8 @@ from utils.communication.grpc.grpc_utils import deserialize_model, serialize_mod
 import os
 import sys
 
+EMPTY_MODEL_TAG = b"EMPTY_MODEL"
+
 grpc_generated_dir = os.path.dirname(os.path.abspath(__file__))
 if grpc_generated_dir not in sys.path:
     sys.path.append(grpc_generated_dir)
@@ -127,7 +129,7 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
             if self.is_working:
                 model = comm_pb2.Model(buffer=serialize_model(self.base_node.get_model_weights()))
             else:
-                model = comm_pb2.Empty()
+                model = comm_pb2.Model(buffer=EMPTY_MODEL_TAG)
             return model
 
     def get_current_round(self, request: comm_pb2.Empty, context: grpc.ServicerContext) -> comm_pb2.Round | None:
@@ -381,7 +383,7 @@ class GRPCCommunication(CommunicationInterface):
         items: List[Any] = []
         def callback_fn(stub: comm_pb2_grpc.CommunicationServerStub) -> OrderedDict[str, Tensor]:
             model = stub.get_model(comm_pb2.Empty()) # type: ignore
-            if isinstance(model, comm_pb2.Empty):
+            if model.buffer == EMPTY_MODEL_TAG:
                 return OrderedDict()
             return deserialize_model(model.buffer) # type: ignore
 
@@ -411,14 +413,16 @@ class GRPCCommunication(CommunicationInterface):
         for peer_id in self.servicer.peer_ids:
             if not self.is_own_id(peer_id):
                 received_model = self.receive([peer_id])[0]
-                if received_model is not None:
+                if len(received_model) > 0:
                     items.append(received_model)
-                items.append(self.receive([peer_id])[0])
         return items
 
     def get_num_finished(self) -> int:
         num_finished = self.servicer.finished.qsize()
         return num_finished
+
+    def set_is_working(self, is_working: bool):
+        self.servicer.set_is_working(is_working)
 
     def finalize(self):
         # 1. All nodes send finished to the super node
