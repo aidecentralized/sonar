@@ -93,15 +93,12 @@ class FedAvgClient(BaseClient):
         total_rounds = self.config["rounds"]
 
         for round in range(start_rounds, total_rounds):
-            is_working = self.dropout.is_available()
-            if not is_working:
-                self.log_utils.log_console(
-                    f"Client {self.node_id} is not working in round {round}."
-                )
-                self.comm_utils.set_is_working(False)
-            else:
-                self.comm_utils.set_is_working(True)
+            is_working = self.get_and_set_working(round)
+            if is_working:
                 self.local_train(round)
+            else:
+                # sleep for a while to simulate the time taken for training
+                time.sleep(2)
 
             self.local_test()
             self.local_round_done()
@@ -172,6 +169,7 @@ class FedAvgServer(BaseServer):
         Runs the whole training procedure
         """
         reprs = self.comm_utils.all_gather()
+        reprs, _ = self.strip_empty_models(reprs)
         if len(reprs):
             avg_wts = self.aggregate(reprs)
             self.set_representation(avg_wts)
