@@ -23,7 +23,14 @@ class FedAvgClient(BaseClient):
         """
         start_time = time.time()
         avg_loss, avg_accuracy = self.model_utils.train_with_dpsgd(
-            self.model, self.optim, self.dloader, self.loss_fn, self.device, noise_multiplier=1.1, l2_norm_clip=1.0, epochs=5
+            self.model,
+            self.optim,
+            self.dloader,
+            self.loss_fn,
+            self.device,
+            noise_multiplier=1.1,
+            l2_norm_clip=1.0,
+            epochs=5,
         )
         end_time = time.time()
         time_taken = end_time - start_time
