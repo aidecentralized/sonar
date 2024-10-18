@@ -58,12 +58,10 @@ class FedStaticNode(BaseFedAvgClient):
             self.aggregate(model_updates)
 
             # evaluate the model on the test data
+            # Inside FedStaticNode.run_protocol()
             stats["test_loss"], stats["test_acc"] = self.local_test()
-            self.log_utils.log_console("Round {} done for Node {}, stats {}".format(it, self.node_id, stats))
-            self.log_utils.log_tb(key="train/loss", value=stats["train_loss"], iteration=it)
-            self.log_utils.log_tb(key="train/accuracy", value=stats["train_acc"], iteration=it)
-            self.log_utils.log_tb(key="test/loss", value=stats["test_loss"], iteration=it)
-            self.log_utils.log_tb(key="test/accuracy", value=stats["test_acc"], iteration=it)
+            self.log_metrics(stats=stats, iteration=it)
+
 
 
 class FedStaticServer(BaseFedAvgClient):
