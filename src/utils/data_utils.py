@@ -151,6 +151,7 @@ def cifar_extr_noniid(
     """
     Extracts non-IID data for CIFAR-10 dataset.
     """
+    print("I am in the cifar_extr_noniid")
     num_shards_train = int(50000 / num_samples)
     num_imgs_train = num_samples
     num_classes = 10
@@ -324,6 +325,7 @@ def non_iid_balanced(
     """
     Returns a non-IID balanced dataset.
     """
+    print("I am in the non_iid_balanced")
     if is_train:
         y = np.array(dset_obj.train_dset.targets)
     else:

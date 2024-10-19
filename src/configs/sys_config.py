@@ -80,7 +80,7 @@ def get_algo_configs(
                 current_index += 1
     else:
         raise ValueError(f"Invalid assignment method: {assignment_method}")
-    print("algo config mapping is: ", algo_config_map)
+    # print("algo config mapping is: ", algo_config_map)
     return algo_config_map
 
 
@@ -265,8 +265,12 @@ mpi_domainnet_sys_config: ConfigType = {
     "num_users": 3,
     "load_existing": False,
     "dump_dir": "./expt_dump/",
-    "device_ids": get_device_ids(num_users=swarm_users, gpus_available=[3, 4]),
-    "algo": get_algo_configs(num_users=swarm_users, algo_configs=default_config_list),  # type: ignore
+    "device_ids": get_device_ids(num_users=swarm_users, gpus_available=[1, 2]),
+    # "algo": get_algo_configs(num_users=swarm_users, algo_configs=default_config_list),  # type: ignore
+    "algos": get_algo_configs(
+        num_users=swarm_users,
+        algo_configs=default_config_list,
+    ),  # type: ignore
     # Dataset params
     "dset": get_domainnet_support(
         swarm_users
@@ -274,7 +278,7 @@ mpi_domainnet_sys_config: ConfigType = {
     "dpath": domainnet_dpath,  # wilds_dpath,#domainnet_dpath,
     "train_label_distribution": "iid",  # Either "iid", "shard" "support",
     "test_label_distribution": "iid",  # Either "iid" "support",
-    "samples_per_user": 32,
+    "samples_per_user": 500,
     "test_samples_per_class": 100,
     "community_type": "dataset",
     "folder_deletion_signal_path": "./expt_dump/folder_deletion.signal",
@@ -323,4 +327,4 @@ grpc_system_config: ConfigType = {
 }
 
 # current_config = grpc_system_config
-current_config = mpi_system_config
+current_config = mpi_domainnet_sys_config

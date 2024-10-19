@@ -43,6 +43,10 @@ class DomainNet:
         self.transforms = transforms
         self.domain_name = domain_name
         self.cached_data = []
+        self.targets = data_labels
+
+        # print("IN data labels")
+        # print(data_labels)
 
         if cache:
             for idx, _ in enumerate(data_paths):
