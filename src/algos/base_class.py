@@ -628,7 +628,6 @@ class BaseFedAvgClient(BaseClient):
         ):  # By default include last layer
             keys = self.model_utils.get_last_layer_keys(self.get_model_weights())
             self.model_keys_to_ignore.extend(keys)
- 
 
     def local_train(self, epochs: int) -> Tuple[float, float]:
         """
@@ -752,36 +751,6 @@ class BaseFedAvgServer(BaseServer):
     ) -> None:
         super().__init__(config, comm_utils)
         self.tag = comm_protocol
-        
-    # def log_metrics(self, stats: Dict[str, Any], iteration: int) -> None:
-    #     """
-    #     Centralized method to log metrics on the server.
-
-    #     Args:
-    #         stats (Dict[str, Any]): Dictionary containing metric names and their values.
-    #         iteration (int): Current iteration or round number.
-    #     """
-    #     # Log to console
-    #     self.log_utils.log_console(
-    #         f"Round {iteration} done on Server, stats {stats}"
-    #     )
-
-    #     # Log scalar metrics to TensorBoard
-    #     for key, value in stats.items():
-    #         if isinstance(value, (float, int)):
-    #             tb_key = key  # Generic key or categorize as needed
-    #             self.log_utils.log_tb(key=tb_key, value=value, iteration=iteration)
-
-    #     # Log numpy arrays if present
-    #     for key, value in stats.items():
-    #         if isinstance(value, np.ndarray):
-    #             self.log_utils.log_npy(key=key, value=value)
-
-    #     # Log images if present
-    #     if "images" in stats:
-    #         self.log_utils.log_image(
-    #             imgs=stats["images"], key="sample_images", iteration=iteration
-    #         )
 
     def send_representations(
         self, representations: Dict[int, OrderedDict[str, Tensor]]
