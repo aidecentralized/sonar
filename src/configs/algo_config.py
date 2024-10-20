@@ -31,9 +31,6 @@ iid_dispfl_clients_new: ConfigType = {
 traditional_fl: ConfigType = {
     # Collaboration setup
     "algo": "fedavg",
-    "exp_type": "",
-    # Learning setup
-    "epochs": 50,
     "rounds": 2,
 
     # Model parameters
