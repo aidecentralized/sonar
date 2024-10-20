@@ -31,7 +31,7 @@ class FedStaticNode(BaseFedAvgClient):
         """
         Runs the federated learning protocol for the client.
         """
-        stats: Dict[str, float] = {}
+        stats: Dict[str, Any] = {}
         print(f"Client {self.node_id} ready to start training")
         start_round = self.config.get("start_round", 0)
         if start_round != 0:
@@ -50,6 +50,7 @@ class FedStaticNode(BaseFedAvgClient):
             # Collect the representations from all other nodes from the server
             neighbors = self.topology.sample_neighbours(self.num_collaborators)
             # TODO: Log the neighbors
+            stats["neighbors"] = neighbors
 
             # Pull the model updates from the neighbors
             model_updates = self.comm_utils.receive(node_ids=neighbors)
