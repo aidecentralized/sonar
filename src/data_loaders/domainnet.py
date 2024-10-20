@@ -45,9 +45,6 @@ class DomainNet:
         self.cached_data = []
         self.targets = data_labels
 
-        # print("IN data labels")
-        # print(data_labels)
-
         if cache:
             for idx, _ in enumerate(data_paths):
                 self.cached_data.append(self.__read_data__(idx))
