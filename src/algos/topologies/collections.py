@@ -61,24 +61,7 @@ class TreeTopology(BaseTopology):
         self.children = children
 
     def generate_graph(self) -> None:
-        self.graph = nx.Graph()
-
-        self.graph.add_node(0)  # Start with a root node
-        nodes = [0]
-        
-        node_count = 1
-        while node_count < self.num_users:
-            new_nodes = []
-            for node in nodes:
-                # Add children to the current node
-                for _ in range(self.children):
-                    if node_count >= self.num_users:
-                        break  # Stop if we've reached the total number of nodes
-                    self.graph.add_node(node_count)
-                    self.graph.add_edge(node, node_count)
-                    new_nodes.append(node_count)
-                    node_count += 1
-            nodes = new_nodes  # Move on to the next level of children
+        self.graph = nx.full_rary_tree(self.children, self.num_users)
 
 
 
