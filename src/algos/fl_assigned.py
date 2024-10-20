@@ -84,7 +84,7 @@ class FedAssClient(BaseFedAvgClient):
                 # There is no need to fetch the server for the selected clients' knowledge
                 models_wts = reprs_dict
 
-                avg_wts = self.weighted_aggregate(
+                avg_wts = self.aggregate(
                     models_wts,
                     collab_weights_dict,
                     keys_to_ignore=self.model_keys_to_ignore,

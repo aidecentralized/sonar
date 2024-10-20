@@ -1,9 +1,10 @@
 from collections import OrderedDict
 import io
+from typing import Dict
 import torch
 
 
-def serialize_model(state_dict: OrderedDict[str, torch.Tensor]) -> bytes:
+def serialize_model(state_dict: Dict[str, torch.Tensor]) -> bytes:
     # put every parameter on cpu first
     for key in state_dict.keys():
         state_dict[key] = state_dict[key].to("cpu")

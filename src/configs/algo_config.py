@@ -4,28 +4,12 @@ import random
 from utils.types import ConfigType
 
 
-def assign_colab(clients):
-    groups = [1, 2]
-
-    dict = {}
-    client = 1
-    while client <= clients:
-        for size in groups:
-            group = []
-            for i in range(size):
-                group.append(client)
-                client += 1
-            for c in group:
-                dict[c] = group
-    return dict
-
-
 def get_malicious_types(malicious_config_list: List[ConfigType]) -> Dict[str, str]:
     """
     Assign a random malicious type to a single node.
     """
     malicious_type = random.choice(malicious_config_list)
-    return malicious_type
+    return malicious_type # type: ignore
 
 
 # Algorithm Configuration
@@ -45,26 +29,18 @@ iid_dispfl_clients_new: ConfigType = {
 }
 
 traditional_fl: ConfigType = {
+    # Collaboration setup
     "algo": "fedavg",
     "exp_type": "",
     # Learning setup
     "epochs": 50,
+    "rounds": 2,
+
+    # Model parameters
     "model": "resnet10",
     "model_lr": 3e-4,
     "batch_size": 256,
-    "malicious_type": "normal",
 }
-
-malicious_traditional_bad_weights: ConfigType = {
-    **traditional_fl,
-    "malicious_type": "bad_weights",
-}
-
-malicious_traditional_flip_signs: ConfigType = {
-    **traditional_fl,
-    "malicious_type": "sign_flip",
-}
-
 
 fedweight: ConfigType = {
     "algo": "fedweight",
@@ -216,25 +192,15 @@ swarm: ConfigType = {
 }
 
 fedstatic: ConfigType = {
+    # Collaboration setup
     "algo": "fedstatic",
-    "num_rep": 1,
-    "topology": "torus",
-    # Clients selection
-    "num_users_to_select": 1,
-    "leader_mode": False,
-    "community_type": "dataset",
-    # Learning setup
-    "rounds": 210,
-    "epochs_per_round": 5,
+    "topology": {"name": "watts_strogatz", "k": 3, "p": 0.2}, # type: ignore
+    "rounds": 20,
+
+    # Model parameters
     "model": "resnet10",
-    "local_train_after_aggr": True,
-    "model_lr": 1e-4,
-    "batch_size": 16,
-    # Knowledge transfer params
-    "average_last_layer": True,
-    "mask_finetune_last_layer": False,
-    # params for model
-    "position": 0,
+    "model_lr": 3e-4,
+    "batch_size": 256,
 }
 
 metaL2C_cifar10: ConfigType = {
@@ -243,7 +209,6 @@ metaL2C_cifar10: ConfigType = {
     # Client selection
     "target_users_before_T_0": 0,
     "target_users_after_T_0": 1,
-    "T_0": 2,
     "K_0": 0,  # number of peers to keep as neighbors at T_0 (!) inverse that in L2C paper
     "T_0": 250,  # round after wich only K_0 peers are kept
     "alpha_lr": 0.1,
@@ -261,27 +226,6 @@ metaL2C_cifar10: ConfigType = {
     "inp_shape": [128, 3, 32, 32],
 }
 
-fedass: ConfigType = {
-    "algo": "fedass",
-    "num_rep": 1,
-    "load_existing": False,
-    # Clients selection
-    "strategy": "random_among_assigned",  # fixed, direct_expo
-    "assigned_collaborators": assign_colab(3),
-    "target_users_before_T_0": 0,
-    "target_users_after_T_0": 1,
-    "T_0": 10,  # round after wich only target_users_after_T_0 peers are kept
-    # Learning setup
-    "rounds": 10,
-    "epochs_per_round": 5,
-    "model": "resnet10",
-    # "pretrained": True,
-    # "train_only_fc": True,
-    "model_lr": 1e-4,
-    "batch_size": 16,
-    # params for model
-    "position": 0,
-}
 
 feddatarepr: ConfigType = {
     "algo": "feddatarepr",
@@ -340,12 +284,31 @@ feddatarepr: ConfigType = {
     # "dreams_keep_best": False, # Use reprs with lowest loss
 }
 
+# Malicious Algorithm Configuration
+malicious_traditional_model_update_attack: ConfigType = {
+    **traditional_fl,
+    **malicious_config_list["bad_weights"],
+}
+
+malicious_traditional_data_poisoning_attack: ConfigType = {
+    **traditional_fl,
+    **malicious_config_list["data_poisoning"],
+}
+
+malicious_traditional_model_poisoning_attack: ConfigType = {
+    **traditional_fl,
+    **malicious_config_list["backdoor_attack"],
+}
+
+
+
 # List of algorithm configurations
 algo_config_list: List[ConfigType] = [
     iid_dispfl_clients_new,
     traditional_fl,
-    malicious_traditional_bad_weights,
-    malicious_traditional_flip_signs,
+    malicious_traditional_data_poisoning_attack,
+    malicious_traditional_model_poisoning_attack,
+    malicious_traditional_model_update_attack,
     fedweight,
     defkt,
     fedavg_object_detect,
@@ -356,15 +319,16 @@ algo_config_list: List[ConfigType] = [
     swarm,
     fedstatic,
     metaL2C_cifar10,
-    fedass,
     feddatarepr,
 ]
 
 # Malicious List of algorithm configurations
 malicious_algo_config_list: List[ConfigType] = [
     traditional_fl,
-    malicious_traditional_bad_weights,
-    malicious_traditional_flip_signs,
+    malicious_traditional_data_poisoning_attack,
+    malicious_traditional_model_poisoning_attack,
+    malicious_traditional_model_update_attack,
 ]
+
 
 default_config_list: List[ConfigType] = [traditional_fl]

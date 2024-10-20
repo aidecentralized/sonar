@@ -11,10 +11,11 @@ import resnet
 import resnet_in
 
 import yolo
+from utils.types import ConfigType
 
 
 class ModelUtils:
-    def __init__(self, device: torch.device) -> None:
+    def __init__(self, device: torch.device, config: ConfigType) -> None:
         self.device = device
         self.dset = None
 
@@ -22,6 +23,9 @@ class ModelUtils:
             "resnet10": {"l1": 17, "l2": 35, "l3": 53, "l4": 71, "fc": 73},
             "resnet18": {"l1": 29, "l2": 59, "l3": 89, "l4": 119, "fc": 121},
         }
+
+        self.config = config
+        self.malicious_type = config.get("malicious_type", "normal")
 
     def get_model(
         self,
@@ -31,7 +35,7 @@ class ModelUtils:
         device_ids: List[int],
         pretrained: bool = False,
         **kwargs: Any,
-    ) -> nn.Module:
+    ):
         self.dset = dset
         # TODO: add support for loading checkpointed models
         model_name = model_name.lower()
@@ -75,7 +79,6 @@ class ModelUtils:
         **kwargs: Any,
     ) -> Tuple[float, float]:
         """TODO: generate docstring"""
-        print("started training with dset ", self.dset)
         model.train()
 
         if self.dset == "pascal":
@@ -83,7 +86,11 @@ class ModelUtils:
                 model, optim, dloader, loss_fn, device, test_loader=None, **kwargs
             )
             return mean_loss, acc
-
+        elif self.malicious_type == "backdoor_attack" or self.malicious_type == "gradient_attack":
+            train_loss, acc = self.train_classification_malicious(
+                model, optim, dloader, loss_fn, device, test_loader=None, **kwargs
+            )
+            return train_loss, acc
         else:
             train_loss, acc = self.train_classification(
                 model, optim, dloader, loss_fn, device, test_loader=None, **kwargs
@@ -163,12 +170,12 @@ class ModelUtils:
     def train_classification(
         self,
         model: nn.Module,
-        optim,
-        dloader,
-        loss_fn,
+        optim: torch.optim.Optimizer,
+        dloader: DataLoader[Any],
+        loss_fn: Any,
         device: torch.device,
-        test_loader=None,
-        **kwargs,
+        test_loader: DataLoader[Any] | None = None,
+        **kwargs: Any,
     ) -> Tuple[float, float]:
         correct = 0
         train_loss = 0
@@ -186,6 +193,84 @@ class ModelUtils:
 
             loss = loss_fn(output, target)
             loss.backward()
+            optim.step()
+            train_loss += loss.item()
+            pred = output.argmax(dim=1, keepdim=True)
+            # view_as() is used to make sure the shape of pred and target are
+            # the same
+            if len(target.size()) > 1:
+                target = target.argmax(dim=1, keepdim=True)
+            correct += pred.eq(target.view_as(pred)).sum().item()
+
+            if test_loader is not None:
+                # TODO: implement test loader for pascal
+                test_loss, test_acc = self.test(model, test_loader, loss_fn, device)
+                print(
+                    f"Train Loss: {train_loss/(batch_idx+1):.6f} | Train Acc: {correct/((batch_idx+1)*len(data)):.6f} | Test Loss: {test_loss:.6f} | Test Acc: {test_acc:.6f}"
+                )
+
+        acc = correct / len(dloader.dataset)
+        return train_loss, acc
+    
+    def train_classification_malicious(
+        self,
+        model: nn.Module,
+        optim,
+        dloader,
+        loss_fn,
+        device: torch.device,
+        test_loader=None,
+        **kwargs,
+    ) -> Tuple[float, float]:
+        correct = 0
+        train_loss = 0
+
+        for batch_idx, (data, target) in enumerate(dloader):
+            data = data.to(device)
+            target = target.to(device)
+
+            optim.zero_grad()
+
+            position = kwargs.get("position", 0)
+            output = model(data, position=position)
+
+            if kwargs.get("apply_softmax", False):
+                output = nn.functional.log_softmax(output, dim=1)  # type: ignore
+
+            if self.malicious_type == "backdoor_attack":
+                target_labels = self.config.get("target_labels", [])
+                additional_loss = self.config.get("additional_loss", 10)
+                
+                # Modify loss if target labels are part of the current batch
+                loss = loss_fn(output, target)  # Initial standard loss computation
+
+                for label in target_labels:
+                    # Check if current target is within target labels
+                    target_mask = (target == label)
+                    if target_mask.any():  # If any of the targets match the backdoor target label
+                        # Add malicious behavior: Forcing the model to incorrectly classify specific labels
+                        # Manipulate loss by adding a large penalty when the target label is present
+                        loss += additional_loss  # You can tune this value to control the severity of the attack
+
+                # Perform backpropagation with modified loss
+                loss.backward()
+            else:
+                loss = loss_fn(output, target)
+                loss.backward()
+
+            # scale the gradients if this is a gradient attack:
+            if self.malicious_type == "gradient_attack":
+                scaling_factor = self.config.get("scaling_factor", None)
+                noise_factor = self.config.get("noise_factor", None)
+
+                for param in self.model.parameters():
+                    if param.grad is not None:
+                        if scaling_factor:
+                            param.grad.data *= scaling_factor  # Scaling the gradient maliciously
+                        if noise_factor:
+                            noise = torch.randn(param.grad.size()).to(self.device) * noise_factor
+                            param.grad.data += noise
+
             optim.step()
             train_loss += loss.item()
             pred = output.argmax(dim=1, keepdim=True)
@@ -372,14 +457,6 @@ class ModelUtils:
                 # view_as() is used to make sure the shape of pred and target
                 # are the same
                 correct += pred.eq(target.view_as(pred)).sum().item()
-        print(
-            "Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)".format(
-                test_loss,
-                correct,
-                len(dloader.dataset),
-                100.0 * correct / len(dloader.dataset),
-            )
-        )
         acc = correct / len(dloader.dataset)
         return test_loss, acc
 
