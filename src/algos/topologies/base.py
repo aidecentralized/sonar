@@ -3,7 +3,6 @@ from typing import List
 
 import numpy as np
 import networkx as nx
-import matplotlib.pyplot as plt
 
 from utils.types import ConfigType
 
@@ -26,15 +25,7 @@ class BaseTopology(ABC):
         NetworkX has a lot of built-in functions to generate graphs
         Use this url - https://networkx.org/documentation/stable/reference/generators.html
         """
-
-        # The graph was never initialized check
-        assert(self.graph is not None)
-
-        # Draw the graph
-        nx.draw(self.graph, with_labels=True, node_color="lightblue", font_weight="bold")
-
-        # Display the graph
-        plt.show()
+        pass
 
     def _convert_labels_to_int(self) -> None:
         """
