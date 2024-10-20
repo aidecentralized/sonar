@@ -31,7 +31,7 @@ class FedStaticNode(BaseFedAvgClient):
         """
         Runs the federated learning protocol for the client.
         """
-        stats: Dict[str, float] = {}
+        stats: Dict[str, Any] = {}
         print(f"Client {self.node_id} ready to start training")
         start_round = self.config.get("start_round", 0)
         if start_round != 0:
@@ -50,6 +50,7 @@ class FedStaticNode(BaseFedAvgClient):
             # Collect the representations from all other nodes from the server
             neighbors = self.topology.sample_neighbours(self.num_collaborators)
             # TODO: Log the neighbors
+            stats["neighbors"] = neighbors
 
             # Pull the model updates from the neighbors
             model_updates = self.comm_utils.receive(node_ids=neighbors)
@@ -58,12 +59,10 @@ class FedStaticNode(BaseFedAvgClient):
             self.aggregate(model_updates)
 
             # evaluate the model on the test data
+            # Inside FedStaticNode.run_protocol()
             stats["test_loss"], stats["test_acc"] = self.local_test()
-            self.log_utils.log_console("Round {} done for Node {}, stats {}".format(it, self.node_id, stats))
-            self.log_utils.log_tb(key="train/loss", value=stats["train_loss"], iteration=it)
-            self.log_utils.log_tb(key="train/accuracy", value=stats["train_acc"], iteration=it)
-            self.log_utils.log_tb(key="test/loss", value=stats["test_loss"], iteration=it)
-            self.log_utils.log_tb(key="test/accuracy", value=stats["test_acc"], iteration=it)
+            self.log_metrics(stats=stats, iteration=it)
+
 
 
 class FedStaticServer(BaseFedAvgClient):
