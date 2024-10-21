@@ -43,14 +43,9 @@ class FedStaticNode(BaseFedAvgClient):
         epochs_per_round = self.config.get("epochs_per_round", 1)
         for it in range(start_round, total_rounds):
             # Train locally and send the representation to the server
-            is_working = self.get_and_set_working(it)
-            if is_working:
-                stats["train_loss"], stats["train_acc"] = self.local_train(
-                    epochs_per_round
-                )
-            else:
-                time.sleep(2)
-                stats["train_loss"], stats["train_acc"] = float('nan'), float('nan') # Did not train, can be modified to something else
+            stats["train_loss"], stats["train_acc"] = self.local_train(
+                    it, epochs_per_round
+                )            
             self.local_round_done()
 
             # Collect the representations from all other nodes from the server
@@ -58,11 +53,7 @@ class FedStaticNode(BaseFedAvgClient):
             # TODO: Log the neighbors
             stats["neighbors"] = neighbors
 
-            # Pull the model updates from the neighbors
-            model_updates = self.comm_utils.receive(node_ids=neighbors)
-
-            # Aggregate the representations
-            self.aggregate(model_updates)
+            self.receive_and_aggregate(neighbors)
 
             # evaluate the model on the test data
             # Inside FedStaticNode.run_protocol()

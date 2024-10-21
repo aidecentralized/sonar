@@ -18,19 +18,6 @@ class FedAvgClient(BaseClient):
         super().__init__(config, comm_utils)
         self.config = config
 
-    def local_train(self, round: int, **kwargs: Any):
-        """
-        Train the model locally
-        """
-        start_time = time.time()
-        avg_loss, avg_accuracy = self.model_utils.train(
-            self.model, self.optim, self.dloader, self.loss_fn, self.device, malicious_type=self.config.get("malicious_type", "normal"), config=self.config,
-        )
-        end_time = time.time()
-        time_taken = end_time - start_time
-
-        return avg_loss, avg_accuracy, time_taken
-
     def local_test(self, **kwargs: Any):
         """
         Test the model locally, not to be used in the traditional FedAvg
@@ -74,12 +61,6 @@ class FedAvgClient(BaseClient):
             return self.model.state_dict()  # type: ignore
         return self.model.state_dict()  # type: ignore
 
-    def set_representation(self, representation: OrderedDict[str, Tensor]):
-        """
-        Set the model weights
-        """
-        self.model.load_state_dict(representation)
-
     def run_protocol(self):
         stats: Dict[str, Any] = {}
         print(f"Client {self.node_id} ready to start training")
@@ -88,13 +69,11 @@ class FedAvgClient(BaseClient):
         total_rounds = self.config["rounds"]
 
         for round in range(start_rounds, total_rounds):
-            is_working = self.get_and_set_working(round)
             stats["train_loss"], stats["train_acc"], stats["train_time"] = self.local_train(round)
             stats["test_loss"], stats["test_acc"], stats["test_time"] = self.local_test()
             self.local_round_done()
 
-            repr = self.comm_utils.receive([self.server_node])[0]
-            self.set_representation(repr)
+            self.receive_and_aggregate()
             self.log_metrics(stats=stats, iteration=round)
 
 
@@ -129,8 +108,13 @@ class FedAvgServer(BaseServer):
         """
         Aggregate the model weights
         """
-        avg_wts = self.fed_avg(representation_list)
-        return avg_wts
+        representation_list, _ = self.strip_empty_models(representation_list)
+        if len(representation_list) > 0:
+            avg_wts = self.fed_avg(representation_list)
+            return avg_wts
+        else:
+            self.log_utils.log_console("No clients participated in this round. Maintaining model.")
+            return self.model.state_dict()
 
     def set_representation(self, representation: OrderedDict[str, Tensor]):
         """
@@ -153,17 +137,16 @@ class FedAvgServer(BaseServer):
             self.model_utils.save_model(self.model, self.model_save_path)
         return [test_loss, test_acc, time_taken]
 
+    def receive_and_aggregate(self):
+        reprs = self.comm_utils.all_gather()
+        avg_wts = self.aggregate(reprs)
+        self.set_representation(avg_wts)
+
     def single_round(self):
         """
         Runs the whole training procedure
         """
-        reprs = self.comm_utils.all_gather()
-        reprs, _ = self.strip_empty_models(reprs)
-        if len(reprs):
-            avg_wts = self.aggregate(reprs)
-            self.set_representation(avg_wts)
-        else:
-            self.log_utils.log_console("No clients participated in this round")
+        self.receive_and_aggregate()            
 
     def run_protocol(self):
         stats: Dict[str, Any] = {}
