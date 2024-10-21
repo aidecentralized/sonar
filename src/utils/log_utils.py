@@ -15,6 +15,8 @@ from torchvision.utils import make_grid, save_image  # type: ignore
 from tensorboardX import SummaryWriter  # type: ignore
 import numpy as np
 import pandas as pd
+from utils.types import ConfigType
+import json
 
 
 def deprocess(img: torch.Tensor) -> torch.Tensor:
@@ -54,7 +56,7 @@ def check_and_create_path(path: str):
         os.makedirs(path)
 
 
-def copy_source_code(config: Dict[str, Any]) -> None:
+def copy_source_code(config: ConfigType) -> None:
     """
     Copy source code to experiment folder for reproducibility.
 
@@ -102,7 +104,7 @@ class LogUtils:
     Utility class for logging and saving experiment data.
     """
 
-    def __init__(self, config: Dict[str, Any]) -> None:
+    def __init__(self, config: ConfigType) -> None:
         log_dir = config["log_path"]
         load_existing = config["load_existing"]
         log_format = (
@@ -116,10 +118,18 @@ class LogUtils:
         )
         logging.getLogger().addHandler(logging.StreamHandler())
         self.log_dir = log_dir
+        self.log_config(config)
         self.init_tb(load_existing)
         self.init_npy()
         self.init_summary()
         self.init_csv()
+
+    def log_config(self, config: ConfigType):
+        """
+        Log the configuration to a json file. 
+        """
+        with open(f"{self.log_dir}/config.json", "w") as f:
+            json.dump(config, f, indent=4)
 
     def init_summary(self):
         """
