@@ -119,7 +119,7 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
             context.abort(grpc.StatusCode.INTERNAL, "Base node not registered") # type: ignore
             raise Exception("Base node not registered")
         with self.lock:
-            model = comm_pb2.Model(buffer=serialize_model(self.base_node.get_model_weights()))
+            model = comm_pb2.Model(buffer=serialize_model(self.base_node.get_representation()))
             return model
 
     def get_current_round(self, request: comm_pb2.Empty, context: grpc.ServicerContext) -> comm_pb2.Round | None:

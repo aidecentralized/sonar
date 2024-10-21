@@ -1,6 +1,12 @@
 import numpy as np
+import torch
 from typing import Any, Dict, List, Union
 
+def ensure_float(tensor: torch.Tensor) -> torch.Tensor:
+    """Ensure that the tensor is a floating-point tensor."""
+    if not tensor.is_floating_point():
+        return tensor.float()
+    return tensor
 
 def from_round_stats_per_round_per_client_to_dict_arrays(
     stats: List[List[Dict[str, Union[np.ndarray[Any, Any], float]]]]
