@@ -50,7 +50,7 @@ class BadWeightsAttack:
         self.corrupt_portion = float(config.get("corrupt_portion", 1)) # type: ignore
         # TODO: Add conditions like start and end epochs or rounds when corruption occurs.
 
-    def get_representation(self) -> Dict[str, Tensor]:
+    def get_representation(self) -> OrderedDict[str, Tensor]:
         """
         Returns a modified version of the model's state dictionary where 
         a portion of the weights are scaled by the 'weight' factor based 
@@ -59,6 +59,7 @@ class BadWeightsAttack:
         Returns:
             OrderedDict[str, Tensor]: The modified state dictionary with corrupted weights.
         """
+        print(f"sending bad weights {OrderedDict({key: (val * self.weight if random.random() < self.corrupt_portion else val) for key, val in self.state_dict.items()})}")
         return OrderedDict(
             {
                 key: (

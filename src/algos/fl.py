@@ -1,14 +1,16 @@
 from collections import OrderedDict
 from typing import Any, Dict, List
+import torch
 from torch import Tensor
 from utils.communication.comm_utils import CommunicationManager
 from algos.base_class import BaseClient, BaseServer
 import time
+from utils.stats_utils import ensure_float
 
-# import the possible attacks
-from algos.attack_add_noise import AddNoiseAttack
-from algos.attack_bad_weights import BadWeightsAttack
-from algos.attack_sign_flip import SignFlipAttack
+# # import the possible attacks
+# from algos.attack_add_noise import AddNoiseAttack
+# from algos.attack_bad_weights import BadWeightsAttack
+# from algos.attack_sign_flip import SignFlipAttack
 
 class FedAvgClient(BaseClient):
     def __init__(
@@ -51,35 +53,35 @@ class FedAvgClient(BaseClient):
         Test the model locally, not to be used in the traditional FedAvg
         """
 
-    def get_model_weights(self, **kwargs: Any) -> Dict[str, Tensor]:
-        """
-        Overwrite the get_model_weights method of the BaseNode
-        to add malicious attacks
-        TODO: this should be moved to BaseClient
-        """
+    # def get_model_weights(self, **kwargs: Any) -> Dict[str, Tensor]:
+    #     """
+    #     Overwrite the get_model_weights method of the BaseNode
+    #     to add malicious attacks
+    #     TODO: this should be moved to BaseClient
+    #     """
 
-        malicious_type = self.config.get("malicious_type", "normal")
+    #     malicious_type = self.config.get("malicious_type", "normal")
 
-        if malicious_type == "normal":
-            return self.model.state_dict()  # type: ignore
-        elif malicious_type == "bad_weights":
-            # Corrupt the weights
-            return BadWeightsAttack(
-                self.config, self.model.state_dict()
-            ).get_representation()
-        elif malicious_type == "sign_flip":
-            # Flip the sign of the weights, also TODO: consider label flipping
-            return SignFlipAttack(
-                self.config, self.model.state_dict()
-            ).get_representation()
-        elif malicious_type == "add_noise":
-            # Add noise to the weights
-            return AddNoiseAttack(
-                self.config, self.model.state_dict()
-            ).get_representation()
-        else:
-            return self.model.state_dict()  # type: ignore
-        return self.model.state_dict()  # type: ignore
+    #     if malicious_type == "normal":
+    #         return self.model.state_dict()  # type: ignore
+    #     elif malicious_type == "bad_weights":
+    #         # Corrupt the weights
+    #         return BadWeightsAttack(
+    #             self.config, self.model.state_dict()
+    #         ).get_representation()
+    #     elif malicious_type == "sign_flip":
+    #         # Flip the sign of the weights, also TODO: consider label flipping
+    #         return SignFlipAttack(
+    #             self.config, self.model.state_dict()
+    #         ).get_representation()
+    #     elif malicious_type == "add_noise":
+    #         # Add noise to the weights
+    #         return AddNoiseAttack(
+    #             self.config, self.model.state_dict()
+    #         ).get_representation()
+    #     else:
+    #         return self.model.state_dict()  # type: ignore
+    #     return self.model.state_dict()  # type: ignore
 
     def set_representation(self, representation: OrderedDict[str, Tensor]):
         """
@@ -113,27 +115,77 @@ class FedAvgServer(BaseServer):
             self.config["results_path"], self.node_id
         )
 
-    def fed_avg(self, model_wts: List[OrderedDict[str, Tensor]]):
-        num_users = len(model_wts)
-        coeff = 1 / num_users
+    # def fed_avg(self, model_wts: List[OrderedDict[str, Tensor]]):
+    #     num_users = len(model_wts)
+    #     coeff = 1 / num_users
+    #     avgd_wts: OrderedDict[str, Tensor] = OrderedDict()
+
+    #     for key in model_wts[0].keys():
+    #         avgd_wts[key] = sum(coeff * m[key] for m in model_wts)  # type: ignore
+
+    #     # Move to GPU only after averaging
+    #     for key in avgd_wts.keys():
+    #         avgd_wts[key] = avgd_wts[key].to(self.device)
+    #     return avgd_wts
+
+    # def aggregate(
+    #     self, representation_list: List[OrderedDict[str, Tensor]], **kwargs: Any
+    # ) -> OrderedDict[str, Tensor]:
+    #     """
+    #     Aggregate the model weights
+    #     """
+    #     avg_wts = self.fed_avg(representation_list)
+        # return avg_wts
+    
+    def aggregate(self, representation_list: List[OrderedDict[str, Tensor]], **kwargs: Any) -> OrderedDict[str, Tensor]:
+        """
+        Generalized function to aggregate model weights using FedAvg, Trimmed Mean, or Median aggregation.
+        
+        Args:
+            model_wts (List[OrderedDict[str, Tensor]]): List of ordered dictionaries containing model weights.
+            aggregation_method (str): Method of aggregation: "fedavg", "trim_mean", or "median".
+            trim_ratio (float): Ratio of weights to trim for trimmed mean aggregation (e.g., 0.1 means trimming 10%).
+
+        Returns:
+            OrderedDict[str, Tensor]: Aggregated model weights.
+        """
+        num_users = len(representation_list)
+        
         avgd_wts: OrderedDict[str, Tensor] = OrderedDict()
+        aggregation_method = self.config.get("aggregation_method", "fedavg")
+        for key in representation_list[0].keys():
+            # Stack all the weights for the current key
+            key_weights = torch.stack([m[key] for m in representation_list], dim=0)
+            
+            if aggregation_method == "fedavg":
+                # FedAvg (simple average)
+                coeff = 1 / num_users
+                avgd_wts[key] = sum(coeff * ensure_float(m[key]) for m in representation_list)
+            
+            elif aggregation_method == "trim_mean":
+                trim_ratio = self.config.get("trim_ratio", 0.1)
+                # Trimmed mean aggregation
+                num_to_trim = int(trim_ratio * num_users)
+                print(f"Trimming {num_to_trim} weights for key {key}")
+                
+                # Sort weights for trimming
+                sorted_weights, _ = torch.sort(key_weights, dim=0)
+                trimmed_weights = sorted_weights[num_to_trim : num_users - num_to_trim]
 
-        for key in model_wts[0].keys():
-            avgd_wts[key] = sum(coeff * m[key] for m in model_wts)  # type: ignore
-
+                
+                # Average the trimmed weights
+                avgd_wts[key] = ensure_float(trimmed_weights).mean(dim=0)
+            
+            elif aggregation_method == "median":
+                print(f"Calculating median for key {key}")
+                # Median aggregation
+                avgd_wts[key] = ensure_float(key_weights).median(dim=0).values
+        
         # Move to GPU only after averaging
         for key in avgd_wts.keys():
             avgd_wts[key] = avgd_wts[key].to(self.device)
+        
         return avgd_wts
-
-    def aggregate(
-        self, representation_list: List[OrderedDict[str, Tensor]], **kwargs: Any
-    ) -> OrderedDict[str, Tensor]:
-        """
-        Aggregate the model weights
-        """
-        avg_wts = self.fed_avg(representation_list)
-        return avg_wts
 
     def set_representation(self, representation: OrderedDict[str, Tensor]):
         """

@@ -49,7 +49,7 @@ class SignFlipAttack:
         self.flip_rate = float(config.get("flip_rate", 1)) # type: ignore
         # TODO: Add conditions such as target label, source label, start/end epochs, or rounds for the attack.
 
-    def get_representation(self) -> Dict[str, Tensor]:
+    def get_representation(self) -> OrderedDict[str, Tensor]:
         """
         Returns a modified version of the model's state dictionary where the sign of 
         weights is flipped based on the probability defined by 'flip_rate'.

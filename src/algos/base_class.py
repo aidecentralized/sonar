@@ -34,11 +34,17 @@ from utils.community_utils import (
     get_dset_communities,
 )
 from utils.types import ConfigType
+from utils.stats_utils import ensure_float
 
 import torchvision.transforms as T  # type: ignore
 import os
 
 from yolo import YOLOLoss
+
+# import the possible attacks
+from algos.attack_add_noise import AddNoiseAttack
+from algos.attack_bad_weights import BadWeightsAttack
+from algos.attack_sign_flip import SignFlipAttack
 
 
 def set_seed(seed: int) -> None:
@@ -111,6 +117,7 @@ class BaseNode(ABC):
         self.model_utils = ModelUtils(self.device, config)
 
         self.dset_obj = get_dataset(self.dset, dpath=config["dpath"])
+        self.config = config
 
     def set_constants(self) -> None:
         """Add docstring here"""
@@ -244,6 +251,35 @@ class BaseNode(ABC):
         Share the model weights
         """
         return self.model.state_dict()
+    
+    def get_representation(self, **kwargs: Any) -> OrderedDict[str, Tensor]:
+        """
+        Overwrite the get_model_weights method of the BaseNode
+        to add malicious attacks
+        TODO: this should be moved to BaseClient
+        """
+
+        malicious_type = self.config.get("malicious_type", "normal")
+
+        if malicious_type == "normal":
+            return OrderedDict(self.get_model_weights())
+        elif malicious_type == "bad_weights":
+            # Corrupt the weights
+            return BadWeightsAttack(
+                self.config, self.model.state_dict()
+            ).get_representation()
+        elif malicious_type == "sign_flip":
+            # Flip the sign of the weights, also TODO: consider label flipping
+            return SignFlipAttack(
+                self.config, self.model.state_dict()
+            ).get_representation()
+        elif malicious_type == "add_noise":
+            # Add noise to the weights
+            return AddNoiseAttack(
+                self.config, self.model.state_dict()
+            ).get_representation()
+        else:
+            return OrderedDict(self.get_model_weights())
 
     def get_local_rounds(self) -> int:
         return self.round
@@ -666,23 +702,56 @@ class BaseFedAvgClient(BaseClient):
         """
         models_coeffs: List[Tuple[OrderedDict[str, Tensor], float]] = []
         # insert the current model weights at the position self.node_id
-        models_wts.insert(self.node_id - 1, self.get_model_weights())
+        models_wts.insert(self.node_id - 1, self.get_representation())
         if collab_weights is None:
             collab_weights = [1.0 / len(models_wts) for _ in models_wts]
         for idx, model_wts in enumerate(models_wts):
             models_coeffs.append((model_wts, collab_weights[idx]))
 
-        is_init = False
+        # is_init = False
         agg_wts: OrderedDict[str, Tensor] = OrderedDict()
-        for model, coeff in models_coeffs:
-            for key in self.model.state_dict().keys():
-                if key in keys_to_ignore:
-                    continue
-                if not is_init:
-                    agg_wts[key] = coeff * model[key].to(self.device)
-                else:
-                    agg_wts[key] += coeff * model[key].to(self.device)
-            is_init = True
+        # for model, coeff in models_coeffs:
+        #     for key in self.model.state_dict().keys():
+        #         if key in keys_to_ignore:
+        #             continue
+        #         if not is_init:
+        #             agg_wts[key] = coeff * model[key].to(self.device)
+        #         else:
+        #             agg_wts[key] += coeff * model[key].to(self.device)
+        #     is_init = True
+
+                    # Collect all the weight values for the current key across models
+                # Apply aggregation method
+        aggregation_method = self.config.get("aggregation_method", "fedavg")
+        for key in self.model.state_dict().keys():
+            if key in keys_to_ignore:
+                continue
+            key_weights = torch.stack([model[key].to(self.device) for model, _ in models_coeffs], dim=0)
+            
+            if aggregation_method == "fedavg":
+                # Federated averaging (weighted sum)
+                agg_wts[key] = sum(coeff * ensure_float(model[key]).to(self.device) for model, coeff in models_coeffs)
+            
+            elif aggregation_method == "trim_mean":
+                trim_ratio = self.config.get("trim_ratio", 0.1)
+
+                # Trimmed mean aggregation
+                num_models = key_weights.size(0)
+                num_to_trim = int(trim_ratio * num_models)
+                
+                # Sort weights for trimming
+                sorted_weights, _ = torch.sort(key_weights, dim=0)
+                trimmed_weights = sorted_weights[num_to_trim : num_models - num_to_trim]
+                
+                print(f"Trimming {num_to_trim} weights for key {key}")
+                # Average the trimmed weights
+                agg_wts[key] = ensure_float(trimmed_weights).mean(dim=0)
+            
+            elif aggregation_method == "median":
+                print(f"Calculating median for key {key}")
+                # Median aggregation
+                agg_wts[key] = ensure_float(key_weights).median(dim=0).values
+
         self.model.load_state_dict(agg_wts)
         return None
 

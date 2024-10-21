@@ -56,7 +56,7 @@ class AddNoiseAttack:
         # where the noise is added without noticeable differences in model performance
         # we should find ways to study this
 
-    def get_representation(self) -> Dict[str, Tensor]:
+    def get_representation(self) -> OrderedDict[str, Tensor]:
         """
         Returns a modified version of the model's state dictionary where Gaussian noise 
         is added to weights with a probability defined by `noise_rate`.
