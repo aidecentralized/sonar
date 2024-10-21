@@ -95,18 +95,33 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
             {0: {"rank": 0, "port": port, "ip": ip}}
         )
         self.is_working = True
+        self.communication_cost_received: int = 0
+        self.communication_cost_sent: int = 0
 
     def set_is_working(self, is_working: bool):
         with self.lock:
             self.is_working = is_working
 
+    def update_communcation_cost(self, func):
+        def wrapper(request, context):
+            down_cost = request.ByteSize()
+            return_data = func(self, request, context)
+            up_cost = return_data.ByteSize()
+            with self.lock:
+                self.communication_cost_received += down_cost
+                self.communication_cost_sent += up_cost
+            return return_data
+        return wrapper
+
     def register_self(self, obj: "BaseNode"):
         self.base_node = obj
 
+    @update_communcation_cost
     def send_data(self, request, context) -> comm_pb2.Empty:  # type: ignore
         self.received_data.put(deserialize_model(request.model.buffer))  # type: ignore
         return comm_pb2.Empty()  # type: ignore
 
+    @update_communcation_cost
     def get_rank(self, request: comm_pb2.Empty, context: grpc.ServicerContext) -> comm_pb2.Rank | None:  
         try:
             with self.lock:
@@ -121,6 +136,7 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
         except Exception as e:
             context.abort(grpc.StatusCode.INTERNAL, f"Error in get_rank: {str(e)}")  # type: ignore
 
+    @update_communcation_cost
     def get_model(self, request: comm_pb2.Empty, context: grpc.ServicerContext) -> comm_pb2.Model | None:
         if not self.base_node:
             context.abort(grpc.StatusCode.INTERNAL, "Base node not registered") # type: ignore
@@ -133,6 +149,7 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
                 model = comm_pb2.Model(buffer=EMPTY_MODEL_TAG)
             return model
 
+    @update_communcation_cost
     def get_current_round(self, request: comm_pb2.Empty, context: grpc.ServicerContext) -> comm_pb2.Round | None:
         if not self.base_node:
             context.abort(grpc.StatusCode.INTERNAL, "Base node not registered") # type: ignore
@@ -239,6 +256,8 @@ class GRPCCommunication(CommunicationInterface):
         """
         def callback_fn(stub: comm_pb2_grpc.CommunicationServerStub) -> int:
             rank_data = stub.get_rank(comm_pb2.Empty()) # type: ignore
+            with self.lock:
+                self.servicer.communication_cost_received += rank_data.ByteSize()
             return rank_data.rank # type: ignore
 
         self.rank = self.recv_with_retries(self.super_node_host, callback_fn)
@@ -352,6 +371,8 @@ class GRPCCommunication(CommunicationInterface):
         self_round = self.servicer.base_node.get_local_rounds()
         def callback_fn(stub: comm_pb2_grpc.CommunicationServerStub) -> int:
             round = stub.get_current_round(comm_pb2.Empty()) # type: ignore
+            with self.lock:
+                self.servicer.communication_cost_received += round.ByteSize()
             return round.round # type: ignore
         
         while True:
@@ -384,8 +405,13 @@ class GRPCCommunication(CommunicationInterface):
         items: List[Any] = []
         def callback_fn(stub: comm_pb2_grpc.CommunicationServerStub) -> OrderedDict[str, Tensor]:
             model = stub.get_model(comm_pb2.Empty()) # type: ignore
+<<<<<<< HEAD
             if model.buffer == EMPTY_MODEL_TAG:
                 return OrderedDict()
+=======
+            with self.lock:
+                self.servicer.communication_cost_received += model.ByteSize()
+>>>>>>> Log communication cost
             return deserialize_model(model.buffer) # type: ignore
 
         for id in node_ids:
