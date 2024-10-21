@@ -74,6 +74,9 @@ class FedAvgClient(BaseClient):
             self.local_round_done()
 
             self.receive_and_aggregate()
+            
+            stats["bytes_received"], stats["bytes_sent"] = self.comm_utils.get_comm_cost()
+            
             self.log_metrics(stats=stats, iteration=round)
 
 
@@ -156,5 +159,6 @@ class FedAvgServer(BaseServer):
         for round in range(start_rounds, total_rounds):
             self.local_round_done()
             self.single_round()
+            stats["bytes_received"], stats["bytes_sent"] = self.comm_utils.get_comm_cost()
             stats["test_loss"], stats["test_acc"], stats["test_time"] = self.test()
             self.log_metrics(stats=stats, iteration=round)

@@ -78,3 +78,6 @@ class CommunicationManager:
 
     def set_is_working(self, is_working: bool):
         self.comm.set_is_working(is_working)
+
+    def get_comm_cost(self):
+        return self.comm.get_comm_cost()

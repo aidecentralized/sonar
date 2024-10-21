@@ -55,6 +55,8 @@ class FedStaticNode(BaseFedAvgClient):
 
             self.receive_and_aggregate(neighbors)
 
+            stats["bytes_received"], stats["bytes_sent"] = self.comm_utils.get_comm_cost()
+
             # evaluate the model on the test data
             # Inside FedStaticNode.run_protocol()
             stats["test_loss"], stats["test_acc"] = self.local_test()
