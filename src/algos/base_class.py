@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from torch import Tensor
 import copy
 import random
+import time
 import torch.utils.data
 
 from utils.communication.comm_utils import CommunicationManager
@@ -34,6 +35,7 @@ from utils.community_utils import (
     get_dset_communities,
 )
 from utils.types import ConfigType
+from utils.dropout_utils import NodeDropout
 
 import torchvision.transforms as T  # type: ignore
 import os
@@ -95,6 +97,7 @@ class BaseNode(ABC):
         self.comm_utils = comm_utils
         self.node_id = self.comm_utils.get_rank()
         self.comm_utils.register_node(self)
+        self.is_working = True
 
         self.setup_logging(config)
 
@@ -111,6 +114,10 @@ class BaseNode(ABC):
         self.model_utils = ModelUtils(self.device, config)
 
         self.dset_obj = get_dataset(self.dset, dpath=config["dpath"])
+
+        dropout_seed = 1 * config.get("num_users", 9) + self.node_id * config.get("num_users", 9) + config.get("seed", 20) # arbitrarily chosen
+        dropout_rng = random.Random(dropout_seed)
+        self.dropout = NodeDropout(self.node_id, config["dropout_dicts"], dropout_rng)
 
     def set_constants(self) -> None:
         """Add docstring here"""
@@ -252,7 +259,7 @@ class BaseNode(ABC):
     def run_protocol(self) -> None:
         """Add docstring here"""
         raise NotImplementedError
-    
+
     def log_metrics(self, stats: Dict[str, Any], iteration: int) -> None:
         """
         Centralized method to log metrics.
@@ -294,6 +301,56 @@ class BaseNode(ABC):
                 imgs=stats["images"], key="sample_images", iteration=iteration
             )
 
+    @abstractmethod
+    def receive_and_aggregate(self):
+        """Add docstring here"""
+        raise NotImplementedError
+
+
+    def strip_empty_models(self,  models_wts: List[OrderedDict[str, Tensor]],
+        collab_weights: Optional[List[float]] = None) -> Any:
+        repr_list = []
+        if collab_weights is not None:
+            weight_list = []
+            for i, model_wts in enumerate(models_wts):
+                if len(model_wts) > 0 and collab_weights[i] > 0:
+                    repr_list.append(model_wts)
+                    weight_list.append(collab_weights[i])
+            return repr_list, weight_list
+        else:
+            for model_wts in models_wts:
+                if len(model_wts) > 0:
+                    repr_list.append(model_wts)
+            return repr_list, None
+
+    def get_and_set_working(self, round: Optional[int] = None) -> bool:
+        is_working = self.dropout.is_available()
+        if not is_working:
+            self.log_utils.log_console(
+                f"Client {self.node_id} is not working {'in round ' if round else 'in this round'}."
+            )
+            self.comm_utils.set_is_working(False)
+        else:
+            self.comm_utils.set_is_working(True)
+        return is_working
+
+    def set_model_weights(
+        self, model_wts: OrderedDict[str, Tensor], keys_to_ignore: List[str] = []
+    ) -> None:
+        """
+        Set the model weights
+        """
+        model_wts = copy.copy(model_wts)
+
+        if len(keys_to_ignore) > 0:
+            for key in keys_to_ignore:
+                if key in model_wts.keys():
+                    model_wts.pop(key)
+
+        for key in model_wts.keys():
+            model_wts[key] = model_wts[key].to(self.device)
+
+        self.model.load_state_dict(model_wts, strict=len(keys_to_ignore) == 0)
 
 class BaseClient(BaseNode):
     """
@@ -492,17 +549,64 @@ class BaseClient(BaseNode):
         # TODO: fix print_data_summary
         # self.print_data_summary(train_dset, test_dset, val_dset=val_dset)
 
-    def local_train(self, round: int, **kwargs: Any) -> None:
+    def local_train(self, round: int, epochs: int = 1, **kwargs: Any) -> Tuple[float, float, float]:
         """
         Train the model locally
         """
-        raise NotImplementedError
+        start_time = time.time()
+
+        self.is_working = self.get_and_set_working(round)
+
+        if self.is_working:
+            avg_loss, avg_acc = 0, 0
+            for _ in range(epochs):
+                tr_loss, tr_acc = self.model_utils.train(
+                    self.model, self.optim, self.dloader, self.loss_fn, self.device, malicious_type=self.config.get("malicious_type", "normal"), config=self.config,
+                )            
+                avg_loss += tr_loss
+                avg_acc += tr_acc
+            avg_loss /= epochs
+            avg_acc /= epochs
+        else:
+            avg_loss, avg_acc = float('nan'), float('nan')
+            # sleep for a while to simulate the time taken for training
+            time.sleep(2)
+        end_time = time.time()
+        time_taken = end_time - start_time
+
+        self.log_utils.log_console(
+            "Client {} finished training with loss {:.4f}, accuracy {:.4f}, time taken {:.2f} seconds".format(
+                self.node_id, avg_loss, avg_acc, time_taken
+            )
+        )
+        self.log_utils.log_summary(
+            "Client {} finished training with loss {:.4f}, accuracy {:.4f}, time taken {:.2f} seconds".format(
+                self.node_id, avg_loss, avg_acc, time_taken
+            )
+        )
+
+        self.log_utils.log_tb(
+            f"train_loss/client{self.node_id}", avg_loss, round
+        )
+        self.log_utils.log_tb(
+            f"train_accuracy/client{self.node_id}", avg_acc, round
+        )
+
+        return avg_loss, avg_acc, time_taken
 
     def local_test(self, **kwargs: Any) -> float | Tuple[float, float] | None:
         """
         Test the model locally
         """
         raise NotImplementedError
+
+    def receive_and_aggregate(self):
+        """
+        Receive the model weights from the server and aggregate them
+        """
+        if self.is_working:
+            repr = self.comm_utils.receive([self.server_node])[0]
+            self.set_model_weights(repr)
 
     def run_protocol(self) -> None:
         raise NotImplementedError
@@ -629,29 +733,6 @@ class BaseFedAvgClient(BaseClient):
             keys = self.model_utils.get_last_layer_keys(self.get_model_weights())
             self.model_keys_to_ignore.extend(keys)
 
-    def local_train(self, epochs: int) -> Tuple[float, float]:
-        """
-        Train the model locally
-        """
-        avg_loss, avg_acc = 0, 0
-        for epoch in range(epochs):
-            # if self.node_id ==1:
-            #     tr_loss, tr_acc = self.model_utils.train(self.model, self.optim,
-            #                                     self.dloader, self.loss_fn,
-            #                                     self.device, self._test_loader)
-            # else:
-            tr_loss, tr_acc = self.model_utils.train(
-                self.model, self.optim, self.dloader, self.loss_fn, self.device
-            )
-
-            avg_loss += tr_loss
-            avg_acc += tr_acc
-
-        avg_loss /= epochs
-        avg_acc /= epochs
-
-        return avg_loss, avg_acc
-
     def local_test(self, **kwargs: Any) -> Tuple[float, float]:
         """
         Test the model locally, not to be used in the traditional FedAvg
@@ -669,24 +750,6 @@ class BaseFedAvgClient(BaseClient):
         Share the model weights (on the cpu)
         """
         return OrderedDict({k: v.cpu() for k, v in self.model.state_dict().items()})
-
-    def set_model_weights(
-        self, model_wts: OrderedDict[str, Tensor], keys_to_ignore: List[str] = []
-    ) -> None:
-        """
-        Set the model weights
-        """
-        model_wts = copy.copy(model_wts)
-
-        if len(keys_to_ignore) > 0:
-            for key in keys_to_ignore:
-                if key in model_wts.keys():
-                    model_wts.pop(key)
-
-        for key in model_wts.keys():
-            model_wts[key] = model_wts[key].to(self.device)
-
-        self.model.load_state_dict(model_wts, strict=len(keys_to_ignore) == 0)
 
     def aggregate(
         self,
@@ -710,6 +773,11 @@ class BaseFedAvgClient(BaseClient):
         models_wts.insert(self.node_id - 1, self.get_model_weights())
         if collab_weights is None:
             collab_weights = [1.0 / len(models_wts) for _ in models_wts]
+
+        # Handle dropouts and re-normalize the weights
+        models_wts, collab_weights = self.strip_empty_models(models_wts, collab_weights)
+        collab_weights = [w / sum(collab_weights) for w in collab_weights]
+
         for idx, model_wts in enumerate(models_wts):
             models_coeffs.append((model_wts, collab_weights[idx]))
 
@@ -724,8 +792,17 @@ class BaseFedAvgClient(BaseClient):
                 else:
                     agg_wts[key] += coeff * model[key].to(self.device)
             is_init = True
-        self.model.load_state_dict(agg_wts)
+        
+        self.set_model_weights(agg_wts)
         return None
+
+    def receive_and_aggregate(self, neighbors: List[int]) -> None:
+        if self.is_working:
+            # Receive the model updates from the neighbors
+            model_updates = self.comm_utils.receive(node_ids=neighbors)
+            # Aggregate the representations
+            self.aggregate(model_updates, keys_to_ignore=self.model_keys_to_ignore)
+
 
     def get_collaborator_weights(
         self, reprs_dict: Dict[int, OrderedDict[int, Tensor]]
