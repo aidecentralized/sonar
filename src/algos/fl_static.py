@@ -43,7 +43,7 @@ class FedStaticNode(BaseFedAvgClient):
         epochs_per_round = self.config.get("epochs_per_round", 1)
         for it in range(start_round, total_rounds):
             # Train locally and send the representation to the server
-            stats["train_loss"], stats["train_acc"] = self.local_train(
+            stats["train_loss"], stats["train_acc"], stats["train_time"] = self.local_train(
                     it, epochs_per_round
                 )            
             self.local_round_done()
