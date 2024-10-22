@@ -5,7 +5,7 @@ import re
 import threading
 import time
 import socket
-from typing import Any, Dict, List, OrderedDict, Union
+from typing import Any, Dict, List, OrderedDict, Union, Tuple
 from urllib.parse import unquote
 import grpc  # type: ignore
 from utils.communication.grpc.grpc_utils import deserialize_model, serialize_model

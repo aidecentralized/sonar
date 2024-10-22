@@ -271,6 +271,7 @@ class GradientInversionFedAvgServer(FedAvgServer):
         Based on reconstruction from weight script: 
         https://github.com/JonasGeiping/invertinggradients/blob/1157b61c6704df42c497ab9eb074c75da5204334/Recovery%20from%20Weight%20Updates.ipynb
         """
+        setup = inversefed.utils.system_startup()
         if self.dset == "cifar10":
             # TODO figure out whehether we actually have the dm and ds values in our codebase
             dm = torch.as_tensor(inversefed.consts.cifar10_mean, **setup)[:, None, None]
@@ -317,15 +318,53 @@ class GradientInversionFedAvgServer(FedAvgServer):
             use_updates = False
             rec_machine = inversefed.FedAvgReconstructor(self.model, (dm, ds), local_steps, local_lr, config,
                                              use_updates=use_updates)
-            output, stats = rec_machine.reconstruct(input_parameters, labels, img_shape=(3, 32, 32)) # TODO verify img_shape and change it based on dataset
-            test_mse = (output.detach() - ground_truth).pow(2).mean()
-            feat_mse = (model(output.detach())- model(ground_truth)).pow(2).mean()  
-            test_psnr = inversefed.metrics.psnr(output, ground_truth, factor=1/ds)
+            output, stats = rec_machine.reconstruct(params_i, labels_i, img_shape=(3, 32, 32)) # TODO verify img_shape and change it based on dataset
+            test_mse = (output.detach() - ground_truth_i).pow(2).mean()
+            feat_mse = (self.model(output.detach())- self.model(ground_truth_i)).pow(2).mean()  
+            test_psnr = inversefed.metrics.psnr(output, ground_truth_i, factor=1/ds)
 
             # optional plotting:
             # plot(output)
             # plt.title(f"Rec. loss: {stats['opt']:2.4f} | MSE: {test_mse:2.4f} "
             #         f"| PSNR: {test_psnr:4.2f} | FMSE: {feat_mse:2.4e} |");
+            return output, test_mse, test_psnr, feat_mse
+    def run_protocol(self):
+        """
+        basically a carbon copy of fl.py's run protocol. Except attack is launched at the end
+        """
+        self.log_utils.log_console("Starting clients federated averaging")
+        start_epochs = self.config.get("start_epochs", 0)
+        total_epochs = self.config["epochs"]
+        for round in range(start_epochs, total_epochs):
+
+            if round == total_epochs - 1:
+                self.log_utils.log_console("Launching inversion attack")
+                output, test_mse, test_psnr, feat_mse = self.inverting_gradients_attack()
+                self.log_utils.log_console("Inversion attack complete")
+                self.log_utils.log_summary(
+                    f"Round {round} inversion attack complete. Test MSE: {test_mse}, Test PSNR: {test_psnr}, Feature MSE: {feat_mse}"
+                )
+                # TODO somehow save output?
+
+            self.log_utils.log_console("Starting round {}".format(round))
+            self.log_utils.log_summary("Starting round {}".format(round))
+            self.single_round()
+            self.log_utils.log_console("Server testing the model")
+            loss, acc, time_taken = self.test()
+            self.log_utils.log_tb(f"test_acc/clients", acc, round)
+            self.log_utils.log_tb(f"test_loss/clients", loss, round)
+            self.log_utils.log_console(
+                "Round: {} test_acc:{:.4f}, test_loss:{:.4f}, time taken {:.2f} seconds".format(
+                    round, acc, loss, time_taken
+                )
+            )
+            # self.log_utils.log_summary("Round: {} test_acc:{:.4f}, test_loss:{:.4f}, time taken {:.2f} seconds".format(round, acc, loss, time_taken))
+            self.log_utils.log_console("Round {} complete".format(round))
+            self.log_utils.log_summary(
+                "Round {} complete".format(
+                    round,
+                )
+            )
 class GradientInversionFedStaticServer(FedStaticServer):
     """
     implements gradient inversion attack to reconstruct training images from other nodes
