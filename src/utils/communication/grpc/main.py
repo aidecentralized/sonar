@@ -6,6 +6,7 @@ import re
 import threading
 import time
 import socket
+import functools
 from typing import Any, Callable, Dict, List, OrderedDict, Union, TYPE_CHECKING
 from urllib.parse import unquote
 import grpc # type: ignore
@@ -95,18 +96,37 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
             {0: {"rank": 0, "port": port, "ip": ip}}
         )
         self.is_working = True
+        self.communication_cost_received: int = 0
+        self.communication_cost_sent: int = 0
+
+    def get_comm_cost(self):
+        with self.lock:
+            return self.communication_cost_received, self.communication_cost_sent
 
     def set_is_working(self, is_working: bool):
         with self.lock:
             self.is_working = is_working
 
+    def update_communication_cost(func):
+        def wrapper(self, request, context):
+            down_cost = request.ByteSize()
+            return_data = func(self, request, context)
+            up_cost = return_data.ByteSize()
+            with self.lock:
+                self.communication_cost_received += down_cost
+                self.communication_cost_sent += up_cost
+            return return_data
+        return wrapper
+
     def register_self(self, obj: "BaseNode"):
         self.base_node = obj
 
+    @update_communication_cost
     def send_data(self, request, context) -> comm_pb2.Empty:  # type: ignore
         self.received_data.put(deserialize_model(request.model.buffer))  # type: ignore
         return comm_pb2.Empty()  # type: ignore
 
+    @update_communication_cost
     def get_rank(self, request: comm_pb2.Empty, context: grpc.ServicerContext) -> comm_pb2.Rank | None:  
         try:
             with self.lock:
@@ -121,6 +141,7 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
         except Exception as e:
             context.abort(grpc.StatusCode.INTERNAL, f"Error in get_rank: {str(e)}")  # type: ignore
 
+    @update_communication_cost
     def get_model(self, request: comm_pb2.Empty, context: grpc.ServicerContext) -> comm_pb2.Model | None:
         if not self.base_node:
             context.abort(grpc.StatusCode.INTERNAL, "Base node not registered") # type: ignore
@@ -133,6 +154,7 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
                 model = comm_pb2.Model(buffer=EMPTY_MODEL_TAG)
             return model
 
+    @update_communication_cost
     def get_current_round(self, request: comm_pb2.Empty, context: grpc.ServicerContext) -> comm_pb2.Round | None:
         if not self.base_node:
             context.abort(grpc.StatusCode.INTERNAL, "Base node not registered") # type: ignore
@@ -239,6 +261,8 @@ class GRPCCommunication(CommunicationInterface):
         """
         def callback_fn(stub: comm_pb2_grpc.CommunicationServerStub) -> int:
             rank_data = stub.get_rank(comm_pb2.Empty()) # type: ignore
+            with self.servicer.lock:
+                self.servicer.communication_cost_received += rank_data.ByteSize()
             return rank_data.rank # type: ignore
 
         self.rank = self.recv_with_retries(self.super_node_host, callback_fn)
@@ -352,6 +376,8 @@ class GRPCCommunication(CommunicationInterface):
         self_round = self.servicer.base_node.get_local_rounds()
         def callback_fn(stub: comm_pb2_grpc.CommunicationServerStub) -> int:
             round = stub.get_current_round(comm_pb2.Empty()) # type: ignore
+            with self.servicer.lock:
+                self.servicer.communication_cost_received += round.ByteSize()
             return round.round # type: ignore
         
         while True:
@@ -386,6 +412,8 @@ class GRPCCommunication(CommunicationInterface):
             model = stub.get_model(comm_pb2.Empty()) # type: ignore
             if model.buffer == EMPTY_MODEL_TAG:
                 return OrderedDict()
+            with self.servicer.lock:
+                self.servicer.communication_cost_received += model.ByteSize()
             return deserialize_model(model.buffer) # type: ignore
 
         for id in node_ids:
@@ -423,6 +451,9 @@ class GRPCCommunication(CommunicationInterface):
 
     def set_is_working(self, is_working: bool):
         self.servicer.set_is_working(is_working)
+
+    def get_comm_cost(self):
+        return self.servicer.get_comm_cost()
 
     def finalize(self):
         # 1. All nodes send finished to the super node
