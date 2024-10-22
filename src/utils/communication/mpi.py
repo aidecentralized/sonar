@@ -36,7 +36,7 @@ class MPICommUtils(CommunicationInterface):
     def listener(self):
         """
         Runs on listener thread on each node to receive a send request
-        Once send request is received, the listener thread informs the main
+        Once send request is received, the listener thread informs the send
         thread to send the data to the requesting node.
         """
         while True:
@@ -52,7 +52,7 @@ class MPICommUtils(CommunicationInterface):
 
     def send(self, data: Any):
         """
-        Node will wait until request is received and then send
+        Node will wait for a request to send data and then send the
         data to requesting node.
         """
         while True:
@@ -72,7 +72,7 @@ class MPICommUtils(CommunicationInterface):
 
     def receive(self, node_ids: str | int) -> Any:
         """
-        Node will send a request and wait to receive data.
+        Node will send a request for data and wait to receive data.
         """
         node_ids = int(node_ids)
         send_req = self.comm.isend("", dest=node_ids, tag=1)
@@ -80,7 +80,7 @@ class MPICommUtils(CommunicationInterface):
         recv_req = self.comm.irecv(source=node_ids)
         return recv_req.wait()
     
-    # depreciated broadcast function
+    # deprecated broadcast function
     # def broadcast(self, data: Any):
     #     for i in range(1, self.size):
     #         if i != self.rank:
