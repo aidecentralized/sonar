@@ -322,7 +322,7 @@ class MetaL2CServer(BaseFedAvgServer):
     """
     A federated learning server that coordinates training across clients, averages 
     model updates, and aggregates collaboration weights.
-    
+
     Args:
         config (Dict[str, Any]): Configuration parameters for the server.
         comm_utils (CommunicationManager): Communication manager for coordinating 
@@ -346,7 +346,7 @@ class MetaL2CServer(BaseFedAvgServer):
         Returns:
             Dict[str, torch.Tensor]: Averaged state dictionary.
         """
-        avg_model = copy.copy(state_dicts[0])
+        avg_model = copy.deepcopy(state_dicts[0])
 
         for key in avg_model.keys():
             for model in state_dicts[1:]:
@@ -354,6 +354,9 @@ class MetaL2CServer(BaseFedAvgServer):
             avg_model[key] /= len(state_dicts)
 
         return avg_model
+    
+    def collect_and_log_metrics(self, server_stats: Dict[str, Any], iteration: int) -> None:
+        self.log_metrics(stats=server_stats, iteration=iteration)
 
     def single_round(self, avg_alpha: Dict[str, torch.Tensor]) -> tuple:
         """
@@ -367,28 +370,21 @@ class MetaL2CServer(BaseFedAvgServer):
         Returns:
             tuple: The round statistics and the new averaged model weights.
         """
-        # Send avg_alpha to all clients
         for client_node in self.users:
             self.comm_utils.send(dest=client_node, data=avg_alpha, tag=self.tag.ROUND_START)
         self.log_utils.log_console("Server waiting for all clients to finish local training")
 
-        # Gather representations from all clients
         reprs = self.comm_utils.all_gather(self.tag.REPR_ADVERT)
         self.log_utils.log_console("Server received all clients models")
 
-        # Send aggregated representations back to clients
         self.send_representations(reprs)
 
-        # Gather round statistics and alphas from all clients
         round_stats_and_alphas = self.comm_utils.all_gather(self.tag.ROUND_STATS)
         alphas = [alpha for _, alpha in round_stats_and_alphas]
         round_stats = [stats for stats, _ in round_stats_and_alphas]
 
-        # Average the alphas to send back to clients in the next round
         avg_alpha = self.average_state_dicts(alphas)
 
-        # Log round statistics
-        # Compute aggregate metrics such as average test accuracy
         test_accs = [stats.get("test_acc", 0.0) for stats in round_stats]
         avg_test_acc = np.mean(test_accs)
         validation_losses = [stats.get("validation_loss", 0.0) for stats in round_stats]
@@ -402,8 +398,7 @@ class MetaL2CServer(BaseFedAvgServer):
             "avg_validation_acc": np.mean(validation_accs)
         }
 
-        self.log_metrics(stats=server_stats, iteration=self.round)
-        # self.log_metrics(stats={"validation_losses": validation_losses, "validation_accs": validation_accs}, iteration=self.round)
+        self.collect_and_log_metrics(server_stats, self.round)
 
         self.log_utils.log_console(
             f"Round {self.round} average test acc: {avg_test_acc}"
@@ -434,3 +429,4 @@ class MetaL2CServer(BaseFedAvgServer):
         stats_dict["round_step"] = 1
         self.log_utils.log_experiments_stats(stats_dict)
         self.plot_utils.plot_experiments_stats(stats_dict)
+
