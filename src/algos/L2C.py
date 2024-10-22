@@ -265,12 +265,20 @@ class L2CClient(BaseFedAvgClient):
             cw: np.ndarray = np.zeros(self.config["num_users"])
             for i, idx in self.neighbors_id_to_idx.items():
                 cw[i - 1] = self.collab_weights[idx]
-            round_stats: dict[str, Any] = {"collab_weights": cw}
+            
+            round_stats: Dict[str, Any] = {
+                "collab_weights": cw.tolist(), 
+                "round_id": round_id
+            }
 
+            # Start of the round
             self.comm_utils.receive(node_ids=self.server_node, tag=self.tag.ROUND_START)
-            round_stats["train_loss"], round_stats["train_acc"] = self.local_train(
-                epochs_per_round
-            )
+
+            train_loss, train_acc = self.local_train(epochs_per_round)
+            round_stats["train_loss"] = train_loss
+            round_stats["train_acc"] = train_acc
+
+            # Share representations
             repr: dict[str, Tensor] = self.get_representation()
             self.comm_utils.send(
                 dest=self.server_node, data=repr, tag=self.tag.REPR_ADVERT
@@ -279,32 +287,44 @@ class L2CClient(BaseFedAvgClient):
             reprs: list[dict[str, Tensor]] = self.comm_utils.receive(
                 node_ids=self.server_node, tag=self.tag.REPRS_SHARE
             )
-            reprs_dict: dict[int, dict[str, Tensor]] = dict(enumerate(reprs, 1))
+            reprs_dict: dict[int, dict[str, Tensor]] = {idx + 1: r for idx, r in enumerate(reprs)}
 
             collab_weights_dict: dict[int, float] = self.get_collaborator_weights(
                 reprs_dict
             )
-            models_update_wts: dict[int, dict[str, Tensor]] = reprs_dict
+            models_update_wts_dict: dict[int, dict[str, Tensor]] = reprs_dict
 
-            new_wts: dict[str, Tensor] = self.aggregate(
-                models_update_wts, collab_weights_dict, self.model_keys_to_ignore
-            )
+            # conv models_update_wts to List[OrderedDict[str, Tensor]]
+            sorted_client_ids = sorted(models_update_wts_dict.keys())
+            models_update_wts: List[OrderedDict[str, Tensor]] = [
+                OrderedDict(models_update_wts_dict[client_id]) for client_id in sorted_client_ids
+            ]
+
+            collab_weights: List[float] = [collab_weights_dict[client_id] for client_id in sorted_client_ids]
+
+            self.aggregate(models_update_wts, collab_weights, self.model_keys_to_ignore)
 
             if self.sharing_mode == "updates":
+                current_model_wts = self.get_model_weights_without_keys_to_ignore()
                 new_wts = self.model_utils.substract_model_weights(
-                    self.prev_model, new_wts
+                    self.prev_model, current_model_wts
                 )
+                self.set_model_weights(new_wts, self.model_keys_to_ignore)
 
-            self.set_model_weights(new_wts, self.model_keys_to_ignore)
-            round_stats["test_acc"] = self.local_test()
-            round_stats["validation_loss"], round_stats["validation_acc"] = (
-                self.learn_collab_weights(models_update_wts)
-            )
+            test_acc = self.local_test()
+            round_stats["test_acc"] = test_acc
 
-            print(f"node {self.node_id} weight: {self.collab_weights}")
-            if round_id == self.config["T_0"]:
+            validation_loss, validation_acc = self.learn_collab_weights(models_update_wts_dict)
+            round_stats["validation_loss"] = validation_loss
+            round_stats["validation_acc"] = validation_acc
+
+            round_stats["alpha_loss"] = validation_loss
+            round_stats["alpha_acc"] = validation_acc
+            round_stats["current_collab_weights"] = self.collab_weights.detach().cpu().numpy().tolist()
+            self.log_metrics(stats=round_stats, iteration=round_id)
+            # self.log_metrics(stats={"model_weights": new_wts}, iteration=round_id)
+            if round_id == self.config.get("T_0", total_rounds):
                 self.filter_out_worse_neighbors(self.config["target_users_after_T_0"])
-
             self.comm_utils.send(
                 dest=self.server_node, data=round_stats, tag=self.tag.ROUND_STATS
             )
