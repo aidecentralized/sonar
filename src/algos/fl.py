@@ -1,3 +1,4 @@
+import random
 from collections import OrderedDict
 from typing import Any, Dict, List
 from torch import Tensor
@@ -17,42 +18,18 @@ class FedAvgClient(BaseClient):
         super().__init__(config, comm_utils)
         self.config = config
 
-    def local_train(self, round: int, **kwargs: Any):
-        """
-        Train the model locally
-        """
-        start_time = time.time()
-        avg_loss, avg_accuracy = self.model_utils.train(
-            self.model, self.optim, self.dloader, self.loss_fn, self.device, malicious_type=self.config.get("malicious_type", "normal"), config=self.config,
-        )
-        end_time = time.time()
-        time_taken = end_time - start_time
-
-        self.log_utils.log_console(
-            "Client {} finished training with loss {:.4f}, accuracy {:.4f}, time taken {:.2f} seconds".format(
-                self.node_id, avg_loss, avg_accuracy, time_taken
-            )
-        )
-        self.log_utils.log_summary(
-            "Client {} finished training with loss {:.4f}, accuracy {:.4f}, time taken {:.2f} seconds".format(
-                self.node_id, avg_loss, avg_accuracy, time_taken
-            )
-        )
-
-        self.log_utils.log_tb(
-            f"train_loss/client{self.node_id}", avg_loss, round
-        )
-        self.log_utils.log_tb(
-            f"train_accuracy/client{self.node_id}", avg_accuracy, round
-        )
-        self.log_utils.log_tb(
-            f"time/client{self.node_id}", time_taken, round
-        )
-
     def local_test(self, **kwargs: Any):
         """
         Test the model locally, not to be used in the traditional FedAvg
         """
+        start_time = time.time()
+        test_loss, test_acc = self.model_utils.test(
+            self.model, self._test_loader, self.loss_fn, self.device,
+        )
+        end_time = time.time()
+        time_taken = end_time - start_time
+        return [test_loss, test_acc, time_taken]
+
 
     def get_model_weights(self, **kwargs: Any) -> Dict[str, Tensor]:
         """
@@ -84,24 +61,23 @@ class FedAvgClient(BaseClient):
             return self.model.state_dict()  # type: ignore
         return self.model.state_dict()  # type: ignore
 
-    def set_representation(self, representation: OrderedDict[str, Tensor]):
-        """
-        Set the model weights
-        """
-        self.model.load_state_dict(representation)
-
     def run_protocol(self):
+        stats: Dict[str, Any] = {}
+        print(f"Client {self.node_id} ready to start training")
+
         start_rounds = self.config.get("start_rounds", 0)
         total_rounds = self.config["rounds"]
 
         for round in range(start_rounds, total_rounds):
-            self.local_train(round)
-            self.local_test()
+            stats["train_loss"], stats["train_acc"], stats["train_time"] = self.local_train(round)
+            stats["test_loss"], stats["test_acc"], stats["test_time"] = self.local_test()
             self.local_round_done()
 
-            repr = self.comm_utils.receive([self.server_node])[0]
-            self.set_representation(repr)
-            # self.client_log_utils.log_summary("Round {} done for Client {}".format(round, self.node_id))
+            self.receive_and_aggregate()
+            
+            stats["bytes_received"], stats["bytes_sent"] = self.comm_utils.get_comm_cost()
+            
+            self.log_metrics(stats=stats, iteration=round)
 
 
 class FedAvgServer(BaseServer):
@@ -135,8 +111,13 @@ class FedAvgServer(BaseServer):
         """
         Aggregate the model weights
         """
-        avg_wts = self.fed_avg(representation_list)
-        return avg_wts
+        representation_list, _ = self.strip_empty_models(representation_list)
+        if len(representation_list) > 0:
+            avg_wts = self.fed_avg(representation_list)
+            return avg_wts
+        else:
+            self.log_utils.log_console("No clients participated in this round. Maintaining model.")
+            return self.model.state_dict()
 
     def set_representation(self, representation: OrderedDict[str, Tensor]):
         """
@@ -159,40 +140,25 @@ class FedAvgServer(BaseServer):
             self.model_utils.save_model(self.model, self.model_save_path)
         return [test_loss, test_acc, time_taken]
 
-    def single_round(self):
-        """
-        Runs the whole training procedure
-        """
+    def receive_and_aggregate(self):
         reprs = self.comm_utils.all_gather()
         avg_wts = self.aggregate(reprs)
         self.set_representation(avg_wts)
 
+    def single_round(self):
+        """
+        Runs the whole training procedure
+        """
+        self.receive_and_aggregate()            
+
     def run_protocol(self):
-        """
-        Run the federated averaging protocol
-        """
-        self.log_utils.log_console("Starting clients federated averaging")
+        stats: Dict[str, Any] = {}
+        print(f"Client {self.node_id} ready to start training")
         start_rounds = self.config.get("start_rounds", 0)
         total_rounds = self.config["rounds"]
         for round in range(start_rounds, total_rounds):
-            self.log_utils.log_console("Starting round {}".format(round))
-            self.log_utils.log_summary("Starting round {}".format(round))
             self.local_round_done()
             self.single_round()
-            self.log_utils.log_console("Server testing the model")
-            loss, acc, time_taken = self.test()
-            self.log_utils.log_tb("test_acc/clients", acc, round)
-            self.log_utils.log_tb("test_loss/clients", loss, round)
-            self.log_utils.log_tb("time/clients", time_taken, round)
-            self.log_utils.log_console(
-                "Round: {} test_acc:{:.4f}, test_loss:{:.4f}, time taken {:.2f} seconds".format(
-                    round, acc, loss, time_taken
-                )
-            )
-            # self.log_utils.log_summary("Round: {} test_acc:{:.4f}, test_loss:{:.4f}, time taken {:.2f} seconds".format(round, acc, loss, time_taken))
-            self.log_utils.log_console("Round {} complete".format(round))
-            self.log_utils.log_summary(
-                "Round {} complete".format(
-                    round,
-                )
-            )
+            stats["bytes_received"], stats["bytes_sent"] = self.comm_utils.get_comm_cost()
+            stats["test_loss"], stats["test_acc"], stats["test_time"] = self.test()
+            self.log_metrics(stats=stats, iteration=round)

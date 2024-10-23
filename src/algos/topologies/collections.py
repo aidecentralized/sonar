@@ -55,6 +55,15 @@ class CircleLadderTopology(BaseTopology):
     def generate_graph(self) -> None:
         self.graph = nx.circular_ladder_graph(self.num_users) # type: ignore
 
+class TreeTopology(BaseTopology):
+    def __init__(self, config: ConfigType, rank: int, children: int = 2):
+        super().__init__(config, rank)
+        self.children = children
+
+    def generate_graph(self) -> None:
+        self.graph = nx.full_rary_tree(self.children, self.num_users)
+
+
 
 ######### Random Graphs #########
 class ErdosRenyiTopology(BaseTopology):
@@ -102,4 +111,6 @@ def select_topology(config: ConfigType, rank: int) -> BaseTopology:
         return ErdosRenyiTopology(config, rank)
     if topology_name == "watts_strogatz":
         return WattsStrogatzTopology(config, rank)
+    if topology_name == "tree":
+        return TreeTopology(config, rank)
     raise ValueError(f"Topology {topology_name} not implemented")
