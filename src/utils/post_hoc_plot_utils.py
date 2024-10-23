@@ -4,19 +4,17 @@ import numpy as np
 from sklearn.metrics import auc
 from typing import List, Dict, Tuple, Optional
 import matplotlib.pyplot as plt
-
-# Define the path where your experiment logs are saved
-log_path = '/u/jyuan24/sonar/src/expt_dump/cifar10_3users_333_0_malicious_test_gaussian_noise_seed1/logs/'
+import json
 
 # Load Logs
-def load_logs(node_id: str, metric_type: str) -> pd.DataFrame:
+def load_logs(node_id: str, metric_type: str, logs_dir: str) -> pd.DataFrame:
     """Loads the csv logs for a given node and metric (train/test, acc/loss)"""
-    file_path = os.path.join(log_path, f'node_{node_id}/csv/{metric_type}.csv')
+    file_path = os.path.join(logs_dir, f'node_{node_id}/csv/{metric_type}.csv')
     return pd.read_csv(file_path)
 
-def get_all_nodes() -> List[str]:
+def get_all_nodes(logs_dir: str) -> List[str]:
     """Return all node directories in the log folder"""
-    return [d for d in os.listdir(log_path) if (os.path.isdir(os.path.join(log_path, d)) and d != "node_0" and d.startswith('node'))]
+    return [d for d in os.listdir(logs_dir) if (os.path.isdir(os.path.join(logs_dir, d)) and d != "node_0" and d.startswith('node'))]
 
 # Calculate Metrics Per User
 def calculate_auc(df: pd.DataFrame, metric: str = 'acc') -> float:
@@ -31,12 +29,12 @@ def best_loss(df: pd.DataFrame, metric: str) -> float:
     """Find the lowest loss for a given metric."""
     return df[metric].min()
 
-def compute_per_user_metrics(node_id: str) -> Dict[str, float]:
+def compute_per_user_metrics(node_id: str, logs_dir: str) -> Dict[str, float]:
     """Computes AUC, best accuracy, and best loss for train/test."""
-    train_acc = load_logs(node_id, 'train_acc')
-    test_acc = load_logs(node_id, 'test_acc')
-    train_loss = load_logs(node_id, 'train_loss')
-    test_loss = load_logs(node_id, 'test_loss')
+    train_acc = load_logs(node_id, 'train_acc', logs_dir)
+    test_acc = load_logs(node_id, 'test_acc', logs_dir)
+    train_loss = load_logs(node_id, 'train_loss', logs_dir)
+    test_loss = load_logs(node_id, 'test_loss', logs_dir)
 
     metrics = {
         'train_auc_acc': calculate_auc(train_acc, 'train_acc'),
@@ -51,17 +49,19 @@ def compute_per_user_metrics(node_id: str) -> Dict[str, float]:
 
     return metrics
 
-def aggregate_metrics_across_users(output_dir: str = f'{log_path}/aggregated_metrics/') -> Tuple[pd.Series, pd.Series, pd.DataFrame]:
+def aggregate_metrics_across_users(logs_dir: str, output_dir: Optional[str] = None) -> Tuple[pd.Series, pd.Series, pd.DataFrame]:
     """Aggregate metrics across all users and save the results to CSV files."""
-    nodes = get_all_nodes()
+    nodes = get_all_nodes(logs_dir)
     all_metrics: List[Dict[str, float]] = []
 
     # Ensure the output directory exists
+    if not output_dir:
+        output_dir = os.path.join(logs_dir, 'aggregated_metrics')
     os.makedirs(output_dir, exist_ok=True)
 
     for node in nodes:
         node_id = node.split('_')[-1]
-        metrics = compute_per_user_metrics(node_id)
+        metrics = compute_per_user_metrics(node_id, logs_dir)
         metrics['node'] = node
         all_metrics.append(metrics)
 
@@ -81,7 +81,7 @@ def aggregate_metrics_across_users(output_dir: str = f'{log_path}/aggregated_met
 
     return avg_metrics, std_metrics, df_metrics
 
-def compute_per_user_round_data(node_id: str, metrics_map: Optional[Dict[str, Dict[str, str]]] = None) -> Dict[str, np.ndarray]:
+def compute_per_user_round_data(node_id: str, logs_dir: str, metrics_map: Optional[Dict[str, str]] = None) -> Dict[str, np.ndarray]:
     """Extract per-round data (accuracy and loss) for train/test from the logs."""
     if metrics_map is None:
         metrics_map = {
@@ -93,7 +93,7 @@ def compute_per_user_round_data(node_id: str, metrics_map: Optional[Dict[str, Di
 
     per_round_data = {}
     for key, file_name in metrics_map.items():
-        data = load_logs(node_id, file_name)
+        data = load_logs(node_id, file_name, logs_dir)
         per_round_data[key] = data[file_name].values
         if 'rounds' not in per_round_data:
             per_round_data['rounds'] = data['iteration'].values
@@ -101,7 +101,7 @@ def compute_per_user_round_data(node_id: str, metrics_map: Optional[Dict[str, Di
     return per_round_data
 
 # Per Round Aggregation
-def aggregate_per_round_data(metrics_map: Optional[Dict[str, Dict[str, str]]] = None) -> Dict[str, pd.DataFrame]:
+def aggregate_per_round_data(logs_dir: str, metrics_map: Optional[Dict[str, str]] = None) -> Dict[str, pd.DataFrame]:
     """Aggregate the per-round data for all users."""
     if metrics_map is None:
         metrics_map = {
@@ -111,13 +111,13 @@ def aggregate_per_round_data(metrics_map: Optional[Dict[str, Dict[str, str]]] = 
             'test_loss': 'test_loss',
         }
 
-    nodes = get_all_nodes()
+    nodes = get_all_nodes(logs_dir)
     all_users_data: Dict[str, List[np.ndarray]] = {metric: [] for metric in metrics_map}
     all_users_data['rounds'] = []
 
     for node in nodes:
         node_id = node.split('_')[-1]
-        user_data = compute_per_user_round_data(node_id, metrics_map)
+        user_data = compute_per_user_round_data(node_id, logs_dir, metrics_map)
 
         # Collect data for all users
         for key in metrics_map:
@@ -145,20 +145,25 @@ def plot_metric_per_round(metric_df: pd.DataFrame, rounds: np.ndarray, metric_na
     mean_metric = metric_df.mean(axis=1)
     std_metric = metric_df.std(axis=1)
 
+    # Save the mean and std
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    mean_metric.to_csv(f'{output_dir}{metric_name}_avg.csv', index=False)
+    std_metric.to_csv(f'{output_dir}{metric_name}_std.csv', index=False)
+
+
     # Plot the mean with standard deviation as a shaded area
     plt.plot(rounds, mean_metric, label='Average', color='black', linestyle='--')
     plt.fill_between(rounds, mean_metric - std_metric, mean_metric + std_metric, color='gray', alpha=0.2, label='Std dev')
 
     plt.xlabel('Rounds (Iterations)')
     plt.ylabel(ylabel)
-    plt.title(f'{metric_name} per User and Aggregate')
+    plt.title(f'{ylabel} per User and Aggregate')
     plt.legend()
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
     plt.savefig(f'{output_dir}{metric_name}_per_round.png')
     plt.close()
 
-def plot_all_metrics(metrics_map: Optional[Dict[str, str]] = None) -> None:
+def plot_all_metrics(logs_dir: str, metrics_map: Optional[Dict[str, str]] = None) -> None:
     """Generates plots for all metrics over rounds with aggregation."""
     if metrics_map is None:
         metrics_map = {
@@ -168,13 +173,21 @@ def plot_all_metrics(metrics_map: Optional[Dict[str, str]] = None) -> None:
             'train_loss': 'Train Loss'
         }
 
-    all_users_data = aggregate_per_round_data()
+    all_users_data = aggregate_per_round_data(logs_dir)
 
     for key, display_name in metrics_map.items():
-        plot_metric_per_round(all_users_data[key], all_users_data['rounds'], display_name, display_name.split()[1], f'{log_path}plots/')
+        plot_metric_per_round(
+            metric_df=all_users_data[key], 
+            rounds=all_users_data['rounds'], 
+            metric_name=key, 
+            ylabel=display_name, 
+            output_dir=f'{logs_dir}plots/'
+            )
 
     print("Plots saved as PNG files.")
 
 if __name__ == "__main__":
-    avg_metrics, std_metrics, df_metrics = aggregate_metrics_across_users()
-    plot_all_metrics()
+    # Define the path where your experiment logs are saved
+    logs_dir = '/u/jyuan24/sonar/src/expt_dump/1_malicious_exp/cifar10_40users_1250_data_poison_8_malicious_seed1/logs/'
+    avg_metrics, std_metrics, df_metrics = aggregate_metrics_across_users(logs_dir)
+    plot_all_metrics(logs_dir)
