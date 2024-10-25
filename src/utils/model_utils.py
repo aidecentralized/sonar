@@ -86,7 +86,7 @@ class ModelUtils:
                 model, optim, dloader, loss_fn, device, test_loader=None, **kwargs
             )
             return mean_loss, acc
-        elif self.malicious_type == "backdoor_attack" or self.malicious_type == "gradient_attack":
+        elif self.malicious_type == "backdoor_attack" or self.malicious_type == "gradient_attack" or self.malicious_type == "label_flip":
             train_loss, acc = self.train_classification_malicious(
                 model, optim, dloader, loss_fn, device, test_loader=None, **kwargs
             )
@@ -254,6 +254,12 @@ class ModelUtils:
 
                 # Perform backpropagation with modified loss
                 loss.backward()
+            elif self.malicious_type == "label_flip":
+                permutation = torch.tensor(self.config.get("permutation", [i for i in range(10)]))
+                target = permutation[target] # flipped targets
+                loss = loss_fn(output, target)
+                loss.backward()
+
             else:
                 loss = loss_fn(output, target)
                 loss.backward()
@@ -263,7 +269,7 @@ class ModelUtils:
                 scaling_factor = self.config.get("scaling_factor", None)
                 noise_factor = self.config.get("noise_factor", None)
 
-                for param in self.model.parameters():
+                for param in model.parameters():
                     if param.grad is not None:
                         if scaling_factor:
                             param.grad.data *= scaling_factor  # Scaling the gradient maliciously

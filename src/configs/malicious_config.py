@@ -1,13 +1,12 @@
 # Malicious Configuration
 from utils.types import ConfigType
-from typing import Dict
+from typing import Dict, List
+import random
 
 # Weight Update Attacks
 sign_flip: ConfigType = {
     "malicious_type": "sign_flip",
-    "flip_rate": 0.3,  # 30% of the labels are flipped
-    "target_label": 1,
-    "source_labels": [0, 2, 3],
+    "flip_rate": 0.5,  # 30% of the labels are flipped
 }
 
 bad_weights: ConfigType = {
@@ -25,8 +24,8 @@ additive_noise: ConfigType = {
 # Model Poisoning Attacks
 gradient_attack: ConfigType = {
     "malicious_type": "gradient_attack",
-    "scaling_factor": 1, # Scaling factor for the gradient
-    "noise_factor": 0.1, # Scaling factor for the Gaussian noise
+    "scaling_factor": 2, # Scaling factor for the gradient
+    # "noise_factor": 0.1, # Scaling factor for the Gaussian noise
 }
 
 backdoor_attack: ConfigType = {
@@ -45,6 +44,14 @@ data_poisoning: ConfigType = {
     "corrupt_severity": 1,
 }
 
+random.seed(1)
+
+# Label Flip Attack
+label_flip: ConfigType = {
+    "malicious_type": "label_flip",
+    "permutation": random.shuffle([i for i in range(10)]),
+}
+
 # List of Malicious node configurations
 malicious_config_list: Dict[str, ConfigType] = {
     "sign_flip": sign_flip,
@@ -53,4 +60,14 @@ malicious_config_list: Dict[str, ConfigType] = {
     "gradient_attack": gradient_attack,
     "backdoor_attack": backdoor_attack,
     "data_poisoning": data_poisoning,
+    "label_flip": label_flip,
 }
+
+malicious_experiment_config_list: List[ConfigType] = [
+    data_poisoning,
+    gradient_attack,
+    backdoor_attack,
+    bad_weights,
+    sign_flip,
+    label_flip,
+]
