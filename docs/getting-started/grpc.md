@@ -8,16 +8,16 @@ In this tutorial, we will discuss how to use gRPC for training models across mul
 The main advantage of our abstract communication layer is that the same code runs regardless of the fact you are using MPI or gRPC underneath. As long as the communication layer is implemented correctly, the rest of the code remains the same. This is a huge advantage for the framework as it allows us to switch between different communication layers without changing the code.
 
 ## Running the code
-Let's say you want to run the decentralized training with 80 users on 4 machines. Our implementation currently requires a coordinating node to manage the orchestration. Therefore, there will be 81 nodes in total. Make sure `sys_config.py` has `num_users: 80` in the config. You should run the following command on all 4 machines:
+Let's say you want to run the decentralized training with 80 users on 4 machines. Our implementation currently requires a coordinating node to manage the orchestration. Therefore, there will be 81 nodes in total. In the `sys_config.py`, specify the hostname and port you want to run the coordinator node (i.e. `"comm": { "type": "GRPC", "peer_ids": ["randomhost41.mit.edu:5003"] # the coordinator port will be specified here }`), and set `num_users: 80`. 
 
-``` bash
-python main_grpc.py -n 20 -host randomhost42.mit.edu
-```
-
-On **one** of the machines that you want to use as a coordinator node (let's say it is `randomhost43.mit.edu`), change the `peer_ids` with the hostname and the port you want to run the coordinator node and then run the following command:
-
+On the machine that you want to run the coordinator node on, start the coordinator by running the following command:
 ``` bash
 python main.py -super true
+```
+
+Then, start the user threads by running the following command on all 4 machines (change the name of the host per machine you are using, and note that you may need to open a new terminal if you are using the same machine as the supernode):
+``` bash
+python main_grpc.py -n 20 -host randomhost42.mit.edu
 ```
 
 > **_NOTE:_**  Most of the algorithms right now do not use the new communication protocol, hence you can only use the old MPI version with them. We are working on updating the algorithms to use the new communication protocol.
