@@ -13,6 +13,7 @@ nav:
       - Config File: getting-started/config.md
       - Customizability: getting-started/customize.md
       - Using GRPC: getting-started/grpc.md
+      - Automating Experiments: getting-started/experiments.md
   - CollaBench:
     - Main: collabench.md
     - Feature Comparison: feature.md

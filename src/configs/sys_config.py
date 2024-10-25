@@ -10,6 +10,7 @@ from .algo_config import (
     malicious_algo_config_list,
     default_config_list,
     fedstatic,
+    traditional_fl
 )
 
 sliding_window_8c_4cpc_support = {
@@ -43,6 +44,7 @@ def get_algo_configs(
     assignment_method: Literal[
         "sequential", "random", "mapping", "distribution"
     ] = "sequential",
+    seed: Optional[int] = 1,
     mapping: Optional[List[int]] = None,
     distribution: Optional[Dict[int, int]] = None,
 ) -> Dict[str, ConfigType]:
@@ -74,10 +76,20 @@ def get_algo_configs(
             )
         total_users = sum(distribution.values())
         assert total_users == num_users
-        current_index = 1
+
+        # List of node indices to assign
+        node_indices = list(range(1, total_users + 1))
+        # Seed for reproducibility
+        random.seed(seed)
+        # Shuffle the node indices based on the seed
+        random.shuffle(node_indices)
+
+        # Assign nodes based on the shuffled indices
+        current_index = 0
         for algo_index, num_nodes in distribution.items():
             for i in range(num_nodes):
-                algo_config_map[f"node_{current_index}"] = algo_configs[algo_index]
+                node_id = node_indices[current_index]
+                algo_config_map[f"node_{node_id}"] = algo_configs[algo_index]
                 current_index += 1
     else:
         raise ValueError(f"Invalid assignment method: {assignment_method}")
@@ -265,9 +277,13 @@ mpi_domainnet_sys_config: ConfigType = {
     "seed": 1,
     "num_collaborators": NUM_COLLABORATORS,
     "load_existing": False,
+    "device_ids": get_device_ids(num_users=swarm_users, gpus_available=[1, 2]),
+    # "algo": get_algo_configs(num_users=swarm_users, algo_configs=default_config_list),  # type: ignore
+    "algos": get_algo_configs(
+        num_users=swarm_users,
+        algo_configs=default_config_list,
+    ),  # type: ignore
     "dump_dir": DUMP_DIR,
-    "device_ids": get_device_ids(num_users=swarm_users, gpus_available=[3, 4]),
-    "algo": get_algo_configs(num_users=swarm_users, algo_configs=default_config_list),  # type: ignore
     # Dataset params
     "dset": get_domainnet_support(
         swarm_users
@@ -275,7 +291,7 @@ mpi_domainnet_sys_config: ConfigType = {
     "dpath": domainnet_dpath,  # wilds_dpath,#domainnet_dpath,
     "train_label_distribution": "iid",  # Either "iid", "shard" "support",
     "test_label_distribution": "iid",  # Either "iid" "support",
-    "samples_per_user": 32,
+    "samples_per_user": 500,
     "test_samples_per_class": 100,
     "community_type": "dataset",
     "exp_keys": [],
@@ -303,6 +319,20 @@ object_detect_system_config: ConfigType = {
 }
 
 num_users = 9
+
+dropout_dict = {
+    "distribution_dict": { # leave dict empty to disable dropout
+        "method": "uniform",  # "uniform", "normal"
+        "parameters": {} # "mean": 0.5, "std": 0.1 in case of normal distribution
+    },
+    "dropout_rate": 0.0, # cutoff for dropout: [0,1]
+    "dropout_correlation": 0.0, # correlation between dropouts of successive rounds: [0,1]
+}
+
+dropout_dicts = {"node_0": {}}
+for i in range(1, num_users + 1):
+    dropout_dicts[f"node_{i}"] = dropout_dict
+
 gpu_ids = [2, 3, 5, 6]
 grpc_system_config: ConfigType = {
     "exp_id": "static",
@@ -315,11 +345,12 @@ grpc_system_config: ConfigType = {
     "seed": 2,
     "device_ids": get_device_ids(num_users, gpu_ids),
     # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
-    "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
+    "algos": get_algo_configs(num_users=num_users, algo_configs=[traditional_fl]),  # type: ignore
     "samples_per_user": 50000 // num_users,  # distributed equally
     "train_label_distribution": "iid",
     "test_label_distribution": "iid",
     "exp_keys": [],
+    "dropout_dicts": dropout_dicts,
 }
 
 current_config = grpc_system_config
