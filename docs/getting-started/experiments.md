@@ -20,27 +20,27 @@ from configs.sys_config import grpc_system_config
 
 3. Write the experiment object like the example `exp_dict`, mapping each new experiment ID to the set of keys that you want to change per experiment. Specify the `algo_config` and its specific customizations in `algo`, and likewise for `sys_config` and `sys`. *Note every experiment must have a unique experiment path, and we recommend guarenteeing this by giving every experiment a unique experiment id.*
 ``` python
-exp_dict = {
+exp_dict = exp_dict = {
     "test_automation_1": {
         "algo_config": traditional_fl,
         "sys_config": grpc_system_config,
         "algo": {
-            "num_users": 3,
-            "num_rounds": 3,
+            "rounds": 3,
         },
         "sys": {
             "seed": 3,
+            "num_users": 3,
         },
     },
     "test_automation_2": {
         "algo_config": traditional_fl,
         "sys_config": grpc_system_config,
         "algo": {
-            "num_users": 4,
-            "num_rounds": 4,
+            "rounds": 4,
         },
         "sys": {
             "seed": 4,
+            "num_users": 4,
         },
     },
 }
