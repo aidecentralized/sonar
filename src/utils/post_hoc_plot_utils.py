@@ -140,10 +140,13 @@ def plot_metric_per_round(metric_df: pd.DataFrame, rounds: np.ndarray, metric_na
     # Plot per-user data
     for col in metric_df.columns:
         plt.plot(rounds, metric_df[col], alpha=0.6, label=f'User {col+1}')
-    
-    # Compute mean and std
-    mean_metric = metric_df.mean(axis=1)
-    std_metric = metric_df.std(axis=1)
+
+    # Select only numeric columns before calculating mean and std
+    numeric_columns = df_metrics.select_dtypes(include=[np.number])
+
+    # Calculate average and standard deviation
+    avg_metrics = numeric_columns.mean()
+    std_metrics = numeric_columns.std()
 
     # Save the mean and std
     if not os.path.exists(output_dir):

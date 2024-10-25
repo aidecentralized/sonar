@@ -44,6 +44,7 @@ def get_algo_configs(
     assignment_method: Literal[
         "sequential", "random", "mapping", "distribution"
     ] = "sequential",
+    seed: Optional[int] = 1,
     mapping: Optional[List[int]] = None,
     distribution: Optional[Dict[int, int]] = None,
 ) -> Dict[str, ConfigType]:
@@ -75,10 +76,20 @@ def get_algo_configs(
             )
         total_users = sum(distribution.values())
         assert total_users == num_users
-        current_index = 1
+
+        # List of node indices to assign
+        node_indices = list(range(1, total_users + 1))
+        # Seed for reproducibility
+        random.seed(seed)
+        # Shuffle the node indices based on the seed
+        random.shuffle(node_indices)
+
+        # Assign nodes based on the shuffled indices
+        current_index = 0
         for algo_index, num_nodes in distribution.items():
             for i in range(num_nodes):
-                algo_config_map[f"node_{current_index}"] = algo_configs[algo_index]
+                node_id = node_indices[current_index]
+                algo_config_map[f"node_{node_id}"] = algo_configs[algo_index]
                 current_index += 1
     else:
         raise ValueError(f"Invalid assignment method: {assignment_method}")
