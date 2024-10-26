@@ -1,6 +1,6 @@
 from collections import OrderedDict
 import io
-from typing import Dict
+from typing import Dict, Any
 import torch
 
 
@@ -19,3 +19,17 @@ def deserialize_model(model_bytes: bytes) -> OrderedDict[str, torch.Tensor]:
     buffer.seek(0)
     model_wts = torch.load(buffer)  # type: ignore
     return model_wts
+
+def serialize_message(message: Dict[str, Any]) -> bytes:
+    # assumes all tensors are on cpu
+    buffer = io.BytesIO()
+    torch.save(message, buffer)  # type: ignore
+    buffer.seek(0)
+    return buffer.read()
+
+
+def deserialize_message(model_bytes: bytes) -> OrderedDict[str, Any]:
+    buffer = io.BytesIO(model_bytes)
+    buffer.seek(0)
+    message = torch.load(buffer)  # type: ignore
+    return message

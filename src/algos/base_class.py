@@ -250,7 +250,13 @@ class BaseNode(ABC):
         """
         Share the model weights
         """
-        return self.model.state_dict()
+        message = {"sender": self.node_id, "round": self.round, "model": self.model.state_dict()}
+
+        # Move to CPU before sending
+        for key in message["model"].keys():
+            message["model"][key] = message["model"][key].to("cpu")
+            
+        return message
 
     def get_local_rounds(self) -> int:
         return self.round
@@ -307,7 +313,7 @@ class BaseNode(ABC):
         raise NotImplementedError
 
 
-    def strip_empty_models(self,  models_wts: List[OrderedDict[str, Tensor]],
+    def strip_empty_models(self,  models_wts: List[OrderedDict[str, Any]],
         collab_weights: Optional[List[float]] = None) -> Any:
         repr_list = []
         if collab_weights is not None:
@@ -606,7 +612,12 @@ class BaseClient(BaseNode):
         """
         if self.is_working:
             repr = self.comm_utils.receive([self.server_node])[0]
-            self.set_model_weights(repr)
+            if "round" in repr:
+                round = repr["round"]
+            if "sender" in repr:
+                sender = repr["sender"]
+            assert "model" in repr, "Model not found in the received message"
+            self.set_model_weights(repr["model"])
 
     def run_protocol(self) -> None:
         raise NotImplementedError
@@ -673,7 +684,7 @@ class BaseServer(BaseNode):
         self._test_loader = DataLoader(test_dset, batch_size=batch_size)
 
     def aggregate(
-        self, representation_list: List[OrderedDict[str, Tensor]], **kwargs: Any
+        self, representation_list: List[OrderedDict[str, Any]], **kwargs: Any
     ) -> OrderedDict[str, Tensor]:
         """
         Aggregate the knowledge from the users
@@ -745,15 +756,9 @@ class BaseFedAvgClient(BaseClient):
             self.model_utils.save_model(self.model, self.model_save_path)
         return test_loss, acc
 
-    def get_model_weights(self) -> OrderedDict[str, Tensor]:
-        """
-        Share the model weights (on the cpu)
-        """
-        return OrderedDict({k: v.cpu() for k, v in self.model.state_dict().items()})
-
     def aggregate(
         self,
-        models_wts: List[OrderedDict[str, Tensor]],
+        models_wts: List[OrderedDict[str, Any]],
         collab_weights: Optional[List[float]] = None,
         keys_to_ignore: List[str] = [],
     ) -> None:
@@ -768,6 +773,7 @@ class BaseFedAvgClient(BaseClient):
         Returns:
             None
         """
+        
         models_coeffs: List[Tuple[OrderedDict[str, Tensor], float]] = []
         # insert the current model weights at the position self.node_id
         models_wts.insert(self.node_id - 1, self.get_model_weights())
@@ -777,6 +783,12 @@ class BaseFedAvgClient(BaseClient):
         # Handle dropouts and re-normalize the weights
         models_wts, collab_weights = self.strip_empty_models(models_wts, collab_weights)
         collab_weights = [w / sum(collab_weights) for w in collab_weights]
+
+        senders = [model["sender"] for model in models_wts if "sender" in model]
+        rounds = [model["round"] for model in models_wts if "round" in model]
+        for i in range(len(models_wts)):
+            assert "model" in models_wts[i], "Model not found in the received message"
+            models_wts[i] = models_wts[i]["model"]
 
         for idx, model_wts in enumerate(models_wts):
             models_coeffs.append((model_wts, collab_weights[idx]))
