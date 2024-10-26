@@ -24,7 +24,7 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-command_list: List[str] = ["python", "main.py", "-host", args.host]
+command_list: List[str] = ["python3.11", "main.py", "-host", args.host]
 # if the super-node is to be started on this machine
 
 for i in range(args.n):
