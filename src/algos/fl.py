@@ -31,35 +31,42 @@ class FedAvgClient(BaseClient):
         return [test_loss, test_acc, time_taken]
 
 
-    def get_model_weights(self, **kwargs: Any) -> Dict[str, Tensor]:
+    def get_model_weights(self, **kwargs: Any) -> Dict[str, Any]:
         """
         Overwrite the get_model_weights method of the BaseNode
         to add malicious attacks
         TODO: this should be moved to BaseClient
         """
 
+        message = {"sender": self.node_id, "round": self.round}
+
         malicious_type = self.config.get("malicious_type", "normal")
 
         if malicious_type == "normal":
-            return self.model.state_dict()  # type: ignore
+            message["model"] = self.model.state_dict()  # type: ignore
         elif malicious_type == "bad_weights":
             # Corrupt the weights
-            return BadWeightsAttack(
+            message["model"] = BadWeightsAttack(
                 self.config, self.model.state_dict()
             ).get_representation()
         elif malicious_type == "sign_flip":
             # Flip the sign of the weights, also TODO: consider label flipping
-            return SignFlipAttack(
+            message["model"] = SignFlipAttack(
                 self.config, self.model.state_dict()
             ).get_representation()
         elif malicious_type == "add_noise":
             # Add noise to the weights
-            return AddNoiseAttack(
+            message["model"] = AddNoiseAttack(
                 self.config, self.model.state_dict()
             ).get_representation()
         else:
-            return self.model.state_dict()  # type: ignore
-        return self.model.state_dict()  # type: ignore
+            message["model"] = self.model.state_dict()  # type: ignore
+
+        # move the model to cpu before sending
+        for key in message["model"].keys():
+            message["model"][key] = message["model"][key].to("cpu")
+    
+        return message  # type: ignore
 
     def run_protocol(self):
         stats: Dict[str, Any] = {}
@@ -106,13 +113,18 @@ class FedAvgServer(BaseServer):
         return avgd_wts
 
     def aggregate(
-        self, representation_list: List[OrderedDict[str, Tensor]], **kwargs: Any
+        self, representation_list: List[OrderedDict[str, Any]], **kwargs: Any
     ) -> OrderedDict[str, Tensor]:
         """
         Aggregate the model weights
         """
         representation_list, _ = self.strip_empty_models(representation_list)
         if len(representation_list) > 0:
+            senders = [rep["sender"] for rep in representation_list if "sender" in rep]
+            rounds = [rep["round"] for rep in representation_list if "round" in rep]
+            for i in range(len(representation_list)):
+                representation_list[i] = representation_list[i]["model"]
+
             avg_wts = self.fed_avg(representation_list)
             return avg_wts
         else:
