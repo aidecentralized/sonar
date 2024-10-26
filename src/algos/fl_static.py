@@ -4,6 +4,7 @@ Module for FedStaticClient and FedStaticServer in Federated Learning.
 from typing import Any, Dict, OrderedDict
 from utils.communication.comm_utils import CommunicationManager
 import torch
+import time
 
 from algos.base_class import BaseFedAvgClient
 from algos.topologies.collections import select_topology
@@ -31,7 +32,7 @@ class FedStaticNode(BaseFedAvgClient):
         """
         Runs the federated learning protocol for the client.
         """
-        stats: Dict[str, float] = {}
+        stats: Dict[str, Any] = {}
         print(f"Client {self.node_id} ready to start training")
         start_round = self.config.get("start_round", 0)
         if start_round != 0:
@@ -42,28 +43,25 @@ class FedStaticNode(BaseFedAvgClient):
         epochs_per_round = self.config.get("epochs_per_round", 1)
         for it in range(start_round, total_rounds):
             # Train locally and send the representation to the server
-            stats["train_loss"], stats["train_acc"] = self.local_train(
-                epochs_per_round
-            )
+            stats["train_loss"], stats["train_acc"], stats["train_time"] = self.local_train(
+                    it, epochs_per_round
+                )            
             self.local_round_done()
 
             # Collect the representations from all other nodes from the server
             neighbors = self.topology.sample_neighbours(self.num_collaborators)
             # TODO: Log the neighbors
+            stats["neighbors"] = neighbors
 
-            # Pull the model updates from the neighbors
-            model_updates = self.comm_utils.receive(node_ids=neighbors)
+            self.receive_and_aggregate(neighbors)
 
-            # Aggregate the representations
-            self.aggregate(model_updates)
+            stats["bytes_received"], stats["bytes_sent"] = self.comm_utils.get_comm_cost()
 
             # evaluate the model on the test data
+            # Inside FedStaticNode.run_protocol()
             stats["test_loss"], stats["test_acc"] = self.local_test()
-            self.log_utils.log_console("Round {} done for Node {}, stats {}".format(it, self.node_id, stats))
-            self.log_utils.log_tb(key="train/loss", value=stats["train_loss"], iteration=it)
-            self.log_utils.log_tb(key="train/accuracy", value=stats["train_acc"], iteration=it)
-            self.log_utils.log_tb(key="test/loss", value=stats["test_loss"], iteration=it)
-            self.log_utils.log_tb(key="test/accuracy", value=stats["test_acc"], iteration=it)
+            self.log_metrics(stats=stats, iteration=it)
+
 
 
 class FedStaticServer(BaseFedAvgClient):

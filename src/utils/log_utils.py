@@ -14,6 +14,9 @@ import torchvision.transforms as T  # type: ignore
 from torchvision.utils import make_grid, save_image  # type: ignore
 from tensorboardX import SummaryWriter  # type: ignore
 import numpy as np
+import pandas as pd
+from utils.types import ConfigType
+import json
 
 
 def deprocess(img: torch.Tensor) -> torch.Tensor:
@@ -53,7 +56,7 @@ def check_and_create_path(path: str):
         os.makedirs(path)
 
 
-def copy_source_code(config: Dict[str, Any]) -> None:
+def copy_source_code(config: ConfigType) -> None:
     """
     Copy source code to experiment folder for reproducibility.
 
@@ -101,7 +104,7 @@ class LogUtils:
     Utility class for logging and saving experiment data.
     """
 
-    def __init__(self, config: Dict[str, Any]) -> None:
+    def __init__(self, config: ConfigType) -> None:
         log_dir = config["log_path"]
         load_existing = config["load_existing"]
         log_format = (
@@ -115,9 +118,18 @@ class LogUtils:
         )
         logging.getLogger().addHandler(logging.StreamHandler())
         self.log_dir = log_dir
+        self.log_config(config)
         self.init_tb(load_existing)
         self.init_npy()
         self.init_summary()
+        self.init_csv()
+
+    def log_config(self, config: ConfigType):
+        """
+        Log the configuration to a json file. 
+        """
+        with open(f"{self.log_dir}/config.json", "w") as f:
+            json.dump(config, f, indent=4)
 
     def init_summary(self):
         """
@@ -144,6 +156,14 @@ class LogUtils:
         npy_path = f"{self.log_dir}/npy"
         if not os.path.exists(npy_path) or not os.path.isdir(npy_path):
             os.makedirs(npy_path)
+
+    def init_csv(self):
+        """
+        Initialize CSV file for logging.
+        """
+        csv_path = f"{self.log_dir}/csv"
+        if not os.path.exists(csv_path) or not os.path.isdir(csv_path):
+            os.makedirs(csv_path)
 
     def log_summary(self, text: str):
         """
@@ -199,6 +219,26 @@ class LogUtils:
             value (numpy.ndarray): Array to save.
         """
         np.save(f"{self.log_dir}/npy/{key}.npy", value)
+
+    def log_csv(self, key: str, value: Any, iteration: int):
+        """
+        Log a value to a CSV file.
+
+        Args:
+            key (str): Key for the logged value.
+            value (Any): Value to log.
+            iteration (int): Current iteration number.
+        """
+        row_data = {"iteration": iteration, key: value}
+        df = pd.DataFrame([row_data])
+        
+        log_file = f"{self.log_dir}/csv/{key}.csv"
+        # Check if the file exists to determine if headers should be written
+        file_exists = os.path.isfile(log_file)
+        
+        # Append the metrics to the CSV file
+        df.to_csv(log_file, mode='a', header=not file_exists, index=False)
+
 
     def log_max_stats_per_client(
         self, stats_per_client: np.ndarray, round_step: int, metric: str
