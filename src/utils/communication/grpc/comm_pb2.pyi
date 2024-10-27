@@ -29,6 +29,12 @@ class Rank(_message.Message):
     rank: int
     def __init__(self, rank: _Optional[int] = ...) -> None: ...
 
+class Round(_message.Message):
+    __slots__ = ("round",)
+    ROUND_FIELD_NUMBER: _ClassVar[int]
+    round: int
+    def __init__(self, round: _Optional[int] = ...) -> None: ...
+
 class Port(_message.Message):
     __slots__ = ("port",)
     PORT_FIELD_NUMBER: _ClassVar[int]

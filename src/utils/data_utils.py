@@ -9,7 +9,7 @@ from torch import Tensor
 from utils.corruptions import corrupt_mapping
 
 
-class CacheDataset:
+class CacheDataset(Dataset):
     """
     Caches the entire dataset in memory.
     """
@@ -27,7 +27,7 @@ class CacheDataset:
         return len(self.data)
 
 
-class TransformDataset:
+class TransformDataset(Dataset):
     """
     Applies a transformation to the dataset.
     """
@@ -45,7 +45,7 @@ class TransformDataset:
         return len(self.dset)
     
 # Custom dataset wrapper to apply corruption
-class CorruptDataset:
+class CorruptDataset(Dataset):
     def __init__(self, dset: CacheDataset, corruption_fn_name, severity: int = 1):
         print("Initialized CorruptDataset with corruption_fn_name: ", corruption_fn_name)
         self.dset = dset # Original dataset

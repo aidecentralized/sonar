@@ -15,6 +15,7 @@ Usage:
 
 import random
 from collections import OrderedDict
+from typing import Dict
 from torch import Tensor
 from utils.types import ConfigType
 
@@ -31,7 +32,7 @@ class BadWeightsAttack:
     """
 
     def __init__(
-        self, config: ConfigType, state_dict: OrderedDict[str, Tensor]
+        self, config: ConfigType, state_dict: Dict[str, Tensor]
     ) -> None:
         """
         Initializes the BadWeightsAttack class with the provided configuration and model state.
@@ -46,10 +47,10 @@ class BadWeightsAttack:
         """
         self.state_dict = state_dict
         self.weight = config.get("weight", 0)
-        self.corrupt_portion = float(config.get("corrupt_portion", 1))
+        self.corrupt_portion = float(config.get("corrupt_portion", 1)) # type: ignore
         # TODO: Add conditions like start and end epochs or rounds when corruption occurs.
 
-    def get_representation(self) -> OrderedDict[str, Tensor]:
+    def get_representation(self) -> Dict[str, Tensor]:
         """
         Returns a modified version of the model's state dictionary where 
         a portion of the weights are scaled by the 'weight' factor based 
@@ -66,4 +67,3 @@ class BadWeightsAttack:
                 for key, val in self.state_dict.items()
             }
         )
-

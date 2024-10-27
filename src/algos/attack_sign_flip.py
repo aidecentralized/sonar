@@ -15,6 +15,7 @@ Usage:
 
 import random
 from collections import OrderedDict
+from typing import Dict
 from torch import Tensor
 from utils.types import ConfigType
 
@@ -32,7 +33,7 @@ class SignFlipAttack:
     """
 
     def __init__(
-        self, config: ConfigType, state_dict: OrderedDict[str, Tensor]
+        self, config: ConfigType, state_dict: Dict[str, Tensor]
     ) -> None:
         """
         Initializes the SignFlipAttack class with the provided configuration and model state.
@@ -45,10 +46,10 @@ class SignFlipAttack:
                                                    (weights).
         """
         self.state_dict = state_dict
-        self.flip_rate = float(config.get("flip_rate", 1))
+        self.flip_rate = float(config.get("flip_rate", 1)) # type: ignore
         # TODO: Add conditions such as target label, source label, start/end epochs, or rounds for the attack.
 
-    def get_representation(self) -> OrderedDict[str, Tensor]:
+    def get_representation(self) -> Dict[str, Tensor]:
         """
         Returns a modified version of the model's state dictionary where the sign of 
         weights is flipped based on the probability defined by 'flip_rate'.

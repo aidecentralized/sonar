@@ -1,8 +1,10 @@
 """Add docstring here"""
 
 from abc import ABC, abstractmethod
+import sys
 import torch
 import numpy as np
+import torch.utils
 from torch.utils.data import DataLoader, Subset
 
 from collections import OrderedDict
@@ -10,6 +12,8 @@ from typing import Any, Dict, List, Optional, Tuple
 from torch import Tensor
 import copy
 import random
+import time
+import torch.utils.data
 
 from utils.communication.comm_utils import CommunicationManager
 from utils.plot_utils import PlotUtils
@@ -32,53 +36,134 @@ from utils.community_utils import (
     get_dset_balanced_communities,
     get_dset_communities,
 )
+from utils.types import ConfigType
+from utils.dropout_utils import NodeDropout
+
 import torchvision.transforms as T  # type: ignore
 import os
 
 from yolo import YOLOLoss
 
 
+def set_seed(seed: int) -> None:
+    torch.manual_seed(seed)  # type: ignore
+    random.seed(seed)
+    np.random.seed(seed)
+
+
 class BaseNode(ABC):
-    """Add docstring here"""
+    """BaseNode is an abstract base class that provides foundational functionalities for nodes in a distributed system. It handles configuration, logging, CUDA setup, model parameter settings, and shared experiment parameters.
+
+    Attributes:
+        comm_utils (CommunicationManager): Utility for communication management.
+        node_id (int): Unique identifier for the node.
+        dset (str): Dataset identifier for the node.
+        device (torch.device): Device (CPU/GPU) to be used for computation.
+        model_utils (ModelUtils): Utility for model-related operations.
+        dset_obj (Dataset): Dataset object for the node.
+        best_acc (float): Best accuracy achieved by the node.
+        plot_utils (PlotUtils): Utility for plotting.
+        log_utils (LogUtils): Utility for logging.
+        device_ids (List[int]): List of device IDs for CUDA.
+        model (torch.nn.Module): Model used by the node.
+        optim (torch.optim.Optimizer): Optimizer for the model.
+        loss_fn (torch.nn.Module): Loss function for the model.
+        num_collaborators (int): Number of collaborators in the experiment.
+        communities (Dict[int, List[int]]): Mapping of users to their communities.
+
+    Methods:
+        __init__(self, config: Dict[str, Any], comm_utils: CommunicationManager) -> None:
+            Initializes the BaseNode with the given configuration and communication utilities.
+
+        set_constants(self) -> None:
+            Sets constant attributes for the node.
+
+        setup_logging(self, config: Dict[str, ConfigType]) -> None:
+
+        setup_cuda(self, config: Dict[str, ConfigType]) -> None:
+            Sets up CUDA devices for the node based on the configuration.
+
+        set_model_parameters(self, config: Dict[str, Any]) -> None:
+            Sets model-related parameters including the model, optimizer, and loss function.
+
+        set_shared_exp_parameters(self, config: Dict[str, ConfigType]) -> None:
+            Sets shared experiment parameters including the number of collaborators and community settings.
+
+        run_protocol(self) -> None:
+            Abstract method to be implemented by subclasses, defining the protocol to be run by the node.
+    """
     def __init__(
         self, config: Dict[str, Any], comm_utils: CommunicationManager
     ) -> None:
-        """Add docstring here"""
+        self.set_constants()
         self.comm_utils = comm_utils
         self.node_id = self.comm_utils.get_rank()
+        self.comm_utils.register_node(self)
+        self.is_working = True
 
-        if self.node_id == 0:
-            self.log_dir = config["log_path"]
-            config["log_path"] = f"{self.log_dir}/server"
-            try:
-                os.mkdir(config["log_path"])
-            except FileExistsError:
-                pass
-            config["load_existing"] = False
-            self.log_utils = LogUtils(config)
-            self.log_utils.log_console(f"Config: {config}")
-            self.plot_utils = PlotUtils(config)
+        self.setup_logging(config)
 
         # Support user specific dataset
         if isinstance(config["dset"], dict):
             if self.node_id != 0:
-                config["dset"].pop("0")
-            self.dset = str(config["dset"][str(self.node_id)])
+                config["dset"].pop("0") # type: ignore
+            self.dset = str(config["dset"][str(self.node_id)]) # type: ignore
             config["dpath"] = config["dpath"][self.dset]
         else:
             self.dset = config["dset"]
 
         self.setup_cuda(config)
-        self.model_utils = ModelUtils(self.device)
+        self.model_utils = ModelUtils(self.device, config)
 
         self.dset_obj = get_dataset(self.dset, dpath=config["dpath"])
-        self.set_constants()
+
+        dropout_seed = 1 * config.get("num_users", 9) + self.node_id * config.get("num_users", 9) + config.get("seed", 20) # arbitrarily chosen
+        dropout_rng = random.Random(dropout_seed)
+        self.dropout = NodeDropout(self.node_id, config["dropout_dicts"], dropout_rng)
 
     def set_constants(self) -> None:
         """Add docstring here"""
         self.best_acc = 0.0
+        self.round = 0
 
-    def setup_cuda(self, config: Dict[str, Any]) -> None:
+    def setup_logging(self, config: Dict[str, ConfigType]) -> None:
+        """
+        Sets up logging for the node by creating necessary directories and initializing logging utilities.
+
+        Args:
+            config (Dict[str, ConfigType]): Configuration dictionary containing logging and plotting paths.
+
+        Raises:
+            SystemExit: If the log directory for the node already exists to prevent accidental overwrite.
+
+        Side Effects:
+            - Creates a log directory specific to the node.
+            - Initializes PlotUtils and LogUtils with the given configuration.
+            - Logs the configuration to the console if the node ID is 0.
+        """
+        try:
+            config["log_path"] = f"{config['log_path']}/node_{self.node_id}" # type: ignore
+            os.makedirs(config["log_path"])
+        except FileExistsError:
+            color_code = "\033[91m"  # Red color
+            reset_code = "\033[0m"  # Reset to default color
+            print(
+                f"{color_code}Log directory for the node {self.node_id} already exists in {config['log_path']}"
+            )
+            print(f"Exiting to prevent accidental overwrite{reset_code}")
+            sys.exit(1)
+
+        # TODO: Check if the plot directory should be unique to each node
+        try:
+            self.plot_utils = PlotUtils(config)
+        except FileExistsError:
+            print(f"Plot directory for the node {self.node_id} already exists")
+
+        self.log_utils = LogUtils(config)
+        if self.node_id == 0:
+            self.log_utils.log_console("Config: {}".format(config))
+
+    def setup_cuda(self, config: Dict[str, ConfigType]) -> None:
         """add docstring here"""
         # Need a mapping from rank to device id
         device_ids_map = config["device_ids"]
@@ -125,8 +210,8 @@ class BaseNode(ABC):
         else:
             self.loss_fn = torch.nn.CrossEntropyLoss()
 
-    def set_shared_exp_parameters(self, config: Dict[str, Any]) -> None:
-        """Add docstring here"""
+    def set_shared_exp_parameters(self, config: Dict[str, ConfigType]) -> None:
+        self.num_collaborators: int = config["num_collaborators"] # type: ignore
         if self.node_id != 0:
             community_type, number_of_communities = config.get(
                 "community_type", None
@@ -161,11 +246,120 @@ class BaseNode(ABC):
         if self.node_id == 0:
             self.log_utils.log_console(f"Communities: {self.communities}")
 
+    def local_round_done(self) -> None:
+        self.round += 1
+
+    def get_model_weights(self) -> Dict[str, Tensor]:
+        """
+        Share the model weights
+        """
+        message = {"sender": self.node_id, "round": self.round, "model": self.model.state_dict()}
+
+        # Move to CPU before sending
+        for key in message["model"].keys():
+            message["model"][key] = message["model"][key].to("cpu")
+            
+        return message
+
+    def get_local_rounds(self) -> int:
+        return self.round
+
     @abstractmethod
     def run_protocol(self) -> None:
         """Add docstring here"""
         raise NotImplementedError
 
+    def log_metrics(self, stats: Dict[str, Any], iteration: int) -> None:
+        """
+        Centralized method to log metrics.
+
+        Args:
+            stats (Dict[str, Any]): Dictionary containing metric names and their values.
+            iteration (int): Current iteration or round number.
+        """
+        # Log to console
+        self.log_utils.log_console(
+            f"Round {iteration} done for Node {self.node_id}, stats {stats}"
+        )
+
+        # Log scalar metrics to TensorBoard
+        for key, value in stats.items():
+            if isinstance(value, (float, int)):
+                # Determine the category based on the key
+                if "loss" in key.lower():
+                    tb_key = f"{key}/loss"
+                elif "acc" in key.lower() or "accuracy" in key.lower():
+                    tb_key = f"{key}/accuracy"
+                else:
+                    tb_key = key  # Generic key
+
+                self.log_utils.log_tb(key=tb_key, value=value, iteration=iteration)
+
+        # Log numpy arrays if present
+        for key, value in stats.items():
+            if isinstance(value, np.ndarray):
+                self.log_utils.log_npy(key=key, value=value)
+
+        # Log all stats to CSV
+        for key, value in stats.items():
+            self.log_utils.log_csv(key=key, value=value, iteration=iteration)
+
+        # Log images if present
+        if "images" in stats:
+            self.log_utils.log_image(
+                imgs=stats["images"], key="sample_images", iteration=iteration
+            )
+
+    @abstractmethod
+    def receive_and_aggregate(self):
+        """Add docstring here"""
+        raise NotImplementedError
+
+
+    def strip_empty_models(self,  models_wts: List[OrderedDict[str, Any]],
+        collab_weights: Optional[List[float]] = None) -> Any:
+        repr_list = []
+        if collab_weights is not None:
+            weight_list = []
+            for i, model_wts in enumerate(models_wts):
+                if len(model_wts) > 0 and collab_weights[i] > 0:
+                    repr_list.append(model_wts)
+                    weight_list.append(collab_weights[i])
+            return repr_list, weight_list
+        else:
+            for model_wts in models_wts:
+                if len(model_wts) > 0:
+                    repr_list.append(model_wts)
+            return repr_list, None
+
+    def get_and_set_working(self, round: Optional[int] = None) -> bool:
+        is_working = self.dropout.is_available()
+        if not is_working:
+            self.log_utils.log_console(
+                f"Client {self.node_id} is not working {'in round ' if round else 'in this round'}."
+            )
+            self.comm_utils.set_is_working(False)
+        else:
+            self.comm_utils.set_is_working(True)
+        return is_working
+
+    def set_model_weights(
+        self, model_wts: OrderedDict[str, Tensor], keys_to_ignore: List[str] = []
+    ) -> None:
+        """
+        Set the model weights
+        """
+        model_wts = copy.copy(model_wts)
+
+        if len(keys_to_ignore) > 0:
+            for key in keys_to_ignore:
+                if key in model_wts.keys():
+                    model_wts.pop(key)
+
+        for key in model_wts.keys():
+            model_wts[key] = model_wts[key].to(self.device)
+
+        self.model.load_state_dict(model_wts, strict=len(keys_to_ignore) == 0)
 
 class BaseClient(BaseNode):
     """
@@ -189,45 +383,12 @@ class BaseClient(BaseNode):
         # parameters so that all users have the same data splits and shared
         # params
         seed = config["seed"]
-        torch.manual_seed(seed)
-        random.seed(seed)
-        np.random.seed(seed)
-
-        self.set_shared_exp_parameters(config)
-
-        # Set different seeds for different domain (dataset)
-        if isinstance(config["dset"], dict):
-            seed += sorted(config["dset"].values()).index(
-                config["dset"][str(self.node_id)]
-            )
-            torch.manual_seed(seed)
-            random.seed(seed)
-            np.random.seed(seed)
-
-        self.set_data_parameters(config)
-        # Number of random operation not the same across users with different datasets
-        # Random state is not expected to be the same across users after this
-        # point
-
-        # Use different seeds for the rest of the experiment
-        # Add rank so that every node has a different seed
-        seed = config["seed"] + self.node_id
-        torch.manual_seed(seed)
-        random.seed(seed)
-        np.random.seed(seed)
-
+        set_seed(seed)
         self.set_model_parameters(config)
+        self.set_shared_exp_parameters(config)
+        self.set_data_parameters(config)
 
-        # If leader_mode on all node need to choose same random node at each
-        # round
-        if config.get("leader_mode", False):
-            seed = config["seed"]
-            torch.manual_seed(seed)
-            random.seed(seed)
-            np.random.seed(seed)
-
-    def set_data_parameters(self, config: Dict[str, Any]) -> None:
-        """Add docstring here"""
+    def set_data_parameters(self, config: ConfigType) -> None:
 
         # Train set and test set from original dataset
         train_dset = self.dset_obj.train_dset
@@ -257,7 +418,7 @@ class BaseClient(BaseNode):
             test_dset, _ = balanced_subset(test_dset, config["test_samples_per_class"])
 
         samples_per_user = config["samples_per_user"]
-        batch_size = config["batch_size"]
+        batch_size: int = config["batch_size"] # type: ignore
         print(f"samples per user: {samples_per_user}, batch size: {batch_size}")
 
         # Support user specific dataset
@@ -377,10 +538,10 @@ class BaseClient(BaseNode):
             # shuffle=True)
             self.val_dloader = DataLoader(val_dset, batch_size=batch_size, shuffle=True)
 
+        assert isinstance(train_dset, torch.utils.data.Dataset), "train_dset must be a Dataset"
         self.train_indices = train_indices
         self.train_dset = train_dset
-        # self.dloader = DataLoader(train_dset, batch_size=batch_size*len(self.device_ids), shuffle=True)
-        self.dloader = DataLoader(train_dset, batch_size=batch_size, shuffle=True)
+        self.dloader = DataLoader(train_dset, batch_size=batch_size, shuffle=True) # type: ignore
 
         if config["test_label_distribution"] == "iid":
             pass
@@ -414,11 +575,50 @@ class BaseClient(BaseNode):
         # TODO: fix print_data_summary
         # self.print_data_summary(train_dset, test_dset, val_dset=val_dset)
 
-    def local_train(self, round: int, **kwargs: Any) -> None:
+    def local_train(self, round: int, epochs: int = 1, **kwargs: Any) -> Tuple[float, float, float]:
         """
         Train the model locally
         """
-        raise NotImplementedError
+        start_time = time.time()
+
+        self.is_working = self.get_and_set_working(round)
+
+        if self.is_working:
+            avg_loss, avg_acc = 0, 0
+            for _ in range(epochs):
+                tr_loss, tr_acc = self.model_utils.train(
+                    self.model, self.optim, self.dloader, self.loss_fn, self.device, malicious_type=self.config.get("malicious_type", "normal"), config=self.config,
+                )            
+                avg_loss += tr_loss
+                avg_acc += tr_acc
+            avg_loss /= epochs
+            avg_acc /= epochs
+        else:
+            avg_loss, avg_acc = float('nan'), float('nan')
+            # sleep for a while to simulate the time taken for training
+            time.sleep(2)
+        end_time = time.time()
+        time_taken = end_time - start_time
+
+        self.log_utils.log_console(
+            "Client {} finished training with loss {:.4f}, accuracy {:.4f}, time taken {:.2f} seconds".format(
+                self.node_id, avg_loss, avg_acc, time_taken
+            )
+        )
+        self.log_utils.log_summary(
+            "Client {} finished training with loss {:.4f}, accuracy {:.4f}, time taken {:.2f} seconds".format(
+                self.node_id, avg_loss, avg_acc, time_taken
+            )
+        )
+
+        self.log_utils.log_tb(
+            f"train_loss/client{self.node_id}", avg_loss, round
+        )
+        self.log_utils.log_tb(
+            f"train_accuracy/client{self.node_id}", avg_acc, round
+        )
+
+        return avg_loss, avg_acc, time_taken
 
     def local_test(self, **kwargs: Any) -> float | Tuple[float, float] | None:
         """
@@ -426,13 +626,18 @@ class BaseClient(BaseNode):
         """
         raise NotImplementedError
 
-    def get_representation(
-        self, **kwargs: Any
-    ) -> OrderedDict[str, Tensor] | List[Tensor] | Tensor:
+    def receive_and_aggregate(self):
         """
-        Share the model representation
+        Receive the model weights from the server and aggregate them
         """
-        raise NotImplementedError
+        if self.is_working:
+            repr = self.comm_utils.receive([self.server_node])[0]
+            if "round" in repr:
+                round = repr["round"]
+            if "sender" in repr:
+                sender = repr["sender"]
+            assert "model" in repr, "Model not found in the received message"
+            self.set_model_weights(repr["model"])
 
     def run_protocol(self) -> None:
         raise NotImplementedError
@@ -502,7 +707,7 @@ class BaseServer(BaseNode):
             test_data, labels, indices = gia_server_testset(test_dset)
             self._test_loader = DataLoader(test_data, batch_size=10)
     def aggregate(
-        self, representation_list: List[OrderedDict[str, Tensor]], **kwargs: Any
+        self, representation_list: List[OrderedDict[str, Any]], **kwargs: Any
     ) -> OrderedDict[str, Tensor]:
         """
         Aggregate the knowledge from the users
@@ -562,30 +767,7 @@ class BaseFedAvgClient(BaseClient):
             keys = self.model_utils.get_last_layer_keys(self.get_model_weights())
             self.model_keys_to_ignore.extend(keys)
 
-    def local_train(self, epochs: int) -> Tuple[float, float]:
-        """
-        Train the model locally
-        """
-        avg_loss, avg_acc = 0, 0
-        for epoch in range(epochs):
-            # if self.node_id ==1:
-            #     tr_loss, tr_acc = self.model_utils.train(self.model, self.optim,
-            #                                     self.dloader, self.loss_fn,
-            #                                     self.device, self._test_loader)
-            # else:
-            tr_loss, tr_acc = self.model_utils.train(
-                self.model, self.optim, self.dloader, self.loss_fn, self.device
-            )
-
-            avg_loss += tr_loss
-            avg_acc += tr_acc
-
-        avg_loss /= epochs
-        avg_acc /= epochs
-
-        return avg_loss, avg_acc
-
-    def local_test(self, **kwargs: Any) -> float:
+    def local_test(self, **kwargs: Any) -> Tuple[float, float]:
         """
         Test the model locally, not to be used in the traditional FedAvg
         """
@@ -595,120 +777,67 @@ class BaseFedAvgClient(BaseClient):
         if acc > self.best_acc:
             self.best_acc = acc
             self.model_utils.save_model(self.model, self.model_save_path)
-        return acc
+        return test_loss, acc
 
-    def get_model_weights(self) -> OrderedDict[str, Tensor]:
-        """
-        Share the model weights (on the cpu)
-        """
-        return {k: v.cpu() for k, v in self.model.state_dict().items()}
-
-    def set_model_weights(
-        self, model_wts: OrderedDict[str, Tensor], keys_to_ignore: List[str] = []
-    ) -> None:
-        """
-        Set the model weights
-        """
-        model_wts = copy.copy(model_wts)
-
-        if len(keys_to_ignore) > 0:
-            for key in keys_to_ignore:
-                if key in model_wts.keys():
-                    model_wts.pop(key)
-
-        for key in model_wts.keys():
-            model_wts[key] = model_wts[key].to(self.device)
-
-        self.model.load_state_dict(model_wts, strict=len(keys_to_ignore) == 0)
-
-    def weighted_aggregate(
+    def aggregate(
         self,
-        models_wts: Dict[int, OrderedDict[str, Tensor]],
-        collab_weights_dict: Dict[int, float],
+        models_wts: List[OrderedDict[str, Any]],
+        collab_weights: Optional[List[float]] = None,
         keys_to_ignore: List[str] = [],
-        label_dict: Optional[Dict[int, Dict[str, int]]] = None,
-    ) -> OrderedDict[str, Tensor]:
+    ) -> None:
+        """ Aggregate the model weights using the collab_weights and then updates its own model weights
+        If the collab_weights are not provided, then equal weights are assumed
+        Args:
+            models_wts (Dict[int, OrderedDict[str, Tensor]]): A dictionary where the key is the model ID and the value is an 
+                ordered dictionary of model weights.
+            collab_weights (Optional[List[float]]): A list of weights for each model. If not provided, equal weights are assumed.
+            keys_to_ignore (List[str]): A list of keys to ignore during the aggregation process.
+
+        Returns:
+            None
         """
-        Aggregate the model weights
-        """
+        
+        models_coeffs: List[Tuple[OrderedDict[str, Tensor], float]] = []
+        # insert the current model weights at the position self.node_id
+        models_wts.insert(self.node_id - 1, self.get_model_weights())
+        if collab_weights is None:
+            collab_weights = [1.0 / len(models_wts) for _ in models_wts]
 
-        selected_collab = [id for id, w in collab_weights_dict.items() if w > 0]
+        # Handle dropouts and re-normalize the weights
+        models_wts, collab_weights = self.strip_empty_models(models_wts, collab_weights)
+        collab_weights = [w / sum(collab_weights) for w in collab_weights]
 
-        first_model = models_wts[selected_collab[0]]
+        senders = [model["sender"] for model in models_wts if "sender" in model]
+        rounds = [model["round"] for model in models_wts if "round" in model]
+        for i in range(len(models_wts)):
+            assert "model" in models_wts[i], "Model not found in the received message"
+            models_wts[i] = models_wts[i]["model"]
 
-        models_coeffs = [
-            (id, models_wts[id], collab_weights_dict[id]) for id in selected_collab
-        ]
-
-        last_layer_keys = []
-        if label_dict is not None:
-            last_layer_keys = [
-                key
-                for key in self.model_utils.get_last_layer_keys(
-                    models_wts[self.node_id]
-                )
-            ]
-            keys_to_ignore.extend(last_layer_keys)
+        for idx, model_wts in enumerate(models_wts):
+            models_coeffs.append((model_wts, collab_weights[idx]))
 
         is_init = False
-        agg_wts = OrderedDict()
-        for _, model, coeff in models_coeffs:
-            if coeff == 0:
-                continue
-            for key in first_model.keys():
+        agg_wts: OrderedDict[str, Tensor] = OrderedDict()
+        for model, coeff in models_coeffs:
+            for key in self.model.state_dict().keys():
                 if key in keys_to_ignore:
                     continue
                 if not is_init:
-                    agg_wts[key] = coeff * model[key]
+                    agg_wts[key] = coeff * model[key].to(self.device)
                 else:
-                    agg_wts[key] += coeff * model[key]
+                    agg_wts[key] += coeff * model[key].to(self.device)
             is_init = True
+        
+        self.set_model_weights(agg_wts)
+        return None
 
-        if label_dict is not None:
-            last_layer_weight_key = [key for key in last_layer_keys if "weight" in key]
-            last_layer_bias_key = [key for key in last_layer_keys if "bias" in key]
-            if len(last_layer_weight_key) != 1 and len(last_layer_bias_key) != 1:
-                raise ValueError(
-                    "Unsupported last layer format, expected one weights layer and one bias."
-                )
+    def receive_and_aggregate(self, neighbors: List[int]) -> None:
+        if self.is_working:
+            # Receive the model updates from the neighbors
+            model_updates = self.comm_utils.receive(node_ids=neighbors)
+            # Aggregate the representations
+            self.aggregate(model_updates, keys_to_ignore=self.model_keys_to_ignore)
 
-            last_layer_weight_key = last_layer_weight_key[0]
-            last_layer_bias_key = last_layer_bias_key[0]
-
-            # Host is the user's model
-            # Ext are incoming models
-            host_label_to_idx = label_dict[self.node_id]
-            labels_coeff_sum = {
-                host_idx: 0.0 for host_idx in label_dict[self.node_id].values()
-            }
-
-            # Match and aggregate weights of the last layer based on each
-            # node's label dictionary
-            host_model = models_wts[self.node_id]
-            agg_wts[last_layer_weight_key] = torch.zeros_like(
-                host_model[last_layer_weight_key]
-            )
-            for id, ext_model, coeff in models_coeffs:
-                ext_last_layer = coeff * ext_model[last_layer_weight_key]
-                ext_label_to_idx = label_dict[id]
-                labels_map = [
-                    (ext_idx, host_label_to_idx[ext_label])
-                    for ext_label, ext_idx in ext_label_to_idx.items()
-                    if ext_label in host_label_to_idx
-                ]
-                for ext_idx, host_idx in labels_map:
-                    labels_coeff_sum[host_idx] += coeff
-                    agg_wts[last_layer_weight_key][host_idx] += ext_last_layer[ext_idx]
-
-            # Normalize the aggregated weights
-            for label_idx, coeff_sum in labels_coeff_sum.items():
-                if coeff_sum > 0:
-                    agg_wts[last_layer_weight_key][label_idx] /= coeff_sum
-
-            # TODO Bias aggregation ?
-            agg_wts[last_layer_bias_key] = host_model[last_layer_bias_key]
-
-        return agg_wts
 
     def get_collaborator_weights(
         self, reprs_dict: Dict[int, OrderedDict[int, Tensor]]

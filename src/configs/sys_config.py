@@ -9,6 +9,8 @@ from utils.types import ConfigType
 from .algo_config import (
     malicious_algo_config_list,
     default_config_list,
+    fedstatic,
+    traditional_fl
 )
 
 sliding_window_8c_4cpc_support = {
@@ -42,6 +44,7 @@ def get_algo_configs(
     assignment_method: Literal[
         "sequential", "random", "mapping", "distribution"
     ] = "sequential",
+    seed: Optional[int] = 1,
     mapping: Optional[List[int]] = None,
     distribution: Optional[Dict[int, int]] = None,
 ) -> Dict[str, ConfigType]:
@@ -73,14 +76,24 @@ def get_algo_configs(
             )
         total_users = sum(distribution.values())
         assert total_users == num_users
-        current_index = 1
+
+        # List of node indices to assign
+        node_indices = list(range(1, total_users + 1))
+        # Seed for reproducibility
+        random.seed(seed)
+        # Shuffle the node indices based on the seed
+        random.shuffle(node_indices)
+
+        # Assign nodes based on the shuffled indices
+        current_index = 0
         for algo_index, num_nodes in distribution.items():
             for i in range(num_nodes):
-                algo_config_map[f"node_{current_index}"] = algo_configs[algo_index]
+                node_id = node_indices[current_index]
+                algo_config_map[f"node_{node_id}"] = algo_configs[algo_index]
                 current_index += 1
     else:
         raise ValueError(f"Invalid assignment method: {assignment_method}")
-    print("algo config mapping is: ", algo_config_map)
+    # print("algo config mapping is: ", algo_config_map)
     return algo_config_map
 
 
@@ -139,14 +152,19 @@ digit_five_dpath = {
     "synth_digits": "./imgs/syn_digit",
 }
 
+CIFAR10_DSET = "cifar10"
+CIAR10_DPATH = "./datasets/imgs/cifar10/"
+
+NUM_COLLABORATORS = 1
+DUMP_DIR = "/mas/camera/Experiments/SONAR/abhi/"
+
 mpi_system_config: ConfigType = {
     "exp_id": "",
     "comm": {"type": "MPI"},
-    "num_users": 3,
-    # "experiment_path": "./experiments/",
-    "dset": "cifar10",
-    "dump_dir": "./expt_dump/",
-    "dpath": "./datasets/imgs/cifar10/",
+    "num_collaborators": NUM_COLLABORATORS,
+    "dset": CIFAR10_DSET,
+    "dump_dir": DUMP_DIR,
+    "dpath": CIAR10_DPATH,
     "seed": 32,
     # node_0 is a server currently
     # The device_ids dictionary depicts the GPUs on which the nodes reside.
@@ -166,7 +184,6 @@ mpi_system_config: ConfigType = {
     "train_label_distribution": "iid",  # Either "iid", "non_iid" "support"
     "test_label_distribution": "iid",  # Either "iid", "non_iid" "support"
     "test_samples_per_user": 200,  # Only for non_iid test distribution
-    "folder_deletion_signal_path": "./expt_dump/folder_deletion.signal",
     "exp_keys": [],
 }
 
@@ -174,11 +191,11 @@ mpi_non_iid_sys_config: ConfigType = {
     "exp_id": "",
     "comm": {"type": "MPI"},
     "seed": 1,
-    "num_users": 3,
+    "num_collaborators": NUM_COLLABORATORS,
     # "experiment_path": "./experiments/",
-    "dset": "cifar10",
-    "dump_dir": "./expt_dump/",
-    "dpath": "./datasets/imgs/cifar10/",
+    "dset": CIFAR10_DSET,
+    "dump_dir": DUMP_DIR,
+    "dpath": CIAR10_DPATH,
     "load_existing": False,
     "device_ids": get_device_ids(num_users=3, gpus_available=[0, 3]),
     "algo": get_algo_configs(num_users=3, algo_configs=default_config_list),  # type: ignore
@@ -186,7 +203,6 @@ mpi_non_iid_sys_config: ConfigType = {
     "test_label_distribution": "non_iid",  # Either "iid" "support",
     "samples_per_user": 256,
     "test_samples_per_user": 100,
-    "folder_deletion_signal_path": "./expt_dump/folder_deletion.signal",
     "exp_keys": [],
 }
 
@@ -195,11 +211,11 @@ mpi_L2C_sys_config: ConfigType = {
     "exp_id": "",
     "comm": {"type": "MPI"},
     "seed": 1,
-    "num_users": 3,
+    "num_collaborators": NUM_COLLABORATORS,
     # "experiment_path": "./experiments/",
-    "dset": "cifar10",
-    "dump_dir": "./expt_dump/",
-    "dpath": "./datasets/imgs/cifar10/",
+    "dset": CIFAR10_DSET,
+    "dump_dir": DUMP_DIR,
+    "dpath": CIAR10_DPATH,
     "load_existing": False,
     "device_ids": get_device_ids(num_users=3, gpus_available=[1, 2]),
     "algo": get_algo_configs(num_users=3, algo_configs=default_config_list),  # type: ignore
@@ -208,7 +224,6 @@ mpi_L2C_sys_config: ConfigType = {
     "samples_per_user": 32,
     "test_samples_per_user": 32,
     "validation_prop": 0.05,
-    "folder_deletion_signal_path": "./expt_dump/folder_deletion.signal",
     "exp_keys": [],
 }
 
@@ -216,11 +231,11 @@ mpi_metaL2C_support_sys_config: ConfigType = {
     "exp_id": "",
     "comm": {"type": "MPI"},
     "seed": 1,
-    "num_users": 3,
+    "num_collaborators": NUM_COLLABORATORS,
     # "experiment_path": "./experiments/",
-    "dset": "cifar10",
-    "dump_dir": "./expt_dump/",
-    "dpath": "./datasets/imgs/cifar10/",
+    "dset": CIFAR10_DSET,
+    "dump_dir": DUMP_DIR,
+    "dpath": CIAR10_DPATH,
     "load_existing": False,
     "device_ids": get_device_ids(num_users=3, gpus_available=[1, 2]),
     "algo": get_algo_configs(num_users=3, algo_configs=default_config_list),  # type: ignore
@@ -230,7 +245,6 @@ mpi_metaL2C_support_sys_config: ConfigType = {
     "samples_per_user": 32,
     "test_samples_per_user": 32,
     "validation_prop": 0.05,
-    "folder_deletion_signal_path": "./expt_dump/folder_deletion.signal",
     "exp_keys": [],
 }
 
@@ -238,9 +252,9 @@ mpi_digitfive_sys_config: ConfigType = {
     "exp_id": "",
     "comm": {"type": "MPI"},
     "seed": 1,
-    "num_users": 3,
+    "num_collaborators": NUM_COLLABORATORS,
     "load_existing": False,
-    "dump_dir": "./expt_dump/",
+    "dump_dir": DUMP_DIR,
     "device_ids": get_device_ids(num_users=3, gpus_available=[6, 7]),
     "algo": get_algo_configs(num_users=3, algo_configs=default_config_list),  # type: ignore
     # Dataset params
@@ -253,7 +267,6 @@ mpi_digitfive_sys_config: ConfigType = {
     "samples_per_user": 256,
     "test_samples_per_class": 100,
     "community_type": "dataset",
-    "folder_deletion_signal_path": "./expt_dump/folder_deletion.signal",
     "exp_keys": [],
 }
 
@@ -262,11 +275,15 @@ mpi_domainnet_sys_config: ConfigType = {
     "exp_id": "",
     "comm": {"type": "MPI"},
     "seed": 1,
-    "num_users": 3,
+    "num_collaborators": NUM_COLLABORATORS,
     "load_existing": False,
-    "dump_dir": "./expt_dump/",
-    "device_ids": get_device_ids(num_users=swarm_users, gpus_available=[3, 4]),
-    "algo": get_algo_configs(num_users=swarm_users, algo_configs=default_config_list),  # type: ignore
+    "device_ids": get_device_ids(num_users=swarm_users, gpus_available=[1, 2]),
+    # "algo": get_algo_configs(num_users=swarm_users, algo_configs=default_config_list),  # type: ignore
+    "algos": get_algo_configs(
+        num_users=swarm_users,
+        algo_configs=default_config_list,
+    ),  # type: ignore
+    "dump_dir": DUMP_DIR,
     # Dataset params
     "dset": get_domainnet_support(
         swarm_users
@@ -274,19 +291,19 @@ mpi_domainnet_sys_config: ConfigType = {
     "dpath": domainnet_dpath,  # wilds_dpath,#domainnet_dpath,
     "train_label_distribution": "iid",  # Either "iid", "shard" "support",
     "test_label_distribution": "iid",  # Either "iid" "support",
-    "samples_per_user": 32,
+    "samples_per_user": 500,
     "test_samples_per_class": 100,
     "community_type": "dataset",
-    "folder_deletion_signal_path": "./expt_dump/folder_deletion.signal",
     "exp_keys": [],
 }
 
 object_detect_system_config: ConfigType = {
     "exp_id": "",
     "num_users": 1,
+    "num_collaborators": NUM_COLLABORATORS,
     "experiment_path": "./experiments/",
     "dset": "pascal",
-    "dump_dir": "./expt_dump/",
+    "dump_dir": DUMP_DIR,
     "dpath": "./datasets/pascal/VOCdevkit/VOC2012/",
     "seed": 37,
     # node_0 is a server currently
@@ -298,29 +315,43 @@ object_detect_system_config: ConfigType = {
     # we need to make this a dictionary with user_id as key and number of samples as value
     "train_label_distribution": "iid",
     "test_label_distribution": "iid",
-    "folder_deletion_signal_path": "./expt_dump/folder_deletion.signal",
     "exp_keys": [],
 }
 
-num_users = 4
+num_users = 9
+
+dropout_dict = {
+    "distribution_dict": { # leave dict empty to disable dropout
+        "method": "uniform",  # "uniform", "normal"
+        "parameters": {} # "mean": 0.5, "std": 0.1 in case of normal distribution
+    },
+    "dropout_rate": 0.0, # cutoff for dropout: [0,1]
+    "dropout_correlation": 0.0, # correlation between dropouts of successive rounds: [0,1]
+}
+
+dropout_dicts = {"node_0": {}}
+for i in range(1, num_users + 1):
+    dropout_dicts[f"node_{i}"] = dropout_dict
+
 gpu_ids = [2, 3, 5, 6]
 grpc_system_config: ConfigType = {
-    "exp_id": "",
+    "exp_id": "static",
     "num_users": num_users,
-    "comm": {"type": "GRPC", "peer_ids": ["localhost:50050"]},  # The super-node
-    "dset": "cifar10",
-    "dump_dir": "./expt_dump/",
-    "dpath": "./datasets/imgs/cifar10/",
+    "num_collaborators": NUM_COLLABORATORS,
+    "comm": {"type": "GRPC", "synchronous": True, "peer_ids": ["localhost:50048"]},  # The super-node
+    "dset": CIFAR10_DSET,
+    "dump_dir": DUMP_DIR,
+    "dpath": CIAR10_DPATH,
     "seed": 2,
     "device_ids": get_device_ids(num_users, gpu_ids),
-    "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
-    # "algo": get_algo_configs(num_users=num_users, algo_configs=default_config_list),
+    # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
+    "algos": get_algo_configs(num_users=num_users, algo_configs=[traditional_fl]),  # type: ignore
     "samples_per_user": 50000 // num_users,  # distributed equally
     "train_label_distribution": "iid",
     "test_label_distribution": "iid",
-    "folder_deletion_signal_path": "./expt_dump/folder_deletion.signal",
     "exp_keys": [],
+    "dropout_dicts": dropout_dicts,
 }
 
-# current_config = grpc_system_config
-current_config = mpi_system_config
+current_config = grpc_system_config
+# current_config = mpi_system_config
