@@ -13,11 +13,14 @@ from algos.attack_add_noise import AddNoiseAttack
 from algos.attack_bad_weights import BadWeightsAttack
 from algos.attack_sign_flip import SignFlipAttack
 
+import pickle
+
 class FedAvgClient(BaseClient):
     def __init__(
         self, config: Dict[str, Any], comm_utils: CommunicationManager
     ) -> None:
         super().__init__(config, comm_utils)
+        print("WE ARE IN FEDAVG CLIENT")
         self.config = config
 
         try:
@@ -47,8 +50,8 @@ class FedAvgClient(BaseClient):
         time_taken = end_time - start_time
 
         self.client_log_utils.log_console(
-            "Client {} finished training with loss {:.4f}, accuracy {:.4f}, time taken {:.2f} seconds".format(
-                self.node_id, avg_loss, avg_accuracy, time_taken
+            "Round {} Client {} finished training with loss {:.4f}, accuracy {:.4f}, time taken {:.2f} seconds".format(
+                round, self.node_id, avg_loss, avg_accuracy, time_taken
             )
         )
         self.client_log_utils.log_summary(
@@ -214,7 +217,7 @@ class FedAvgServer(BaseServer):
             self.model_utils.save_model(self.model, self.model_save_path)
         return [test_loss, test_acc, time_taken]
 
-    def single_round(self):
+    def single_round(self, dump_file_name: str = ""):
         """
         Runs the whole training procedure
         """
@@ -222,6 +225,9 @@ class FedAvgServer(BaseServer):
         # self.log_utils.log_console("Server waiting for all clients to finish")
         reprs = self.comm_utils.all_gather()
         # self.log_utils.log_console("Server received all clients done signal")
+        if len(dump_file_name) > 0:
+            with open(f"{dump_file_name}.pkl", "wb") as f:
+                pickle.dump(reprs, f)
         avg_wts = self.aggregate(reprs)
         self.set_representation(avg_wts)
         # Remove the signal file after confirming that all client paths have been created
@@ -235,8 +241,14 @@ class FedAvgServer(BaseServer):
         for round in range(start_epochs, total_epochs):
             self.log_utils.log_console("Starting round {}".format(round))
             self.log_utils.log_summary("Starting round {}".format(round))
-            self.single_round()
+            dump_file_name = ""
+            if round == 0:
+                dump_file_name = "/u/yshi23/sonar/src/start_reprs"
+            elif round == 1:
+                dump_file_name = "/u/yshi23/sonar/src/end_reprs"
+            self.single_round(dump_file_name=dump_file_name)
             self.log_utils.log_console("Server testing the model")
+            self.log_utils.log_console(f"server test loader length is {len(self._test_loader.dataset)}")
             loss, acc, time_taken = self.test()
             self.log_utils.log_tb(f"test_acc/clients", acc, round)
             self.log_utils.log_tb(f"test_loss/clients", loss, round)

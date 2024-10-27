@@ -19,6 +19,8 @@ from utils.data_utils import (
     get_dataset,
     non_iid_balanced,
     balanced_subset,
+    gia_client_dataset,
+    gia_server_testset,
     CacheDataset,
     TransformDataset,
     CorruptDataset,
@@ -101,13 +103,14 @@ class BaseNode(ABC):
             optim = torch.optim.SGD
         else:
             raise ValueError(f"Unknown optimizer: {optim_name}.")
+        if "gia" in config:
+            optim = torch.optim.SGD
         num_classes = self.dset_obj.num_cls
         num_channels = self.dset_obj.num_channels
         self.model = self.model_utils.get_model(
-            config["model"],
-            self.dset,
-            self.device,
-            self.device_ids,
+            model_name=config["model"],
+            dset=self.dset,
+            device=self.device,
             num_classes=num_classes,
             num_channels=num_channels,
             pretrained=config.get("pretrained", False),
@@ -230,8 +233,25 @@ class BaseClient(BaseNode):
         train_dset = self.dset_obj.train_dset
         test_dset = self.dset_obj.test_dset
 
-        # print("num train", len(train_dset))
-        # print("num test", len(test_dset))
+        # Handle GIA case first, before any other modifications
+        if "gia" in config:
+            # Select 10 random labels and exactly one image per label for both train and test
+            train_dset, test_dset, classes, train_indices = gia_client_dataset(
+                train_dset, test_dset, num_labels=10
+            )
+            
+            assert len(train_dset) == 10, "GIA should have exactly 10 samples in train set"
+            assert len(test_dset) == 10, "GIA should have exactly 10 samples in test set"
+            
+            # Set up the dataloaders with batch_size equal to dataset size for single-pass training
+            self.classes_of_interest = classes
+            self.train_indices = train_indices
+            self.train_dset = train_dset
+            self.dloader = DataLoader(train_dset, batch_size=len(train_dset), shuffle=True)
+            self._test_loader = DataLoader(test_dset, batch_size=len(test_dset))
+            print("Using GIA data setup")
+            # Skip the rest of the function since we don't want other modifications
+            return
 
         if config.get("test_samples_per_class", None) is not None:
             test_dset, _ = balanced_subset(test_dset, config["test_samples_per_class"])
@@ -476,8 +496,11 @@ class BaseServer(BaseNode):
         """Add docstring here"""
         test_dset = self.dset_obj.test_dset
         batch_size = config["batch_size"]
-        self._test_loader = DataLoader(test_dset, batch_size=batch_size)
-
+        if "gia" not in config:
+            self._test_loader = DataLoader(test_dset, batch_size=batch_size)
+        else:
+            test_data, labels, indices = gia_server_testset(test_dset)
+            self._test_loader = DataLoader(test_data, batch_size=10)
     def aggregate(
         self, representation_list: List[OrderedDict[str, Tensor]], **kwargs: Any
     ) -> OrderedDict[str, Tensor]:

@@ -365,3 +365,109 @@ def non_iid_balanced(
 
     clnt_y = np.asarray(clnt_y)
     return clnt_y, clnt_idx, cls_priors
+
+def gia_client_dataset(train_dataset, test_dataset, num_labels=10):
+    """
+    Select random labels and exactly one random image per selected label from both train and test datasets.
+    
+    Args:
+        train_dataset: Training dataset object with __getitem__ returning (image, label) tuples
+        test_dataset: Test dataset object with __getitem__ returning (image, label) tuples
+        num_labels (int): Number of unique labels to select
+        
+    Returns:
+        filtered_train_dataset: Subset of training dataset with one image per selected label
+        filtered_test_dataset: Subset of test dataset with one image per selected label
+        selected_labels: List of selected label indices
+        train_indices: List of indices for the selected training images
+    """
+    # Get all unique labels from the training dataset
+    all_labels = list(set([train_dataset[i][1] for i in range(len(train_dataset))]))
+    
+    # Randomly select labels
+    selected_labels = sorted(np.random.choice(all_labels, size=num_labels, replace=False))
+    
+    # Process training dataset
+    temp_train_dataset, train_all_indices = filter_by_class(train_dataset, selected_labels)
+    train_label_to_indices = {}
+    for idx in range(len(temp_train_dataset)):
+        label = temp_train_dataset[idx][1]
+        if label not in train_label_to_indices:
+            train_label_to_indices[label] = []
+        train_label_to_indices[label].append(train_all_indices[idx])
+    
+    # Process test dataset
+    temp_test_dataset, test_all_indices = filter_by_class(test_dataset, selected_labels)
+    test_label_to_indices = {}
+    for idx in range(len(temp_test_dataset)):
+        label = temp_test_dataset[idx][1]
+        if label not in test_label_to_indices:
+            test_label_to_indices[label] = []
+        test_label_to_indices[label].append(test_all_indices[idx])
+    
+    # Select one random image per label for both datasets
+    final_train_indices = []
+    final_test_indices = []
+    for label in selected_labels:
+        # Training dataset
+        train_label_indices = train_label_to_indices[label]
+        selected_train_idx = np.random.choice(train_label_indices, size=1)[0]
+        final_train_indices.append(selected_train_idx)
+        
+        # Test dataset
+        test_label_indices = test_label_to_indices[label]
+        selected_test_idx = np.random.choice(test_label_indices, size=1)[0]
+        final_test_indices.append(selected_test_idx)
+    
+    # Create final datasets with exactly one image per label
+    filtered_train_dataset = Subset(train_dataset, final_train_indices)
+    filtered_test_dataset = Subset(test_dataset, final_test_indices)
+    
+    return filtered_train_dataset, filtered_test_dataset, selected_labels, final_train_indices
+
+
+def gia_server_testset(test_dataset, num_labels=10, num_images_per_label=4):
+    """
+    Select random labels and exactly four random images per selected label from the test dataset.
+    
+    Args:
+        test_dataset: Test dataset object with __getitem__ returning (image, label) tuples
+        num_labels (int): Number of unique labels to select
+        num_images_per_label (int): Number of images to select per label
+        
+    Returns:
+        filtered_test_dataset: Subset of test dataset with four images per selected label
+        selected_labels: List of selected label indices
+        test_indices: List of indices for the selected test images
+    """
+    # Get all unique labels from the test dataset
+    all_labels = list(set([test_dataset[i][1] for i in range(len(test_dataset))]))
+    
+    # Randomly select labels
+    selected_labels = sorted(np.random.choice(all_labels, size=num_labels, replace=False))
+    
+    # Process test dataset
+    temp_test_dataset, test_all_indices = filter_by_class(test_dataset, selected_labels)
+    test_label_to_indices = {}
+    for idx in range(len(temp_test_dataset)):
+        label = temp_test_dataset[idx][1]
+        if label not in test_label_to_indices:
+            test_label_to_indices[label] = []
+        test_label_to_indices[label].append(test_all_indices[idx])
+    
+    # Select four random images per label for the test dataset
+    final_test_indices = []
+    for label in selected_labels:
+        test_label_indices = test_label_to_indices[label]
+        
+        # Ensure there are at least 'num_images_per_label' images per label
+        if len(test_label_indices) >= num_images_per_label:
+            selected_test_indices = np.random.choice(test_label_indices, size=num_images_per_label, replace=False)
+            final_test_indices.extend(selected_test_indices)
+        else:
+            raise ValueError(f"Not enough images in class {label} to select {num_images_per_label} images.")
+    
+    # Create final dataset with exactly four images per label
+    filtered_test_dataset = Subset(test_dataset, final_test_indices)
+    
+    return filtered_test_dataset, selected_labels, final_test_indices
