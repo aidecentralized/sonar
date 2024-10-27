@@ -31,7 +31,6 @@ iid_dispfl_clients_new: ConfigType = {
 traditional_fl: ConfigType = {
     # Collaboration setup
     "algo": "fedavg",
-    "use_dpsgd": True,
     "rounds": 2,
     "use_dpsgd": True,
     "epsilon": 5,
