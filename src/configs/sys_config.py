@@ -10,11 +10,7 @@ from .algo_config import (
     malicious_algo_config_list,
     default_config_list,
     fedstatic,
-<<<<<<< HEAD
-    traditional_fl,
-=======
     traditional_fl
->>>>>>> eb8c4b7562e320c94be939c28f576c84d3527446
 )
 
 sliding_window_8c_4cpc_support = {
@@ -322,9 +318,6 @@ object_detect_system_config: ConfigType = {
     "exp_keys": [],
 }
 
-<<<<<<< HEAD
-num_users = 4
-=======
 num_users = 9
 
 dropout_dict = {
@@ -340,7 +333,6 @@ dropout_dicts = {"node_0": {}}
 for i in range(1, num_users + 1):
     dropout_dicts[f"node_{i}"] = dropout_dict
 
->>>>>>> eb8c4b7562e320c94be939c28f576c84d3527446
 gpu_ids = [2, 3, 5, 6]
 grpc_system_config: ConfigType = {
     "exp_id": "static",
