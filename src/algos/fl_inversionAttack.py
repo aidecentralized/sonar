@@ -218,6 +218,7 @@ class GradientInversionFedAvgClient(FedAvgClient):
         self.ground_truth, self.labels = self.extract_ground_truth(num_images=config["num_images"]) # set reconstruction number
 
         # TODO somehow get the server to access the ground truth and labels for evaluation
+        self.comm_utils.send(0, [self.ground_truth, self.labels])
 
     def extract_ground_truth(self, num_images=10):
         """
@@ -261,7 +262,14 @@ class GradientInversionFedAvgServer(FedAvgServer):
         """
         Obtain the ground truth images and labels from the clients for evaluation.
         """
-        ground_truth, labels = self.comm_utils.receive([i for i in range(self.num_users)])
+        ground_truth, labels = [], []
+        client_list = self.comm_utils.receive([i for i in range(self.num_users)])
+        # TODO 1) sort the received items 
+        # TODO 2) add tag to indicate we are receiving dummy data
+        for i in range(len(client_list)):
+            ground_truth_i, labels_i = client_list[i][:10], client_list[i][10:]
+            ground_truth.append(ground_truth_i)
+            labels.append(labels_i)
         return ground_truth, labels
         
     def inverting_gradients_attack(self):
