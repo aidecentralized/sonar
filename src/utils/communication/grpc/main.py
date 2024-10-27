@@ -454,8 +454,11 @@ class GRPCCommunication(CommunicationInterface):
         self_round = self.servicer.base_node.get_local_rounds()
         items: List[OrderedDict[str, Any]] = []
         
-        while True:
-            while self.servicer.received_data.empty():
+        num_tries = 20
+        time_to_wait = 2
+        while num_tries > 0:
+            while self.servicer.received_data.empty() and num_tries > 0:
+                num_tries -= 1
                 time_to_wait = 2
                 print(f"Node {self.rank} Waiting for data to be received. Retrying in {time_to_wait} seconds")
                 time.sleep(time_to_wait)
@@ -468,6 +471,9 @@ class GRPCCommunication(CommunicationInterface):
                     self.servicer.received_data.put(item)
             if len(items) > 0:
                 break
+            else:
+                num_tries -= 1
+                time.sleep(time_to_wait)
         return items
 
     def is_own_id(self, peer_id: int) -> bool:

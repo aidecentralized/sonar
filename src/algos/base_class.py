@@ -630,19 +630,23 @@ class BaseClient(BaseNode):
 
     def receive_pushed_and_aggregate(self, remove_multi = True) -> None:
         model_updates = self.comm_utils.receive_pushed()
-        if self.is_working:
-            # Remove multiple models of different rounds from each node
-            if remove_multi:
-                to_aggregate = {}
-                for model in model_updates:
-                    sender = model.get("sender", 0)
-                    if sender not in to_aggregate or to_aggregate[sender].get("round", 0) < model.get("round", 0):
-                        to_aggregate[sender] = model
-                model_updates = list(to_aggregate.values())
-            # Aggregate the representations
-            repr = model_updates[0]
-            assert "model" in repr, "Model not found in the received message"
-            self.set_model_weights(repr["model"])
+
+        if len(model_updates) > 0:
+            if self.is_working:
+                # Remove multiple models of different rounds from each node
+                if remove_multi:
+                    to_aggregate = {}
+                    for model in model_updates:
+                        sender = model.get("sender", 0)
+                        if sender not in to_aggregate or to_aggregate[sender].get("round", 0) < model.get("round", 0):
+                            to_aggregate[sender] = model
+                    model_updates = list(to_aggregate.values())
+                # Aggregate the representations
+                repr = model_updates[0]
+                assert "model" in repr, "Model not found in the received message"
+                self.set_model_weights(repr["model"])
+        else:
+            print("No one pushed model updates for this round.")
 
     def run_protocol(self) -> None:
         raise NotImplementedError
