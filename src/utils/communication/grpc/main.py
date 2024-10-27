@@ -11,7 +11,7 @@ from typing import Any, Callable, Dict, List, OrderedDict, Union, TYPE_CHECKING
 from urllib.parse import unquote
 import grpc # type: ignore
 from torch import Tensor
-from utils.communication.grpc.grpc_utils import deserialize_model, serialize_model
+from utils.communication.grpc.grpc_utils import deserialize_model, serialize_model, serialize_message, deserialize_message
 import os
 import sys
 
@@ -148,7 +148,7 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
             raise Exception("Base node not registered")
         with self.lock:
             if self.is_working:
-                model = comm_pb2.Model(buffer=serialize_model(self.base_node.get_model_weights()))
+                model = comm_pb2.Model(buffer=serialize_message(self.base_node.get_model_weights()))
             else:
                 assert self.base_node.dropout.dropout_enabled, "Empty models are only supported when Dropout is enabled."
                 model = comm_pb2.Model(buffer=EMPTY_MODEL_TAG)
@@ -414,7 +414,7 @@ class GRPCCommunication(CommunicationInterface):
                 return OrderedDict()
             with self.servicer.lock:
                 self.servicer.communication_cost_received += model.ByteSize()
-            return deserialize_model(model.buffer) # type: ignore
+            return deserialize_message(model.buffer) # type: ignore
 
         for id in node_ids:
             rank = self.get_host_from_rank(id)
