@@ -31,13 +31,15 @@ iid_dispfl_clients_new: ConfigType = {
 traditional_fl: ConfigType = {
     # Collaboration setup
     "algo": "fedavg",
-    "use_dpsgd": True,
     "rounds": 2,
+    "use_dpsgd": False,
+    "epsilon": 5,
 
     # Model parameters
     "model": "resnet10",
     "model_lr": 3e-4,
     "batch_size": 256,
+    "epochs": 5,
 }
 
 fedweight: ConfigType = {

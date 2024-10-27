@@ -403,7 +403,7 @@ class ModelUtils:
 
         return per_sample_grads
 
-    def dpsgd_step(
+    '''def dpsgd_step(
         self,
         model: nn.Module,
         per_sample_grads: List[torch.Tensor],
@@ -431,9 +431,35 @@ class ModelUtils:
                 param.add_(
                     aggregated_grad.view_as(param),
                     alpha=-optimizer.param_groups[0]["lr"],
-                )
+                )'''
+    
+    def dpsgd_step(self, model, per_sample_grads, optimizer, noise_multiplier, batch_size, l2_norm_clip):
+        for param, aggregated_grad in zip(model.parameters(), per_sample_grads):
+            print(f"Aggregated Grad Shape: {aggregated_grad.shape}")  # Debugging line
+            print(f"Param Shape: {param.shape}")  # Debugging line
 
-    def train_with_dpsgd(
+            # Ensure the shape matches
+            if aggregated_grad.shape != param.shape:
+                # Handle shape mismatch, for example, by resizing or reshaping
+                if aggregated_grad.numel() == param.numel():
+                    aggregated_grad = aggregated_grad.view_as(param)
+                else:
+                    raise ValueError(f"Shape mismatch: {aggregated_grad.shape} vs {param.shape}")
+
+            # Apply noise (if using DP-SGD) and clipping
+            noise = (torch.randn_like(aggregated_grad) * noise_multiplier).to(param.device)
+            clipped_grad = torch.clamp(aggregated_grad + noise, -l2_norm_clip, l2_norm_clip)
+
+            # Manually set the gradient for the parameter
+            param.grad = clipped_grad
+
+        # Perform the optimizer step (updates parameters based on their gradients)
+        optimizer.step()
+
+        # Clear gradients for the next iteration
+        optimizer.zero_grad()
+
+    '''def train_with_dpsgd(
         self,
         model: nn.Module,
         optimizer: torch.optim.Optimizer,
@@ -466,6 +492,8 @@ class ModelUtils:
                     batch_size,
                     l2_norm_clip,
                 )
+                optimizer.step()
+                optimizer.zero_grad()
 
                 with torch.no_grad():
                     output = model(data)
@@ -479,6 +507,87 @@ class ModelUtils:
             print(
                 f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4f}"
             )
+
+        return avg_loss, accuracy'''
+    
+    '''def train_with_dpsgd(
+        self,
+        model: nn.Module,
+        optimizer: torch.optim.Optimizer,
+        dloader: DataLoader[Any],
+        loss_fn: Any,
+        device: torch.device,
+        noise_multiplier: float = 1.0,
+        l2_norm_clip: float = 1.0,
+        epochs: int = 5,
+        **kwargs: Any,
+    ) -> Tuple[float, float]:
+        model.train()
+        batch_size = (
+            dloader.batch_size
+            if dloader.batch_size is not None
+            else len(dloader.dataset)
+        )
+
+        for epoch in range(epochs):
+            total_loss = 0
+            correct = 0
+            for batch_idx, (data, target) in enumerate(dloader):
+                data, target = data.to(device), target.to(device)
+
+                # Compute per-sample gradients
+                per_sample_grads = self.per_sample_grads(model, data, target, loss_fn)
+
+                # Set per-sample gradients in the optimizer
+                #optimizer.set_per_sample_grads(per_sample_grads)
+
+                # Step the optimizer with the accumulated gradients
+                self.dpsgd_step(model, per_sample_grads, optimizer, noise_multiplier, batch_size, l2_norm_clip)
+
+                with torch.no_grad():
+                    output = model(data)
+                    loss = loss_fn(output, target)
+                    total_loss += loss.item()
+                    pred = output.argmax(dim=1, keepdim=True)
+                    correct += pred.eq(target.view_as(pred)).sum().item()
+
+            avg_loss = total_loss / len(dloader)
+            accuracy = correct / len(dloader.dataset)
+            print(
+                f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4f}"
+            )
+
+        return avg_loss, accuracy'''
+    def train_with_dpsgd(
+        self,
+        model: nn.Module,
+        optimizer: torch.optim.Optimizer,
+        dloader: DataLoader[Any],
+        loss_fn: Any,
+        device: torch.device,
+        epochs: int = 5,
+    ) -> Tuple[float, float]:
+        model.train()
+        for epoch in range(epochs):
+            total_loss = 0
+            correct = 0
+            for batch_idx, (data, target) in enumerate(dloader):
+                data, target = data.to(device), target.to(device)
+                
+                optimizer.zero_grad()
+                output = model(data)
+                loss = loss_fn(output, target)
+                loss.backward()
+                optimizer.step()
+
+                with torch.no_grad():
+                    total_loss += loss.item()
+                    pred = output.argmax(dim=1, keepdim=True)
+                    correct += pred.eq(target.view_as(pred)).sum().item()
+
+            avg_loss = total_loss / len(dloader)
+            accuracy = correct / len(dloader.dataset)
+            print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4f}")
 
         return avg_loss, accuracy
 

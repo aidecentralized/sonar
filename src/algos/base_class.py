@@ -42,6 +42,11 @@ import os
 
 from yolo import YOLOLoss
 
+from opacus import PrivacyEngine
+from opacus.validators import ModuleValidator
+
+
+
 
 def set_seed(seed: int) -> None:
     torch.manual_seed(seed)  # type: ignore
@@ -357,6 +362,34 @@ class BaseNode(ABC):
             model_wts[key] = model_wts[key].to(self.device)
 
         self.model.load_state_dict(model_wts, strict=len(keys_to_ignore) == 0)
+    '''def set_model_weights(self, model_wts):
+        if hasattr(self.model, '_module'):
+            # If the model is wrapped by GradSampleModule
+            original_model = self.model._module
+        else:
+            original_model = self.model
+
+        # Create a new state dict with the correct structure
+        new_state_dict = {}
+        for k, v in model_wts.items():
+            if k.startswith('_module.'):
+                new_state_dict[k] = v
+            else:
+                new_state_dict[f'_module.{k}'] = v
+
+        # Filter out unexpected keys (like running_mean, running_var, num_batches_tracked)
+        filtered_state_dict = {k: v for k, v in new_state_dict.items() if k in self.model.state_dict()}
+
+        # Load the filtered state dict
+        missing_keys, unexpected_keys = self.model.load_state_dict(filtered_state_dict, strict=False)
+
+        if missing_keys:
+            print(f"Missing keys when loading model weights: {missing_keys}")
+        if unexpected_keys:
+            print(f"Unexpected keys when loading model weights: {unexpected_keys}")
+
+        # If the model was wrapped, we don't need to re-wrap it
+        # The GradSampleModule wrapper should remain intact'''
 
 class BaseClient(BaseNode):
     """
@@ -566,9 +599,45 @@ class BaseClient(BaseNode):
         if self.is_working:
             avg_loss, avg_acc = 0, 0
             for _ in range(epochs):
-                tr_loss, tr_acc = self.model_utils.train(
-                    self.model, self.optim, self.dloader, self.loss_fn, self.device, malicious_type=self.config.get("malicious_type", "normal"), config=self.config,
-                )            
+                if self.config.get("use_dpsgd"):
+                    self.log_utils.log_console(
+                        "Training with DPSGD"
+                    )
+                    epsilon = self.config.get("epsilon")
+                    if epsilon:
+                        # Initialize PrivacyEngine
+                        privacy_engine = PrivacyEngine()
+
+                        # Ensure model compatibility with DP
+                        self.model = ModuleValidator.fix(self.model)
+
+                        # Initialize optimizer
+                        self.optim = torch.optim.SGD(self.model.parameters(), lr=self.config.get("model_lr"))
+
+                        # Make model, optimizer, and data loader private
+                        self.model, self.optim, self.dloader = privacy_engine.make_private_with_epsilon(
+                            module=self.model,
+                            optimizer=self.optim,
+                            data_loader=self.dloader,
+                            epochs=self.config.get("epochs", 5),
+                            target_epsilon=epsilon,
+                            target_delta=1e-5,
+                            max_grad_norm=1.0,
+                        )
+
+                        # Train the model
+                        tr_loss, tr_acc = self.model_utils.train_with_dpsgd(
+                            self.model,
+                            self.optim,
+                            self.dloader,
+                            self.loss_fn,
+                            self.device,
+                            epochs=self.config.get("epochs", 5),
+                        )
+                else:
+                    tr_loss, tr_acc = self.model_utils.train(
+                        self.model, self.optim, self.dloader, self.loss_fn, self.device, malicious_type=self.config.get("malicious_type", "normal"), config=self.config,
+                    )            
                 avg_loss += tr_loss
                 avg_acc += tr_acc
             avg_loss /= epochs
