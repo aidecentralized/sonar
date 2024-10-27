@@ -48,7 +48,6 @@ def set_seed(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
 
-
 class BaseNode(ABC):
     """BaseNode is an abstract base class that provides foundational functionalities for nodes in a distributed system. It handles configuration, logging, CUDA setup, model parameter settings, and shared experiment parameters.
 
@@ -123,6 +122,7 @@ class BaseNode(ABC):
         """Add docstring here"""
         self.best_acc = 0.0
         self.round = 0
+        self.EMPTY_MODEL_TAG = "EMPTY_MODEL"
 
     def setup_logging(self, config: Dict[str, ConfigType]) -> None:
         """
@@ -319,13 +319,13 @@ class BaseNode(ABC):
         if collab_weights is not None:
             weight_list = []
             for i, model_wts in enumerate(models_wts):
-                if len(model_wts) > 0 and collab_weights[i] > 0:
+                if self.EMPTY_MODEL_TAG not in model_wts and collab_weights[i] > 0:
                     repr_list.append(model_wts)
                     weight_list.append(collab_weights[i])
             return repr_list, weight_list
         else:
             for model_wts in models_wts:
-                if len(model_wts) > 0:
+                if self.EMPTY_MODEL_TAG not in model_wts:
                     repr_list.append(model_wts)
             return repr_list, None
 
@@ -357,6 +357,15 @@ class BaseNode(ABC):
             model_wts[key] = model_wts[key].to(self.device)
 
         self.model.load_state_dict(model_wts, strict=len(keys_to_ignore) == 0)
+
+    def push(self, neighbors: List[int]) -> None:
+        """
+        Pushes the model to the neighbors.
+        """
+        
+        data_to_send = self.get_model_weights()
+        
+        self.comm_utils.send(neighbors, data_to_send)
 
 class BaseClient(BaseNode):
     """
@@ -619,6 +628,22 @@ class BaseClient(BaseNode):
             assert "model" in repr, "Model not found in the received message"
             self.set_model_weights(repr["model"])
 
+    def receive_pushed_and_aggregate(self, remove_multi = True) -> None:
+        model_updates = self.comm_utils.receive_pushed()
+        if self.is_working:
+            # Remove multiple models of different rounds from each node
+            if remove_multi:
+                to_aggregate = {}
+                for model in model_updates:
+                    sender = model.get("sender", 0)
+                    if sender not in to_aggregate or to_aggregate[sender].get("round", 0) < model.get("round", 0):
+                        to_aggregate[sender] = model
+                model_updates = list(to_aggregate.values())
+            # Aggregate the representations
+            repr = model_updates[0]
+            assert "model" in repr, "Model not found in the received message"
+            self.set_model_weights(repr["model"])
+
     def run_protocol(self) -> None:
         raise NotImplementedError
 
@@ -807,6 +832,20 @@ class BaseFedAvgClient(BaseClient):
         
         self.set_model_weights(agg_wts)
         return None
+
+    def receive_pushed_and_aggregate(self, remove_multi = True) -> None:
+        model_updates = self.comm_utils.receive_pushed()
+        if self.is_working:
+            # Remove multiple models of different rounds from each node
+            if remove_multi:
+                to_aggregate = {}
+                for model in model_updates:
+                    sender = model.get("sender", 0)
+                    if sender not in to_aggregate or to_aggregate[sender].get("round", 0) < model.get("round", 0):
+                        to_aggregate[sender] = model
+                model_updates = list(to_aggregate.values())
+            # Aggregate the representations
+            self.aggregate(model_updates, keys_to_ignore=self.model_keys_to_ignore)
 
     def receive_and_aggregate(self, neighbors: List[int]) -> None:
         if self.is_working:

@@ -44,6 +44,11 @@ class CommunicationServerStub(object):
                 request_serializer=comm__pb2.Data.SerializeToString,
                 response_deserializer=comm__pb2.Empty.FromString,
                 _registered_method=True)
+        self.send_model = channel.unary_unary(
+                '/CommunicationServer/send_model',
+                request_serializer=comm__pb2.Model.SerializeToString,
+                response_deserializer=comm__pb2.Empty.FromString,
+                _registered_method=True)
         self.get_rank = channel.unary_unary(
                 '/CommunicationServer/get_rank',
                 request_serializer=comm__pb2.Empty.SerializeToString,
@@ -85,6 +90,12 @@ class CommunicationServerServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def send_data(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def send_model(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -138,6 +149,11 @@ def add_CommunicationServerServicer_to_server(servicer, server):
             'send_data': grpc.unary_unary_rpc_method_handler(
                     servicer.send_data,
                     request_deserializer=comm__pb2.Data.FromString,
+                    response_serializer=comm__pb2.Empty.SerializeToString,
+            ),
+            'send_model': grpc.unary_unary_rpc_method_handler(
+                    servicer.send_model,
+                    request_deserializer=comm__pb2.Model.FromString,
                     response_serializer=comm__pb2.Empty.SerializeToString,
             ),
             'get_rank': grpc.unary_unary_rpc_method_handler(
@@ -202,6 +218,33 @@ class CommunicationServer(object):
             target,
             '/CommunicationServer/send_data',
             comm__pb2.Data.SerializeToString,
+            comm__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def send_model(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/CommunicationServer/send_model',
+            comm__pb2.Model.SerializeToString,
             comm__pb2.Empty.FromString,
             options,
             channel_credentials,
