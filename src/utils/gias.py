@@ -3,6 +3,8 @@
 import inversefed
 import matplotlib.pyplot as plt
 
+import torch
+import pickle
 
 # based on InvertingGradients code by Jonas Geiping
 # code found in https://github.com/JonasGeiping/invertinggradients/tree/1157b61c6704df42c497ab9eb074c75da5204334
@@ -20,7 +22,15 @@ def reconstruct_gradient(param_diff, target_labels, target_images, lr, local_ste
     """
     Reconstructs the gradient following the Geiping InvertingGradients technique
     """
-
+    print("length of param diff: ", len(param_diff))
+    with open("param_diff.pkl", "wb") as f:
+        pickle.dump(param_diff, f)
+    setup = inversefed.utils.system_startup()
+    for p in range(len(param_diff)):
+        param_diff[p] = param_diff[p].to(setup['device'])
+    # param_diff = param_diff.to(setup['device'])
+    target_labels = target_labels.to(setup['device'])
+    target_images = target_images.to(setup['device'])
 
     dm = torch.as_tensor(inversefed.consts.cifar10_mean, **setup)[:, None, None]
     ds = torch.as_tensor(inversefed.consts.cifar10_std, **setup)[:, None, None]
@@ -40,6 +50,8 @@ def reconstruct_gradient(param_diff, target_labels, target_images, lr, local_ste
                 lr_decay=True,
                 scoring_choice='loss')
     
+    assert len(param_diff) == 38
+
     rec_machine = inversefed.FedAvgReconstructor(model, (dm, ds), local_steps, lr, config,
                                                 use_updates=True, num_images=len(target_labels))
     

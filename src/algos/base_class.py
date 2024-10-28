@@ -605,7 +605,7 @@ class BaseClient(BaseNode):
             avg_loss, avg_acc = 0, 0
             for _ in range(epochs):
                 tr_loss, tr_acc = self.model_utils.train(
-                    self.model, self.optim, self.dloader, self.loss_fn, self.device, malicious_type=self.config.get("malicious_type", "normal"), config=self.config,
+                    self.model, self.optim, self.dloader, self.loss_fn, self.device, malicious_type=self.config.get("malicious_type", "normal"), config=self.config
                 )            
                 avg_loss += tr_loss
                 avg_acc += tr_acc

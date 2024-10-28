@@ -70,6 +70,12 @@ class FedAvgClient(BaseClient):
         # move the model to cpu before sending
         for key in message["model"].keys():
             message["model"][key] = message["model"][key].to("cpu")
+
+        # assert hasattr(self, 'images') and hasattr(self, 'labels'), "Images and labels not found"
+        if "gia" in self.config and hasattr(self, 'images') and hasattr(self, 'labels'):
+            # also stream image and labels
+            message["images"] = self.images.to("cpu")
+            message["labels"] = self.labels.to("cpu")
     
         return message  # type: ignore
 
@@ -105,8 +111,8 @@ class FedAvgServer(BaseServer):
         )
         if "gia" in self.config:
             # to store param differences for GIA attack
-            self.params_s = list()
-            self.params_t = list()
+            self.params_s = [None for i in range(4)]
+            self.params_t = [None for i in range(4)]
 
     def fed_avg(self, model_wts: List[OrderedDict[str, Tensor]]):
         num_users = len(model_wts)
@@ -164,18 +170,15 @@ class FedAvgServer(BaseServer):
     def receive_and_aggregate_gia(self, round:int, dump_file_name: str = ""):
         reprs = self.comm_utils.all_gather()
 
-        
-        if len(dump_file_name) > 0:
-            with open(f"{dump_file_name}.pkl", "wb") as f:
-                pickle.dump(reprs, f)
-
         # Handle GIA-specific logic
         if "gia" in self.config:
             print("Server Running GIA attack")
-            base_params = [key for key in self.model.parameters()]
+            base_params = [key for key, _ in self.model.named_parameters()]
+            print(base_params)
             
             for rep in reprs:
-                assert "images" and "labels" in rep, "Images and labels not found in representation"
+                client_id = rep["sender"]
+                assert "images" in rep and "labels" in rep, "Images and labels not found in representation"
                 model_state_dict = rep["model"]
                 
                 # Extract relevant model parameters
@@ -186,16 +189,20 @@ class FedAvgServer(BaseServer):
                 
                 # Store parameters based on round
                 if round == 0:
-                    self.params_s.append(model_params)
+                    self.params_s[client_id-1] = model_params
                 elif round == 1:
-                    self.params_t.append(model_params)
+                    self.params_t[client_id-1] = model_params
                     images = rep["images"]
                     labels = rep["labels"]
                     
+                    with open(f"params_t_{client_id}.pkl", "wb") as f:
+                        pickle.dump(model_params, f)
+                    with open(f"params_s_{client_id}.pkl", "wb") as f:
+                        pickle.dump(self.params_s[client_id-1], f)
                     # Launch GIA attack
-                    for client_id in range(len(self.params_s)):
-                        p_s = self.params_s[client_id]  # Fixed: now using params_s instead of params_t
-                        p_t = self.params_t[client_id]
+                    for idx in range(len(self.params_s)):
+                        p_s = self.params_s[idx]  # Fixed: now using params_s instead of params_t
+                        p_t = self.params_t[idx]
                         gia_main(p_s, p_t, base_params, self.model, labels, images, client_id)
     
         avg_wts = self.aggregate(reprs)
@@ -210,17 +217,18 @@ class FedAvgServer(BaseServer):
         """
         Runs the whole training procedure
         """
-        if round > 1:
-            self.receive_and_aggregate()
-        else:
-            dump_file_name = ""
-            if round == 0:
-                dump_file_name = "/u/yshi23/sonar/src/start_reprs"
-            elif round == 1:
-                dump_file_name = "/u/yshi23/sonar/src/end_reprs"
+        self.receive_and_aggregate()
+        # if round > 1:
+            # self.receive_and_aggregate()
+        # else:
+        #     dump_file_name = ""
+        #     if round == 0:
+        #         dump_file_name = "/u/yshi23/sonar/src/start_reprs"
+        #     elif round == 1:
+        #         dump_file_name = "/u/yshi23/sonar/src/end_reprs"
 
-            print(f"in round {round}, about to prepare for GIA")
-            self.receive_and_aggregate_gia(round, dump_file_name)            
+        #     print(f"in round {round}, about to prepare for GIA")
+        #     self.receive_and_aggregate_gia(round, dump_file_name)            
 
     def run_protocol(self):
         stats: Dict[str, Any] = {}

@@ -191,6 +191,9 @@ class ModelUtils:
                 output = nn.functional.log_softmax(output, dim=1)  # type: ignore
 
             loss = loss_fn(output, target)
+            # if kwargs.get("gia", True):
+            #     print("you are here!")
+            #     loss = loss_fn(output, target).sum()
             loss.backward()
             optim.step()
             train_loss += loss.item()
