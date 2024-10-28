@@ -81,3 +81,9 @@ class CommunicationManager:
 
     def get_comm_cost(self):
         return self.comm.get_comm_cost()
+
+    def receive_pushed(self):
+        return self.comm.receive_pushed()
+
+    def all_gather_pushed(self):
+        return self.comm.all_gather_pushed()

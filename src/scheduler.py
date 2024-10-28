@@ -20,6 +20,7 @@ from algos.fl_isolated import FedIsoClient, FedIsoServer
 from algos.fl_weight import FedWeightClient, FedWeightServer
 from algos.fl_static import FedStaticNode, FedStaticServer
 from algos.swarm import SWARMClient, SWARMServer
+from algos.swift import SwiftNode, SwiftServer
 from algos.DisPFL import DisPFLClient, DisPFLServer
 from algos.def_kt import DefKTClient, DefKTServer
 from algos.fedfomo import FedFomoClient, FedFomoServer
@@ -28,6 +29,7 @@ from algos.MetaL2C import MetaL2CClient, MetaL2CServer
 from algos.fl_central import CentralizedCLient, CentralizedServer
 from algos.fl_data_repr import FedDataRepClient, FedDataRepServer
 from algos.fl_val import FedValClient, FedValServer
+from algos.fl_push import FedAvgPushClient, FedAvgPushServer
 
 from utils.communication.comm_utils import CommunicationManager
 from utils.config_utils import load_config, process_config
@@ -50,6 +52,8 @@ algo_map: Dict[str, List[FedAvgClient]] = { # type: ignore
     "centralized": [CentralizedServer, CentralizedCLient],
     "feddatarepr": [FedDataRepServer, FedDataRepClient],
     "fedval": [FedValServer, FedValClient],
+    "swift": [SwiftServer, SwiftNode],
+    "fedavgpush": [FedAvgPushServer, FedAvgPushClient],
 }
 
 
