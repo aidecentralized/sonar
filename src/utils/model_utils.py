@@ -373,62 +373,6 @@ class ModelUtils:
             train_accuracy[i] = 100.0 * correct[i] / len(dloader.dataset)
         return train_loss, train_accuracy
 
-    def per_sample_grads(
-        self, model: nn.Module, x: torch.Tensor, y: torch.Tensor, criterion: Any
-    ) -> List[torch.Tensor]:
-        """Computes per-sample gradients for the batch."""
-        batch_size = x.size(0)
-        outputs = model(x)
-        loss = criterion(outputs, y)
-
-        # Calculate the gradients with respect to model parameters
-        grads = torch.autograd.grad(loss, model.parameters(), create_graph=True)
-
-        per_sample_grads = []
-        for g in grads:
-            # Check the number of dimensions
-            if g.dim() > 1:
-                # Try to flatten starting from the second dimension
-                total_elements = g.numel()
-                if total_elements % batch_size == 0:
-                    per_sample_grads.append(g.view(batch_size, -1))
-                else:
-                    print(
-                        f"Warning: Gradient of size {total_elements} cannot be reshaped into [batch_size={batch_size}, -1]."
-                    )
-                    per_sample_grads.append(g.flatten(start_dim=1))
-            else:
-                # If the gradient is 1D, just append it as is
-                per_sample_grads.append(g)
-
-        return per_sample_grads
-    
-    def dpsgd_step(self, model, per_sample_grads, optimizer, noise_multiplier, batch_size, l2_norm_clip):
-        for param, aggregated_grad in zip(model.parameters(), per_sample_grads):
-            print(f"Aggregated Grad Shape: {aggregated_grad.shape}")  # Debugging line
-            print(f"Param Shape: {param.shape}")  # Debugging line
-
-            # Ensure the shape matches
-            if aggregated_grad.shape != param.shape:
-                # Handle shape mismatch, for example, by resizing or reshaping
-                if aggregated_grad.numel() == param.numel():
-                    aggregated_grad = aggregated_grad.view_as(param)
-                else:
-                    raise ValueError(f"Shape mismatch: {aggregated_grad.shape} vs {param.shape}")
-
-            # Apply noise (if using DP-SGD) and clipping
-            noise = (torch.randn_like(aggregated_grad) * noise_multiplier).to(param.device)
-            clipped_grad = torch.clamp(aggregated_grad + noise, -l2_norm_clip, l2_norm_clip)
-
-            # Manually set the gradient for the parameter
-            param.grad = clipped_grad
-
-        # Perform the optimizer step (updates parameters based on their gradients)
-        optimizer.step()
-
-        # Clear gradients for the next iteration
-        optimizer.zero_grad()
-
     def train_with_dpsgd(
         self,
         model: nn.Module,
