@@ -53,6 +53,9 @@ class SwiftNode(FedStaticNode):
             # evaluate the model on the test data
             # Inside FedStaticNode.run_protocol()
             stats["test_loss"], stats["test_acc"] = self.local_test()
+
+            stats.update(self.get_memory_metrics())
+
             self.log_metrics(stats=stats, iteration=it)
             self.local_round_done()
 

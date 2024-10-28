@@ -83,7 +83,8 @@ class FedAvgClient(BaseClient):
             self.receive_and_aggregate()
             
             stats["bytes_received"], stats["bytes_sent"] = self.comm_utils.get_comm_cost()
-            
+            stats.update(self.get_memory_metrics())
+
             self.log_metrics(stats=stats, iteration=round)
 
 
@@ -161,7 +162,7 @@ class FedAvgServer(BaseServer):
         """
         Runs the whole training procedure
         """
-        self.receive_and_aggregate()            
+        self.receive_and_aggregate()
 
     def run_protocol(self):
         stats: Dict[str, Any] = {}
@@ -173,4 +174,5 @@ class FedAvgServer(BaseServer):
             self.single_round()
             stats["bytes_received"], stats["bytes_sent"] = self.comm_utils.get_comm_cost()
             stats["test_loss"], stats["test_acc"], stats["test_time"] = self.test()
+            stats.update(self.get_memory_metrics())
             self.log_metrics(stats=stats, iteration=round)
