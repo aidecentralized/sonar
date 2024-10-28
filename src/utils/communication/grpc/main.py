@@ -404,7 +404,6 @@ class GRPCCommunication(CommunicationInterface):
     # 2. Tensor data - Tensors
     # 3. Metadata - JSON format
     def receive(self, node_ids: List[int]) -> List[Any]:
-        print("ALL PARTICIPATING NODES", node_ids)
         if self.synchronous:
             for id in node_ids:
                 self.wait_until_rounds_match(id)

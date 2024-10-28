@@ -254,7 +254,8 @@ class BaseNode(ABC):
         Share the model weights
         """
         message = {"sender": self.node_id, "round": self.round, "model": self.model.state_dict()}
-        if "gia" in self.config:
+
+        if "gia" in self.config and hasattr(self, 'images') and hasattr(self, 'labels'):
             # also stream image and labels
             message["images"] = self.images
             message["labels"] = self.labels

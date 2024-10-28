@@ -10,7 +10,8 @@ from .algo_config import (
     malicious_algo_config_list,
     default_config_list,
     fedstatic,
-    traditional_fl
+    traditional_fl,
+    test_fl_inversion,
 )
 
 sliding_window_8c_4cpc_support = {
@@ -156,7 +157,7 @@ CIFAR10_DSET = "cifar10"
 CIAR10_DPATH = "./datasets/imgs/cifar10/"
 
 NUM_COLLABORATORS = 1
-DUMP_DIR = "/mas/camera/Experiments/SONAR/yshi23/"
+DUMP_DIR = "/u/yshi23/sonar/src/expt_dump/test/"
 
 mpi_system_config: ConfigType = {
     "exp_id": "",
@@ -364,7 +365,7 @@ grpc_system_config_gia: ConfigType = {
     "seed": 2,
     "device_ids": get_device_ids(num_users, gpu_ids),
     # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
-    "algos": get_algo_configs(num_users=num_users, algo_configs=[traditional_fl]),  # type: ignore
+    "algos": get_algo_configs(num_users=num_users, algo_configs=[test_fl_inversion]),  # type: ignore
     "samples_per_user": 50000 // num_users,  # distributed equally
     "train_label_distribution": "iid",
     "test_label_distribution": "iid",

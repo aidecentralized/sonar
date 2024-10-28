@@ -48,6 +48,7 @@ test_fl_inversion: ConfigType = {
     "model": "resnet10",
     "model_lr": 3e-4,
     "batch_size": 256,
+    "gia": True,
 }
 
 fedweight: ConfigType = {

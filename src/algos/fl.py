@@ -161,8 +161,9 @@ class FedAvgServer(BaseServer):
             self.model_utils.save_model(self.model, self.model_save_path)
         return [test_loss, test_acc, time_taken]
 
-    def receive_and_aggregate(self, round:int, dump_file_name: str = ""):
+    def receive_and_aggregate_gia(self, round:int, dump_file_name: str = ""):
         reprs = self.comm_utils.all_gather()
+
         
         if len(dump_file_name) > 0:
             with open(f"{dump_file_name}.pkl", "wb") as f:
@@ -170,9 +171,11 @@ class FedAvgServer(BaseServer):
 
         # Handle GIA-specific logic
         if "gia" in self.config:
+            print("Server Running GIA attack")
             base_params = [key for key in self.model.parameters()]
             
             for rep in reprs:
+                assert "images" and "labels" in rep, "Images and labels not found in representation"
                 model_state_dict = rep["model"]
                 
                 # Extract relevant model parameters
@@ -198,11 +201,26 @@ class FedAvgServer(BaseServer):
         avg_wts = self.aggregate(reprs)
         self.set_representation(avg_wts)
 
-    def single_round(self, fp: str = ""):
+    def receive_and_aggregate(self):
+        reprs = self.comm_utils.all_gather()
+        avg_wts = self.aggregate(reprs)
+        self.set_representation(avg_wts)
+
+    def single_round(self, round:int):
         """
         Runs the whole training procedure
         """
-        self.receive_and_aggregate(fp)            
+        if round > 1:
+            self.receive_and_aggregate()
+        else:
+            dump_file_name = ""
+            if round == 0:
+                dump_file_name = "/u/yshi23/sonar/src/start_reprs"
+            elif round == 1:
+                dump_file_name = "/u/yshi23/sonar/src/end_reprs"
+
+            print(f"in round {round}, about to prepare for GIA")
+            self.receive_and_aggregate_gia(round, dump_file_name)            
 
     def run_protocol(self):
         stats: Dict[str, Any] = {}
@@ -210,14 +228,9 @@ class FedAvgServer(BaseServer):
         start_rounds = self.config.get("start_rounds", 0)
         total_rounds = self.config["rounds"]
         for round in range(start_rounds, total_rounds):
-            dump_file_name = ""
-            if round == 0:
-                dump_file_name = "/u/yshi23/sonar/src/start_reprs"
-            elif round == 1:
-                dump_file_name = "/u/yshi23/sonar/src/end_reprs"
 
             self.local_round_done()
-            self.single_round(dump_file_name)
+            self.single_round(round)
             stats["bytes_received"], stats["bytes_sent"] = self.comm_utils.get_comm_cost()
             stats["test_loss"], stats["test_acc"], stats["test_time"] = self.test()
             self.log_metrics(stats=stats, iteration=round)
