@@ -346,12 +346,20 @@ class BaseNode(ABC):
         return is_working
 
     def set_model_weights(
-        self, model_wts: OrderedDict[str, Tensor], keys_to_ignore: List[str] = []
-    ) -> None:
+    self, model_wts: OrderedDict[str, Tensor], keys_to_ignore: List[str] = []
+) -> None:
         """
         Set the model weights
         """
         model_wts = copy.copy(model_wts)
+
+        # Add _module prefix to keys if necessary
+        if list(model_wts.keys())[0].startswith("_module") and not list(self.model.state_dict().keys())[0].startswith("_module"):
+            model_wts = OrderedDict([("_module." + k, v) for k, v in model_wts.items()])
+
+        # Ignore batch normalization tracking keys
+        bn_tracking_keys = [k for k in model_wts.keys() if k.endswith(('.running_mean', '.running_var', '.num_batches_tracked'))]
+        keys_to_ignore.extend(bn_tracking_keys)
 
         if len(keys_to_ignore) > 0:
             for key in keys_to_ignore:
@@ -362,35 +370,7 @@ class BaseNode(ABC):
             model_wts[key] = model_wts[key].to(self.device)
 
         self.model.load_state_dict(model_wts, strict=len(keys_to_ignore) == 0)
-    '''def set_model_weights(self, model_wts):
-        if hasattr(self.model, '_module'):
-            # If the model is wrapped by GradSampleModule
-            original_model = self.model._module
-        else:
-            original_model = self.model
-
-        # Create a new state dict with the correct structure
-        new_state_dict = {}
-        for k, v in model_wts.items():
-            if k.startswith('_module.'):
-                new_state_dict[k] = v
-            else:
-                new_state_dict[f'_module.{k}'] = v
-
-        # Filter out unexpected keys (like running_mean, running_var, num_batches_tracked)
-        filtered_state_dict = {k: v for k, v in new_state_dict.items() if k in self.model.state_dict()}
-
-        # Load the filtered state dict
-        missing_keys, unexpected_keys = self.model.load_state_dict(filtered_state_dict, strict=False)
-
-        if missing_keys:
-            print(f"Missing keys when loading model weights: {missing_keys}")
-        if unexpected_keys:
-            print(f"Unexpected keys when loading model weights: {unexpected_keys}")
-
-        # If the model was wrapped, we don't need to re-wrap it
-        # The GradSampleModule wrapper should remain intact'''
-
+    
 class BaseClient(BaseNode):
     """
     Abstract class for all algorithms
@@ -613,6 +593,7 @@ class BaseClient(BaseNode):
 
                         # Initialize optimizer
                         self.optim = torch.optim.SGD(self.model.parameters(), lr=self.config.get("model_lr"))
+                        self.model.train()
 
                         # Make model, optimizer, and data loader private
                         self.model, self.optim, self.dloader = privacy_engine.make_private_with_epsilon(

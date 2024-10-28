@@ -135,7 +135,8 @@ class FedAvgServer(BaseServer):
         """
         Set the model
         """
-        self.model.load_state_dict(representation)
+        representation = OrderedDict([(k.replace("_module.", ""), v) for k, v in representation.items()])
+        self.model.load_state_dict(representation, strict=False)
 
     def test(self, **kwargs: Any) -> List[float]:
         """

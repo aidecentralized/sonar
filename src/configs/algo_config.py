@@ -32,7 +32,7 @@ traditional_fl: ConfigType = {
     # Collaboration setup
     "algo": "fedavg",
     "rounds": 2,
-    "use_dpsgd": False,
+    "use_dpsgd": True,
     "epsilon": 5,
 
     # Model parameters
