@@ -361,14 +361,6 @@ class BaseNode(ABC):
         bn_tracking_keys = [k for k in model_wts.keys() if k.endswith(('.running_mean', '.running_var', '.num_batches_tracked'))]
         keys_to_ignore.extend(bn_tracking_keys)
 
-        # Add _module prefix to keys if necessary
-        if list(model_wts.keys())[0].startswith("_module") and not list(self.model.state_dict().keys())[0].startswith("_module"):
-            model_wts = OrderedDict([("_module." + k, v) for k, v in model_wts.items()])
-
-        # Ignore batch normalization tracking keys
-        bn_tracking_keys = [k for k in model_wts.keys() if k.endswith(('.running_mean', '.running_var', '.num_batches_tracked'))]
-        keys_to_ignore.extend(bn_tracking_keys)
-
         if len(keys_to_ignore) > 0:
             for key in keys_to_ignore:
                 if key in model_wts.keys():
