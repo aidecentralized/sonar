@@ -39,7 +39,11 @@ class ModelUtils:
         self.dset = dset
         # TODO: add support for loading checkpointed models
         model_name = model_name.lower()
-        if model_name == "resnet10":
+        if model_name == "resnet6":
+            if pretrained:
+                raise ValueError("Pretrained model not available for resnet6")
+            model = resnet.resnet6(**kwargs)
+        elif model_name == "resnet10":
             if pretrained:
                 raise ValueError("Pretrained model not available for resnet10")
             model = resnet.resnet10(**kwargs)
