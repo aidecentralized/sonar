@@ -7,7 +7,7 @@ import threading
 import time
 import socket
 import functools
-from typing import Any, Callable, Dict, List, OrderedDict, Union, TYPE_CHECKING
+from typing import Any, Callable, Dict, List, OrderedDict, Union, TYPE_CHECKING, Set
 from urllib.parse import unquote
 import grpc # type: ignore
 from torch import Tensor
@@ -15,7 +15,7 @@ from utils.communication.grpc.grpc_utils import deserialize_model, serialize_mod
 import os
 import sys
 
-EMPTY_MODEL_TAG = b"EMPTY_MODEL"
+EMPTY_MODEL_TAG = "EMPTY_MODEL"
 
 grpc_generated_dir = os.path.dirname(os.path.abspath(__file__))
 if grpc_generated_dir not in sys.path:
@@ -122,8 +122,9 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
         self.base_node = obj
 
     @update_communication_cost
-    def send_data(self, request, context) -> comm_pb2.Empty:  # type: ignore
-        self.received_data.put(deserialize_model(request.model.buffer))  # type: ignore
+    def send_model(self, request: comm_pb2.Model, context) -> comm_pb2.Empty:  # type: ignore
+        deserialized_message = deserialize_message(request.buffer)
+        self.received_data.put(deserialized_message)  # type: ignore
         return comm_pb2.Empty()  # type: ignore
 
     @update_communication_cost
@@ -147,11 +148,13 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
             context.abort(grpc.StatusCode.INTERNAL, "Base node not registered") # type: ignore
             raise Exception("Base node not registered")
         with self.lock:
-            if self.is_working:
-                model = comm_pb2.Model(buffer=serialize_message(self.base_node.get_model_weights()))
-            else:
+            message_to_send = self.base_node.get_model_weights()
+            if not self.is_working:
                 assert self.base_node.dropout.dropout_enabled, "Empty models are only supported when Dropout is enabled."
-                model = comm_pb2.Model(buffer=EMPTY_MODEL_TAG)
+                if "model" in message_to_send:
+                    del message_to_send["model"]
+                message_to_send[EMPTY_MODEL_TAG] = True
+            model = comm_pb2.Model(buffer=serialize_message(message_to_send)) # type: ignore
             return model
 
     @update_communication_cost
@@ -348,24 +351,46 @@ class GRPCCommunication(CommunicationInterface):
                 return self.servicer.peer_ids[peer_id].get("ip") + ":" + str(self.servicer.peer_ids[peer_id].get("port"))  # type: ignore
         raise Exception(f"Rank {rank} not found in peer_ids")
 
-    def send(self, dest: str | int, data: OrderedDict[str, Tensor]):
+    def send_with_retries(self, dest_host: str, buffer: Any) -> Any:
+        with grpc.insecure_channel(dest_host) as channel:  # type: ignore
+            stub = comm_pb2_grpc.CommunicationServerStub(channel)  # type: ignore
+            max_tries = 10
+            while max_tries > 0:
+                try:
+                    model = comm_pb2.Model(buffer=buffer)  # type: ignore
+                    stub.send_model(model)  # type: ignore
+                except grpc.RpcError as e:
+                    print(f"RPC failed {10 - max_tries} times: {e}", "Retrying...")
+                    # sleep for a random time between 1 and 10 seconds
+                    random_time = random.randint(1, 10)
+                    time.sleep(random_time)
+                    max_tries -= 1
+                else:
+                    return
+            raise Exception("Failed to send data. Receiver unreachable.")
+
+
+
+    def send(self, dest: str | int, data: OrderedDict[str, Any]):
         """
-        data should be a torch model
+        data should be a python dictionary
         """
         dest_host: str = ""
         if type(dest) is int:
+            if self.synchronous:
+                self.wait_until_rounds_match(dest)
             dest_host = self.get_host_from_rank(dest)
         else:
+            assert not self.synchronous, "Synchronous mode is not supported for hostnames. Use node_ids instead."
             dest_host = str(dest)
-        try:
-            buffer = serialize_model(data)
-            with grpc.insecure_channel(dest_host) as channel:  # type: ignore
-                stub = comm_pb2_grpc.CommunicationServerStub(channel)  # type: ignore
-                model = comm_pb2.Model(buffer=buffer)  # type: ignore
-                stub.send_data(comm_pb2.Data(model=model, id=str(self.rank)))  # type: ignore
-        except grpc.RpcError as e:
-            print(f"RPC failed: {e}")
-            sys.exit(1)
+        
+        if not self.servicer.is_working:
+            data[EMPTY_MODEL_TAG] = True
+            if "model" in data:
+                del data["model"]
+        buffer = serialize_message(data)
+
+        self.send_with_retries(dest_host, buffer)
 
     def wait_until_rounds_match(self, id: int):
         """
@@ -410,8 +435,6 @@ class GRPCCommunication(CommunicationInterface):
         items: List[Any] = []
         def callback_fn(stub: comm_pb2_grpc.CommunicationServerStub) -> OrderedDict[str, Tensor]:
             model = stub.get_model(comm_pb2.Empty()) # type: ignore
-            if model.buffer == EMPTY_MODEL_TAG:
-                return OrderedDict()
             with self.servicer.lock:
                 self.servicer.communication_cost_received += model.ByteSize()
             return deserialize_message(model.buffer) # type: ignore
@@ -422,6 +445,35 @@ class GRPCCommunication(CommunicationInterface):
             if len(item) == 0:
                 self.servicer.base_node.log_utils.log_console(f"Received None from node {id} by node {self.rank}")
             items.append(item)
+        return items
+
+    def receive_pushed(self) -> List[OrderedDict[str, Any]]:
+        # Fetch messages from self.servicer.received_data that have the same or earlier round than  self_round = self.servicer.base_node.get_local_rounds()
+        if not self.servicer.base_node:
+            raise Exception("Base node not registered")
+        self_round = self.servicer.base_node.get_local_rounds()
+        items: List[OrderedDict[str, Any]] = []
+        
+        num_tries = 20
+        time_to_wait = 2
+        while num_tries > 0:
+            while self.servicer.received_data.empty() and num_tries > 0:
+                num_tries -= 1
+                time_to_wait = 2
+                print(f"Node {self.rank} Waiting for data to be received. Retrying in {time_to_wait} seconds")
+                time.sleep(time_to_wait)
+            for _ in range(self.servicer.received_data.qsize()):
+                item = self.servicer.received_data.get()
+                round = item.get("round", 0)
+                if round <= self_round:
+                    items.append(item)
+                else:
+                    self.servicer.received_data.put(item)
+            if len(items) > 0:
+                break
+            else:
+                num_tries -= 1
+                time.sleep(time_to_wait)
         return items
 
     def is_own_id(self, peer_id: int) -> bool:
@@ -444,6 +496,29 @@ class GRPCCommunication(CommunicationInterface):
                 received_model = self.receive([peer_id])[0]
                 items.append(received_model)
         return items
+
+    def received_push_from_all(self, received_models, peer_ids: Set[int]) -> bool:
+        received_from = set()
+        for model in received_models:
+            sender = model.get("sender", 0)
+            received_from.add(sender)
+
+        print(f"Received from {received_from} and peer_ids are {peer_ids}")
+        
+        return peer_ids == received_from
+        
+
+    def all_gather_pushed(self) -> Any:
+        # this will block until all items are received
+        # from all peers
+        received_models = self.receive_pushed()
+
+        to_receive_from = set([peer_id for peer_id in self.servicer.peer_ids if not self.is_own_id(peer_id)])
+
+        while not self.received_push_from_all(received_models, to_receive_from):
+            received_models.extend(self.receive_pushed())
+
+        return received_models
 
     def get_num_finished(self) -> int:
         num_finished = self.servicer.finished.qsize()

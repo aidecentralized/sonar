@@ -4,6 +4,7 @@ syntax = "proto3";
 
 service CommunicationServer {
   rpc send_data (Data) returns (Empty) {}
+  rpc send_model (Model) returns (Empty) {}
   rpc get_rank (Empty) returns (Rank) {}
   rpc get_model (Empty) returns (Model) {}
   rpc get_current_round (Empty) returns (Round) {}
