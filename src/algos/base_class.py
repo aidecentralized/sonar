@@ -379,15 +379,6 @@ class BaseNode(ABC):
 
         self.model.load_state_dict(model_wts, strict=len(keys_to_ignore) == 0)
     
-    
-    def push(self, neighbors: List[int]) -> None:
-        """
-        Pushes the model to the neighbors.
-        """
-        
-        data_to_send = self.get_model_weights()
-        
-        self.comm_utils.send(neighbors, data_to_send)
 
     def push(self, neighbors: List[int]) -> None:
         """
