@@ -145,11 +145,13 @@ CIFAR10_DSET = "cifar10"
 CIAR10_DPATH = "./datasets/imgs/cifar10/"
 
 NUM_COLLABORATORS = 1
-DUMP_DIR = "/mas/camera/Experiments/SONAR/abhi/"
+DUMP_DIR = "/Users/kathryn/MIT/UROP/Media Lab/sonar_experiments/"
 
+num_users = 4
 mpi_system_config: ConfigType = {
     "exp_id": "",
     "comm": {"type": "MPI"},
+    "num_users": num_users,
     "num_collaborators": NUM_COLLABORATORS,
     "dset": CIFAR10_DSET,
     "dump_dir": DUMP_DIR,
@@ -159,14 +161,12 @@ mpi_system_config: ConfigType = {
     # The device_ids dictionary depicts the GPUs on which the nodes reside.
     # For a single-GPU environment, the config will look as follows (as it follows a 0-based indexing):
     #  "device_ids": {"node_0": [0], "node_1": [0], "node_2": [0], "node_3": [0]},
-    "device_ids": get_device_ids(num_users=3, gpus_available=[1, 2]),
+    "device_ids": get_device_ids(num_users=4, gpus_available=[1, 2]),
     # use this when the list needs to be imported from the algo_config
     # "algo": get_algo_configs(num_users=3, algo_configs=algo_configs_list),
     "algos": get_algo_configs(
-        num_users=3,
-        algo_configs=malicious_algo_config_list,
-        assignment_method="distribution",
-        distribution={0: 1, 1: 1, 2: 1},
+        num_users=4,
+        algo_configs=default_config_list
     ),  # type: ignore
     "samples_per_user": 1000,  # TODO: To model scenarios where different users have different number of samples
     # we need to make this a dictionary with user_id as key and number of samples as value
@@ -342,5 +342,5 @@ grpc_system_config: ConfigType = {
     "dropout_dicts": dropout_dicts,
 }
 
-current_config = grpc_system_config
-# current_config = mpi_system_config
+# current_config = grpc_system_config
+current_config = mpi_system_config

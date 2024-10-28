@@ -66,6 +66,5 @@ logging.info(f"Running experiment with {num_users} users.")
 
 scheduler.install_config()
 scheduler.initialize()
-
 # Run the job
 scheduler.run_job()

@@ -96,7 +96,7 @@ class FedAvgServer(BaseServer):
         num_users = len(model_wts)
         coeff = 1 / num_users
         avgd_wts: OrderedDict[str, Tensor] = OrderedDict()
-
+        print(f"model weights: {model_wts}")
         for key in model_wts[0].keys():
             avgd_wts[key] = sum(coeff * m[key] for m in model_wts)  # type: ignore
 

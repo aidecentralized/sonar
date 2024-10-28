@@ -328,4 +328,5 @@ malicious_algo_config_list: List[ConfigType] = [
 ]
 
 
-default_config_list: List[ConfigType] = [traditional_fl]
+# default_config_list: List[ConfigType] = [traditional_fl]
+default_config_list: List[ConfigType] = [fedstatic, fedstatic, fedstatic, fedstatic]

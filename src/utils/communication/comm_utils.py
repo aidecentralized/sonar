@@ -1,7 +1,7 @@
 from enum import Enum
 from utils.communication.grpc.main import GRPCCommunication
 from typing import Any, Dict, List, TYPE_CHECKING
-# from utils.communication.mpi import MPICommUtils
+from utils.communication.mpi import MPICommUtils
 
 if TYPE_CHECKING:
     from algos.base_class import BaseNode
@@ -20,7 +20,7 @@ class CommunicationFactory:
     ):
         comm_type = comm_type
         if comm_type == CommunicationType.MPI:
-            raise NotImplementedError("MPI's new version not yet implemented. Please use GRPC. See https://github.com/aidecentralized/sonar/issues/96 for more details.")
+            return MPICommUtils(config)
         elif comm_type == CommunicationType.GRPC:
             return GRPCCommunication(config)
         elif comm_type == CommunicationType.HTTP:

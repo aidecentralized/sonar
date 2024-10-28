@@ -104,7 +104,6 @@ class Scheduler:
         random.seed(seed)
         numpy.random.seed(seed)
         self.merge_configs()
-
         if self.communication.get_rank() == 0:
             if copy_souce_code:
                 copy_source_code(self.config)
@@ -120,7 +119,6 @@ class Scheduler:
             # from a different machine
             print("Waiting for 10 seconds for the super node to create directories")
             time.sleep(10)
-
         self.node = get_node(
             self.config,
             rank=self.communication.get_rank(),
