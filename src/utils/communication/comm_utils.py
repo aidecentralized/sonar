@@ -1,11 +1,6 @@
 from enum import Enum
-<<<<<<< HEAD
-from typing import Any, Dict, List, Tuple
-
-=======
->>>>>>> main
 from utils.communication.grpc.main import GRPCCommunication
-from typing import Any, Dict, List, TYPE_CHECKING
+from typing import Any, Dict, List, Tuple, TYPE_CHECKING
 # from utils.communication.mpi import MPICommUtils
 
 if TYPE_CHECKING:

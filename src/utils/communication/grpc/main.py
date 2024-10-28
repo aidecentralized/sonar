@@ -6,12 +6,8 @@ import re
 import threading
 import time
 import socket
-<<<<<<< HEAD
-from typing import Any, Dict, List, OrderedDict, Union, Tuple
-=======
 import functools
 from typing import Any, Callable, Dict, List, OrderedDict, Union, TYPE_CHECKING
->>>>>>> main
 from urllib.parse import unquote
 import grpc # type: ignore
 from torch import Tensor
@@ -408,6 +404,7 @@ class GRPCCommunication(CommunicationInterface):
     # 2. Tensor data - Tensors
     # 3. Metadata - JSON format
     def receive(self, node_ids: List[int]) -> List[Any]:
+        print("ALL PARTICIPATING NODES", node_ids)
         if self.synchronous:
             for id in node_ids:
                 self.wait_until_rounds_match(id)

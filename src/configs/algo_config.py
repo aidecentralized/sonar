@@ -39,36 +39,17 @@ traditional_fl: ConfigType = {
     "batch_size": 256,
 }
 
-<<<<<<< HEAD
-
 test_fl_inversion: ConfigType = {
-    "algo": "fedavg_inversion",
-    "exp_type": "",
-    # Learning setup
-    "epochs": 10,
+    # Collaboration setup
+    "algo": "fedavg",
+    "rounds": 2,
+
+    # Model parameters
     "model": "resnet10",
     "model_lr": 3e-4,
     "batch_size": 256,
-    "malicious_type": "normal",
 }
 
-malicious_traditional_bad_weights: ConfigType = {
-    **traditional_fl,
-    "malicious_type": "bad_weights",
-}
-
-malicious_traditional_flip_signs: ConfigType = {
-    **traditional_fl,
-    "malicious_type": "sign_flip",
-}
-
-# malicious_gradient_inversion: ConfigType = {
-#     **traditional_fl,
-#     "malicious_type": "gradient_inversion",
-# }
-
-=======
->>>>>>> main
 fedweight: ConfigType = {
     "algo": "fedweight",
     "num_rep": 1,
@@ -357,10 +338,5 @@ malicious_algo_config_list: List[ConfigType] = [
     malicious_traditional_model_update_attack,
 ]
 
-<<<<<<< HEAD
 # default_config_list: List[ConfigType] = [traditional_fl]
 default_config_list: List[ConfigType] = [test_fl_inversion]
-=======
-
-default_config_list: List[ConfigType] = [traditional_fl]
->>>>>>> main

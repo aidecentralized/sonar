@@ -254,6 +254,10 @@ class BaseNode(ABC):
         Share the model weights
         """
         message = {"sender": self.node_id, "round": self.round, "model": self.model.state_dict()}
+        if "gia" in self.config:
+            # also stream image and labels
+            message["images"] = self.images
+            message["labels"] = self.labels
 
         # Move to CPU before sending
         for key in message["model"].keys():
@@ -404,176 +408,189 @@ class BaseClient(BaseNode):
             assert len(train_dset) == 10, "GIA should have exactly 10 samples in train set"
             assert len(test_dset) == 10, "GIA should have exactly 10 samples in test set"
             
+            # Store the images and labels in tensors, matching the format from your example
+            self.images = []
+            self.labels = []
+            
+            # Collect images and labels in order
+            for idx in range(len(train_dset)):
+                img, label = train_dset[idx]
+                self.images.append(img)
+                self.labels.append(torch.tensor([label]))
+                
+            # Stack/concatenate into final tensors
+            self.images = torch.stack(self.images)  # Shape: [10, C, H, W]
+            self.labels = torch.cat(self.labels)    # Shape: [10]
+            
             # Set up the dataloaders with batch_size equal to dataset size for single-pass training
             self.classes_of_interest = classes
             self.train_indices = train_indices
             self.train_dset = train_dset
-            self.dloader = DataLoader(train_dset, batch_size=len(train_dset), shuffle=True)
-            self._test_loader = DataLoader(test_dset, batch_size=len(test_dset))
+            self.dloader = DataLoader(train_dset, batch_size=len(train_dset), shuffle=False)
+            self._test_loader = DataLoader(test_dset, batch_size=len(test_dset), shuffle=False)
             print("Using GIA data setup")
-            # Skip the rest of the function since we don't want other modifications
-            return
-
-        if config.get("test_samples_per_class", None) is not None:
-            test_dset, _ = balanced_subset(test_dset, config["test_samples_per_class"])
-
-        samples_per_user = config["samples_per_user"]
-        batch_size: int = config["batch_size"] # type: ignore
-        print(f"samples per user: {samples_per_user}, batch size: {batch_size}")
-
-        # Support user specific dataset
-        if isinstance(config["dset"], dict):
-
-            def is_same_dest(dset):
-                # Consider all variations of cifar10 as the same dataset
-                # To avoid having exactly same original dataset (without
-                # considering transformation) on multiple users
-                if self.dset == "cifar10" or self.dset.startswith("cifar10_"):
-                    return dset == "cifar10" or dset.startswith("cifar10_")
-                else:
-                    return dset == self.dset
-
-            users_with_same_dset = sorted(
-                [int(k) for k, v in config["dset"].items() if is_same_dest(v)]
-            )
+            print(self.labels)
         else:
-            users_with_same_dset = list(range(1, config["num_users"] + 1))
-        user_idx = users_with_same_dset.index(self.node_id)
+            if config.get("test_samples_per_class", None) is not None:
+                test_dset, _ = balanced_subset(test_dset, config["test_samples_per_class"])
 
-        cls_prior = None
-        # If iid, each user has random samples from the whole dataset (no
-        # overlap between users)
-        if config["train_label_distribution"] == "iid":
-            indices = np.random.permutation(len(train_dset))
-            train_indices = indices[
-                user_idx * samples_per_user : (user_idx + 1) * samples_per_user
-            ]
-            train_dset = Subset(train_dset, train_indices)
-            classes = list(set([train_dset[i][1] for i in range(len(train_dset))]))
-        # If non_iid, each user get random samples from its support classes
-        # (mulitple users might have same images)
-        elif config["train_label_distribution"] == "support":
-            classes = config["support"][str(self.node_id)]
-            support_classes_dataset, indices = filter_by_class(train_dset, classes)
-            train_dset, sel_indices = random_samples(
-                support_classes_dataset, samples_per_user
-            )
-            train_indices = [indices[i] for i in sel_indices]
-        elif config["train_label_distribution"].endswith("non_iid"):
-            alpha = config.get("alpha_data", 0.4)
-            if config["train_label_distribution"] == "inter_domain_non_iid":
-                # Hack to get the same class prior for all users with the same dataset
-                # While keeping the same random state for all users
-                if isinstance(config["dset"], dict) and isinstance(
-                    config["dset"], dict
-                ):
-                    cls_priors = []
-                    dsets = list(config["dset"].values())
-                    for _ in dsets:
-                        n_cls = self.dset_obj.num_cls
-                        cls_priors.append(
-                            np.random.dirichlet(
-                                alpha=[alpha] * n_cls, size=len(users_with_same_dset)
-                            )
-                        )
-                    cls_prior = cls_priors[dsets.index(self.dset)]
-            train_y, train_idx_split, cls_prior = non_iid_balanced(
-                self.dset_obj,
-                len(users_with_same_dset),
-                samples_per_user,
-                alpha,
-                cls_priors=cls_prior,
-                is_train=True,
-            )
-            train_indices = train_idx_split[self.node_id - 1]
-            train_dset = Subset(train_dset, train_indices)
-            classes = np.unique(train_y[user_idx]).tolist()
-            # One plot per dataset
-            # if user_idx == 0:
-            #     print("using non_iid_balanced", alpha)
-            #     self.plot_utils.plot_training_distribution(train_y,
-            # self.dset, users_with_same_dset)
-        elif config["train_label_distribution"] == "shard":
-            raise NotImplementedError
-            # classes_per_user = config["shards"]["classes_per_user"]
-            # samples_per_shard = samples_per_user // classes_per_user
-            # train_dset = build_shards_dataset(train_dset, samples_per_shard,
-            # classes_per_user, self.node_id)
-        else:
-            raise ValueError(
-                "Unknown train label distribution: {}.".format(
-                    config["train_label_distribution"]
+            samples_per_user = config["samples_per_user"]
+            batch_size: int = config["batch_size"] # type: ignore
+            print(f"samples per user: {samples_per_user}, batch size: {batch_size}")
+
+            # Support user specific dataset
+            if isinstance(config["dset"], dict):
+
+                def is_same_dest(dset):
+                    # Consider all variations of cifar10 as the same dataset
+                    # To avoid having exactly same original dataset (without
+                    # considering transformation) on multiple users
+                    if self.dset == "cifar10" or self.dset.startswith("cifar10_"):
+                        return dset == "cifar10" or dset.startswith("cifar10_")
+                    else:
+                        return dset == self.dset
+
+                users_with_same_dset = sorted(
+                    [int(k) for k, v in config["dset"].items() if is_same_dest(v)]
                 )
-            )
+            else:
+                users_with_same_dset = list(range(1, config["num_users"] + 1))
+            user_idx = users_with_same_dset.index(self.node_id)
 
-        if self.dset.startswith("domainnet"):
-            train_transform = T.Compose(
-                [
-                    T.RandomResizedCrop(32, scale=(0.75, 1)),
-                    T.RandomHorizontalFlip(),
-                    # T.ToTensor()
+            cls_prior = None
+            # If iid, each user has random samples from the whole dataset (no
+            # overlap between users)
+            if config["train_label_distribution"] == "iid":
+                indices = np.random.permutation(len(train_dset))
+                train_indices = indices[
+                    user_idx * samples_per_user : (user_idx + 1) * samples_per_user
                 ]
-            )
-
-            # Cache before transform to preserve transform randomness
-            train_dset = TransformDataset(CacheDataset(train_dset), train_transform)
-
-        if config.get("malicious_type", None) == "corrupt_data":
-            corruption_fn_name = config.get("corruption_fn", "gaussian_noise")
-            severity = config.get("corrupt_severity", 1)
-            train_dset = CorruptDataset(CacheDataset(train_dset), corruption_fn_name, severity)
-            print("created train dataset with corruption function: ", corruption_fn_name)
-
-        self.classes_of_interest = classes
-
-        val_prop = config.get("validation_prop", 0)
-        val_dset = None
-        if val_prop > 0:
-            val_size = int(val_prop * len(train_dset))
-            train_size = len(train_dset) - val_size
-            train_dset, val_dset = torch.utils.data.random_split(
-                train_dset, [train_size, val_size]
-            )
-            # self.val_dloader = DataLoader(val_dset, batch_size=batch_size*len(self.device_ids),
-            # shuffle=True)
-            self.val_dloader = DataLoader(val_dset, batch_size=batch_size, shuffle=True)
-
-        assert isinstance(train_dset, torch.utils.data.Dataset), "train_dset must be a Dataset"
-        self.train_indices = train_indices
-        self.train_dset = train_dset
-        self.dloader = DataLoader(train_dset, batch_size=batch_size, shuffle=True) # type: ignore
-
-        if config["test_label_distribution"] == "iid":
-            pass
-        # If non_iid, each users ge the whole test set for each of its
-        # support classes
-        elif config["test_label_distribution"] == "support":
-            classes = config["support"][str(self.node_id)]
-            test_dset, _ = filter_by_class(test_dset, classes)
-        elif config["test_label_distribution"] == "non_iid":
-
-            test_y, test_idx_split, _ = non_iid_balanced(
-                self.dset_obj,
-                len(users_with_same_dset),
-                config["test_samples_per_user"],
-                is_train=False,
-            )
-
-            train_indices = test_idx_split[self.node_id - 1]
-            test_dset = Subset(test_dset, train_indices)
-        else:
-            raise ValueError(
-                "Unknown test label distribution: {}.".format(
-                    config["test_label_distribution"]
+                train_dset = Subset(train_dset, train_indices)
+                classes = list(set([train_dset[i][1] for i in range(len(train_dset))]))
+            # If non_iid, each user get random samples from its support classes
+            # (mulitple users might have same images)
+            elif config["train_label_distribution"] == "support":
+                classes = config["support"][str(self.node_id)]
+                support_classes_dataset, indices = filter_by_class(train_dset, classes)
+                train_dset, sel_indices = random_samples(
+                    support_classes_dataset, samples_per_user
                 )
-            )
+                train_indices = [indices[i] for i in sel_indices]
+            elif config["train_label_distribution"].endswith("non_iid"):
+                alpha = config.get("alpha_data", 0.4)
+                if config["train_label_distribution"] == "inter_domain_non_iid":
+                    # Hack to get the same class prior for all users with the same dataset
+                    # While keeping the same random state for all users
+                    if isinstance(config["dset"], dict) and isinstance(
+                        config["dset"], dict
+                    ):
+                        cls_priors = []
+                        dsets = list(config["dset"].values())
+                        for _ in dsets:
+                            n_cls = self.dset_obj.num_cls
+                            cls_priors.append(
+                                np.random.dirichlet(
+                                    alpha=[alpha] * n_cls, size=len(users_with_same_dset)
+                                )
+                            )
+                        cls_prior = cls_priors[dsets.index(self.dset)]
+                train_y, train_idx_split, cls_prior = non_iid_balanced(
+                    self.dset_obj,
+                    len(users_with_same_dset),
+                    samples_per_user,
+                    alpha,
+                    cls_priors=cls_prior,
+                    is_train=True,
+                )
+                train_indices = train_idx_split[self.node_id - 1]
+                train_dset = Subset(train_dset, train_indices)
+                classes = np.unique(train_y[user_idx]).tolist()
+                # One plot per dataset
+                # if user_idx == 0:
+                #     print("using non_iid_balanced", alpha)
+                #     self.plot_utils.plot_training_distribution(train_y,
+                # self.dset, users_with_same_dset)
+            elif config["train_label_distribution"] == "shard":
+                raise NotImplementedError
+                # classes_per_user = config["shards"]["classes_per_user"]
+                # samples_per_shard = samples_per_user // classes_per_user
+                # train_dset = build_shards_dataset(train_dset, samples_per_shard,
+                # classes_per_user, self.node_id)
+            else:
+                raise ValueError(
+                    "Unknown train label distribution: {}.".format(
+                        config["train_label_distribution"]
+                    )
+                )
 
-        if self.dset.startswith("domainnet"):
-            test_dset = CacheDataset(test_dset)
+            if self.dset.startswith("domainnet"):
+                train_transform = T.Compose(
+                    [
+                        T.RandomResizedCrop(32, scale=(0.75, 1)),
+                        T.RandomHorizontalFlip(),
+                        # T.ToTensor()
+                    ]
+                )
 
-        self._test_loader = DataLoader(test_dset, batch_size=batch_size)
-        # TODO: fix print_data_summary
-        # self.print_data_summary(train_dset, test_dset, val_dset=val_dset)
+                # Cache before transform to preserve transform randomness
+                train_dset = TransformDataset(CacheDataset(train_dset), train_transform)
+
+            if config.get("malicious_type", None) == "corrupt_data":
+                corruption_fn_name = config.get("corruption_fn", "gaussian_noise")
+                severity = config.get("corrupt_severity", 1)
+                train_dset = CorruptDataset(CacheDataset(train_dset), corruption_fn_name, severity)
+                print("created train dataset with corruption function: ", corruption_fn_name)
+
+            self.classes_of_interest = classes
+
+            val_prop = config.get("validation_prop", 0)
+            val_dset = None
+            if val_prop > 0:
+                val_size = int(val_prop * len(train_dset))
+                train_size = len(train_dset) - val_size
+                train_dset, val_dset = torch.utils.data.random_split(
+                    train_dset, [train_size, val_size]
+                )
+                # self.val_dloader = DataLoader(val_dset, batch_size=batch_size*len(self.device_ids),
+                # shuffle=True)
+                self.val_dloader = DataLoader(val_dset, batch_size=batch_size, shuffle=True)
+
+            assert isinstance(train_dset, torch.utils.data.Dataset), "train_dset must be a Dataset"
+            self.train_indices = train_indices
+            self.train_dset = train_dset
+            self.dloader = DataLoader(train_dset, batch_size=batch_size, shuffle=True) # type: ignore
+
+            if config["test_label_distribution"] == "iid":
+                pass
+            # If non_iid, each users ge the whole test set for each of its
+            # support classes
+            elif config["test_label_distribution"] == "support":
+                classes = config["support"][str(self.node_id)]
+                test_dset, _ = filter_by_class(test_dset, classes)
+            elif config["test_label_distribution"] == "non_iid":
+
+                test_y, test_idx_split, _ = non_iid_balanced(
+                    self.dset_obj,
+                    len(users_with_same_dset),
+                    config["test_samples_per_user"],
+                    is_train=False,
+                )
+
+                train_indices = test_idx_split[self.node_id - 1]
+                test_dset = Subset(test_dset, train_indices)
+            else:
+                raise ValueError(
+                    "Unknown test label distribution: {}.".format(
+                        config["test_label_distribution"]
+                    )
+                )
+
+            if self.dset.startswith("domainnet"):
+                test_dset = CacheDataset(test_dset)
+
+            self._test_loader = DataLoader(test_dset, batch_size=batch_size)
+            # TODO: fix print_data_summary
+            # self.print_data_summary(train_dset, test_dset, val_dset=val_dset)
 
     def local_train(self, round: int, epochs: int = 1, **kwargs: Any) -> Tuple[float, float, float]:
         """

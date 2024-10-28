@@ -156,7 +156,7 @@ CIFAR10_DSET = "cifar10"
 CIAR10_DPATH = "./datasets/imgs/cifar10/"
 
 NUM_COLLABORATORS = 1
-DUMP_DIR = "/mas/camera/Experiments/SONAR/abhi/"
+DUMP_DIR = "/mas/camera/Experiments/SONAR/yshi23/"
 
 mpi_system_config: ConfigType = {
     "exp_id": "",
@@ -318,7 +318,7 @@ object_detect_system_config: ConfigType = {
     "exp_keys": [],
 }
 
-num_users = 9
+num_users = 4
 
 dropout_dict = {
     "distribution_dict": { # leave dict empty to disable dropout
@@ -333,7 +333,7 @@ dropout_dicts = {"node_0": {}}
 for i in range(1, num_users + 1):
     dropout_dicts[f"node_{i}"] = dropout_dict
 
-gpu_ids = [2, 3, 5, 6]
+gpu_ids = [0,1,2,3]
 grpc_system_config: ConfigType = {
     "exp_id": "static",
     "num_users": num_users,
@@ -353,5 +353,26 @@ grpc_system_config: ConfigType = {
     "dropout_dicts": dropout_dicts,
 }
 
-current_config = grpc_system_config
+grpc_system_config_gia: ConfigType = {
+    "exp_id": "static",
+    "num_users": num_users,
+    "num_collaborators": NUM_COLLABORATORS,
+    "comm": {"type": "GRPC", "synchronous": True, "peer_ids": ["localhost:50048"]},  # The super-node
+    "dset": CIFAR10_DSET,
+    "dump_dir": DUMP_DIR,
+    "dpath": CIAR10_DPATH,
+    "seed": 2,
+    "device_ids": get_device_ids(num_users, gpu_ids),
+    # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
+    "algos": get_algo_configs(num_users=num_users, algo_configs=[traditional_fl]),  # type: ignore
+    "samples_per_user": 50000 // num_users,  # distributed equally
+    "train_label_distribution": "iid",
+    "test_label_distribution": "iid",
+    "exp_keys": [],
+    "dropout_dicts": dropout_dicts,
+    "gia":True
+}
+
+current_config = grpc_system_config_gia
+# current_config = grpc_system_config
 # current_config = mpi_system_config

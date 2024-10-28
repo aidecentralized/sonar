@@ -32,7 +32,6 @@ class ModelUtils:
         model_name: str,
         dset: str,
         device: torch.device,
-        device_ids: List[int],
         pretrained: bool = False,
         **kwargs: Any,
     ):

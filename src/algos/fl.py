@@ -11,6 +11,8 @@ from algos.attack_add_noise import AddNoiseAttack
 from algos.attack_bad_weights import BadWeightsAttack
 from algos.attack_sign_flip import SignFlipAttack
 
+from utils.gias import gia_main
+
 import pickle
 
 class FedAvgClient(BaseClient):
@@ -101,6 +103,10 @@ class FedAvgServer(BaseServer):
         self.model_save_path = "{}/saved_models/node_{}.pt".format(
             self.config["results_path"], self.node_id
         )
+        if "gia" in self.config:
+            # to store param differences for GIA attack
+            self.params_s = list()
+            self.params_t = list()
 
     def fed_avg(self, model_wts: List[OrderedDict[str, Tensor]]):
         num_users = len(model_wts)
@@ -155,11 +161,40 @@ class FedAvgServer(BaseServer):
             self.model_utils.save_model(self.model, self.model_save_path)
         return [test_loss, test_acc, time_taken]
 
-    def receive_and_aggregate(self, dump_file_name: str = ""):
+    def receive_and_aggregate(self, round:int, dump_file_name: str = ""):
         reprs = self.comm_utils.all_gather()
+        
         if len(dump_file_name) > 0:
             with open(f"{dump_file_name}.pkl", "wb") as f:
                 pickle.dump(reprs, f)
+
+        # Handle GIA-specific logic
+        if "gia" in self.config:
+            base_params = [key for key in self.model.parameters()]
+            
+            for rep in reprs:
+                model_state_dict = rep["model"]
+                
+                # Extract relevant model parameters
+                model_params = OrderedDict(
+                    (key, value) for key, value in model_state_dict.items()
+                    if key in base_params
+                )
+                
+                # Store parameters based on round
+                if round == 0:
+                    self.params_s.append(model_params)
+                elif round == 1:
+                    self.params_t.append(model_params)
+                    images = rep["images"]
+                    labels = rep["labels"]
+                    
+                    # Launch GIA attack
+                    for client_id in range(len(self.params_s)):
+                        p_s = self.params_s[client_id]  # Fixed: now using params_s instead of params_t
+                        p_t = self.params_t[client_id]
+                        gia_main(p_s, p_t, base_params, self.model, labels, images, client_id)
+    
         avg_wts = self.aggregate(reprs)
         self.set_representation(avg_wts)
 
