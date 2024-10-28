@@ -4,7 +4,6 @@ Module for FedStaticClient and FedStaticServer in Federated Learning.
 from typing import Any, Dict, OrderedDict
 from utils.communication.comm_utils import CommunicationManager
 import torch
-import time
 
 from algos.base_class import BaseFedAvgClient
 from algos.topologies.collections import select_topology
@@ -60,7 +59,7 @@ class FedStaticNode(BaseFedAvgClient):
             # evaluate the model on the test data
             # Inside FedStaticNode.run_protocol()
             stats["test_loss"], stats["test_acc"] = self.local_test()
-            stats.update(self.log_memory())
+            stats.update(self.get_memory_metrics())
             self.log_metrics(stats=stats, iteration=it)
 
 
