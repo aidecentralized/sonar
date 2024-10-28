@@ -351,6 +351,7 @@ grpc_system_config: ConfigType = {
     "test_label_distribution": "iid",
     "exp_keys": [],
     "dropout_dicts": dropout_dicts,
+    "log_memory": True,
 }
 
 current_config = grpc_system_config

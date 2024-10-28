@@ -35,6 +35,7 @@ class FedAvgPushClient(FedAvgClient):
             self.push(self.server_node)
 
             stats["bytes_received"], stats["bytes_sent"] = self.comm_utils.get_comm_cost()
+            stats.update(self.get_memory_metrics())
             
             self.log_metrics(stats=stats, iteration=round)
 
@@ -68,5 +69,6 @@ class FedAvgPushServer(FedAvgServer):
             self.single_round()
             stats["bytes_received"], stats["bytes_sent"] = self.comm_utils.get_comm_cost()
             stats["test_loss"], stats["test_acc"], stats["test_time"] = self.test()
+            stats.update(self.get_memory_metrics())
             self.log_metrics(stats=stats, iteration=round)
             self.local_round_done()

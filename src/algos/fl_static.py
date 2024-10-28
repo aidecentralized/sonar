@@ -60,6 +60,7 @@ class FedStaticNode(BaseFedAvgClient):
             # evaluate the model on the test data
             # Inside FedStaticNode.run_protocol()
             stats["test_loss"], stats["test_acc"] = self.local_test()
+            stats.update(self.log_memory())
             self.log_metrics(stats=stats, iteration=it)
 
 

@@ -14,6 +14,7 @@ import copy
 import random
 import time
 import torch.utils.data
+import gc
 
 from utils.communication.comm_utils import CommunicationManager
 from utils.plot_utils import PlotUtils
@@ -117,6 +118,8 @@ class BaseNode(ABC):
         dropout_seed = 1 * config.get("num_users", 9) + self.node_id * config.get("num_users", 9) + config.get("seed", 20) # arbitrarily chosen
         dropout_rng = random.Random(dropout_seed)
         self.dropout = NodeDropout(self.node_id, config["dropout_dicts"], dropout_rng)
+
+        self.log_memory = config.get("log_memory", False)
 
     def set_constants(self) -> None:
         """Add docstring here"""
@@ -366,6 +369,24 @@ class BaseNode(ABC):
         data_to_send = self.get_model_weights()
         
         self.comm_utils.send(neighbors, data_to_send)
+
+    def calculate_cpu_tensor_memory(self) -> int:
+        total_memory = 0
+        for obj in gc.get_objects():
+            if torch.is_tensor(obj) and obj.device.type == 'cpu':
+                total_memory += obj.element_size() * obj.nelement()
+        return total_memory
+
+    def get_memory_metrics(self) -> Dict[str, Any]:
+        """
+        Get memory metrics
+        """
+        if self.log_memory:
+            return {
+                "peak_dram": self.calculate_cpu_tensor_memory(),
+                "peak_gpu": torch.cuda.max_memory_allocated(),
+            }
+        return {}
 
 class BaseClient(BaseNode):
     """
