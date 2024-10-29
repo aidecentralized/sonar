@@ -24,7 +24,7 @@ def reconstruct_gradient(param_diff, target_labels, target_images, lr, local_ste
     Reconstructs the gradient following the Geiping InvertingGradients technique
     """
     print("length of param diff: ", len(param_diff))
-    with open("param_diff.pkl", "wb") as f:
+    with open(f"param_diff_{client_id}.pkl", "wb") as f:
         pickle.dump(param_diff, f)
     setup = inversefed.utils.system_startup()
     for p in range(len(param_diff)):
@@ -89,6 +89,9 @@ def gia_main(param_s, param_t, base_params, model, target_labels, target_images,
     Main function for Gradient Inversion Attack
     """
     param_diff = compute_param_delta(param_s, param_t, base_params)
+
+    # with open(f"param_diff_after_one_round_{client_id}.pkl", "wb") as f:
+    #     pickle.dump(param_diff, f)
 
     # Check if all elements in para_diff are zero tensors
     if all((diff == 0).all() for diff in param_diff):

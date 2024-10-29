@@ -20,8 +20,8 @@ class FedAvgClient(BaseClient):
         self, config: Dict[str, Any], comm_utils: CommunicationManager
     ) -> None:
         super().__init__(config, comm_utils)
-        print("WE ARE IN FEDAVG CLIENT")
         self.config = config
+        self.random_params = self.model.state_dict()
 
     def local_test(self, **kwargs: Any):
         """
@@ -76,6 +76,10 @@ class FedAvgClient(BaseClient):
             # also stream image and labels
             message["images"] = self.images.to("cpu")
             message["labels"] = self.labels.to("cpu")
+
+            message["random_params"] = self.random_params
+            for key in message["random_params"].keys():
+                message["random_params"][key] = message["random_params"][key].to("cpu")
     
         return message  # type: ignore
 
@@ -193,6 +197,12 @@ class FedAvgServer(BaseServer):
                     if key in base_params
                 )
 
+                random_params = rep["random_params"]
+                random_params = OrderedDict(
+                    (key, value) for key, value in random_params.items()
+                    if key in base_params
+                )
+
                 # Store parameters based on attack start and end rounds
                 if round == attack_start_round:
                     self.params_s[client_id - 1] = model_params
@@ -201,14 +211,15 @@ class FedAvgServer(BaseServer):
                     images = rep["images"]
                     labels = rep["labels"]
 
-                    with open(f"params_t_{client_id}.pkl", "wb") as f:
-                        pickle.dump(model_params, f)
-                    with open(f"params_s_{client_id}.pkl", "wb") as f:
-                        pickle.dump(self.params_s[client_id - 1], f)
+                    # with open(f"params_t_{client_id}.pkl", "wb") as f:
+                    #     pickle.dump(model_params, f)
+                    # with open(f"params_s_{client_id}.pkl", "wb") as f:
+                    #     pickle.dump(self.params_s[client_id - 1], f)
+                    # with open(f"random_params_{client_id}.pkl", "wb") as f:
+                    #     pickle.dump(random_params, f)
 
                     # Launch GIA attack
-                    # p_s, p_t = self.params_s[client_id - 1], self.params_t[client_id - 1]
-                    p_s, p_t = self.random_params, self.params_s[client_id - 1]
+                    p_s, p_t = self.params_s[client_id - 1], self.params_t[client_id - 1]
                     gia_main(p_s, p_t, base_params, self.model, labels, images, client_id)
 
         avg_wts = self.aggregate(reprs)
@@ -230,6 +241,7 @@ class FedAvgServer(BaseServer):
             attack_end_round (int): The last round for the attack to be performed.
         """
         # Normal training when outside the attack range
+
         if round < attack_start_round or round > attack_end_round:
             self.receive_and_aggregate()
         else:

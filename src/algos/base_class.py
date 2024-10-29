@@ -187,9 +187,9 @@ class BaseNode(ABC):
             optim = torch.optim.SGD
         else:
             raise ValueError(f"Unknown optimizer: {optim_name}.")
-        if "gia" in config:
-            print("setting optim to gia")
-            optim = torch.optim.SGD
+        # if "gia" in config:
+            # print("setting optim to gia")
+            # optim = torch.optim.SGD
         num_classes = self.dset_obj.num_cls
         num_channels = self.dset_obj.num_channels
         self.model = self.model_utils.get_model(

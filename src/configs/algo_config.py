@@ -32,7 +32,6 @@ traditional_fl: ConfigType = {
     # Collaboration setup
     "algo": "fedavg",
     "rounds": 5,
-
     # Model parameters
     "model": "resnet10",
     "model_lr": 3e-4,
@@ -43,11 +42,11 @@ test_fl_inversion: ConfigType = {
     # Collaboration setup
     "algo": "fedavg",
     "rounds": 5,
-
+    "optimizer": "sgd",
     # Model parameters
     "model": "resnet10",
     "model_lr": 3e-4,
-    "batch_size": 256,
+    # "batch_size": 256,
     "gia": True,
 }
 
