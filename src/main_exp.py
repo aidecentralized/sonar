@@ -27,7 +27,8 @@ topologies: Dict[str, Dict[str, int|float|str]] = {
     "fully_connected": {},
 }
 
-SOURCE_MACHINE = 'm2'
+SOURCE_MACHINE = 'm9'
+alpha = '1.0'
 
 ROUNDS = 200
 MODEL = "resnet6"
@@ -59,7 +60,7 @@ for i in range(1, NUM_USERS + 1):
 # for swift, synchronous should preferable be False
 gpu_ids = [0, 1, 2, 3]
 grpc_system_config: ConfigType = {
-    "exp_id": "static_alpha_0.01",
+    "exp_id": f"static_alpha_{alpha}",
     "num_users": NUM_USERS,
     "num_collaborators": NUM_COLLABORATORS,
     "comm": {"type": "GRPC", "synchronous": True, "peer_ids": ["localhost:50048"]},  # type: ignore
@@ -70,7 +71,7 @@ grpc_system_config: ConfigType = {
     "device_ids": get_device_ids(NUM_USERS, gpu_ids),
     "samples_per_user": SAMPLES_PER_USER,
     "train_label_distribution": "non_iid",
-    "alpha": 0.01,
+    "alpha": float(alpha),
     "test_label_distribution": "iid",
     "exp_keys": [],
     "dropout_dicts": dropout_dicts,
@@ -154,7 +155,7 @@ for exp_id, exp_config in exp_dict.items():
     base_sys_config["device_ids"] = get_device_ids(n, gpu_ids) # type: ignore
 
     full_config = base_sys_config.copy() # type: ignore
-    full_config["exp_id"] = exp_id + SOURCE_MACHINE # type: ignore
+    full_config["exp_id"] = exp_id + '_' + SOURCE_MACHINE + '_' + alpha # type: ignore
 
     # change print color to green
     print("\033[92m")
