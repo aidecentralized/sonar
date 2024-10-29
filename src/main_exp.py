@@ -94,16 +94,16 @@ fedstatic: ConfigType = {
 
 exp_dict: Dict[str, ConfigType] = {}
 
-# for topo in topologies.keys():
-#     sys_config = deepcopy(grpc_system_config)
-#     algo_config = deepcopy(fedstatic)
-#     algo_config["topology"] = {"name": topo}
-#     algo_config["topology"].update(topologies[topo]) # type: ignore
-#     print(f"Algo config for {topo}: {algo_config}")
-#     exp_dict[f"convergence_{topo}"] = { # type: ignore
-#         "algo_config": algo_config,
-#         "sys_config": sys_config,
-#     }
+for topo in topologies.keys():
+    sys_config = deepcopy(grpc_system_config)
+    algo_config = deepcopy(fedstatic)
+    algo_config["topology"] = {"name": topo}
+    algo_config["topology"].update(topologies[topo]) # type: ignore
+    print(f"Algo config for {topo}: {algo_config}")
+    exp_dict[f"convergence_{topo}"] = { # type: ignore
+        "algo_config": algo_config,
+        "sys_config": sys_config,
+    }
 
 # add async fully connected (gossip) experiment
 algo_config = deepcopy(fedstatic)
