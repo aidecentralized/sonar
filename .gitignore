@@ -9,7 +9,7 @@ notes.txt
 removeme*.png
 
 # Byte-compiled / optimized / DLL files
-__pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
 
@@ -164,6 +164,10 @@ cython_debug/
 
 # .DS_Store for OSX
 .DS_Store
+
+# vscode
+**/.vscode/
+**/swap-pane
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can

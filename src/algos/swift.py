@@ -24,7 +24,6 @@ class SwiftNode(FedStaticNode):
         """
         Runs the federated learning protocol for the client.
         """
-        stats: Dict[str, Any] = {}
         print(f"Client {self.node_id} ready to start training")
         start_round = self.config.get("start_round", 0)
         if start_round != 0:
@@ -34,30 +33,23 @@ class SwiftNode(FedStaticNode):
         total_rounds = self.config["rounds"]
         epochs_per_round = self.config.get("epochs_per_round", 1)
         for it in range(start_round, total_rounds):
+            self.round_init()
+
             # Train locally and send the representation to the server
-            stats["train_loss"], stats["train_acc"], stats["train_time"] = self.local_train(
+            self.local_train(
                     it, epochs_per_round
                 )            
 
             # Collect the representations from all other nodes from the server
-            neighbors = self.topology.sample_neighbours(self.num_collaborators)
-            # TODO: Log the neighbors
-            stats["neighbors"] = neighbors
-
+            neighbors = self.get_neighbors()
             self.push(neighbors)
-
             self.receive_pushed_and_aggregate()
-
-            stats["bytes_received"], stats["bytes_sent"] = self.comm_utils.get_comm_cost()
-
             # evaluate the model on the test data
             # Inside FedStaticNode.run_protocol()
-            stats["test_loss"], stats["test_acc"] = self.local_test()
-
-            stats.update(self.get_memory_metrics())
-
-            self.log_metrics(stats=stats, iteration=it)
+            self.local_test()
             self.local_round_done()
+
+            self.round_finalize()
 
 
 

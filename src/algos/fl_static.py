@@ -1,7 +1,7 @@
 """
 Module for FedStaticClient and FedStaticServer in Federated Learning.
 """
-from typing import Any, Dict, OrderedDict
+from typing import Any, Dict, OrderedDict, List
 from utils.communication.comm_utils import CommunicationManager
 import torch
 
@@ -26,12 +26,21 @@ class FedStaticNode(BaseFedAvgClient):
         Returns the model weights as representation.
         """
         return self.get_model_weights()
+    
+    def get_neighbors(self) -> List[int]:
+        """
+        Returns a list of neighbours for the client.
+        """
+
+        neighbors = self.topology.sample_neighbours(self.num_collaborators)
+        self.stats["neighbors"] = neighbors
+
+        return neighbors
 
     def run_protocol(self) -> None:
         """
         Runs the federated learning protocol for the client.
         """
-        stats: Dict[str, Any] = {}
         print(f"Client {self.node_id} ready to start training")
         start_round = self.config.get("start_round", 0)
         if start_round != 0:
@@ -41,26 +50,22 @@ class FedStaticNode(BaseFedAvgClient):
         total_rounds = self.config["rounds"]
         epochs_per_round = self.config.get("epochs_per_round", 1)
         for it in range(start_round, total_rounds):
+            self.round_init()
+
             # Train locally and send the representation to the server
-            stats["train_loss"], stats["train_acc"], stats["train_time"] = self.local_train(
+            self.local_train(
                     it, epochs_per_round
                 )            
             self.local_round_done()
-
             # Collect the representations from all other nodes from the server
-            neighbors = self.topology.sample_neighbours(self.num_collaborators)
+            neighbors = self.get_neighbors()
             # TODO: Log the neighbors
-            stats["neighbors"] = neighbors
-
             self.receive_and_aggregate(neighbors)
-
-            stats["bytes_received"], stats["bytes_sent"] = self.comm_utils.get_comm_cost()
-
             # evaluate the model on the test data
             # Inside FedStaticNode.run_protocol()
-            stats["test_loss"], stats["test_acc"] = self.local_test()
-            stats.update(self.get_memory_metrics())
-            self.log_metrics(stats=stats, iteration=it)
+            self.local_test()
+
+            self.round_finalize()
 
 
 
