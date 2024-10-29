@@ -127,7 +127,7 @@ class BaseNode(ABC):
         self.round = 0
         self.EMPTY_MODEL_TAG = "EMPTY_MODEL"
 
-    def setup_logging(self, config: Dict[str, ConfigType]) -> None:
+    def setup_logging(self, config: ConfigType) -> None:
         """
         Sets up logging for the node by creating necessary directories and initializing logging utilities.
 
@@ -154,22 +154,16 @@ class BaseNode(ABC):
             print(f"Exiting to prevent accidental overwrite{reset_code}")
             sys.exit(1)
 
-        # TODO: Check if the plot directory should be unique to each node
-        try:
-            self.plot_utils = PlotUtils(config)
-        except FileExistsError:
-            print(f"Plot directory for the node {self.node_id} already exists")
-
         self.log_utils = LogUtils(config)
         if self.node_id == 0:
             self.log_utils.log_console("Config: {}".format(config))
 
-    def setup_cuda(self, config: Dict[str, ConfigType]) -> None:
+    def setup_cuda(self, config: ConfigType) -> None:
         """add docstring here"""
         # Need a mapping from rank to device id
         device_ids_map = config["device_ids"]
         node_name = f"node_{self.node_id}"
-        self.device_ids = device_ids_map[node_name]
+        self.device_ids: List[int] = device_ids_map[node_name] # type: ignore
         gpu_id = self.device_ids[0]
 
         if torch.cuda.is_available():
@@ -210,7 +204,7 @@ class BaseNode(ABC):
         else:
             self.loss_fn = torch.nn.CrossEntropyLoss()
 
-    def set_shared_exp_parameters(self, config: Dict[str, ConfigType]) -> None:
+    def set_shared_exp_parameters(self, config: ConfigType) -> None:
         self.num_collaborators: int = config["num_collaborators"] # type: ignore
         if self.node_id != 0:
             community_type, number_of_communities = config.get(
@@ -222,13 +216,13 @@ class BaseNode(ABC):
                 else len(set(config["dset"].values()))
             )
             if community_type is not None and community_type == "dataset":
-                self.communities = get_dset_communities(config["num_users"], num_dset)
+                self.communities = get_dset_communities(config["num_users"], num_dset) # type: ignore
             elif community_type is None or number_of_communities == 1:
-                all_users = list(range(1, config["num_users"] + 1))
+                all_users = list(range(1, config["num_users"] + 1)) # type: ignore
                 self.communities = {user: all_users for user in all_users}
             elif community_type == "random":
                 self.communities = get_random_communities(
-                    config["num_users"], number_of_communities
+                    config["num_users"], number_of_communities # type: ignore
                 )
             elif community_type == "balanced":
                 num_dset = (
@@ -498,17 +492,8 @@ class BaseClient(BaseNode):
             train_indices = train_idx_split[self.node_id - 1]
             train_dset = Subset(train_dset, train_indices)
             classes = np.unique(train_y[user_idx]).tolist()
-            # One plot per dataset
-            # if user_idx == 0:
-            #     print("using non_iid_balanced", alpha)
-            #     self.plot_utils.plot_training_distribution(train_y,
-            # self.dset, users_with_same_dset)
         elif config["train_label_distribution"] == "shard":
             raise NotImplementedError
-            # classes_per_user = config["shards"]["classes_per_user"]
-            # samples_per_shard = samples_per_user // classes_per_user
-            # train_dset = build_shards_dataset(train_dset, samples_per_shard,
-            # classes_per_user, self.node_id)
         else:
             raise ValueError(
                 "Unknown train label distribution: {}.".format(

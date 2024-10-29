@@ -333,7 +333,7 @@ for i in range(1, num_users + 1):
 
 # for swift or fedavgpush, just modify the algo_configs list
 # for swift, synchronous should preferable be False
-gpu_ids = [2, 3, 5, 6]
+gpu_ids = [0, 1, 2, 3]
 grpc_system_config: ConfigType = {
     "exp_id": "static",
     "num_users": num_users,
@@ -347,11 +347,12 @@ grpc_system_config: ConfigType = {
     # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
     "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
     "samples_per_user": 50000 // num_users,  # distributed equally
-    "train_label_distribution": "iid",
+    "train_label_distribution": "non_iid",
+    "alpha": 0.1,
     "test_label_distribution": "iid",
     "exp_keys": [],
     "dropout_dicts": dropout_dicts,
-    "log_memory": True,
+    "log_memory": False,
 }
 
 current_config = grpc_system_config
