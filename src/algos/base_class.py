@@ -24,7 +24,6 @@ from utils.data_utils import (
     non_iid_balanced,
     balanced_subset,
     gia_client_dataset,
-    gia_server_testset,
     CacheDataset,
     TransformDataset,
     CorruptDataset,
@@ -189,6 +188,7 @@ class BaseNode(ABC):
         else:
             raise ValueError(f"Unknown optimizer: {optim_name}.")
         if "gia" in config:
+            print("setting optim to gia")
             optim = torch.optim.SGD
         num_classes = self.dset_obj.num_cls
         num_channels = self.dset_obj.num_channels
@@ -605,7 +605,7 @@ class BaseClient(BaseNode):
             avg_loss, avg_acc = 0, 0
             for _ in range(epochs):
                 tr_loss, tr_acc = self.model_utils.train(
-                    self.model, self.optim, self.dloader, self.loss_fn, self.device, malicious_type=self.config.get("malicious_type", "normal"), config=self.config
+                    self.model, self.optim, self.dloader, self.loss_fn, self.device, malicious_type=self.config.get("malicious_type", "normal"), config=self.config, node_id=self.node_id, gia=self.config.get("gia", False)
                 )            
                 avg_loss += tr_loss
                 avg_acc += tr_acc
@@ -722,7 +722,7 @@ class BaseServer(BaseNode):
         if "gia" not in config:
             self._test_loader = DataLoader(test_dset, batch_size=batch_size)
         else:
-            test_data, labels, indices = gia_server_testset(test_dset)
+            _, test_data, labels, indices = gia_client_dataset(self.dset_obj.train_dset, test_dset)
             self._test_loader = DataLoader(test_data, batch_size=10)
     def aggregate(
         self, representation_list: List[OrderedDict[str, Any]], **kwargs: Any

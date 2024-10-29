@@ -16,7 +16,8 @@ def compute_param_delta(param_s, param_t, basic_params):
 
     basic_params: list of names present in model params
     """
-    return [(param_t[name] - param_s[name]).detach() for name in basic_params if name in param_s and name in param_t]
+    assert len(param_s) != 0 and len(param_t) != 0, "Empty parameters"
+    return [(param_t[name].to("cuda") - param_s[name].to("cuda")).detach() for name in basic_params if name in param_s and name in param_t]
 
 def reconstruct_gradient(param_diff, target_labels, target_images, lr, local_steps, model, client_id=0):
     """
@@ -32,8 +33,9 @@ def reconstruct_gradient(param_diff, target_labels, target_images, lr, local_ste
     target_labels = target_labels.to(setup['device'])
     target_images = target_images.to(setup['device'])
 
-    dm = torch.as_tensor(inversefed.consts.cifar10_mean, **setup)[:, None, None]
-    ds = torch.as_tensor(inversefed.consts.cifar10_std, **setup)[:, None, None]
+    mean, std = [0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]
+    dm = torch.as_tensor(mean, **setup)[:, None, None]
+    ds = torch.as_tensor(std, **setup)[:, None, None]
 
     config = dict(signed=True,
                 boxed=True,
@@ -87,5 +89,11 @@ def gia_main(param_s, param_t, base_params, model, target_labels, target_images,
     Main function for Gradient Inversion Attack
     """
     param_diff = compute_param_delta(param_s, param_t, base_params)
-    output, stats = reconstruct_gradient(param_diff, target_labels, target_images, 3e-4 , 1, model, client_id)
+
+    # Check if all elements in para_diff are zero tensors
+    if all((diff == 0).all() for diff in param_diff):
+        print("Parameter differences contain only zeros for client ", client_id)
+        return None  # or return an empty list, depending on your needs
+    
+    output, stats = reconstruct_gradient(param_diff, target_labels, target_images, 3e-4, 1, model, client_id)
     return output, stats

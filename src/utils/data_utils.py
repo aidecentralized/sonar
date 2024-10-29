@@ -381,50 +381,41 @@ def gia_client_dataset(train_dataset, test_dataset, num_labels=10):
         selected_labels: List of selected label indices
         train_indices: List of indices for the selected training images
     """
-    # Get all unique labels from the training dataset
-    all_labels = list(set([train_dataset[i][1] for i in range(len(train_dataset))]))
     
-    # Randomly select labels
-    selected_labels = sorted(np.random.choice(all_labels, size=num_labels, replace=False))
-    
-    # Process training dataset
-    temp_train_dataset, train_all_indices = filter_by_class(train_dataset, selected_labels)
-    train_label_to_indices = {}
-    for idx in range(len(temp_train_dataset)):
-        label = temp_train_dataset[idx][1]
-        if label not in train_label_to_indices:
-            train_label_to_indices[label] = []
-        train_label_to_indices[label].append(train_all_indices[idx])
-    
-    # Process test dataset
-    temp_test_dataset, test_all_indices = filter_by_class(test_dataset, selected_labels)
-    test_label_to_indices = {}
-    for idx in range(len(temp_test_dataset)):
-        label = temp_test_dataset[idx][1]
-        if label not in test_label_to_indices:
-            test_label_to_indices[label] = []
-        test_label_to_indices[label].append(test_all_indices[idx])
-    
-    # Select one random image per label for both datasets
-    final_train_indices = []
-    final_test_indices = []
-    for label in selected_labels:
-        # Training dataset
-        train_label_indices = train_label_to_indices[label]
-        selected_train_idx = np.random.choice(train_label_indices, size=1)[0]
-        final_train_indices.append(selected_train_idx)
+    def get_ordered_indices(dataset):
+        label_to_indices = {i: [] for i in range(num_labels)}
+        for idx in range(len(dataset)):
+            label = dataset[idx][1]
+            if label < num_labels:
+                label_to_indices[label].append(idx)
         
-        # Test dataset
-        test_label_indices = test_label_to_indices[label]
-        selected_test_idx = np.random.choice(test_label_indices, size=1)[0]
-        final_test_indices.append(selected_test_idx)
+        ordered_indices = []
+        for label in range(num_labels):
+            # Shuffle indices for each label to randomize selection
+            np.random.seed(None)
+            np.random.shuffle(label_to_indices[label])
+            random_idx = label_to_indices[label][0]  # Select the first random index after shuffling
+            ordered_indices.append(random_idx)
+            
+        return ordered_indices
     
-    # Create final datasets with exactly one image per label
+    # Get ordered indices for both datasets
+    final_train_indices = get_ordered_indices(train_dataset)
+    final_test_indices = get_ordered_indices(test_dataset)
+    
+    # Create the subsets
     filtered_train_dataset = Subset(train_dataset, final_train_indices)
     filtered_test_dataset = Subset(test_dataset, final_test_indices)
     
+    # Create selected_labels in ascending order
+    selected_labels = list(range(num_labels))
+    
+    # Verify ordering
+    for i in range(num_labels):
+        assert filtered_train_dataset[i][1] == i, f"Train label at position {i} is not {i}"
+        assert filtered_test_dataset[i][1] == i, f"Test label at position {i} is not {i}"
+    
     return filtered_train_dataset, filtered_test_dataset, selected_labels, final_train_indices
-
 
 def gia_server_testset(test_dataset, num_labels=10, num_images_per_label=4):
     """

@@ -10,6 +10,8 @@ from torch.nn.parallel import DataParallel
 import resnet
 import resnet_in
 
+import matplotlib.pyplot as plt
+
 import yolo
 from utils.types import ConfigType
 
@@ -176,6 +178,7 @@ class ModelUtils:
         test_loader: DataLoader[Any] | None = None,
         **kwargs: Any,
     ) -> Tuple[float, float]:
+        model.train()
         correct = 0
         train_loss = 0
         for batch_idx, (data, target) in enumerate(dloader):
@@ -188,10 +191,14 @@ class ModelUtils:
             output = model(data, position=position)
 
             if kwargs.get("apply_softmax", False):
+                print("here, applying softmax")
                 output = nn.functional.log_softmax(output, dim=1)  # type: ignore
-
             loss = loss_fn(output, target)
-            # if kwargs.get("gia", True):
+            if kwargs.get("gia", True):
+                # print(data.shape, target.shape)
+                node_id = kwargs.get("node_id")
+                plot_and_save(data, target, filename=f"data_target_plot_{node_id}.png")
+
             #     print("you are here!")
             #     loss = loss_fn(output, target).sum()
             loss.backward()
@@ -511,3 +518,48 @@ class ModelUtils:
         Get the memory usage
         """
         return torch.cuda.memory_allocated(self.device)
+
+def plot_and_save(data, 
+                  target, 
+                  dm=torch.as_tensor([0.4914, 0.4822, 0.4465])[:, None, None], 
+                  ds=torch.as_tensor([0.2023, 0.1994, 0.2010])[:, None, None],
+                  filename="plot.png"):
+    """
+    Plots a grid of images from `data` with corresponding labels from `target`, and saves the plot.
+    
+    Args:
+        data (torch.Tensor): The data tensor with shape (batch, channels, height, width).
+        target (torch.Tensor): The target labels tensor with shape (batch,).
+        dm (torch.Tensor): The mean of the dataset used for normalization, with shape (3, 1, 1).
+        ds (torch.Tensor): The standard deviation of the dataset used for normalization, with shape (3, 1, 1).
+        filename (str): The filename to save the plot as an image.
+    """
+    # Move data and target to CPU if they are on a GPU, and detach from the computation graph
+    data = data.cpu().detach()
+    target = target.cpu().detach()
+
+    # Normalize and clamp the data to the valid range [0, 1]
+    data = data.mul(ds).add(dm)
+    data.clamp_(0, 1)
+
+    # Set up grid size for plotting (e.g., 2 rows of 5 images if batch size is 10)
+    batch_size = data.size(0)
+    rows = 1
+    cols = batch_size // rows if batch_size % rows == 0 else batch_size
+
+    fig, axes = plt.subplots(rows, cols, figsize=(12, 6))
+    axes = axes.flatten()
+
+    # Loop over each image and label in the batch
+    for i in range(batch_size):
+        # Convert image to numpy format for plotting
+        img = data[i].permute(1, 2, 0).numpy()
+        
+        # Plot the image and label
+        axes[i].imshow(img)
+        axes[i].set_title(f"Label: {target[i].item()}")
+        axes[i].axis("off")
+    
+    plt.tight_layout()
+    plt.savefig(filename)
+    plt.show()
