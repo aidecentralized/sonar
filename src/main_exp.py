@@ -27,8 +27,8 @@ topologies: Dict[str, Dict[str, int|float|str]] = {
     "fully_connected": {},
 }
 
-SOURCE_MACHINE = 'm9'
-alpha = '1.0'
+SOURCE_MACHINE = 'm3'
+alpha = '0.1'
 
 ROUNDS = 200
 MODEL = "resnet6"
@@ -58,7 +58,7 @@ for i in range(1, NUM_USERS + 1):
 
 # for swift or fedavgpush, just modify the algo_configs list
 # for swift, synchronous should preferable be False
-gpu_ids = [0, 1, 2, 3]
+gpu_ids = [1, 2, 3]
 grpc_system_config: ConfigType = {
     "exp_id": f"static_alpha_{alpha}",
     "num_users": NUM_USERS,
@@ -94,19 +94,20 @@ fedstatic: ConfigType = {
 
 exp_dict: Dict[str, ConfigType] = {}
 
-for topo in topologies.keys():
-    sys_config = deepcopy(grpc_system_config)
-    algo_config = deepcopy(fedstatic)
-    algo_config["topology"] = {"name": topo}
-    algo_config["topology"].update(topologies[topo]) # type: ignore
-    print(f"Algo config for {topo}: {algo_config}")
-    exp_dict[f"convergence_{topo}"] = { # type: ignore
-        "algo_config": algo_config,
-        "sys_config": sys_config,
-    }
+# for topo in topologies.keys():
+#     sys_config = deepcopy(grpc_system_config)
+#     algo_config = deepcopy(fedstatic)
+#     algo_config["topology"] = {"name": topo}
+#     algo_config["topology"].update(topologies[topo]) # type: ignore
+#     print(f"Algo config for {topo}: {algo_config}")
+#     exp_dict[f"convergence_{topo}"] = { # type: ignore
+#         "algo_config": algo_config,
+#         "sys_config": sys_config,
+#     }
 
 # add async fully connected (gossip) experiment
 algo_config = deepcopy(fedstatic)
+algo_config["topology"] = {"name": "fully_connected"}
 sys_config = deepcopy(grpc_system_config)
 sys_config["comm"]["synchronous"] = False # type: ignore
 exp_dict["convergence_fully_connected_async"] = { # type: ignore
