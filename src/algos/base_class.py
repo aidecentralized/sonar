@@ -121,6 +121,8 @@ class BaseNode(ABC):
 
         self.log_memory = config.get("log_memory", False)
 
+        self.stats : Dict[str, int | float | List[int]] = {}
+
     def set_constants(self) -> None:
         """Add docstring here"""
         self.best_acc = 0.0
@@ -269,6 +271,28 @@ class BaseNode(ABC):
         """Add docstring here"""
         raise NotImplementedError
 
+    def round_init(self) -> None:
+        """
+        Things to do at the start of each round.
+        """
+        self.round_start_time = time.time()
+    
+    def round_finalize(self) -> None:
+        """
+        Things to do at the end of each round.
+        """
+        self.round_end_time = time.time()
+        self.round_duration = self.round_end_time - self.round_start_time
+
+        self.stats["time_elapsed"] = self.stats.get("time_elapsed", 0) + self.round_duration # type: ignore
+        
+        self.stats["bytes_received"], self.stats["bytes_sent"] = self.comm_utils.get_comm_cost()
+
+        self.stats["peak_dram"], self.stats["peak_gpu"] = self.get_memory_metrics()
+
+        self.log_metrics(stats=self.stats, iteration=self.round)
+
+
     def log_metrics(self, stats: Dict[str, Any], iteration: int) -> None:
         """
         Centralized method to log metrics.
@@ -361,14 +385,19 @@ class BaseNode(ABC):
 
         self.model.load_state_dict(model_wts, strict=len(keys_to_ignore) == 0)
 
-    def push(self, neighbors: List[int]) -> None:
+    def push(self, neighbors: int | List[int]) -> None:
         """
         Pushes the model to the neighbors.
         """
         
         data_to_send = self.get_model_weights()
-        
-        self.comm_utils.send(neighbors, data_to_send)
+
+        # if it is a list, send to all neighbors
+        if isinstance(neighbors, list):
+            for neighbor in neighbors:
+                self.comm_utils.send(neighbor, data_to_send)
+        else:
+            self.comm_utils.send(neighbors, data_to_send)
 
     def calculate_cpu_tensor_memory(self) -> int:
         total_memory = 0
@@ -377,16 +406,13 @@ class BaseNode(ABC):
                 total_memory += obj.element_size() * obj.nelement()
         return total_memory
 
-    def get_memory_metrics(self) -> Dict[str, Any]:
+    def get_memory_metrics(self) -> Tuple[float | int, float | int]:
         """
         Get memory metrics
         """
-        if self.log_memory:
-            return {
-                "peak_dram": self.calculate_cpu_tensor_memory(),
-                "peak_gpu": torch.cuda.max_memory_allocated(),
-            }
-        return {}
+        peak_dram = self.calculate_cpu_tensor_memory() if self.log_memory else 0
+        peak_gpu = torch.cuda.max_memory_allocated() if torch.cuda.is_available() and self.log_memory else 0
+        return peak_dram, peak_gpu
 
 class BaseClient(BaseNode):
     """
@@ -627,10 +653,12 @@ class BaseClient(BaseNode):
         self.log_utils.log_tb(
             f"train_accuracy/client{self.node_id}", avg_acc, round
         )
+ 
+        self.stats["train_loss"], self.stats["train_acc"], self.stats["train_time"] = avg_loss, avg_acc, time_taken
 
         return avg_loss, avg_acc, time_taken
 
-    def local_test(self, **kwargs: Any) -> float | Tuple[float, float] | None:
+    def local_test(self, **kwargs: Any) -> float | Tuple[float, float] | Tuple[float, float, float] | None:
         """
         Test the model locally
         """
@@ -648,6 +676,7 @@ class BaseClient(BaseNode):
                 sender = repr["sender"]
             assert "model" in repr, "Model not found in the received message"
             self.set_model_weights(repr["model"])
+
 
     def receive_pushed_and_aggregate(self, remove_multi = True) -> None:
         model_updates = self.comm_utils.receive_pushed()
@@ -741,7 +770,7 @@ class BaseServer(BaseNode):
         """
         raise NotImplementedError
 
-    def test(self, **kwargs: Any) -> List[float]:
+    def test(self, **kwargs: Any) -> Any:
         """
         Test the model on the server
         """
@@ -798,12 +827,18 @@ class BaseFedAvgClient(BaseClient):
         """
         Test the model locally, not to be used in the traditional FedAvg
         """
+        start_time = time.time()
         test_loss, acc = self.model_utils.test(
             self.model, self._test_loader, self.loss_fn, self.device
         )
+        end_time = time.time()
+        time_taken = end_time - start_time
         if acc > self.best_acc:
             self.best_acc = acc
             self.model_utils.save_model(self.model, self.model_save_path)
+        
+        self.stats["test_loss"], self.stats["test_acc"], self.stats["test_time"] = test_loss, acc, time_taken
+
         return test_loss, acc
 
     def aggregate(
