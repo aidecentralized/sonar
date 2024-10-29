@@ -1,14 +1,12 @@
-# scheduler.py
 """
 This module manages the orchestration of federated learning experiments.
 """
 
 import os
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 import torch
-
 import random
 import numpy
 
@@ -34,9 +32,10 @@ from algos.fl_push import FedAvgPushClient, FedAvgPushServer
 from utils.communication.comm_utils import CommunicationManager
 from utils.config_utils import load_config, process_config
 from utils.log_utils import copy_source_code, check_and_create_path
-
-# Mapping of algorithm names to their corresponding client and server classes so that they can be consumed by the scheduler later on.
-algo_map: Dict[str, List[FedAvgClient]] = { # type: ignore
+from configs.sys_config import SystemConfig   # Ensure SystemConfig is correctly imported
+from configs.algo_config import AlgoConfig
+# Mapping of algorithm names to their corresponding client and server classes
+algo_map: Dict[str, List[Any]] = {
     "fedavg": [FedAvgServer, FedAvgClient],
     "isolated": [IsolatedServer, IsolatedServer],
     "fedass": [FedAssServer, FedAssClient],
@@ -57,23 +56,45 @@ algo_map: Dict[str, List[FedAvgClient]] = { # type: ignore
 }
 
 
+
 def get_node(
-    config: Dict[str, Any], rank: int, comm_utils: CommunicationManager
+    config: Union[SystemConfig, Dict[str, Any]], 
+    rank: int, 
+    comm_utils: CommunicationManager
 ) -> BaseNode:
-    algo_name = config["algo"]
-    node_class = algo_map[algo_name][rank > 0]
-    node = node_class(config, comm_utils) # type: ignore
-    return node # type: ignore
+    """
+    Get the appropriate node based on algorithm and rank.
+    
+    Args:
+        config: Either SystemConfig instance or config dictionary
+        rank: Node rank (0 for server, >0 for clients)
+        comm_utils: Communication manager instance
+    
+    Returns:
+        Initialized node instance
+    """
+    if isinstance(config, SystemConfig):
+        algo = config.algo_configs[f"node_{rank}"].algo
+    else:
+        algo = config["algo"]
+        
+    node_class = algo_map[algo][rank > 0]
+    return node_class(config, comm_utils)
 
 
 class Scheduler:
     """Manages the overall orchestration of experiments"""
 
     def __init__(self) -> None:
-        pass
+        self.config: Dict[str, Any] = {}
+        self.sys_config: Union[Dict[str, Any], SystemConfig] = {}
+        self.algo_config: Optional[Union[Dict[str, Any], AlgoConfig]] = None
+        self.communication: Optional[CommunicationManager] = None
+        self.node: Optional[BaseNode] = None
 
     def install_config(self) -> None:
-        self.config: Dict[str, Any] = process_config(self.config)
+        """Process the configuration with defaults."""
+        self.config = process_config(self.config)
 
     def assign_config_by_path(
         self,
@@ -82,46 +103,74 @@ class Scheduler:
         is_super_node: bool | None = None,
         host: str | None = None,
     ) -> None:
+        """Load and assign configuration from files."""
         self.sys_config = load_config(sys_config_path)
-        if is_super_node:
-            self.sys_config["comm"]["rank"] = 0
+
+        if isinstance(self.sys_config, SystemConfig):
+            if not hasattr(self.sys_config, 'comm'):
+                self.sys_config.comm = {}
+            self.sys_config.comm["type"] = "GRPC"
+            if is_super_node:
+                self.sys_config.comm["rank"] = 0
+            else:
+                self.sys_config.comm["host"] = host
+                self.sys_config.comm["rank"] = None
+            self.config = vars(self.sys_config)
         else:
-            self.sys_config["comm"]["host"] = host
-            self.sys_config["comm"]["rank"] = None
-        self.config = {}
-        self.config.update(self.sys_config)
+            if "comm" not in self.sys_config:
+                self.sys_config["comm"] = {}
+            if is_super_node:
+                self.sys_config["comm"]["rank"] = 0
+            else:
+                self.sys_config["comm"]["host"] = host
+                self.sys_config["comm"]["rank"] = None
+            self.config = {}
+            self.config.update(self.sys_config)
 
     def merge_configs(self) -> None:
-        self.config.update(self.sys_config)
-        node_name = "node_{}".format(self.communication.get_rank())
-        self.algo_config = self.sys_config["algos"][node_name]
-        self.config.update(self.algo_config)
-        self.config["dropout_dicts"] = self.sys_config.get("dropout_dicts", {}).get(node_name, {})
+        if isinstance(self.sys_config, SystemConfig):
+            self.config.update(vars(self.sys_config))
+            node_name = f"node_{self.communication.get_rank()}"
+            self.algo_config = self.sys_config.algo_configs[node_name]
+            if isinstance(self.algo_config, AlgoConfig):
+                self.config.update(vars(self.algo_config))
+            else:
+                self.config.update(self.algo_config)
+            dropout_dicts = getattr(self.sys_config, "dropout_dicts", {})
+        else:
+            self.config.update(self.sys_config)
+            node_name = f"node_{self.communication.get_rank()}"
+            self.algo_config = self.sys_config["algos"][node_name]
+            self.config.update(self.algo_config)
+            dropout_dicts = self.sys_config.get("dropout_dicts", {})
 
-    def initialize(self, copy_souce_code: bool = True) -> None:
+        self.config["dropout_dicts"] = dropout_dicts.get(node_name, {})
+        self.config["load_existing"] = self.config.get("load_existing", False)  # Add default value here
+
+
+    def initialize(self, should_copy_source_code: bool = True) -> None:
+        """Initialize the scheduler and prepare for job execution."""
         assert self.config is not None, "Config should be set when initializing"
+        
         self.communication = CommunicationManager(self.config)
         self.config["comm"]["rank"] = self.communication.get_rank()
-        # Base clients modify the seed later on
+        
         seed = self.config["seed"]
-        torch.manual_seed(seed)  # type: ignore
+        torch.manual_seed(seed)
         random.seed(seed)
         numpy.random.seed(seed)
+        
         self.merge_configs()
 
         if self.communication.get_rank() == 0:
-            if copy_souce_code:
-                copy_source_code(self.config)
+            if should_copy_source_code:
+                copy_source_code(self.config)  
             else:
                 path = self.config["results_path"]
                 check_and_create_path(path)
-                os.mkdir(self.config["saved_models"])
-                os.mkdir(self.config["log_path"])
+                os.makedirs(self.config["saved_models"], exist_ok=True)
+                os.makedirs(self.config["log_path"], exist_ok=True)
         else:
-            # wait for 10 seconds for the super node to create the directories
-            # the reason we do not wait indefinitely is because we need
-            # ordinary nodes to make directories as well if they are running
-            # from a different machine
             print("Waiting for 10 seconds for the super node to create directories")
             time.sleep(10)
 
@@ -131,6 +180,12 @@ class Scheduler:
             comm_utils=self.communication,
         )
 
+
     def run_job(self) -> None:
+        """Execute the federated learning job."""
+        if not hasattr(self, 'node') or self.node is None:
+            raise ValueError("Node not initialized")
+            
         self.node.run_protocol()
-        self.communication.finalize()
+        if self.communication:
+            self.communication.finalize()

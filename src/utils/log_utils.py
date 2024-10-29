@@ -17,6 +17,8 @@ import numpy as np
 import pandas as pd
 from utils.types import ConfigType
 import json
+from configs.algo_config import AlgoConfig
+
 
 
 def deprocess(img: torch.Tensor) -> torch.Tensor:
@@ -126,10 +128,19 @@ class LogUtils:
 
     def log_config(self, config: ConfigType):
         """
-        Log the configuration to a json file. 
+        Log the configuration to a JSON file. Handles non-JSON-serializable objects.
         """
+        from configs.algo_config import AlgoConfig  # Import within function scope
+
+        def serialize(obj):
+            if isinstance(obj, AlgoConfig):
+                return obj.to_dict()  # Convert AlgoConfig instances to a dict
+            return obj  # Return other objects as they are
+        
         with open(f"{self.log_dir}/config.json", "w") as f:
-            json.dump(config, f, indent=4)
+            json.dump(config, f, indent=4, default=serialize)  # Use custom serializer
+
+
 
     def init_summary(self):
         """
