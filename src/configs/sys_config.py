@@ -365,13 +365,14 @@ grpc_system_config_gia: ConfigType = {
     "seed": 2,
     "device_ids": get_device_ids(num_users, gpu_ids),
     # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
-    "algos": get_algo_configs(num_users=num_users, algo_configs=[test_fl_inversion]),  # type: ignore
+    "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
     "samples_per_user": 50000 // num_users,  # distributed equally
     "train_label_distribution": "iid",
     "test_label_distribution": "iid",
     "exp_keys": [],
     "dropout_dicts": dropout_dicts,
-    "gia":True
+    "gia":True,
+    "gia_attackers":[1]
 }
 
 current_config = grpc_system_config_gia

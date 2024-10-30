@@ -120,6 +120,10 @@ class BaseNode(ABC):
         dropout_rng = random.Random(dropout_seed)
         self.dropout = NodeDropout(self.node_id, config["dropout_dicts"], dropout_rng)
 
+        # TODO set self.gia_attacker true if gia and node_id matches
+        if "gia" in config and self.node_id in config["gia_attackers"]:
+            self.gia_attacker = True
+        
     def set_constants(self) -> None:
         """Add docstring here"""
         self.best_acc = 0.0

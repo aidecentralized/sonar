@@ -36,7 +36,7 @@ def reconstruct_gradient(param_diff, target_labels, target_images, lr, local_ste
     mean, std = [0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]
     dm = torch.as_tensor(mean, **setup)[:, None, None]
     ds = torch.as_tensor(std, **setup)[:, None, None]
-
+    model = model.to(setup['device'])
     config = dict(signed=True,
                 boxed=True,
                 cost_fn='sim',
@@ -87,11 +87,18 @@ def grid_plot(tensor, labels, ds, dm, stats, test_mse, feat_mse, test_psnr, save
 def gia_main(param_s, param_t, base_params, model, target_labels, target_images, client_id):
     """
     Main function for Gradient Inversion Attack
+    Returns results moved back to their original devices
     """
+    # Store original devices
+    model_device = next(model.parameters()).device
+    target_labels_device = target_labels.device
+    target_images_device = target_images.device
+    
+    # Store original parameter devices
+    param_s_devices = {name: param_s[name].device for name in base_params if name in param_s}
+    param_t_devices = {name: param_t[name].device for name in base_params if name in param_t}
+    
     param_diff = compute_param_delta(param_s, param_t, base_params)
-
-    # with open(f"param_diff_after_one_round_{client_id}.pkl", "wb") as f:
-    #     pickle.dump(param_diff, f)
 
     # Check if all elements in para_diff are zero tensors
     if all((diff == 0).all() for diff in param_diff):
@@ -99,4 +106,23 @@ def gia_main(param_s, param_t, base_params, model, target_labels, target_images,
         return None  # or return an empty list, depending on your needs
     
     output, stats = reconstruct_gradient(param_diff, target_labels, target_images, 3e-4, 1, model, client_id)
+    
+    # Move output back to target_images device (since it's a reconstruction of the images)
+    if output is not None:
+        output = output.to(target_images_device)
+    
+    # Move model back to original device
+    model.to(model_device)
+    
+    # Move parameters back to their original devices
+    for name in base_params:
+        if name in param_s:
+            param_s[name] = param_s[name].to(param_s_devices[name])
+        if name in param_t:
+            param_t[name] = param_t[name].to(param_t_devices[name])
+            
+    # Move labels and images back to their original devices
+    target_labels = target_labels.to(target_labels_device)
+    target_images = target_images.to(target_images_device)
+            
     return output, stats
