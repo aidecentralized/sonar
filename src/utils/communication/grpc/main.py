@@ -465,7 +465,7 @@ class GRPCCommunication(CommunicationInterface):
             for _ in range(self.servicer.received_data.qsize()):
                 item = self.servicer.received_data.get()
                 round = item.get("round", 0)
-                if round <= self_round:
+                if (not self.synchronous) or round <= self_round:
                     items.append(item)
                 else:
                     self.servicer.received_data.put(item)
