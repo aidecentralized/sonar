@@ -402,7 +402,7 @@ class BaseNode(ABC):
     def calculate_cpu_tensor_memory(self) -> int:
         total_memory = 0
         for obj in gc.get_objects():
-            if torch.is_tensor(obj) and obj.device.type == 'cpu':
+            if torch.is_tensor(obj) and obj.device.type == 'cpu': # type: ignore
                 total_memory += obj.element_size() * obj.nelement()
         return total_memory
 
@@ -410,8 +410,10 @@ class BaseNode(ABC):
         """
         Get memory metrics
         """
-        peak_dram = self.calculate_cpu_tensor_memory() if self.log_memory else 0
-        peak_gpu = torch.cuda.max_memory_allocated() if torch.cuda.is_available() and self.log_memory else 0
+        peak_dram, peak_gpu = 0, 0
+        if self.log_memory:
+            peak_dram = self.calculate_cpu_tensor_memory()
+            peak_gpu = int(torch.cuda.max_memory_allocated()) # type: ignore
         return peak_dram, peak_gpu
 
 class BaseClient(BaseNode):
