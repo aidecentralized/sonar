@@ -1,7 +1,7 @@
 """
 Module for FedStaticClient and FedStaticServer in Federated Learning.
 """
-from typing import Any, Dict, OrderedDict
+from typing import Any, Dict
 from utils.communication.comm_utils import CommunicationManager
 import torch
 
@@ -21,7 +21,7 @@ class FedStaticNode(BaseFedAvgClient):
         self.topology = select_topology(config, self.node_id)
         self.topology.initialize()
 
-    def get_representation(self, **kwargs: Any) -> OrderedDict[str, torch.Tensor]:
+    def get_representation(self, **kwargs: Any) -> Dict[str, torch.Tensor]:
         """
         Returns the model weights as representation.
         """

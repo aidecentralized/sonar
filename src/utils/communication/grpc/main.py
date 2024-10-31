@@ -429,6 +429,8 @@ class GRPCCommunication(CommunicationInterface):
     # 2. Tensor data - Tensors
     # 3. Metadata - JSON format
     def receive(self, node_ids: List[int]) -> List[Any]:
+        if not self.servicer.base_node:
+            raise Exception("Base node not registered")
         if self.synchronous:
             for id in node_ids:
                 self.wait_until_rounds_match(id)
@@ -436,7 +438,7 @@ class GRPCCommunication(CommunicationInterface):
         def callback_fn(stub: comm_pb2_grpc.CommunicationServerStub) -> OrderedDict[str, Tensor]:
             model = stub.get_model(comm_pb2.Empty()) # type: ignore
             with self.servicer.lock:
-                self.servicer.communication_cost_received += model.ByteSize()
+                self.servicer.communication_cost_received += model.ByteSize() # type: ignore
             return deserialize_message(model.buffer) # type: ignore
 
         for id in node_ids:
@@ -487,26 +489,27 @@ class GRPCCommunication(CommunicationInterface):
             if not self.is_own_id(peer_id):
                 self.send(peer_id, data)
 
-    def all_gather(self) -> Any:
+    def all_gather(self, ignore_super_node: bool) -> Any:
         # this will block until all items are received
         # from all peers
         items: List[Any] = []
         for peer_id in self.servicer.peer_ids:
-            if not self.is_own_id(peer_id):
-                received_model = self.receive([peer_id])[0]
-                items.append(received_model)
+            if ignore_super_node and peer_id == 0:
+                continue
+            if self.is_own_id(peer_id):
+                continue
+            received_model = self.receive([peer_id])[0]
+            items.append(received_model)
         return items
 
-    def received_push_from_all(self, received_models, peer_ids: Set[int]) -> bool:
+    def received_push_from_all(self, received_models: Dict[str, Any], peer_ids: Set[int]) -> bool:
         received_from = set()
         for model in received_models:
             sender = model.get("sender", 0)
             received_from.add(sender)
 
         print(f"Received from {received_from} and peer_ids are {peer_ids}")
-        
         return peer_ids == received_from
-        
 
     def all_gather_pushed(self) -> Any:
         # this will block until all items are received

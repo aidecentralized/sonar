@@ -70,8 +70,8 @@ class CommunicationManager:
     def broadcast(self, data: Any, tag: int = 0):
         self.comm.broadcast(data)
 
-    def all_gather(self, tag: int = 0):
-        return self.comm.all_gather()
+    def all_gather(self, tag: int = 0, ignore_super_node: bool = False):
+        return self.comm.all_gather(ignore_super_node=ignore_super_node)
 
     def finalize(self):
         self.comm.finalize()

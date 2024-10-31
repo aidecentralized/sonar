@@ -464,6 +464,16 @@ class ModelUtils:
         acc = correct / len(dloader.dataset)
         return test_loss, acc
 
+    def forward_pass(self, model: nn.Module, dloader: DataLoader[Any], device: torch.device):
+        model.eval()
+        with torch.no_grad():
+            outputs: torch.Tensor = torch.tensor([]).to(device)
+            for data, target in dloader:
+                data, target = data.to(device), target.to(device)
+                output = model(data)
+                outputs = torch.cat((outputs, output), 0)
+        return outputs
+
     def save_model(self, model: nn.Module, path: str) -> None:
         if isinstance(model, DataParallel):
             model_ = model.module

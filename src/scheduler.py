@@ -14,21 +14,14 @@ import numpy
 
 from algos.base_class import BaseNode
 from algos.fl import FedAvgClient, FedAvgServer
-from algos.isolated import IsolatedServer
-from algos.fl_assigned import FedAssClient, FedAssServer
-from algos.fl_isolated import FedIsoClient, FedIsoServer
-from algos.fl_weight import FedWeightClient, FedWeightServer
 from algos.fl_static import FedStaticNode, FedStaticServer
-from algos.swarm import SWARMClient, SWARMServer
+from algos.fl_dynamic import FedDynamicNode, FedDynamicServer
 from algos.swift import SwiftNode, SwiftServer
 from algos.DisPFL import DisPFLClient, DisPFLServer
 from algos.def_kt import DefKTClient, DefKTServer
 from algos.fedfomo import FedFomoClient, FedFomoServer
 from algos.L2C import L2CClient, L2CServer
 from algos.MetaL2C import MetaL2CClient, MetaL2CServer
-from algos.fl_central import CentralizedCLient, CentralizedServer
-from algos.fl_data_repr import FedDataRepClient, FedDataRepServer
-from algos.fl_val import FedValClient, FedValServer
 from algos.fl_push import FedAvgPushClient, FedAvgPushServer
 
 from utils.communication.comm_utils import CommunicationManager
@@ -38,22 +31,15 @@ from utils.log_utils import copy_source_code, check_and_create_path
 # Mapping of algorithm names to their corresponding client and server classes so that they can be consumed by the scheduler later on.
 algo_map: Dict[str, List[FedAvgClient]] = { # type: ignore
     "fedavg": [FedAvgServer, FedAvgClient],
-    "isolated": [IsolatedServer, IsolatedServer],
-    "fedass": [FedAssServer, FedAssClient],
-    "fediso": [FedIsoServer, FedIsoClient],
-    "fedweight": [FedWeightServer, FedWeightClient],
     "fedstatic": [FedStaticServer, FedStaticNode],
-    "swarm": [SWARMServer, SWARMClient],
     "dispfl": [DisPFLServer, DisPFLClient],
     "defkt": [DefKTServer, DefKTClient],
     "fedfomo": [FedFomoServer, FedFomoClient],
     "l2c": [L2CServer, L2CClient],
     "metal2c": [MetaL2CServer, MetaL2CClient],
-    "centralized": [CentralizedServer, CentralizedCLient],
-    "feddatarepr": [FedDataRepServer, FedDataRepClient],
-    "fedval": [FedValServer, FedValClient],
     "swift": [SwiftServer, SwiftNode],
     "fedavgpush": [FedAvgPushServer, FedAvgPushClient],
+    "feddynamic": [FedDynamicServer, FedDynamicNode],
 }
 
 

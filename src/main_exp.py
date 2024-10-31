@@ -27,21 +27,48 @@ topologies: Dict[str, Dict[str, int|float|str]] = {
     "fully_connected": {},
 }
 
-SOURCE_MACHINE = 'm3'
-alpha = '0.1'
+SOURCE_MACHINE = 'm4'
 
 ROUNDS = 200
-MODEL = "resnet6"
+MODEL = "resnet18"
 BATCH_SIZE = 256
 LR = 3e-4
 NUM_USERS = 36
 NUM_COLLABORATORS = 1
-SAMPLES_PER_USER = 1250
+SAMPLES_PER_USER = 96
 
 CIFAR10_DSET = "cifar10"
 CIAR10_DPATH = "./datasets/imgs/cifar10/"
 
 DUMP_DIR = "/mas/camera/Experiments/SONAR/abhi/"
+
+def get_domain_support(
+    num_users: int, base: str, domains: List[int] | List[str]
+) -> Dict[str, str]:
+    assert num_users % len(domains) == 0
+
+    users_per_domain = num_users // len(domains)
+    support: Dict[str, str] = {}
+    support["0"] = f"{base}_{domains[0]}"
+    for i in range(1, num_users + 1):
+        support[str(i)] = f"{base}_{domains[(i-1) // users_per_domain]}"
+    return support
+
+
+DOMAINNET_DMN = ["real", "sketch", "clipart"]
+
+def get_domainnet_support(num_users: int, domains: List[str] = DOMAINNET_DMN):
+    return get_domain_support(num_users, "domainnet", domains)
+
+domainnet_base_dir = "/u/abhi24/matlaberp2/p2p/imgs/domainnet/"
+domainnet_dpath = {
+    "domainnet_real": domainnet_base_dir,
+    "domainnet_sketch": domainnet_base_dir,
+    "domainnet_clipart": domainnet_base_dir,
+    "domainnet_infograph": domainnet_base_dir,
+    "domainnet_quickdraw": domainnet_base_dir,
+    "domainnet_painting": domainnet_base_dir,
+}
 
 dropout_dict = { # type: ignore
     "distribution_dict": { # leave dict empty to disable dropout
@@ -58,21 +85,20 @@ for i in range(1, NUM_USERS + 1):
 
 # for swift or fedavgpush, just modify the algo_configs list
 # for swift, synchronous should preferable be False
-gpu_ids = [1, 2, 3]
+gpu_ids = [1, 2, 3, 4, 5, 6, 7]
 grpc_system_config: ConfigType = {
-    "exp_id": f"static_alpha_{alpha}",
+    "exp_id": f"static_alpha_{SOURCE_MACHINE}",
     "num_users": NUM_USERS,
     "num_collaborators": NUM_COLLABORATORS,
     "comm": {"type": "GRPC", "synchronous": True, "peer_ids": ["localhost:50048"]},  # type: ignore
-    "dset": CIFAR10_DSET,
+    "dset": get_domainnet_support(NUM_USERS),
     "dump_dir": DUMP_DIR,
-    "dpath": CIAR10_DPATH,
+    "dpath": domainnet_dpath,
     "seed": 2,
     "device_ids": get_device_ids(NUM_USERS, gpu_ids),
     "samples_per_user": SAMPLES_PER_USER,
-    "train_label_distribution": "non_iid",
-    "alpha": float(alpha),
-    "test_label_distribution": "iid",
+    "train_label_distribution": "iid",
+    "test_label_distribution": "iid", # for domainnet it will not matter
     "exp_keys": [],
     "dropout_dicts": dropout_dicts,
     "log_memory": False,
@@ -90,7 +116,6 @@ fedstatic: ConfigType = {
     "model_lr": LR,
     "batch_size": 256,
 }
-
 
 exp_dict: Dict[str, ConfigType] = {}
 
@@ -156,7 +181,7 @@ for exp_id, exp_config in exp_dict.items():
     base_sys_config["device_ids"] = get_device_ids(n, gpu_ids) # type: ignore
 
     full_config = base_sys_config.copy() # type: ignore
-    full_config["exp_id"] = exp_id + '_' + SOURCE_MACHINE + '_' + alpha # type: ignore
+    full_config["exp_id"] = exp_id # type: ignore
 
     # change print color to green
     print("\033[92m")
