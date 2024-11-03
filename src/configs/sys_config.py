@@ -27,12 +27,12 @@ sliding_window_8c_4cpc_support = {
 }
 
 
-def get_device_ids(num_users: int, gpus_available: List[int]) -> Dict[str, List[int]]:
+def get_device_ids(num_users: int, gpus_available: List[int | Literal["cpu"]]) -> Dict[str, List[int | Literal["cpu"]]]:
     """
     Get the GPU device IDs for the users.
     """
     # TODO: Make it multi-host
-    device_ids: Dict[str, List[int]] = {}
+    device_ids: Dict[str, List[int | Literal["cpu"]]] = {}
     for i in range(num_users + 1):  # +1 for the super-node
         index = i % len(gpus_available)
         gpu_id = gpus_available[index]
@@ -158,7 +158,8 @@ CIFAR10_DSET = "cifar10"
 CIAR10_DPATH = "./datasets/imgs/cifar10/"
 
 NUM_COLLABORATORS = 1
-DUMP_DIR = "/mas/camera/Experiments/SONAR/abhi/"
+DUMP_DIR = "/mas/camera/Experiments/SONAR/jyuan/"
+# DUMP_DIR = "/u/jyuan24/sonar/src/expt_dump/2_exp_test/"
 
 mpi_system_config: ConfigType = {
     "exp_id": "",
@@ -316,17 +317,17 @@ object_detect_system_config: ConfigType = {
     "exp_keys": [],
 }
 
-num_users = 9
+# dropout_dict = {
+#     "distribution_dict": { # leave dict empty to disable dropout
+#         "method": "uniform",  # "uniform", "normal"
+#         "parameters": {} # "mean": 0.5, "std": 0.1 in case of normal distribution
+#     },
+#     "dropout_rate": 0.0, # cutoff for dropout: [0,1]
+#     "dropout_correlation": 0.0, # correlation between dropouts of successive rounds: [0,1]
+# }
 
-dropout_dict = {
-    "distribution_dict": { # leave dict empty to disable dropout
-        "method": "uniform",  # "uniform", "normal"
-        "parameters": {} # "mean": 0.5, "std": 0.1 in case of normal distribution
-    },
-    "dropout_rate": 0.0, # cutoff for dropout: [0,1]
-    "dropout_correlation": 0.0, # correlation between dropouts of successive rounds: [0,1]
-}
-
+num_users = 121
+dropout_dict = {}
 dropout_dicts = {"node_0": {}}
 for i in range(1, num_users + 1):
     dropout_dicts[f"node_{i}"] = dropout_dict
@@ -335,24 +336,48 @@ for i in range(1, num_users + 1):
 # for swift, synchronous should preferable be False
 gpu_ids = [2, 3, 5, 6]
 grpc_system_config: ConfigType = {
-    "exp_id": "static",
+    "exp_id": "scalability_torus_meow",
     "num_users": num_users,
     "num_collaborators": NUM_COLLABORATORS,
-    "comm": {"type": "GRPC", "synchronous": True, "peer_ids": ["localhost:50048"]},  # The super-node
+    "comm": {"type": "GRPC", "synchronous": True, "peer_ids": ["matlaber6.media.mit.edu:1109"]},  # The super-node
     "dset": CIFAR10_DSET,
     "dump_dir": DUMP_DIR,
     "dpath": CIAR10_DPATH,
-    "seed": 2,
+    "seed": 1,
     "device_ids": get_device_ids(num_users, gpu_ids),
     # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
     "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
     "samples_per_user": 50000 // num_users,  # distributed equally
-    "train_label_distribution": "iid",
+    "train_label_distribution": "non_iid",
     "test_label_distribution": "iid",
+    "alpha_data": 1.0,
+    "exp_keys": [],
+    "dropout_dicts": dropout_dicts,
+    "test_samples_per_user": 200,
+}
+
+big_experiment: ConfigType = {
+    "exp_id": "scalability_torus_meep",
+    "num_users": num_users,
+    "num_collaborators": NUM_COLLABORATORS,
+    "comm": {"type": "GRPC", "synchronous": True, "peer_ids": ["matlaber1.media.mit.edu:1112"]},  # The super-node
+    "dset": CIFAR10_DSET,
+    "dump_dir": DUMP_DIR,
+    "dpath": CIAR10_DPATH,
+    "seed": 1,
+    "device_ids": get_device_ids(num_users, ['cpu']),
+    # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
+    "algos": get_algo_configs(num_users=529, algo_configs=[fedstatic]),  # type: ignore
+    "samples_per_user": 50000 // 529,  # distributed equally
+    "train_label_distribution": "non_iid",
+    "test_label_distribution": "iid",
+    "alpha_data": 1.0,
     "exp_keys": [],
     "dropout_dicts": dropout_dicts,
     "log_memory": True,
+    "test_samples_per_user": 200,
 }
+
 
 current_config = grpc_system_config
 # current_config = mpi_system_config

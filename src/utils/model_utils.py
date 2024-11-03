@@ -258,6 +258,16 @@ class ModelUtils:
 
                 # Perform backpropagation with modified loss
                 loss.backward()
+            elif self.malicious_type == "label_flip":
+                # permutation = torch.tensor(self.config.get("permutation", [i for i in range(10)]))
+                permute_labels = self.config.get("permute_labels", 10)
+                permutation = torch.randperm(permute_labels)
+                permutation = permutation.to(target.device)
+
+                target = permutation[target] # flipped targets
+                loss = loss_fn(output, target)
+                loss.backward()
+
             else:
                 loss = loss_fn(output, target)
                 loss.backward()

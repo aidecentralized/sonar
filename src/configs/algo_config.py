@@ -31,7 +31,7 @@ iid_dispfl_clients_new: ConfigType = {
 traditional_fl: ConfigType = {
     # Collaboration setup
     "algo": "fedavg",
-    "rounds": 2,
+    "rounds": 200,
 
     # Model parameters
     "model": "resnet10",
@@ -191,8 +191,9 @@ swarm: ConfigType = {
 fedstatic: ConfigType = {
     # Collaboration setup
     "algo": "fedstatic",
-    "topology": {"name": "watts_strogatz", "k": 3, "p": 0.2}, # type: ignore
-    "rounds": 20,
+    # "topology": {"name": "torus"}, # type: ignore
+    "topology": {"name": "torus"},
+    "rounds": 200,
 
     # Model parameters
     "model": "resnet10",

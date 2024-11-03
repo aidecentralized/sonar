@@ -20,12 +20,6 @@ class FedStaticNode(BaseFedAvgClient):
         super().__init__(config, comm_utils)
         self.topology = select_topology(config, self.node_id)
         self.topology.initialize()
-
-    def get_representation(self, **kwargs: Any) -> OrderedDict[str, torch.Tensor]:
-        """
-        Returns the model weights as representation.
-        """
-        return self.get_model_weights()
     
     def get_neighbors(self) -> List[int]:
         """

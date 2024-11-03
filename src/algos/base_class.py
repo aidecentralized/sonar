@@ -174,12 +174,17 @@ class BaseNode(ABC):
         self.device_ids = device_ids_map[node_name]
         gpu_id = self.device_ids[0]
 
-        if torch.cuda.is_available():
+        if isinstance(gpu_id, int) and torch.cuda.is_available():
             self.device = torch.device(f"cuda:{gpu_id}")
             print(f"Using GPU: cuda:{gpu_id}")
-        else:
+        elif gpu_id == "cpu":
             self.device = torch.device("cpu")
             print("Using CPU")
+        else:
+            # Fallback in case of no GPU availability
+            self.device = torch.device("cpu")
+            print("Using CPU (Fallback)")
+
 
     def set_model_parameters(self, config: Dict[str, Any]) -> None:
         # Model related parameters
