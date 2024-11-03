@@ -2,6 +2,7 @@ from enum import Enum
 from utils.communication.grpc.main import GRPCCommunication
 from typing import Any, Dict, List, TYPE_CHECKING
 from utils.communication.mpi import MPICommUtils
+from mpi4py import MPI
 
 if TYPE_CHECKING:
     from algos.base_class import BaseNode
