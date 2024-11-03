@@ -242,12 +242,12 @@ class GRPCCommunication(CommunicationInterface):
         ('grpc.max_receive_message_length', MAX_MESSAGE_LENGTH),
     ]) as channel:
             stub = comm_pb2_grpc.CommunicationServerStub(channel)
-            max_tries = 10000
+            max_tries = 10
             while max_tries > 0:
                 try:
                     result = callback(stub)
                 except grpc.RpcError as e:
-                    print(f"RPC failed {10000 - max_tries} times: {e}", "Retrying...")
+                    print(f"RPC failed {10 - max_tries} times: {e}", "Retrying...")
                     # sleep for a random time between 1 and 10 seconds
                     random_time = random.randint(1, 10)
                     time.sleep(random_time)
