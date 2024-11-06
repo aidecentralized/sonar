@@ -42,14 +42,11 @@ class MPICommUtils(CommunicationInterface):
         self.listener_thread = threading.Thread(target=self.listener)
         self.listener_thread.start()
 
-        self.send_thread = threading.Thread(target=self.send)
-
     def initialize(self):
         pass
 
     def register_self(self, obj: "BaseNode"):
         self.base_node = obj
-        self.send_thread.start()
     
     def get_comm_cost(self):
         with self.lock:
@@ -66,14 +63,14 @@ class MPICommUtils(CommunicationInterface):
             # look for message with tag 1 (represents send request)
             if self.comm.Iprobe(source=MPI.ANY_SOURCE, tag=1, status=status):
                 with self.lock:
-                    self.request_source = status.Get_source()
+                    # self.request_source = status.Get_source()
+                    dest = status.Get_source()
 
                 print(f"Node {self.rank} received request from {self.request_source}")
                 # receive_request = self.comm.irecv(source=self.request_source, tag=1)  
                 # receive_request.wait()
-                self.comm.recv(source=self.request_source, tag=1)
-                self.send_event.set()
-            # time.sleep(1) 
+                self.comm.recv(source=dest, tag=1)
+                self.send(dest)
         print(f"Node {self.rank} listener thread ended")
 
     def get_model(self) -> List[OrderedDict[str, Tensor]] | None:
@@ -90,31 +87,19 @@ class MPICommUtils(CommunicationInterface):
                 model = None
             return model
     
-    def send(self):
+    def send(self, dest: int):
         """
         Node will wait for a request to send data and then send the
         data to requesting node.
         """
-        while not self.finished:
-            # Wait until the listener thread detects a request
-            self.send_event.wait()
-            if self.finished:
-                break
-            with self.lock:
-                dest = self.request_source
+        if self.finished:
+            return
 
-            if dest is not None:
-                data = self.get_model()
-                print(f"Node {self.rank} is sending data to {dest}")
-                # req = self.comm.Isend(data, dest=int(dest))
-                # req.wait()
-                self.comm.send(data, dest=int(dest))
-            
-            with self.lock:
-                self.request_source = None
-
-            self.send_event.clear()
-        print(f"Node {self.rank} send thread ended")
+        data = self.get_model()
+        print(f"Node {self.rank} is sending data to {dest}")
+        # req = self.comm.Isend(data, dest=int(dest))
+        # req.wait()
+        self.comm.send(data, dest=int(dest))
 
     def receive(self, node_ids: List[int]) -> Any:
         """
@@ -183,11 +168,9 @@ class MPICommUtils(CommunicationInterface):
             num_finished: set[int] = set() 
             status = MPI.Status()
             while len(num_finished) < quorum_threshold:
-                # sleep for 5 seconds
                 print(
                     f"Waiting for {quorum_threshold} users to finish, {num_finished} have finished so far"
                 )
-                # time.sleep(5)
                 # get finished nodes
                 self.comm.recv(source=MPI.ANY_SOURCE, tag=2, status=status)
                 print(f"received finish message from {status.Get_source()}")
@@ -198,7 +181,6 @@ class MPICommUtils(CommunicationInterface):
             print(f"Node {self.rank} sent finish message")
             self.send_finished()
         
-        # problem: do the other nodes wait for super node to receive finish messages? 
         message = self.comm.bcast("Done", root=0)
         self.finished = True
         self.send_event.set()
@@ -206,22 +188,12 @@ class MPICommUtils(CommunicationInterface):
         self.comm.Barrier()
         self.listener_thread.join()
         print(f"Node {self.rank} listener thread done")
-        if self.send_thread.is_alive():
-            self.send_thread.join()
-        print(f"Node {self.rank} send thread done")
-        print(f"Node {self.rank} active threads: {threading.active_count()}")
         print(f"Node {self.rank} listener thread is {self.listener_thread.is_alive()}")
         print(f"Node {self.rank} {threading.enumerate()}")
-        # for thread in threading.enumerate():
-        #     if thread != threading.main_thread():
-        #         thread.join()
-        print(f"Node {self.rank} send thread is {self.send_thread.is_alive()}")
         self.comm.Barrier()
         print(f"Node {self.rank}: all nodes synchronized")
         MPI.Finalize()
     
-        print("Finalized")
-
     def set_is_working(self, is_working: bool):
         with self.lock:
             self.is_working = is_working
