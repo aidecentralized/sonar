@@ -5,15 +5,18 @@ This module runs collaborative learning experiments using the Scheduler class.
 import argparse
 import logging
 
+from typing import Optional
 from scheduler import Scheduler
 
 logging.getLogger("PIL").setLevel(logging.INFO)
 logging.basicConfig(level=logging.DEBUG)  # Enable detailed logging
 
+# Default config file paths
 B_DEFAULT: str = "./configs/algo_config.py"
 S_DEFAULT: str = "./configs/sys_config.py"
 
-parser = argparse.ArgumentParser(description="Run collaborative learning experiments")
+# Parse args
+parser : argparse.ArgumentParser = argparse.ArgumentParser(description="Run collaborative learning experiments")
 parser.add_argument(
     "-b",
     nargs="?",
@@ -50,7 +53,7 @@ scheduler.assign_config_by_path(args.s, args.b, args.super, args.host)
 print("Config loaded")
 
 # Log and check key configuration values to prevent errors like division by zero
-num_users = scheduler.config.get("num_users", None)
+num_users : Optional[int] = scheduler.config.get("num_users", None)
 if num_users is None:
     logging.error(
         "The number of users (num_users) is not defined in the configuration."
@@ -64,6 +67,7 @@ if num_users == 0:
 
 logging.info(f"Running experiment with {num_users} users.")
 
+# Start the scheduler
 scheduler.install_config()
 scheduler.initialize()
 # Run the job

@@ -16,6 +16,7 @@ class BaseTopology(ABC):
         self.rank = rank
         self.num_users: int = self.config["num_users"] # type: ignore
         self.graph: nx.Graph | None = None
+        self.neighbor_sample_generator = np.random.default_rng(seed=int(self.config["seed"])*10000 + self.rank ) # type: ignore
 
     @abstractmethod
     def generate_graph(self) -> None:
@@ -63,7 +64,7 @@ class BaseTopology(ABC):
         neighbours = self.get_all_neighbours()
         if len(neighbours) <= k:
             return neighbours
-        return np.random.choice(neighbours, size=k, replace=False).tolist()
+        return self.neighbor_sample_generator.choice(neighbours, size=k, replace=False).tolist()
 
     def get_neighbourhood_size(self) -> int:
         """

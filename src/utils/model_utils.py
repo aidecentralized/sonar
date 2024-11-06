@@ -39,7 +39,11 @@ class ModelUtils:
         self.dset = dset
         # TODO: add support for loading checkpointed models
         model_name = model_name.lower()
-        if model_name == "resnet10":
+        if model_name == "resnet6":
+            if pretrained:
+                raise ValueError("Pretrained model not available for resnet6")
+            model = resnet.resnet6(**kwargs)
+        elif model_name == "resnet10":
             if pretrained:
                 raise ValueError("Pretrained model not available for resnet10")
             model = resnet.resnet10(**kwargs)
@@ -254,6 +258,16 @@ class ModelUtils:
 
                 # Perform backpropagation with modified loss
                 loss.backward()
+            elif self.malicious_type == "label_flip":
+                # permutation = torch.tensor(self.config.get("permutation", [i for i in range(10)]))
+                permute_labels = self.config.get("permute_labels", 10)
+                permutation = torch.randperm(permute_labels)
+                permutation = permutation.to(target.device)
+
+                target = permutation[target] # flipped targets
+                loss = loss_fn(output, target)
+                loss.backward()
+
             else:
                 loss = loss_fn(output, target)
                 loss.backward()

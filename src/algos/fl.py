@@ -1,6 +1,6 @@
 import random
 from collections import OrderedDict
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 from torch import Tensor
 from utils.communication.comm_utils import CommunicationManager
 from algos.base_class import BaseClient, BaseServer
@@ -18,7 +18,7 @@ class FedAvgClient(BaseClient):
         super().__init__(config, comm_utils)
         self.config = config
 
-    def local_test(self, **kwargs: Any):
+    def local_test(self, **kwargs: Any) -> Tuple[float, float, float]:
         """
         Test the model locally, not to be used in the traditional FedAvg
         """
@@ -28,56 +28,64 @@ class FedAvgClient(BaseClient):
         )
         end_time = time.time()
         time_taken = end_time - start_time
-        return [test_loss, test_acc, time_taken]
+
+        self.stats["test_loss"], self.stats["test_acc"], self.stats["test_time"] = test_loss, test_acc, time_taken
+
+        return test_loss, test_acc, time_taken
 
 
-    def get_model_weights(self, **kwargs: Any) -> Dict[str, Tensor]:
+    def get_model_weights(self, **kwargs: Any) -> Dict[str, Any]:
         """
         Overwrite the get_model_weights method of the BaseNode
         to add malicious attacks
         TODO: this should be moved to BaseClient
         """
 
+        message = {"sender": self.node_id, "round": self.round}
+
         malicious_type = self.config.get("malicious_type", "normal")
 
         if malicious_type == "normal":
-            return self.model.state_dict()  # type: ignore
+            message["model"] = self.model.state_dict()  # type: ignore
         elif malicious_type == "bad_weights":
             # Corrupt the weights
-            return BadWeightsAttack(
+            message["model"] = BadWeightsAttack(
                 self.config, self.model.state_dict()
             ).get_representation()
         elif malicious_type == "sign_flip":
             # Flip the sign of the weights, also TODO: consider label flipping
-            return SignFlipAttack(
+            message["model"] = SignFlipAttack(
                 self.config, self.model.state_dict()
             ).get_representation()
         elif malicious_type == "add_noise":
             # Add noise to the weights
-            return AddNoiseAttack(
+            message["model"] = AddNoiseAttack(
                 self.config, self.model.state_dict()
             ).get_representation()
         else:
-            return self.model.state_dict()  # type: ignore
-        return self.model.state_dict()  # type: ignore
+            message["model"] = self.model.state_dict()  # type: ignore
+
+        # move the model to cpu before sending
+        for key in message["model"].keys():
+            message["model"][key] = message["model"][key].to("cpu")
+    
+        return message  # type: ignore
 
     def run_protocol(self):
-        stats: Dict[str, Any] = {}
         print(f"Client {self.node_id} ready to start training")
 
         start_rounds = self.config.get("start_rounds", 0)
         total_rounds = self.config["rounds"]
 
         for round in range(start_rounds, total_rounds):
-            stats["train_loss"], stats["train_acc"], stats["train_time"] = self.local_train(round)
-            stats["test_loss"], stats["test_acc"], stats["test_time"] = self.local_test()
-            self.local_round_done()
+            self.round_init()
 
+            self.local_train(round)
+            self.local_test()
+            self.local_round_done()
             self.receive_and_aggregate()
-            
-            stats["bytes_received"], stats["bytes_sent"] = self.comm_utils.get_comm_cost()
-            
-            self.log_metrics(stats=stats, iteration=round)
+
+            self.round_finalize()
 
 
 class FedAvgServer(BaseServer):
@@ -106,13 +114,18 @@ class FedAvgServer(BaseServer):
         return avgd_wts
 
     def aggregate(
-        self, representation_list: List[OrderedDict[str, Tensor]], **kwargs: Any
+        self, representation_list: List[OrderedDict[str, Any]], **kwargs: Any
     ) -> OrderedDict[str, Tensor]:
         """
         Aggregate the model weights
         """
         representation_list, _ = self.strip_empty_models(representation_list)
         if len(representation_list) > 0:
+            senders = [rep["sender"] for rep in representation_list if "sender" in rep]
+            rounds = [rep["round"] for rep in representation_list if "round" in rep]
+            for i in range(len(representation_list)):
+                representation_list[i] = representation_list[i]["model"]
+
             avg_wts = self.fed_avg(representation_list)
             return avg_wts
         else:
@@ -125,7 +138,7 @@ class FedAvgServer(BaseServer):
         """
         self.model.load_state_dict(representation)
 
-    def test(self, **kwargs: Any) -> List[float]:
+    def test(self, **kwargs: Any) -> Tuple[float, float, float]:
         """
         Test the model on the server
         """
@@ -138,7 +151,9 @@ class FedAvgServer(BaseServer):
         if test_acc > self.best_acc:
             self.best_acc = test_acc
             self.model_utils.save_model(self.model, self.model_save_path)
-        return [test_loss, test_acc, time_taken]
+        
+        self.stats["test_loss"], self.stats["test_acc"], self.stats["test_time"] = test_loss, test_acc, time_taken
+        return test_loss, test_acc, time_taken
 
     def receive_and_aggregate(self):
         reprs = self.comm_utils.all_gather()
@@ -149,16 +164,17 @@ class FedAvgServer(BaseServer):
         """
         Runs the whole training procedure
         """
-        self.receive_and_aggregate()            
+        self.receive_and_aggregate()
 
     def run_protocol(self):
-        stats: Dict[str, Any] = {}
         print(f"Client {self.node_id} ready to start training")
         start_rounds = self.config.get("start_rounds", 0)
         total_rounds = self.config["rounds"]
         for round in range(start_rounds, total_rounds):
+            self.round_init()
+
             self.local_round_done()
             self.single_round()
-            stats["bytes_received"], stats["bytes_sent"] = self.comm_utils.get_comm_cost()
-            stats["test_loss"], stats["test_acc"], stats["test_time"] = self.test()
-            self.log_metrics(stats=stats, iteration=round)
+            self.test()
+
+            self.round_finalize()

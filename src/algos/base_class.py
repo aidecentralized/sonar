@@ -14,6 +14,7 @@ import copy
 import random
 import time
 import torch.utils.data
+import gc
 
 from utils.communication.comm_utils import CommunicationManager
 from utils.plot_utils import PlotUtils
@@ -47,7 +48,6 @@ def set_seed(seed: int) -> None:
     torch.manual_seed(seed)  # type: ignore
     random.seed(seed)
     np.random.seed(seed)
-
 
 class BaseNode(ABC):
     """BaseNode is an abstract base class that provides foundational functionalities for nodes in a distributed system. It handles configuration, logging, CUDA setup, model parameter settings, and shared experiment parameters.
@@ -119,10 +119,15 @@ class BaseNode(ABC):
         dropout_rng = random.Random(dropout_seed)
         self.dropout = NodeDropout(self.node_id, config["dropout_dicts"], dropout_rng)
 
+        self.log_memory = config.get("log_memory", False)
+
+        self.stats : Dict[str, int | float | List[int]] = {}
+
     def set_constants(self) -> None:
         """Add docstring here"""
         self.best_acc = 0.0
         self.round = 0
+        self.EMPTY_MODEL_TAG = "EMPTY_MODEL"
 
     def setup_logging(self, config: Dict[str, ConfigType]) -> None:
         """
@@ -169,12 +174,17 @@ class BaseNode(ABC):
         self.device_ids = device_ids_map[node_name]
         gpu_id = self.device_ids[0]
 
-        if torch.cuda.is_available():
+        if isinstance(gpu_id, int) and torch.cuda.is_available():
             self.device = torch.device(f"cuda:{gpu_id}")
             print(f"Using GPU: cuda:{gpu_id}")
-        else:
+        elif gpu_id == "cpu":
             self.device = torch.device("cpu")
             print("Using CPU")
+        else:
+            # Fallback in case of no GPU availability
+            self.device = torch.device("cpu")
+            print("Using CPU (Fallback)")
+
 
     def set_model_parameters(self, config: Dict[str, Any]) -> None:
         # Model related parameters
@@ -250,7 +260,13 @@ class BaseNode(ABC):
         """
         Share the model weights
         """
-        return self.model.state_dict()
+        message = {"sender": self.node_id, "round": self.round, "model": self.model.state_dict()}
+
+        # Move to CPU before sending
+        for key in message["model"].keys():
+            message["model"][key] = message["model"][key].to("cpu")
+            
+        return message
 
     def get_local_rounds(self) -> int:
         return self.round
@@ -259,6 +275,28 @@ class BaseNode(ABC):
     def run_protocol(self) -> None:
         """Add docstring here"""
         raise NotImplementedError
+
+    def round_init(self) -> None:
+        """
+        Things to do at the start of each round.
+        """
+        self.round_start_time = time.time()
+    
+    def round_finalize(self) -> None:
+        """
+        Things to do at the end of each round.
+        """
+        self.round_end_time = time.time()
+        self.round_duration = self.round_end_time - self.round_start_time
+
+        self.stats["time_elapsed"] = self.stats.get("time_elapsed", 0) + self.round_duration # type: ignore
+        
+        self.stats["bytes_received"], self.stats["bytes_sent"] = self.comm_utils.get_comm_cost()
+
+        self.stats["peak_dram"], self.stats["peak_gpu"] = self.get_memory_metrics()
+
+        self.log_metrics(stats=self.stats, iteration=self.round)
+
 
     def log_metrics(self, stats: Dict[str, Any], iteration: int) -> None:
         """
@@ -307,19 +345,19 @@ class BaseNode(ABC):
         raise NotImplementedError
 
 
-    def strip_empty_models(self,  models_wts: List[OrderedDict[str, Tensor]],
+    def strip_empty_models(self,  models_wts: List[OrderedDict[str, Any]],
         collab_weights: Optional[List[float]] = None) -> Any:
         repr_list = []
         if collab_weights is not None:
             weight_list = []
             for i, model_wts in enumerate(models_wts):
-                if len(model_wts) > 0 and collab_weights[i] > 0:
+                if self.EMPTY_MODEL_TAG not in model_wts and collab_weights[i] > 0:
                     repr_list.append(model_wts)
                     weight_list.append(collab_weights[i])
             return repr_list, weight_list
         else:
             for model_wts in models_wts:
-                if len(model_wts) > 0:
+                if self.EMPTY_MODEL_TAG not in model_wts:
                     repr_list.append(model_wts)
             return repr_list, None
 
@@ -351,6 +389,37 @@ class BaseNode(ABC):
             model_wts[key] = model_wts[key].to(self.device)
 
         self.model.load_state_dict(model_wts, strict=len(keys_to_ignore) == 0)
+
+    def push(self, neighbors: int | List[int]) -> None:
+        """
+        Pushes the model to the neighbors.
+        """
+        
+        data_to_send = self.get_model_weights()
+
+        # if it is a list, send to all neighbors
+        if isinstance(neighbors, list):
+            for neighbor in neighbors:
+                self.comm_utils.send(neighbor, data_to_send)
+        else:
+            self.comm_utils.send(neighbors, data_to_send)
+
+    def calculate_cpu_tensor_memory(self) -> int:
+        total_memory = 0
+        for obj in gc.get_objects():
+            if torch.is_tensor(obj) and obj.device.type == 'cpu': # type: ignore
+                total_memory += obj.element_size() * obj.nelement()
+        return total_memory
+
+    def get_memory_metrics(self) -> Tuple[float | int, float | int]:
+        """
+        Get memory metrics
+        """
+        peak_dram, peak_gpu = 0, 0
+        if self.log_memory:
+            peak_dram = self.calculate_cpu_tensor_memory()
+            peak_gpu = int(torch.cuda.max_memory_allocated()) # type: ignore
+        return peak_dram, peak_gpu
 
 class BaseClient(BaseNode):
     """
@@ -591,10 +660,12 @@ class BaseClient(BaseNode):
         self.log_utils.log_tb(
             f"train_accuracy/client{self.node_id}", avg_acc, round
         )
+ 
+        self.stats["train_loss"], self.stats["train_acc"], self.stats["train_time"] = avg_loss, avg_acc, time_taken
 
         return avg_loss, avg_acc, time_taken
 
-    def local_test(self, **kwargs: Any) -> float | Tuple[float, float] | None:
+    def local_test(self, **kwargs: Any) -> float | Tuple[float, float] | Tuple[float, float, float] | None:
         """
         Test the model locally
         """
@@ -606,7 +677,33 @@ class BaseClient(BaseNode):
         """
         if self.is_working:
             repr = self.comm_utils.receive([self.server_node])[0]
-            self.set_model_weights(repr)
+            if "round" in repr:
+                round = repr["round"]
+            if "sender" in repr:
+                sender = repr["sender"]
+            assert "model" in repr, "Model not found in the received message"
+            self.set_model_weights(repr["model"])
+
+
+    def receive_pushed_and_aggregate(self, remove_multi = True) -> None:
+        model_updates = self.comm_utils.receive_pushed()
+
+        if len(model_updates) > 0:
+            if self.is_working:
+                # Remove multiple models of different rounds from each node
+                if remove_multi:
+                    to_aggregate = {}
+                    for model in model_updates:
+                        sender = model.get("sender", 0)
+                        if sender not in to_aggregate or to_aggregate[sender].get("round", 0) < model.get("round", 0):
+                            to_aggregate[sender] = model
+                    model_updates = list(to_aggregate.values())
+                # Aggregate the representations
+                repr = model_updates[0]
+                assert "model" in repr, "Model not found in the received message"
+                self.set_model_weights(repr["model"])
+        else:
+            print("No one pushed model updates for this round.")
 
     def run_protocol(self) -> None:
         raise NotImplementedError
@@ -673,14 +770,14 @@ class BaseServer(BaseNode):
         self._test_loader = DataLoader(test_dset, batch_size=batch_size)
 
     def aggregate(
-        self, representation_list: List[OrderedDict[str, Tensor]], **kwargs: Any
+        self, representation_list: List[OrderedDict[str, Any]], **kwargs: Any
     ) -> OrderedDict[str, Tensor]:
         """
         Aggregate the knowledge from the users
         """
         raise NotImplementedError
 
-    def test(self, **kwargs: Any) -> List[float]:
+    def test(self, **kwargs: Any) -> Any:
         """
         Test the model on the server
         """
@@ -737,23 +834,23 @@ class BaseFedAvgClient(BaseClient):
         """
         Test the model locally, not to be used in the traditional FedAvg
         """
+        start_time = time.time()
         test_loss, acc = self.model_utils.test(
             self.model, self._test_loader, self.loss_fn, self.device
         )
+        end_time = time.time()
+        time_taken = end_time - start_time
         if acc > self.best_acc:
             self.best_acc = acc
             self.model_utils.save_model(self.model, self.model_save_path)
-        return test_loss, acc
+        
+        self.stats["test_loss"], self.stats["test_acc"], self.stats["test_time"] = test_loss, acc, time_taken
 
-    def get_model_weights(self) -> OrderedDict[str, Tensor]:
-        """
-        Share the model weights (on the cpu)
-        """
-        return OrderedDict({k: v.cpu() for k, v in self.model.state_dict().items()})
+        return test_loss, acc
 
     def aggregate(
         self,
-        models_wts: List[OrderedDict[str, Tensor]],
+        models_wts: List[OrderedDict[str, Any]],
         collab_weights: Optional[List[float]] = None,
         keys_to_ignore: List[str] = [],
     ) -> None:
@@ -768,6 +865,7 @@ class BaseFedAvgClient(BaseClient):
         Returns:
             None
         """
+        
         models_coeffs: List[Tuple[OrderedDict[str, Tensor], float]] = []
         # insert the current model weights at the position self.node_id
         models_wts.insert(self.node_id - 1, self.get_model_weights())
@@ -777,6 +875,12 @@ class BaseFedAvgClient(BaseClient):
         # Handle dropouts and re-normalize the weights
         models_wts, collab_weights = self.strip_empty_models(models_wts, collab_weights)
         collab_weights = [w / sum(collab_weights) for w in collab_weights]
+
+        senders = [model["sender"] for model in models_wts if "sender" in model]
+        rounds = [model["round"] for model in models_wts if "round" in model]
+        for i in range(len(models_wts)):
+            assert "model" in models_wts[i], "Model not found in the received message"
+            models_wts[i] = models_wts[i]["model"]
 
         for idx, model_wts in enumerate(models_wts):
             models_coeffs.append((model_wts, collab_weights[idx]))
@@ -795,6 +899,20 @@ class BaseFedAvgClient(BaseClient):
         
         self.set_model_weights(agg_wts)
         return None
+
+    def receive_pushed_and_aggregate(self, remove_multi = True) -> None:
+        model_updates = self.comm_utils.receive_pushed()
+        if self.is_working:
+            # Remove multiple models of different rounds from each node
+            if remove_multi:
+                to_aggregate = {}
+                for model in model_updates:
+                    sender = model.get("sender", 0)
+                    if sender not in to_aggregate or to_aggregate[sender].get("round", 0) < model.get("round", 0):
+                        to_aggregate[sender] = model
+                model_updates = list(to_aggregate.values())
+            # Aggregate the representations
+            self.aggregate(model_updates, keys_to_ignore=self.model_keys_to_ignore)
 
     def receive_and_aggregate(self, neighbors: List[int]) -> None:
         if self.is_working:
