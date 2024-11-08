@@ -397,6 +397,13 @@ class BaseClient(BaseNode):
         self.set_shared_exp_parameters(config)
         self.set_data_parameters(config)
 
+        # after setting data loaders, save client dataset
+        # TODO verify this .data and .labels fields are correct
+        if "gia" in config:
+            self.log_utils.log_gia_target(self.train_dset.data, 
+                                          self.train_dset.labels, 
+                                          self.node_id)
+
     def set_data_parameters(self, config: ConfigType) -> None:
 
         # Train set and test set from original dataset

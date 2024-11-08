@@ -157,7 +157,7 @@ CIFAR10_DSET = "cifar10"
 CIAR10_DPATH = "./datasets/imgs/cifar10/"
 
 NUM_COLLABORATORS = 1
-DUMP_DIR = "/u/yshi23/sonar/src/expt_dump/test/"
+DUMP_DIR = "/mas/camera/Experiments/SONAR/abhi/"
 
 mpi_system_config: ConfigType = {
     "exp_id": "",
@@ -375,6 +375,5 @@ grpc_system_config_gia: ConfigType = {
     "gia_attackers":[1]
 }
 
-current_config = grpc_system_config_gia
-# current_config = grpc_system_config
+current_config = grpc_system_config
 # current_config = mpi_system_config

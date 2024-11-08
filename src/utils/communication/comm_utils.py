@@ -61,19 +61,6 @@ class CommunicationManager:
             print(f"Sending data to {dest}")
             self.comm.send(dest=int(dest), data=data)
     
-    def send_dummy_data(self, dest: str | int, dims: Tuple[int, int]):
-        """
-        placeholder method for sending images or other data types
-        """
-        # generate random data of given int dimension 
-        data = np.random.rand(*dims)
-        if isinstance(dest, list):
-            for d in dest:
-                self.comm.send(dest=int(d), data=data)
-        else:
-            print(f"Sending data to {dest}")
-            self.comm.send(dest=int(dest), data=data)
-
     def receive(self, node_ids: List[int]) -> Any:
         """
         Receive data from the specified node
