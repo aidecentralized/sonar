@@ -17,7 +17,10 @@ import numpy as np
 import pandas as pd
 from utils.types import ConfigType
 import json
-
+import networkx as nx
+from networkx import Graph
+import matplotlib.pyplot as plt
+import imageio
 
 def deprocess(img: torch.Tensor) -> torch.Tensor:
     """
@@ -123,7 +126,91 @@ class LogUtils:
         self.init_npy()
         self.init_summary()
         self.init_csv()
+        self.init_nx_graph(config)
+        self.nx_layout = None
 
+    def init_nx_graph(self, config: ConfigType):
+        """
+        Initialize the networkx graph for the topology.
+
+        Args:
+            config (ConfigType): Configuration dictionary.
+            rank (int): Rank of the current node.
+        """
+        self.topology  = config["topology"]
+        self.num_users = config["num_users"]
+        self.graph = nx.Graph()
+
+
+    # def generate_graph(self):
+    #     """
+    #     Generate the graph using the networkX library
+    #     and store it in the self.graph attribute.
+    #     NetworkX has a lot of built-in functions to generate graphs.
+    #     Use this url - https://networkx.org/documentation/stable/reference/generators.html
+    #     """
+    #     if self.topology["name"] == "centralized":
+    #         self.graph = nx.complete_graph(self.num_users)
+    #     else:
+    #         raise ValueError("Invalid topology name")
+
+    def log_nx_graph(self, graph: Graph, iteration: int, directory: str|None = None):
+        """
+        Log the networkx graph to a file.
+        """
+        # print(graph)
+        if directory:
+            nx.write_adjlist(graph, f"{directory}/graph_{iteration}.adjlist", comments='#', delimiter=' ', encoding='utf-8') # type: ignore
+        else:
+            nx.write_adjlist(graph, f"{self.log_dir}/graph_{iteration}.adjlist", comments='#', delimiter=' ', encoding='utf-8') # type: ignore
+
+    
+    def log_nx_graph_image(self, graph: Graph, iteration: int, directory: str|None = None):
+        """
+        Log the networkx graph as an image.
+        """
+        # Generate a layout for the graph
+        if self.nx_layout is None: # type: ignore
+            self.nx_layout = nx.spring_layout(graph) # type: ignore
+        
+        # pos = nx.spring_layout(graph)
+
+        # Draw the graph with labels
+        nx.draw(graph, self.nx_layout, with_labels=True, node_size=500, node_color="skyblue", font_size=10, font_weight="bold", edge_color="gray")# type: ignore
+        
+        # Save the plot as an image
+        if directory :
+            plt.savefig(f"{directory}/graph_{iteration}.png", format="png") # type: ignore
+        else:
+            plt.savefig(f"{self.log_dir}/graph_{iteration}.png", format="png")# type: ignore
+        
+        # Close the plot to free up memory
+        plt.close()# type: ignore
+
+    def log_nx_graph_edge_weights(self, graph: Graph, iteration: int, directory: str|None = None):
+        """
+        Log the networkx graph with edge weights as an image.
+        """
+        # Define position of nodes for layout
+        pos = nx.spring_layout(graph)
+
+        # Get the edge weights
+        edge_weights = nx.get_edge_attributes(graph, "weight")
+
+        # Draw the graph with edge weights
+        nx.draw(graph, pos, with_labels=True, node_size=500, node_color="skyblue", font_size=10, font_weight="bold", edge_color="gray", width=[float(edge_weights[edge]) for edge in graph.edges()])# type: ignore
+
+        # Save the plot as an image
+        if directory:
+            plt.savefig(f"{directory}/graph_{iteration}.png", format="png")
+        else:
+            plt.savefig(f"{self.log_dir}/graph_{iteration}.png", format="png")
+
+        # Close the plot to free up memory
+        plt.close()
+
+
+            
     def log_config(self, config: ConfigType):
         """
         Log the configuration to a json file. 
@@ -164,6 +251,15 @@ class LogUtils:
         csv_path = f"{self.log_dir}/csv"
         if not os.path.exists(csv_path) or not os.path.isdir(csv_path):
             os.makedirs(csv_path)
+
+        parent = os.path.dirname(self.log_dir) + "/csv" # type: ignore
+        if not os.path.exists(parent) or not os.path.isdir(parent): # type: ignore
+            os.makedirs(parent) # type: ignore
+
+        imgs = parent + "/imgs"
+        if not os.path.exists(imgs) or not os.path.isdir(imgs): # type: ignore
+            os.makedirs(imgs) # type: ignore
+
 
     def log_summary(self, text: str):
         """
@@ -238,6 +334,149 @@ class LogUtils:
         
         # Append the metrics to the CSV file
         df.to_csv(log_file, mode='a', header=not file_exists, index=False)
+
+        #make a global file to store all the neighbors of each round
+        if key == "neighbors":
+            self.log_global_csv(iteration, key, value)
+            
+    def log_global_csv(self, iteration: int, key: str, value: Any):
+        """
+        Log a value to a CSV file.
+        """
+        parent = os.path.dirname(self.log_dir) # type: ignore
+        log_file = f"{parent}/csv/neighbors_{iteration}.csv"
+        node = self.log_dir.split("_")[-1] # type: ignore
+        row = {"iteration": iteration, "node": node ,  key: value}
+        df = pd.DataFrame([row])
+        file_exists = os.path.isfile(log_file)
+        df.to_csv(log_file, mode='a', header=not file_exists, index=False)
+
+        if len(pd.read_csv(log_file)) == self.num_users:
+            adjacency_list = self.create_adjacency_list(log_file)
+            graph = nx.Graph(adjacency_list)
+            # create the /img directory
+            self.log_nx_graph_image(graph, iteration, f"{parent}/csv/imgs")
+            self.log_nx_graph(graph, iteration, f"{parent}/csv")
+            self.combine_graphs_with_edge_frequency(f"{parent}/csv")
+
+
+    def combine_graphs_with_edge_frequency(self, directory: str):
+        """
+        Combine the adjacency lists of all the rounds and calculate the edge frequency.
+        """
+        # Get all the adjacency lists
+        adjacency_lists = glob(f"{directory}/*.csv")
+        # Initialize the edge frequency dictionary
+        edge_frequency = {}
+        # Initialize the adjacency list
+        adjacency_list = {}
+        # Iterate over all the adjacency lists
+        for adj_list in adjacency_lists:
+            # Load the adjacency list
+            data = pd.read_csv(adj_list)
+            # Populate the adjacency list
+            for _, row in data.iterrows():
+                node = row["node"]
+                # Convert string representation of list to actual list
+                neighbors = eval(row["neighbors"])
+                if node not in adjacency_list:
+                    adjacency_list[node] = neighbors
+                else:
+                    adjacency_list[node].extend(neighbors)
+        # Calculate the edge frequency
+        for node, neighbors in adjacency_list.items():
+            for neighbor in neighbors:
+                if (node, neighbor) in edge_frequency:
+                    edge_frequency[(node, neighbor)] += 1
+                else:
+                    edge_frequency[(node, neighbor)] = 1
+                
+        # create a graph with edges in the edge frequency with higher frequency edges having thicker lines
+        G = nx.Graph()
+        for edge, freq in edge_frequency.items():
+            # print(edge, freq)
+            G.add_edge(edge[0], edge[1], weight=freq)
+
+        self.log_nx_graph_edge_weights(G, -1, directory)
+
+        # create the /img directory
+        #log graph image with edge weights
+        self.log_nx_graph(G, -1, directory)
+
+        # create video of the graphs
+        self.create_video(directory  + "/imgs")
+        print(edge_frequency)
+        #create a heatmap of the edge frequency
+        # self.create_heatmap(edge_frequency, directory) # type: ignore
+
+    def create_video(self, directory: str):
+        """
+        Create a video of the graphs using imageIO where each image is a second long.
+        """
+        images = []
+        for filename in sorted(glob(f"{directory}/graph_*.png")):
+            images.append(imageio.imread(filename))
+        # make the gif loop
+        imageio.mimsave(f"{directory}/graph_video.gif", images, fps =1, loop =0)
+        
+
+    # def create_heatmap(self, edge_frequency, directory: str):
+    #     """
+    #     Create a heatmap of the edge frequency.
+    #     """
+    #     # Initialize the edge frequency matrix
+    #     edge_frequency_matrix = np.zeros((self.num_users, self.num_users))
+        
+    #     # Populate the edge frequency matrix
+    #     for edge, freq in edge_frequency.items():
+    #         edge_frequency_matrix[edge[0], edge[1]] = freq
+    #         edge_frequency_matrix[edge[1], edge[0]] = freq  # Ensure symmetry for undirected graph
+        
+    #     edge_frequency_matrix = np.log(edge_frequency_matrix + 1)  # Log scale for better visualization
+    #     # Create the heatmap
+    #     plt.imshow(edge_frequency_matrix, cmap="hot", interpolation="nearest")
+    #     # plt.colorbar(label="Frequency of Communication")
+        
+    #     # Save the heatmap
+    #     plt.savefig(f"{directory}/edge_frequency_heatmap.png")
+    #     plt.close()
+
+
+
+
+    def create_adjacency_list(self, file_path: str) -> Dict[str, list]: # type: ignore
+        # Load the CSV file
+        """
+        Load the CSV file, populate the adjacency list and return it.
+
+        Parameters
+        ----------
+        file_path : str
+            The path to the CSV file
+
+        Returns
+        -------
+        adjacency_list : Dict[str, list]
+            The adjacency list
+        """
+        data = pd.read_csv(str(file_path)) # type: ignore
+        
+        # Initialize the adjacency list
+        adjacency_list : Dict[str, list] = {} # type: ignore
+        
+        # Populate the adjacency list
+        for _, row in data.iterrows(): # type: ignore
+            node = row["node"] # type: ignore
+            # Convert string representation of list to actual list
+            neighbors = eval(row["neighbors"]) # type: ignore
+            
+            if node not in adjacency_list:
+                adjacency_list[node] = neighbors
+            else:
+                adjacency_list[node].extend(neighbors) # type: ignore
+        
+        return adjacency_list # type: ignore
+
 
 
     def log_max_stats_per_client(
