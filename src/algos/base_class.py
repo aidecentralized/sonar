@@ -400,9 +400,13 @@ class BaseClient(BaseNode):
         # after setting data loaders, save client dataset
         # TODO verify this .data and .labels fields are correct
         if "gia" in config:
-            self.log_utils.log_gia_target(self.train_dset.data, 
-                                          self.train_dset.labels, 
-                                          self.node_id)
+            # Extract data and labels
+            train_data = torch.stack([data[0] for data in self.train_dset])
+            train_labels = torch.tensor([data[1] for data in self.train_dset])
+
+            self.log_utils.log_gia_image(train_data, 
+                                         train_labels,
+                                         self.node_id)
 
     def set_data_parameters(self, config: ConfigType) -> None:
 

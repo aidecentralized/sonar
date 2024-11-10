@@ -10,13 +10,10 @@ from torch.nn.parallel import DataParallel
 import resnet
 import resnet_in
 
-import matplotlib.pyplot as plt
-
 import yolo
 from utils.types import ConfigType
 
 from inversefed.reconstruction_algorithms import loss_steps
-import pickle
 
 class ModelUtils:
     def __init__(self, device: torch.device, config: ConfigType) -> None:

@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 from utils.types import ConfigType
 import json
+import matplotlib.pyplot as plt
 
 
 def deprocess(img: torch.Tensor) -> torch.Tensor:
@@ -190,11 +191,13 @@ class LogUtils:
         save_image(grid_img, f"{self.log_dir}/{iteration}_{key}.png")
         self.writer.add_image(key, grid_img.numpy(), iteration)
 
-    def log_gia_target(data, 
-                    target, 
-                    node_id,
-                    dm=torch.as_tensor([0.4914, 0.4822, 0.4465])[:, None, None], 
-                    ds=torch.as_tensor([0.2023, 0.1994, 0.2010])[:, None, None]):
+    def log_gia_image(self, 
+                      data, 
+                      target, 
+                      node_id,
+                      dm=torch.as_tensor([0.4914, 0.4822, 0.4465])[:, None, None], 
+                      ds=torch.as_tensor([0.2023, 0.1994, 0.2010])[:, None, None],
+                      label=None):
         """
         Plots a grid of images from `data` with corresponding labels from `target`, and saves the plot.
         
@@ -232,8 +235,17 @@ class LogUtils:
             axes[i].axis("off")
         
         plt.tight_layout()
-        plt.savefig(f"{self.log_dir}/{node_id}_original.png")
 
+        log_lab = "base" if not label else label
+
+        plt.savefig(f"{self.log_dir}/{node_id}_{log_lab}.png")
+        plt.close()
+
+        # Log images to TensorBoard
+        grid_img = make_grid(data, normalize=True, scale_each=True)
+        self.writer.add_image(f"gia_images_node_{node_id}_{log_lab}", grid_img.numpy(), node_id)
+        self.writer.add_text(f"gia_labels_node_{node_id}_{log_lab}", str(target.tolist()), node_id)
+        
     def log_console(self, msg: str):
         """
         Log a message to the console.

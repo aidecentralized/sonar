@@ -79,15 +79,22 @@ class FedStaticNode(BaseFedAvgClient):
                     p_t = self.neighbor_updates[neighbor_id][1]["model"]
                     
                     # Launch the attack
-                    gia_main(
-                        p_s, 
-                        p_t, 
-                        self.base_params, 
-                        self.model, 
-                        neighbor_labels, 
-                        neighbor_images, 
-                        self.node_id
-                    )
+                    if result := gia_main(p_s, 
+                                        p_t, 
+                                        self.base_params, 
+                                        self.model, 
+                                        neighbor_labels, 
+                                        neighbor_images, 
+                                        self.node_id):
+                        output, stats = result
+                        
+                        # log output and stats as image
+                        self.log_utils.log_gia_image(output, neighbor_labels, neighbor_id, label=f"round_{round}_reconstruction")
+                        self.log_utils.log_summary(f"round {round} gia targeting {neighbor_id} stats: {stats}")
+                    else:
+                        self.log_utils.log_summary(f"Client {self.node_id} failed to attack {neighbor_id} in round {round}!")
+                        print(f"Client {self.node_id} failed to attack {neighbor_id}!")
+                        continue
                     
                     # Mark this neighbor as attacked
                     self.attacked_neighbors.add(neighbor_id)
