@@ -407,7 +407,7 @@ def plot_metric_per_realtime(metric_df: pd.DataFrame, time_ticks: np.ndarray, me
     plt.savefig(f'{output_dir}{metric_name}_per_time.png')
     plt.close()
 
-def plot_all_metrics(logs_dir: str, per_round: bool = True, per_time: bool = True, metrics_map: Optional[Dict[str, str]] = None, plot_avg_only: bool=False) -> None:
+def plot_all_metrics(logs_dir: str, per_round: bool = True, per_time: bool = True, metrics_map: Optional[Dict[str, str]] = None, plot_avg_only: bool=False, **kwargs) -> None:
     """Generates plots for all metrics over rounds with aggregation."""
     if metrics_map is None:
         metrics_map = {
@@ -418,7 +418,7 @@ def plot_all_metrics(logs_dir: str, per_round: bool = True, per_time: bool = Tru
         }
 
     if per_round:
-        all_users_data = aggregate_per_round_data(logs_dir)
+        all_users_data = aggregate_per_round_data(logs_dir, **kwargs)
 
         for key, display_name in metrics_map.items():
             plot_metric_per_round(
@@ -427,10 +427,11 @@ def plot_all_metrics(logs_dir: str, per_round: bool = True, per_time: bool = Tru
                 metric_name=key, 
                 ylabel=display_name, 
                 output_dir=f'{logs_dir}plots/',
-                plot_avg_only=plot_avg_only
+                plot_avg_only=plot_avg_only,
+                **kwargs
                 )
     if per_time:
-        all_users_data = aggregate_per_realtime_data(logs_dir)
+        all_users_data = aggregate_per_realtime_data(logs_dir, **kwargs)
 
         for key, display_name in metrics_map.items():
             plot_metric_per_realtime(
@@ -439,34 +440,35 @@ def plot_all_metrics(logs_dir: str, per_round: bool = True, per_time: bool = Tru
                 metric_name=key, 
                 ylabel=display_name, 
                 output_dir=f'{logs_dir}plots/',
-                plot_avg_only=plot_avg_only
+                plot_avg_only=plot_avg_only,
+                **kwargs
                 )
 
     print("Plots saved as PNG files.")
 
 # Use if you a specific experiment folder
-if __name__ == "__main__":
-    # Define the path where your experiment logs are saved
-    logs_dir = '/mas/camera/Experiments/SONAR/jyuan/experiment/logs_sample_time_elapsed/'
-    avg_metrics, std_metrics, df_metrics = aggregate_metrics_across_users(logs_dir)
-    plot_all_metrics(logs_dir, per_round=True, per_time=True, plot_avg_only=True)
+# if __name__ == "__main__":
+#     # Define the path where your experiment logs are saved
+#     logs_dir = '/mas/camera/Experiments/SONAR/jyuan/experiment/logs_sample_time_elapsed/'
+#     avg_metrics, std_metrics, df_metrics = aggregate_metrics_across_users(logs_dir)
+#     plot_all_metrics(logs_dir, per_round=True, per_time=True, plot_avg_only=True)
 
 
 # Use if you want to compute for multiple experiment folders
-# if __name__ == "__main__":
-#     # Define the base directory where your experiment logs are saved
-#     base_logs_dir = '/mas/camera/Experiments/SONAR/abhi/'
+if __name__ == "__main__":
+    # Define the base directory where your experiment logs are saved
+    base_logs_dir = '/mas/camera/Experiments/SONAR/abhi/'
 
-#     # Iterate over each subdirectory in the base directory
-#     for experiment_folder in os.listdir(base_logs_dir):
-#         experiment_path = os.path.join(base_logs_dir, experiment_folder)
-#         logs_dir = os.path.join(experiment_path, 'logs')
+    # Iterate over each subdirectory in the base directory
+    for experiment_folder in os.listdir(base_logs_dir):
+        experiment_path = os.path.join(base_logs_dir, experiment_folder)
+        logs_dir = os.path.join(experiment_path, 'logs')
 
-#         if os.path.isdir(logs_dir):
-#             try:
-#                 print(f"Processing logs in: {logs_dir}")
-#                 avg_metrics, std_metrics, df_metrics = aggregate_metrics_across_users(logs_dir)
-#                 plot_all_metrics(logs_dir)
-#             except Exception as e:
-#                 print(f"Error processing {logs_dir}: {e}")
-#                 continue
+        if os.path.isdir(logs_dir):
+            try:
+                print(f"Processing logs in: {logs_dir}")
+                avg_metrics, std_metrics, df_metrics = aggregate_metrics_across_users(logs_dir)
+                plot_all_metrics(logs_dir)
+            except Exception as e:
+                print(f"Error processing {logs_dir}: {e}")
+                continue
