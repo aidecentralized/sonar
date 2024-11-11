@@ -29,20 +29,8 @@ class PlotUtils:
         self.config = config
         self.with_title = with_title
         self.nx_layout = None
-        # self.init_nx_graph(config)
+        self.num_users = config["num_users"]
          
-
-
-    # def init_nx_graph(self, config: ConfigType):
-    #     """
-    #     Initialize the networkx graph for the topology.
-
-    #     Args:
-    #         config (ConfigType): Configuration dictionary.
-    #         rank (int): Rank of the current node.
-    #     """
-    #     self.num_users = config["num_users"]
-    #     self.graph = nx.DiGraph()
 
     def create_adjacency_list(self, file_path: str) -> Dict[str, list]: # type: ignore
         # Load the CSV file
