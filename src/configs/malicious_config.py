@@ -45,6 +45,13 @@ data_poisoning: ConfigType = {
     "corrupt_severity": 1,
 }
 
+# Label Flip Attack
+label_flip: ConfigType = {
+    "malicious_type": "label_flip",
+    "permute_labels": 10,
+    # "permutation": random.shuffle([i for i in range(10)]),
+}
+
 # List of Malicious node configurations
 malicious_config_list: Dict[str, ConfigType] = {
     "sign_flip": sign_flip,

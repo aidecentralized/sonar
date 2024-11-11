@@ -16,6 +16,15 @@ def get_all_nodes(logs_dir: str) -> List[str]:
     """Return all node directories in the log folder"""
     return [d for d in os.listdir(logs_dir) if (os.path.isdir(os.path.join(logs_dir, d)) and d != "node_0" and d.startswith('node'))]
 
+def get_node_type(node_id: str, logs_dir: str) -> str:
+    """Determine if the node is malicious or normal based on its config file."""
+    config_path = os.path.join(logs_dir, f'node_{node_id}', 'config.json')
+    with open(config_path, 'r') as file:
+        config = json.load(file)
+    
+    # Check if node has a malicious type
+    return config.get("malicious_type", "normal")
+
 # Calculate Metrics Per User
 def calculate_auc(df: pd.DataFrame, metric: str = 'acc') -> float:
     """Calculate AUC for the given dataframe's accuracy or loss."""
@@ -50,9 +59,11 @@ def compute_per_user_metrics(node_id: str, logs_dir: str) -> Dict[str, float]:
     return metrics
 
 def aggregate_metrics_across_users(logs_dir: str, output_dir: Optional[str] = None) -> Tuple[pd.Series, pd.Series, pd.DataFrame]:
-    """Aggregate metrics across all users and save the results to CSV files."""
+    """Aggregate metrics across all users, categorize nodes, and save the results to CSV files."""
     nodes = get_all_nodes(logs_dir)
     all_metrics: List[Dict[str, float]] = []
+    normal_metrics = []
+    malicious_metrics = []
 
     # Ensure the output directory exists
     if not output_dir:
@@ -63,23 +74,62 @@ def aggregate_metrics_across_users(logs_dir: str, output_dir: Optional[str] = No
         node_id = node.split('_')[-1]
         metrics = compute_per_user_metrics(node_id, logs_dir)
         metrics['node'] = node
+        
+        # Get node type and categorize metrics
+        node_type = get_node_type(node_id, logs_dir)
+        if node_type == "normal":
+            normal_metrics.append(metrics)
+        elif node_type != "normal":  # Check for malicious nodes
+            malicious_metrics.append(metrics)
+        
         all_metrics.append(metrics)
 
     # Convert to DataFrame for easier processing
     df_metrics = pd.DataFrame(all_metrics)
-    
-    # Calculate average and standard deviation
-    avg_metrics = df_metrics.mean()
-    std_metrics = df_metrics.std()
+    numeric_columns = df_metrics.select_dtypes(include=[np.number])
 
-    # Save the DataFrame with per-user metrics
-    df_metrics.to_csv(os.path.join(output_dir, 'per_user_metrics.csv'), index=False)
+    # Calculate overall average and standard deviation
+    overall_avg = numeric_columns.mean()
+    overall_std = numeric_columns.std()
 
-    # Save the average and standard deviation statistics
-    summary_stats = pd.DataFrame({'Average': avg_metrics, 'Standard Deviation': std_metrics})
-    summary_stats.to_csv(os.path.join(output_dir, 'summary_statistics.csv'))
+    # Convert normal and malicious metrics to DataFrames
+    df_normal = pd.DataFrame(normal_metrics)
+    df_malicious = pd.DataFrame(malicious_metrics)
 
-    return avg_metrics, std_metrics, df_metrics
+    # Calculate normal node statistics
+    normal_avg = df_normal.mean(numeric_only=True)
+    normal_std = df_normal.std(numeric_only=True)
+
+    # Calculate malicious node statistics (if there are malicious nodes)
+    if not df_malicious.empty:
+        malicious_avg = df_malicious.mean(numeric_only=True)
+        malicious_std = df_malicious.std(numeric_only=True)
+    else:
+        # If no malicious nodes, fill with NaN values for clarity
+        malicious_avg = pd.Series([np.nan] * len(normal_avg), index=normal_avg.index)
+        malicious_std = pd.Series([np.nan] * len(normal_std), index=normal_std.index)
+
+    # Compile all metrics into a DataFrame with descriptive row names
+    summary_stats_data = {
+        f"{metric}_overall": [overall_avg[metric], overall_std[metric]]
+        for metric in overall_avg.index
+    }
+    summary_stats_data.update({
+        f"{metric}_normal": [normal_avg[metric], normal_std[metric]]
+        for metric in normal_avg.index
+    })
+    summary_stats_data.update({
+        f"{metric}_malicious": [malicious_avg[metric], malicious_std[metric]]
+        for metric in malicious_avg.index
+    })
+
+    # Create a DataFrame from the dictionary and specify columns
+    summary_stats_df = pd.DataFrame.from_dict(summary_stats_data, orient='index', columns=["Average", "Standard Deviation"])
+
+    # Save the summary statistics to a single CSV file
+    summary_stats_df.to_csv(os.path.join(output_dir, 'summary_statistics.csv'))
+
+    return overall_avg, overall_std, df_metrics
 
 def compute_per_user_round_data(node_id: str, logs_dir: str, metrics_map: Optional[Dict[str, str]] = None) -> Dict[str, np.ndarray]:
     """Extract per-round data (accuracy and loss) for train/test from the logs."""
@@ -141,12 +191,9 @@ def plot_metric_per_round(metric_df: pd.DataFrame, rounds: np.ndarray, metric_na
     for col in metric_df.columns:
         plt.plot(rounds, metric_df[col], alpha=0.6, label=f'User {col+1}')
 
-    # Select only numeric columns before calculating mean and std
-    numeric_columns = df_metrics.select_dtypes(include=[np.number])
-
-    # Calculate average and standard deviation
-    avg_metrics = numeric_columns.mean()
-    std_metrics = numeric_columns.std()
+    # Compute mean and std
+    mean_metric = metric_df.mean(axis=1)
+    std_metric = metric_df.std(axis=1)
 
     # Save the mean and std
     if not os.path.exists(output_dir):
@@ -189,8 +236,29 @@ def plot_all_metrics(logs_dir: str, metrics_map: Optional[Dict[str, str]] = None
 
     print("Plots saved as PNG files.")
 
+# Use if you a specific experiment folder
+# if __name__ == "__main__":
+#     # Define the path where your experiment logs are saved
+#     logs_dir = '/mas/camera/Experiments/SONAR/abhi/cifar10_36users_1250_convergence_ringm3_seed2/logs/'
+#     avg_metrics, std_metrics, df_metrics = aggregate_metrics_across_users(logs_dir)
+#     plot_all_metrics(logs_dir)
+
+
+# Use if you want to compute for multiple experiment folders
 if __name__ == "__main__":
-    # Define the path where your experiment logs are saved
-    logs_dir = '/u/jyuan24/sonar/src/expt_dump/1_malicious_exp/cifar10_40users_1250_data_poison_8_malicious_seed1/logs/'
-    avg_metrics, std_metrics, df_metrics = aggregate_metrics_across_users(logs_dir)
-    plot_all_metrics(logs_dir)
+    # Define the base directory where your experiment logs are saved
+    base_logs_dir = '/mas/camera/Experiments/SONAR/abhi/'
+
+    # Iterate over each subdirectory in the base directory
+    for experiment_folder in os.listdir(base_logs_dir):
+        experiment_path = os.path.join(base_logs_dir, experiment_folder)
+        logs_dir = os.path.join(experiment_path, 'logs')
+
+        if os.path.isdir(logs_dir):
+            try:
+                print(f"Processing logs in: {logs_dir}")
+                avg_metrics, std_metrics, df_metrics = aggregate_metrics_across_users(logs_dir)
+                plot_all_metrics(logs_dir)
+            except Exception as e:
+                print(f"Error processing {logs_dir}: {e}")
+                continue

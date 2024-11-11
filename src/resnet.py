@@ -11,7 +11,7 @@ This module implements ResNet models for image classification.
 from torch import nn
 import torch.nn.functional as F
 import torch
-from typing import List, Type, Optional, Tuple
+from typing import List, Optional, Tuple
 
 
 class BasicBlock(nn.Module):
@@ -23,7 +23,7 @@ class BasicBlock(nn.Module):
 
     def __init__(self, in_planes: int, planes: int, stride: int = 1) -> None:
 
-        super(BasicBlock, self).__init__()
+        super(BasicBlock, self).__init__() # type: ignore
         self.conv1 = nn.Conv2d(
             in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False
         )
@@ -65,7 +65,7 @@ class Bottleneck(nn.Module):
     expansion = 4
 
     def __init__(self, in_planes: int, planes: int, stride: int = 1):
-        super().__init__()
+        super().__init__() # type: ignore
         self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=1, bias=False)
         self.bn1 = nn.BatchNorm2d(planes)
         self.conv2 = nn.Conv2d(
@@ -109,28 +109,29 @@ class ResNet(nn.Module):
 
     def __init__(
         self,
-        block: Type[nn.Module],
+        block: type[BasicBlock | Bottleneck],
         num_blocks: List[int],
         num_classes: int = 10,
         num_channels: int = 3,
+        in_planes: int = 64,
     ) -> None:
-        super().__init__()
-        self.in_planes = 64
+        super().__init__() # type: ignore
+        self.in_planes = in_planes
         self.conv1 = nn.Conv2d(
-            num_channels, 64, kernel_size=3, stride=1, padding=1, bias=False
+            num_channels, in_planes, kernel_size=3, stride=1, padding=1, bias=False
         )
-        self.bn1 = nn.BatchNorm2d(64)
-        self.layer1 = self._make_layer(block, 64, num_blocks[0], stride=1)
-        self.layer2 = self._make_layer(block, 128, num_blocks[1], stride=2)
-        self.layer3 = self._make_layer(block, 256, num_blocks[2], stride=2)
-        self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2)
-        self.linear = nn.Linear(512 * block.expansion, num_classes)
+        self.bn1 = nn.BatchNorm2d(in_planes)
+        self.layer1 = self._make_layer(block, in_planes, num_blocks[0], stride=1)
+        self.layer2 = self._make_layer(block, in_planes * 2, num_blocks[1], stride=2)
+        self.layer3 = self._make_layer(block, in_planes * 4, num_blocks[2], stride=2)
+        self.layer4 = self._make_layer(block, in_planes * 8, num_blocks[3], stride=2)
+        self.linear = nn.Linear(in_planes * 8 * block.expansion, num_classes)
 
     def _make_layer(
-        self, block: Type[nn.Module], planes: int, num_blocks: int, stride: int
+        self, block: type[BasicBlock | Bottleneck], planes: int, num_blocks: int, stride: int
     ) -> nn.Sequential:
         strides = [stride] + [1] * (num_blocks - 1)
-        layers = []
+        layers: List[BasicBlock|Bottleneck] = []
         for stride in strides:
             layers.append(block(self.in_planes, planes, stride))
             self.in_planes = planes * block.expansion
@@ -168,7 +169,14 @@ class ResNet(nn.Module):
 
             if out_feature:
                 return x, feature
-        return x
+        return x # type: ignore
+
+
+def resnet6(num_channels: int = 3, num_classes: int = 10) -> ResNet:
+    """
+    Constructs a ResNet-6 model.
+    """
+    return ResNet(BasicBlock, [1, 1, 1, 0], num_classes, num_channels, 16)
 
 
 def resnet10(num_channels: int = 3, num_classes: int = 10) -> ResNet:
