@@ -106,6 +106,7 @@ class LogUtils:
     """
     Utility class for logging and saving experiment data.
     """
+    # nx_layout = None
 
     def __init__(self, config: ConfigType) -> None:
         log_dir = config["log_path"]
@@ -126,8 +127,8 @@ class LogUtils:
         self.init_npy()
         self.init_summary()
         self.init_csv()
-        self.init_nx_graph(config)
         self.nx_layout = None
+        self.init_nx_graph(config)
 
     def init_nx_graph(self, config: ConfigType):
         """
@@ -137,22 +138,12 @@ class LogUtils:
             config (ConfigType): Configuration dictionary.
             rank (int): Rank of the current node.
         """
-        self.topology  = config["topology"]
+        if "topology" in config:
+            self.topology  = config["topology"]
         self.num_users = config["num_users"]
-        self.graph = nx.Graph()
+        self.graph = nx.DiGraph()
 
 
-    # def generate_graph(self):
-    #     """
-    #     Generate the graph using the networkX library
-    #     and store it in the self.graph attribute.
-    #     NetworkX has a lot of built-in functions to generate graphs.
-    #     Use this url - https://networkx.org/documentation/stable/reference/generators.html
-    #     """
-    #     if self.topology["name"] == "centralized":
-    #         self.graph = nx.complete_graph(self.num_users)
-    #     else:
-    #         raise ValueError("Invalid topology name")
 
     def log_nx_graph(self, graph: Graph, iteration: int, directory: str|None = None):
         """
@@ -165,40 +156,33 @@ class LogUtils:
             nx.write_adjlist(graph, f"{self.log_dir}/graph_{iteration}.adjlist", comments='#', delimiter=' ', encoding='utf-8') # type: ignore
 
     
-    def log_nx_graph_image(self, graph: Graph, iteration: int, directory: str|None = None):
+    def log_nx_graph_image(self, graph: Graph, iteration: int, directory: str | None = None):
         """
-        Log the networkx graph as an image.
+        Log the networkx directed graph as an image with non-overlapping edges.
         """
-        # Generate a layout for the graph
-        if self.nx_layout is None: # type: ignore
-            self.nx_layout = nx.spring_layout(graph) # type: ignore
-        
-        # pos = nx.spring_layout(graph)
+        # Generate a layout with more spacing
+        if self.nx_layout is None:
+            self.nx_layout = nx.shell_layout(graph) 
 
-        # Draw the graph with labels
-        nx.draw(graph, self.nx_layout, with_labels=True, node_size=500, node_color="skyblue", font_size=10, font_weight="bold", edge_color="gray")# type: ignore
-        
-        # Save the plot as an image
-        if directory :
-            plt.savefig(f"{directory}/graph_{iteration}.png", format="png") # type: ignore
-        else:
-            plt.savefig(f"{self.log_dir}/graph_{iteration}.png", format="png")# type: ignore
-        
-        # Close the plot to free up memory
-        plt.close()# type: ignore
+        # Draw nodes with larger size and smaller font
+        nx.draw_networkx_nodes(graph, self.nx_layout, node_size=700, node_color="skyblue")
 
-    def log_nx_graph_edge_weights(self, graph: Graph, iteration: int, directory: str|None = None):
-        """
-        Log the networkx graph with edge weights as an image.
-        """
-        # Define position of nodes for layout
-        pos = nx.spring_layout(graph)
+        # Draw each edge with curved lines for side-by-side display
+        edges = list(graph.edges())
+        for i, (u, v) in enumerate(edges):
+            rad = 0.2 if i % 2 == 0 else -0.2  # Increase rad for more curvature
+            nx.draw_networkx_edges(
+                graph,
+                self.nx_layout,
+                edgelist=[(u, v)],
+                connectionstyle=f"arc3,rad={rad}",
+                arrows=True,
+                # arrowstyle="-|>",  # Customize arrow style for better separation
+                arrowsize=20  # Increase arrow size for visibility
+            )
 
-        # Get the edge weights
-        edge_weights = nx.get_edge_attributes(graph, "weight")
-
-        # Draw the graph with edge weights
-        nx.draw(graph, pos, with_labels=True, node_size=500, node_color="skyblue", font_size=10, font_weight="bold", edge_color="gray", width=[float(edge_weights[edge]) for edge in graph.edges()])# type: ignore
+        # Draw labels with smaller font
+        nx.draw_networkx_labels(graph, self.nx_layout, font_size=8, font_weight="bold")
 
         # Save the plot as an image
         if directory:
@@ -208,6 +192,42 @@ class LogUtils:
 
         # Close the plot to free up memory
         plt.close()
+
+
+
+    def log_nx_graph_edge_weights(self, graph: Graph, iteration: int, directory: str | None = None):
+        """
+        Log the directed graph with edge weights as an image with non-overlapping edges.
+        """
+
+        if self.nx_layout is None:
+            self.nx_layout = nx.shell_layout(graph) 
+        pos = self.nx_layout
+        edge_weights = nx.get_edge_attributes(graph, "weight")
+
+        for i, (u, v) in enumerate(graph.edges()):
+            rad = 0.2 if i % 2 == 0 else -0.2
+            nx.draw_networkx_edges(
+                graph,
+                pos,
+                edgelist=[(u, v)],
+                connectionstyle=f"arc3,rad={rad}",
+                arrows=True,
+                width=edge_weights.get((u, v), 1.0),  # Set width based on weight
+                arrowsize=20
+            )
+
+        # Draw nodes and labels
+        nx.draw_networkx_nodes(graph, pos, node_size=700, node_color="skyblue")
+        nx.draw_networkx_labels(graph, pos, font_size=8, font_weight="bold")
+
+        if directory:
+            plt.savefig(f"{directory}/weighted_graph_{iteration}.png", format="png")
+        else:
+            plt.savefig(f"{self.log_dir}/weighted_graph_{iteration}.png", format="png")
+
+        plt.close()
+
 
 
             
@@ -255,10 +275,6 @@ class LogUtils:
         parent = os.path.dirname(self.log_dir) + "/csv" # type: ignore
         if not os.path.exists(parent) or not os.path.isdir(parent): # type: ignore
             os.makedirs(parent) # type: ignore
-
-        imgs = parent + "/imgs"
-        if not os.path.exists(imgs) or not os.path.isdir(imgs): # type: ignore
-            os.makedirs(imgs) # type: ignore
 
 
     def log_summary(self, text: str):
@@ -353,93 +369,8 @@ class LogUtils:
 
         if len(pd.read_csv(log_file)) == self.num_users:
             adjacency_list = self.create_adjacency_list(log_file)
-            graph = nx.Graph(adjacency_list)
-            # create the /img directory
-            self.log_nx_graph_image(graph, iteration, f"{parent}/csv/imgs")
+            graph = nx.DiGraph(adjacency_list)
             self.log_nx_graph(graph, iteration, f"{parent}/csv")
-            self.combine_graphs_with_edge_frequency(f"{parent}/csv")
-
-
-    def combine_graphs_with_edge_frequency(self, directory: str):
-        """
-        Combine the adjacency lists of all the rounds and calculate the edge frequency.
-        """
-        # Get all the adjacency lists
-        adjacency_lists = glob(f"{directory}/*.csv")
-        # Initialize the edge frequency dictionary
-        edge_frequency = {}
-        # Initialize the adjacency list
-        adjacency_list = {}
-        # Iterate over all the adjacency lists
-        for adj_list in adjacency_lists:
-            # Load the adjacency list
-            data = pd.read_csv(adj_list)
-            # Populate the adjacency list
-            for _, row in data.iterrows():
-                node = row["node"]
-                # Convert string representation of list to actual list
-                neighbors = eval(row["neighbors"])
-                if node not in adjacency_list:
-                    adjacency_list[node] = neighbors
-                else:
-                    adjacency_list[node].extend(neighbors)
-        # Calculate the edge frequency
-        for node, neighbors in adjacency_list.items():
-            for neighbor in neighbors:
-                if (node, neighbor) in edge_frequency:
-                    edge_frequency[(node, neighbor)] += 1
-                else:
-                    edge_frequency[(node, neighbor)] = 1
-                
-        # create a graph with edges in the edge frequency with higher frequency edges having thicker lines
-        G = nx.Graph()
-        for edge, freq in edge_frequency.items():
-            # print(edge, freq)
-            G.add_edge(edge[0], edge[1], weight=freq)
-
-        self.log_nx_graph_edge_weights(G, -1, directory)
-
-        # create the /img directory
-        #log graph image with edge weights
-        self.log_nx_graph(G, -1, directory)
-
-        # create video of the graphs
-        self.create_video(directory  + "/imgs")
-        print(edge_frequency)
-        #create a heatmap of the edge frequency
-        # self.create_heatmap(edge_frequency, directory) # type: ignore
-
-    def create_video(self, directory: str):
-        """
-        Create a video of the graphs using imageIO where each image is a second long.
-        """
-        images = []
-        for filename in sorted(glob(f"{directory}/graph_*.png")):
-            images.append(imageio.imread(filename))
-        # make the gif loop
-        imageio.mimsave(f"{directory}/graph_video.gif", images, fps =1, loop =0)
-        
-
-    # def create_heatmap(self, edge_frequency, directory: str):
-    #     """
-    #     Create a heatmap of the edge frequency.
-    #     """
-    #     # Initialize the edge frequency matrix
-    #     edge_frequency_matrix = np.zeros((self.num_users, self.num_users))
-        
-    #     # Populate the edge frequency matrix
-    #     for edge, freq in edge_frequency.items():
-    #         edge_frequency_matrix[edge[0], edge[1]] = freq
-    #         edge_frequency_matrix[edge[1], edge[0]] = freq  # Ensure symmetry for undirected graph
-        
-    #     edge_frequency_matrix = np.log(edge_frequency_matrix + 1)  # Log scale for better visualization
-    #     # Create the heatmap
-    #     plt.imshow(edge_frequency_matrix, cmap="hot", interpolation="nearest")
-    #     # plt.colorbar(label="Frequency of Communication")
-        
-    #     # Save the heatmap
-    #     plt.savefig(f"{directory}/edge_frequency_heatmap.png")
-    #     plt.close()
 
 
 

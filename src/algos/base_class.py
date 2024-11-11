@@ -307,6 +307,13 @@ class BaseNode(ABC):
                 imgs=stats["images"], key="sample_images", iteration=iteration
             )
 
+        #config["num_users"]
+        #Check if the file neighbors_{iteration}.csv exists in logs/csv
+        dir = os.path.dirname(self.log_utils.log_dir) + "/csv"
+        if os.path.exists(f"{dir}/graph_{iteration}.adjlist"):
+            self.plot_utils.log_nx_graph_image(iteration, f"{dir}/neighbors_{iteration}.csv")
+            self.plot_utils.combine_graphs_with_edge_frequency(dir, iteration)
+
     @abstractmethod
     def receive_and_aggregate(self):
         """Add docstring here"""
