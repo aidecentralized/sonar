@@ -12,6 +12,7 @@ def combine_and_plot(
     xlabels: List[str], 
     ylabels: List[str], 
     output_dir: str, 
+    include_logs: bool = True
 ) -> None:
     """
     Combine and plot metrics from multiple experiments with 95% confidence intervals.
@@ -28,6 +29,9 @@ def combine_and_plot(
     # Ensure the output directory exists
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
+
+    if not os.path.exists(os.path.join(output_dir, 'plots')):
+        os.makedirs(os.path.join(output_dir, 'plots'))
     
     for metric_index, metric_name in enumerate(metrics_list):
         plt.figure(figsize=(12, 8), dpi=300)
@@ -36,21 +40,21 @@ def combine_and_plot(
             # Load the aggregated metric DataFrame for the experiment
             metric_df = pd.read_csv(os.path.join(experiment_path, f"{metric_name}_avg.csv"))
             # TODO: modify this to be CI
-            std_df = pd.read_csv(os.path.join(experiment_path, f"{metric_name}_std.csv"))
-            # ci_df = pd.read_csv(os.path.join(experiment_path, f"{metric_name}_ci95.csv"))
+            # std_df = pd.read_csv(os.path.join(experiment_path, f"{metric_name}_std.csv"))
+            ci_df = pd.read_csv(os.path.join(experiment_path, f"{metric_name}_ci95.csv"))
 
             # Assuming rounds or time steps are the index
             rounds = np.arange(len(metric_df))
 
             # Plot each experiment's mean with 95% CI
             mean_metric = metric_df.values.flatten()
-            std_metric = std_df.values.flatten()
-            # ci_95 = ci_df.values.flatten()
+            # std_metric = std_df.values.flatten()
+            ci_95 = ci_df.values.flatten()
 
             # Plot the mean with confidence interval as a shaded area
             plt.plot(rounds, mean_metric, label=f'{experiment_key}', linestyle='--', linewidth=1.5)
-            # plt.fill_between(rounds, mean_metric - ci_95, mean_metric + ci_95, alpha=0.2)
-            plt.fill_between(rounds, mean_metric - std_metric, mean_metric + std_metric, alpha=0.2)
+            plt.fill_between(rounds, mean_metric - ci_95, mean_metric + ci_95, alpha=0.2)
+            # plt.fill_between(rounds, mean_metric - std_metric, mean_metric + std_metric, alpha=0.2)
 
         # Plot customization
         plt.xlabel(xlabels[metric_index], fontsize=14)
