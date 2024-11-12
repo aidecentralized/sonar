@@ -426,11 +426,17 @@ def plot_all_metrics(logs_dir: str, per_round: bool = True, per_time: bool = Tru
                 rounds=all_users_data['rounds'], 
                 metric_name=key, 
                 ylabel=display_name, 
-                output_dir=f'{logs_dir}plots/',
+                output_dir=f'{logs_dir}/plots/',
                 plot_avg_only=plot_avg_only,
                 **kwargs
                 )
+
     if per_time:
+        time_data = os.path.join(logs_dir, 'node_1/csv/time_elapsed.csv')
+        # check if time elapsed data exists
+        if not os.path.exists(time_data):
+            print("Time elapsed data not found. Skipping per-time plotting.")
+            return
         all_users_data = aggregate_per_realtime_data(logs_dir, **kwargs)
 
         for key, display_name in metrics_map.items():
@@ -439,7 +445,7 @@ def plot_all_metrics(logs_dir: str, per_round: bool = True, per_time: bool = Tru
                 time_ticks=all_users_data[key].index.values, 
                 metric_name=key, 
                 ylabel=display_name, 
-                output_dir=f'{logs_dir}plots/',
+                output_dir=f'{logs_dir}/plots/',
                 plot_avg_only=plot_avg_only,
                 **kwargs
                 )
@@ -468,7 +474,7 @@ if __name__ == "__main__":
             try:
                 print(f"Processing logs in: {logs_dir}")
                 avg_metrics, std_metrics, df_metrics = aggregate_metrics_across_users(logs_dir)
-                plot_all_metrics(logs_dir)
+                plot_all_metrics(logs_dir, per_round=True, per_time=True, plot_avg_only=True)
             except Exception as e:
                 print(f"Error processing {logs_dir}: {e}")
                 continue
