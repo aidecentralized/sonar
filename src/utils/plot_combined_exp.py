@@ -64,23 +64,33 @@ def combine_and_plot(
         plt.grid(True, linestyle='--', alpha=0.5)
 
         # Save the combined plot
-        plt.savefig(os.path.join(output_dir, f"{exp_name}_{metric_name}_combined_plot.png"), bbox_inches='tight')
+        plt.savefig(os.path.join(output_dir, 'plots', f"{exp_name}_{metric_name}_combined_plot.png"), bbox_inches='tight')
         plt.close()
 
-        print(f"Combined plot for {exp_name} {metric_name} saved to {output_dir}")
+        print(f"Combined plot for {exp_name} {metric_name} saved to {output_dir}/plots/")
 
-        # Optionally, save the combined data for further analysis
-        # combined_mean_df = pd.DataFrame({exp: pd.read_csv(os.path.join(path, f"{metric_name}_avg.csv")).values.flatten()
-        #                                  for exp, path in experiment_map.items()})
-        # combined_mean_df.to_csv(os.path.join(output_dir, f"{metric_name}_combined_avg.csv"), index=False)
+        if include_logs:
+            if not os.path.exists(os.path.join(output_dir, 'logs')):
+                os.makedirs(os.path.join(output_dir, 'logs'))
 
-        # combined_std_df = pd.DataFrame({exp: pd.read_csv(os.path.join(path, f"{metric_name}_std.csv")).values.flatten()
-        #                                  for exp, path in experiment_map.items()})
-        # combined_std_df.to_csv(os.path.join(output_dir, f"{metric_name}_combined_std.csv"), index=False)
+            # Optionally, save the combined data for further analysis
+            # catch error if something goes wrong
+            try:
+                combined_mean_df = pd.DataFrame({exp: pd.read_csv(os.path.join(path, f"{metric_name}_avg.csv")).values.flatten()
+                                                for exp, path in experiment_map.items()})
+                combined_mean_df.to_csv(os.path.join(output_dir, 'logs', f"{exp_name}_{metric_name}_combined_avg.csv"), index=False)
 
-        # combined_ci_df = pd.DataFrame({exp: pd.read_csv(os.path.join(path, f"{metric_name}_ci95.csv")).values.flatten()
-        #                                for exp, path in experiment_map.items()})
-        # combined_ci_df.to_csv(os.path.join(output_dir, f"{metric_name}_combined_ci95.csv"), index=False)
+                combined_std_df = pd.DataFrame({exp: pd.read_csv(os.path.join(path, f"{metric_name}_std.csv")).values.flatten()
+                                                for exp, path in experiment_map.items()})
+                combined_std_df.to_csv(os.path.join(output_dir, 'logs', f"{exp_name}_{metric_name}_combined_std.csv"), index=False)
+
+                combined_ci_df = pd.DataFrame({exp: pd.read_csv(os.path.join(path, f"{metric_name}_ci95.csv")).values.flatten()
+                                            for exp, path in experiment_map.items()})
+                combined_ci_df.to_csv(os.path.join(output_dir,  'logs', f"{exp_name}_{metric_name}_combined_ci95.csv"), index=False)
+
+                print(f"Combined logs for {exp_name} {metric_name} saved to {output_dir}/logs/")
+            except Exception as e:
+                print(f"Error saving logs: {e} for {exp_name} {metric_name}")
 
 # Example usage for malicious attacks
 if __name__ == "__main__":
