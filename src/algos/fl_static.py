@@ -24,17 +24,6 @@ class FedStaticNode(BaseFedAvgClient):
         super().__init__(config, comm_utils)
         self.topology = select_topology(config, self.node_id)
         self.topology.initialize()
-        if "gia" in config: 
-            if int(self.node_id) in self.config["gia_attackers"]:
-                self.gia_attacker = True
-            self.params_s = dict()
-            self.params_t = dict()
-            # Track neighbor updates with a dictionary mapping neighbor_id to their updates
-            self.neighbor_updates = defaultdict(list)
-            # Track which neighbors we've already attacked
-            self.attacked_neighbors = set()
-
-            self.base_params = [key for key, _ in self.model.named_parameters()]
 
     def get_representation(self, **kwargs: Any) -> OrderedDict[str, torch.Tensor]:
         """
@@ -42,68 +31,6 @@ class FedStaticNode(BaseFedAvgClient):
         """
         return self.get_model_weights()
     
-    def receive_attack_and_aggregate(self, neighbors: List[int], round: int, num_neighbors: int) -> None:
-        """
-        Receives updates, launches GIA attack when second update is seen from a neighbor
-        """
-        print("CLIENT RECEIVING ATTACK AND AGGREGATING")
-        if self.is_working:
-            # Receive the model updates from the neighbors
-            model_updates = self.comm_utils.receive(node_ids=neighbors)
-            assert len(model_updates) == num_neighbors
-
-            for neighbor_info in model_updates:
-                neighbor_id = neighbor_info["sender"]
-                neighbor_model = neighbor_info["model"]
-                neighbor_model = OrderedDict(
-                    (key, value) for key, value in neighbor_model.items()
-                    if key in self.base_params
-                )
-
-                neighbor_images = neighbor_info["images"]
-                neighbor_labels = neighbor_info["labels"]
-
-                # Store this update
-                self.neighbor_updates[neighbor_id].append({
-                    "model": neighbor_model,
-                    "images": neighbor_images,
-                    "labels": neighbor_labels
-                })
-
-                # Check if we have 2 updates from this neighbor and haven't attacked them yet
-                if len(self.neighbor_updates[neighbor_id]) == 2 and neighbor_id not in self.attacked_neighbors:
-                    print(f"Client {self.node_id} attacking {neighbor_id}!")
-                    
-                    # Get the two parameter sets for the attack
-                    p_s = self.neighbor_updates[neighbor_id][0]["model"]
-                    p_t = self.neighbor_updates[neighbor_id][1]["model"]
-                    
-                    # Launch the attack
-                    if result := gia_main(p_s, 
-                                        p_t, 
-                                        self.base_params, 
-                                        self.model, 
-                                        neighbor_labels, 
-                                        neighbor_images, 
-                                        self.node_id):
-                        output, stats = result
-                        
-                        # log output and stats as image
-                        self.log_utils.log_gia_image(output, neighbor_labels, neighbor_id, label=f"round_{round}_reconstruction")
-                        self.log_utils.log_summary(f"round {round} gia targeting {neighbor_id} stats: {stats}")
-                    else:
-                        self.log_utils.log_summary(f"Client {self.node_id} failed to attack {neighbor_id} in round {round}!")
-                        print(f"Client {self.node_id} failed to attack {neighbor_id}!")
-                        continue
-                    
-                    # Mark this neighbor as attacked
-                    self.attacked_neighbors.add(neighbor_id)
-                    
-                    # Optionally, clear the stored updates to save memory
-                    del self.neighbor_updates[neighbor_id]
-
-            self.aggregate(model_updates, keys_to_ignore=self.model_keys_to_ignore)
-
     def run_protocol(self) -> None:
         """
         Runs the federated learning protocol for the client.
@@ -129,11 +56,7 @@ class FedStaticNode(BaseFedAvgClient):
             neighbors = self.topology.sample_neighbours(self.num_collaborators)
             stats["neighbors"] = neighbors
 
-            if hasattr(self, "gia_attacker"):
-                print(f"Client {self.node_id} is a GIA attacker!")
-                self.receive_attack_and_aggregate(neighbors, it, len(neighbors))
-            else:
-                self.receive_and_aggregate(neighbors)
+            self.receive_and_aggregate(neighbors)
 
             stats["bytes_received"], stats["bytes_sent"] = self.comm_utils.get_comm_cost()
             stats["test_loss"], stats["test_acc"] = self.local_test()

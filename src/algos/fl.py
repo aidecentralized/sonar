@@ -113,13 +113,6 @@ class FedAvgServer(BaseServer):
         self.model_save_path = "{}/saved_models/node_{}.pt".format(
             self.config["results_path"], self.node_id
         )
-        if "gia" in self.config:
-            # to store param differences for GIA attack
-            self.params_s = [None for i in range(4)]
-            self.params_t = [None for i in range(4)]
-
-            # save randomly initialized parameters
-            self.random_params = self.model.state_dict()
 
     def fed_avg(self, model_wts: List[OrderedDict[str, Tensor]]):
         num_users = len(model_wts)
@@ -174,7 +167,7 @@ class FedAvgServer(BaseServer):
             self.model_utils.save_model(self.model, self.model_save_path)
         return [test_loss, test_acc, time_taken]
 
-    def receive_and_aggregate_gia(self, round: int, attack_start_round: int, attack_end_round: int, dump_file_name: str = ""):
+    def receive_attack_and_aggregate(self, round: int, attack_start_round: int, attack_end_round: int, dump_file_name: str = ""):
         reprs = self.comm_utils.all_gather()
 
         with open(dump_file_name, "wb") as f:
@@ -211,13 +204,6 @@ class FedAvgServer(BaseServer):
                     images = rep["images"]
                     labels = rep["labels"]
 
-                    # with open(f"params_t_{client_id}.pkl", "wb") as f:
-                    #     pickle.dump(model_params, f)
-                    # with open(f"params_s_{client_id}.pkl", "wb") as f:
-                    #     pickle.dump(self.params_s[client_id - 1], f)
-                    # with open(f"random_params_{client_id}.pkl", "wb") as f:
-                    #     pickle.dump(random_params, f)
-
                     # Launch GIA attack
                     p_s, p_t = self.params_s[client_id - 1], self.params_t[client_id - 1]
                     gia_main(p_s, p_t, base_params, self.model, labels, images, client_id)
@@ -245,15 +231,7 @@ class FedAvgServer(BaseServer):
         if round < attack_start_round or round > attack_end_round:
             self.receive_and_aggregate()
         else:
-            # Set file name based on start or end of attack range
-            dump_file_name = ""
-            if round == attack_start_round:
-                dump_file_name = "/u/yshi23/sonar/src/start_reprs"
-            elif round == attack_end_round:
-                dump_file_name = "/u/yshi23/sonar/src/end_reprs"
-
-            print(f"In round {round}, preparing for GIA with file: {dump_file_name}")
-            self.receive_and_aggregate_gia(round, attack_start_round, attack_end_round, dump_file_name)
+            self.receive_attack_and_aggregate(round, attack_start_round, attack_end_round, dump_file_name)
          
 
     def run_protocol(self):

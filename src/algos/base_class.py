@@ -37,6 +37,7 @@ from utils.community_utils import (
 )
 from utils.types import ConfigType
 from utils.dropout_utils import NodeDropout
+from utils.gias import gia_main
 
 import torchvision.transforms as T  # type: ignore
 import os
@@ -382,6 +383,17 @@ class BaseClient(BaseNode):
         super().__init__(config, comm_utils)
         self.server_node = 0
         self.set_parameters(config)
+        if "gia" in config: 
+            if int(self.node_id) in self.config["gia_attackers"]:
+                self.gia_attacker = True
+            self.params_s = dict()
+            self.params_t = dict()
+            # Track neighbor updates with a dictionary mapping neighbor_id to their updates
+            self.neighbor_updates = defaultdict(list)
+            # Track which neighbors we've already attacked
+            self.attacked_neighbors = set()
+
+            self.base_params = [key for key, _ in self.model.named_parameters()]
 
     def set_parameters(self, config: Dict[str, Any]) -> None:
         """
@@ -672,6 +684,68 @@ class BaseClient(BaseNode):
             assert "model" in repr, "Model not found in the received message"
             self.set_model_weights(repr["model"])
 
+    def receive_attack_and_aggregate(self, neighbors: List[int], round: int, num_neighbors: int) -> None:
+        """
+        Receives updates, launches GIA attack when second update is seen from a neighbor
+        """
+        print("CLIENT RECEIVING ATTACK AND AGGREGATING")
+        if self.is_working:
+            # Receive the model updates from the neighbors
+            model_updates = self.comm_utils.receive(node_ids=neighbors)
+            assert len(model_updates) == num_neighbors
+
+            for neighbor_info in model_updates:
+                neighbor_id = neighbor_info["sender"]
+                neighbor_model = neighbor_info["model"]
+                neighbor_model = OrderedDict(
+                    (key, value) for key, value in neighbor_model.items()
+                    if key in self.base_params
+                )
+
+                neighbor_images = neighbor_info["images"]
+                neighbor_labels = neighbor_info["labels"]
+
+                # Store this update
+                self.neighbor_updates[neighbor_id].append({
+                    "model": neighbor_model,
+                    "images": neighbor_images,
+                    "labels": neighbor_labels
+                })
+
+                # Check if we have 2 updates from this neighbor and haven't attacked them yet
+                if len(self.neighbor_updates[neighbor_id]) == 2 and neighbor_id not in self.attacked_neighbors:
+                    print(f"Client {self.node_id} attacking {neighbor_id}!")
+                    
+                    # Get the two parameter sets for the attack
+                    p_s = self.neighbor_updates[neighbor_id][0]["model"]
+                    p_t = self.neighbor_updates[neighbor_id][1]["model"]
+                    
+                    # Launch the attack
+                    if result := gia_main(p_s, 
+                                        p_t, 
+                                        self.base_params, 
+                                        self.model, 
+                                        neighbor_labels, 
+                                        neighbor_images, 
+                                        self.node_id):
+                        output, stats = result
+                        
+                        # log output and stats as image
+                        self.log_utils.log_gia_image(output, neighbor_labels, neighbor_id, label=f"round_{round}_reconstruction")
+                        self.log_utils.log_summary(f"round {round} gia targeting {neighbor_id} stats: {stats}")
+                    else:
+                        self.log_utils.log_summary(f"Client {self.node_id} failed to attack {neighbor_id} in round {round}!")
+                        print(f"Client {self.node_id} failed to attack {neighbor_id}!")
+                        continue
+                    
+                    # Mark this neighbor as attacked
+                    self.attacked_neighbors.add(neighbor_id)
+                    
+                    # Optionally, clear the stored updates to save memory
+                    del self.neighbor_updates[neighbor_id]
+
+            self.aggregate(model_updates, keys_to_ignore=self.model_keys_to_ignore)
+
     def run_protocol(self) -> None:
         raise NotImplementedError
 
@@ -762,7 +836,6 @@ class BaseServer(BaseNode):
     def run_protocol(self) -> None:
         raise NotImplementedError
 
-
 class CommProtocol(object):
     """
     Communication protocol tags for the server and users
@@ -799,6 +872,7 @@ class BaseFedAvgClient(BaseClient):
         ):  # By default include last layer
             keys = self.model_utils.get_last_layer_keys(self.get_model_weights())
             self.model_keys_to_ignore.extend(keys)
+
 
     def local_test(self, **kwargs: Any) -> Tuple[float, float]:
         """
@@ -864,13 +938,19 @@ class BaseFedAvgClient(BaseClient):
         self.set_model_weights(agg_wts)
         return None
 
-    def receive_and_aggregate(self, neighbors: List[int]) -> None:
-        if self.is_working:
-            # Receive the model updates from the neighbors
-            model_updates = self.comm_utils.receive(node_ids=neighbors)
-            # Aggregate the representations
-            self.aggregate(model_updates, keys_to_ignore=self.model_keys_to_ignore)
-
+    def receive_and_aggregate(self, neighbors: List[int], it:int=0) -> None:
+        """
+        Receive the model weights from the collaborators and aggregate
+        launches GIA attack if self is a GIA attacker
+        """
+        if hasattr(self, "gia_attacker"):
+            self.receive_attack_and_aggregate(neighbors, it, len(neighbors))
+        else:
+            if self.is_working:
+                # Receive the model updates from the neighbors
+                model_updates = self.comm_utils.receive(node_ids=neighbors)
+                # Aggregate the representations
+                self.aggregate(model_updates, keys_to_ignore=self.model_keys_to_ignore)
 
     def get_collaborator_weights(
         self, reprs_dict: Dict[int, OrderedDict[int, Tensor]]
