@@ -212,6 +212,29 @@ fedstatic: ConfigType = {
     "batch_size": 256,
 }
 
+swift: ConfigType = {
+    # Collaboration setup
+    "algo": "swift",
+    "topology": {"name": "watts_strogatz", "k": 3, "p": 0.2}, # type: ignore
+    "rounds": 20,
+
+    # Model parameters
+    "model": "resnet10",
+    "model_lr": 3e-4,
+    "batch_size": 256,
+}
+
+fedavgpush: ConfigType = {
+    # Collaboration setup
+    "algo": "fedavgpush",
+    "rounds": 2,
+
+    # Model parameters
+    "model": "resnet10",
+    "model_lr": 3e-4,
+    "batch_size": 256,
+}
+
 metaL2C_cifar10: ConfigType = {
     "algo": "metal2c",
     "sharing": "weights",  # "updates"

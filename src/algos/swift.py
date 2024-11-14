@@ -1,18 +1,16 @@
 """
 Module for FedStaticClient and FedStaticServer in Federated Learning.
 """
-from typing import Any, Dict, OrderedDict, List
-from collections import OrderedDict, defaultdict
-
+from typing import Any, Dict, OrderedDict
 from utils.communication.comm_utils import CommunicationManager
 import torch
+import time
 
-from algos.base_class import BaseFedAvgClient
+from algos.fl_static import FedStaticNode, FedStaticServer
 from algos.topologies.collections import select_topology
 
-from utils.gias import gia_main
 
-class FedStaticNode(BaseFedAvgClient):
+class SwiftNode(FedStaticNode):
     """
     Federated Static Client Class.
     """
@@ -21,17 +19,6 @@ class FedStaticNode(BaseFedAvgClient):
         self, config: Dict[str, Any], comm_utils: CommunicationManager
     ) -> None:
         super().__init__(config, comm_utils)
-        self.topology = select_topology(config, self.node_id)
-        self.topology.initialize()
-    
-    def get_neighbors(self) -> List[int]:
-        """
-        Returns a list of neighbours for the client.
-        """
-        neighbors = self.topology.sample_neighbours(self.num_collaborators)
-        self.stats["neighbors"] = neighbors
-
-        return neighbors
 
     def run_protocol(self) -> None:
         """
@@ -45,7 +32,6 @@ class FedStaticNode(BaseFedAvgClient):
             )
         total_rounds = self.config["rounds"]
         epochs_per_round = self.config.get("epochs_per_round", 1)
-
         for it in range(start_round, total_rounds):
             self.round_init()
 
@@ -53,21 +39,23 @@ class FedStaticNode(BaseFedAvgClient):
             self.local_train(
                     it, epochs_per_round
                 )            
-            self.local_round_done()
-            # Collect the representations from all other nodes from the server
 
+            # Collect the representations from all other nodes from the server
             neighbors = self.get_neighbors()
-            # TODO: Log the neighbors
-            self.receive_and_aggregate(neighbors)
+            self.push(neighbors)
+            self.receive_pushed_and_aggregate()
             # evaluate the model on the test data
             # Inside FedStaticNode.run_protocol()
             self.local_test()
+            self.local_round_done()
 
             self.round_finalize()
 
-class FedStaticServer(BaseFedAvgClient):
+
+
+class SwiftServer(FedStaticServer):
     """
-    Federated Static Server Class. It does not do anything.
+    Swift Server Class. It does not do anything.
     It just exists to keep the code compatible across different algorithms.
     """
     def __init__(

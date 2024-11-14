@@ -1,6 +1,6 @@
 import random
 from collections import OrderedDict
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 from torch import Tensor
 from utils.communication.comm_utils import CommunicationManager
 from algos.base_class import BaseClient, BaseServer
@@ -23,7 +23,7 @@ class FedAvgClient(BaseClient):
         self.config = config
         self.random_params = self.model.state_dict()
 
-    def local_test(self, **kwargs: Any):
+    def local_test(self, **kwargs: Any) -> Tuple[float, float, float]:
         """
         Test the model locally, not to be used in the traditional FedAvg
         """
@@ -33,7 +33,10 @@ class FedAvgClient(BaseClient):
         )
         end_time = time.time()
         time_taken = end_time - start_time
-        return [test_loss, test_acc, time_taken]
+
+        self.stats["test_loss"], self.stats["test_acc"], self.stats["test_time"] = test_loss, test_acc, time_taken
+
+        return test_loss, test_acc, time_taken
 
 
     def get_model_weights(self, **kwargs: Any) -> Dict[str, Any]:
@@ -84,22 +87,20 @@ class FedAvgClient(BaseClient):
         return message  # type: ignore
 
     def run_protocol(self):
-        stats: Dict[str, Any] = {}
         print(f"Client {self.node_id} ready to start training")
 
         start_rounds = self.config.get("start_rounds", 0)
         total_rounds = self.config["rounds"]
 
         for round in range(start_rounds, total_rounds):
-            stats["train_loss"], stats["train_acc"], stats["train_time"] = self.local_train(round)
-            stats["test_loss"], stats["test_acc"], stats["test_time"] = self.local_test()
-            self.local_round_done()
+            self.round_init()
 
+            self.local_train(round)
+            self.local_test()
+            self.local_round_done()
             self.receive_and_aggregate()
-            
-            stats["bytes_received"], stats["bytes_sent"] = self.comm_utils.get_comm_cost()
-            
-            self.log_metrics(stats=stats, iteration=round)
+
+            self.round_finalize()
 
 
 class FedAvgServer(BaseServer):
@@ -152,7 +153,7 @@ class FedAvgServer(BaseServer):
         """
         self.model.load_state_dict(representation)
 
-    def test(self, **kwargs: Any) -> List[float]:
+    def test(self, **kwargs: Any) -> Tuple[float, float, float]:
         """
         Test the model on the server
         """
@@ -165,7 +166,9 @@ class FedAvgServer(BaseServer):
         if test_acc > self.best_acc:
             self.best_acc = test_acc
             self.model_utils.save_model(self.model, self.model_save_path)
-        return [test_loss, test_acc, time_taken]
+        
+        self.stats["test_loss"], self.stats["test_acc"], self.stats["test_time"] = test_loss, test_acc, time_taken
+        return test_loss, test_acc, time_taken
 
     def receive_attack_and_aggregate(self, round: int, attack_start_round: int, attack_end_round: int, dump_file_name: str = ""):
         reprs = self.comm_utils.all_gather()
@@ -226,6 +229,7 @@ class FedAvgServer(BaseServer):
             attack_start_round (int): The starting round to initiate the attack.
             attack_end_round (int): The last round for the attack to be performed.
         """
+        
         # Normal training when outside the attack range
 
         if round < attack_start_round or round > attack_end_round:
@@ -235,14 +239,14 @@ class FedAvgServer(BaseServer):
          
 
     def run_protocol(self):
-        stats: Dict[str, Any] = {}
         print(f"Client {self.node_id} ready to start training")
         start_rounds = self.config.get("start_rounds", 0)
         total_rounds = self.config["rounds"]
         for round in range(start_rounds, total_rounds):
+            self.round_init()
 
             self.local_round_done()
-            self.single_round(round)
-            stats["bytes_received"], stats["bytes_sent"] = self.comm_utils.get_comm_cost()
-            stats["test_loss"], stats["test_acc"], stats["test_time"] = self.test()
-            self.log_metrics(stats=stats, iteration=round)
+            self.single_round()
+            self.test()
+
+            self.round_finalize()

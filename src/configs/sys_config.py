@@ -11,7 +11,8 @@ from .algo_config import (
     default_config_list,
     fedstatic,
     traditional_fl,
-    test_fl_inversion,
+    swift,
+    fedavgpush
 )
 
 sliding_window_8c_4cpc_support = {
@@ -26,12 +27,12 @@ sliding_window_8c_4cpc_support = {
 }
 
 
-def get_device_ids(num_users: int, gpus_available: List[int]) -> Dict[str, List[int]]:
+def get_device_ids(num_users: int, gpus_available: List[int | Literal["cpu"]]) -> Dict[str, List[int | Literal["cpu"]]]:
     """
     Get the GPU device IDs for the users.
     """
     # TODO: Make it multi-host
-    device_ids: Dict[str, List[int]] = {}
+    device_ids: Dict[str, List[int | Literal["cpu"]]] = {}
     for i in range(num_users + 1):  # +1 for the super-node
         index = i % len(gpus_available)
         gpu_id = gpus_available[index]
@@ -278,13 +279,9 @@ mpi_domainnet_sys_config: ConfigType = {
     "seed": 1,
     "num_collaborators": NUM_COLLABORATORS,
     "load_existing": False,
-    "device_ids": get_device_ids(num_users=swarm_users, gpus_available=[1, 2]),
-    # "algo": get_algo_configs(num_users=swarm_users, algo_configs=default_config_list),  # type: ignore
-    "algos": get_algo_configs(
-        num_users=swarm_users,
-        algo_configs=default_config_list,
-    ),  # type: ignore
     "dump_dir": DUMP_DIR,
+    "device_ids": get_device_ids(num_users=swarm_users, gpus_available=[3, 4]),
+    "algo": get_algo_configs(num_users=swarm_users, algo_configs=default_config_list),  # type: ignore
     # Dataset params
     "dset": get_domainnet_support(
         swarm_users
@@ -292,7 +289,7 @@ mpi_domainnet_sys_config: ConfigType = {
     "dpath": domainnet_dpath,  # wilds_dpath,#domainnet_dpath,
     "train_label_distribution": "iid",  # Either "iid", "shard" "support",
     "test_label_distribution": "iid",  # Either "iid" "support",
-    "samples_per_user": 500,
+    "samples_per_user": 32,
     "test_samples_per_class": 100,
     "community_type": "dataset",
     "exp_keys": [],
@@ -330,11 +327,15 @@ dropout_dict = {
     "dropout_correlation": 0.0, # correlation between dropouts of successive rounds: [0,1]
 }
 
+
 dropout_dicts = {"node_0": {}}
 for i in range(1, num_users + 1):
     dropout_dicts[f"node_{i}"] = dropout_dict
 
-gpu_ids = [0,1,2,3]
+# for swift or fedavgpush, just modify the algo_configs list
+# for swift, synchronous should preferable be False
+gpu_ids = [2, 3, 5, 6]
+
 grpc_system_config: ConfigType = {
     "exp_id": "static",
     "num_users": num_users,
@@ -346,12 +347,22 @@ grpc_system_config: ConfigType = {
     "seed": 2,
     "device_ids": get_device_ids(num_users, gpu_ids),
     # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
-    "algos": get_algo_configs(num_users=num_users, algo_configs=[traditional_fl]),  # type: ignore
+    "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
     "samples_per_user": 50000 // num_users,  # distributed equally
-    "train_label_distribution": "iid",
+    "train_label_distribution": "non_iid",
     "test_label_distribution": "iid",
+    "alpha_data": 1.0,
     "exp_keys": [],
     "dropout_dicts": dropout_dicts,
+    "test_samples_per_user": 200,
+    "log_memory": True,
+    "assign_based_on_host": True,
+    "hostname_to_device_ids": {
+        "matlaber1": [2, 3, 4, 5, 6, 7],
+        "matlaber12": [0, 1, 2, 3],
+        "matlaber3": [0, 1, 2, 3],
+        "matlaber4": [0, 2, 3, 4, 5, 6, 7],
+    }
 }
 
 grpc_system_config_gia: ConfigType = {
