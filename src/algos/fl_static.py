@@ -2,12 +2,15 @@
 Module for FedStaticClient and FedStaticServer in Federated Learning.
 """
 from typing import Any, Dict, OrderedDict, List
+from collections import OrderedDict, defaultdict
+
 from utils.communication.comm_utils import CommunicationManager
 import torch
 
 from algos.base_class import BaseFedAvgClient
 from algos.topologies.collections import select_topology
 
+from utils.gias import gia_main
 
 class FedStaticNode(BaseFedAvgClient):
     """
@@ -25,7 +28,6 @@ class FedStaticNode(BaseFedAvgClient):
         """
         Returns a list of neighbours for the client.
         """
-
         neighbors = self.topology.sample_neighbours(self.num_collaborators)
         self.stats["neighbors"] = neighbors
 
@@ -43,6 +45,7 @@ class FedStaticNode(BaseFedAvgClient):
             )
         total_rounds = self.config["rounds"]
         epochs_per_round = self.config.get("epochs_per_round", 1)
+
         for it in range(start_round, total_rounds):
             self.round_init()
 
@@ -52,6 +55,7 @@ class FedStaticNode(BaseFedAvgClient):
                 )            
             self.local_round_done()
             # Collect the representations from all other nodes from the server
+
             neighbors = self.get_neighbors()
             # TODO: Log the neighbors
             self.receive_and_aggregate(neighbors)
@@ -60,8 +64,6 @@ class FedStaticNode(BaseFedAvgClient):
             self.local_test()
 
             self.round_finalize()
-
-
 
 class FedStaticServer(BaseFedAvgClient):
     """
