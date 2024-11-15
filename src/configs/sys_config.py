@@ -160,7 +160,7 @@ CIAR10_DPATH = "./datasets/imgs/cifar10/"
 NUM_COLLABORATORS = 1
 DUMP_DIR = "/Users/kathryn/MIT/UROP/Media Lab/sonar_experiments/"
 
-num_users = 4
+num_users = 3
 mpi_system_config: ConfigType = {
     "exp_id": "",
     "comm": {"type": "MPI"},
@@ -169,19 +169,20 @@ mpi_system_config: ConfigType = {
     "dset": CIFAR10_DSET,
     "dump_dir": DUMP_DIR,
     "dpath": CIAR10_DPATH,
-    "seed": 32,
+    # "seed": 32,
+    "seed": 2,
     # node_0 is a server currently
     # The device_ids dictionary depicts the GPUs on which the nodes reside.
     # For a single-GPU environment, the config will look as follows (as it follows a 0-based indexing):
     #  "device_ids": {"node_0": [0], "node_1": [0], "node_2": [0], "node_3": [0]},
-    "device_ids": get_device_ids(num_users=4, gpus_available=[1, 2]),
+    "device_ids": get_device_ids(num_users=3, gpus_available=[1, 2]),
     # use this when the list needs to be imported from the algo_config
     # "algo": get_algo_configs(num_users=3, algo_configs=algo_configs_list),
     "algos": get_algo_configs(
-        num_users=4,
+        num_users=3,
         algo_configs=default_config_list
     ),  # type: ignore
-    "samples_per_user": 1000,  # TODO: To model scenarios where different users have different number of samples
+    "samples_per_user": 5555,  # TODO: To model scenarios where different users have different number of samples
     # we need to make this a dictionary with user_id as key and number of samples as value
     "train_label_distribution": "iid",  # Either "iid", "non_iid" "support"
     "test_label_distribution": "iid",  # Either "iid", "non_iid" "support"
@@ -316,7 +317,7 @@ object_detect_system_config: ConfigType = {
     "exp_keys": [],
 }
 
-num_users = 9
+num_users = 4
 
 dropout_dict = {
     "distribution_dict": { # leave dict empty to disable dropout
@@ -347,7 +348,8 @@ grpc_system_config: ConfigType = {
     "device_ids": get_device_ids(num_users, gpu_ids),
     # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
     "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
-    "samples_per_user": 50000 // num_users,  # distributed equally
+    # "samples_per_user": 50000 // num_users,  # distributed equally
+    "samples_per_user": 100,
     "train_label_distribution": "non_iid",
     "test_label_distribution": "iid",
     "alpha_data": 1.0,

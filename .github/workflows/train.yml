@@ -1,0 +1,48 @@
+name: Test Training Code with gRPC
+
+on:
+  push:
+    branches:
+      # - main
+      - "*"
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  train-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the code
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Step 2: Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.8" # Specify the Python version you're using
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Step 4: Run gRPC server and client
+      - name: Run test
+        run: |
+          # Start the gRPC server in the background
+          python /src/main.py -super true & 
+          SERVER_PID=$!
+
+          # Run the gRPC client to test communication
+          python main_grpc.py -n 5 -host localhost
+
+          # Clean up the server process
+          kill $SERVER_PID
+
+          # further checks:
+            # only 5 rounds
+            # gRPC only? or also MPI?
+            # num of samples
+            # num users and nodes
