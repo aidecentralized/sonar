@@ -356,6 +356,7 @@ grpc_system_config: ConfigType = {
     "dropout_dicts": dropout_dicts,
     "test_samples_per_user": 200,
     "log_memory": True,
+    # "streaming_aggregation": True, # Make it true for fedstatic
     "assign_based_on_host": True,
     "hostname_to_device_ids": {
         "matlaber1": [2, 3, 4, 5, 6, 7],
