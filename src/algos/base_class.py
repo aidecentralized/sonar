@@ -169,9 +169,16 @@ class BaseNode(ABC):
     def setup_cuda(self, config: Dict[str, ConfigType]) -> None:
         """add docstring here"""
         # Need a mapping from rank to device id
-        device_ids_map = config["device_ids"]
-        node_name = f"node_{self.node_id}"
-        self.device_ids = device_ids_map[node_name]
+        if (config.get("assign_based_on_host", False)):
+            device_ids_map = config["device_ids"]
+            node_name = f"node_{self.node_id}"
+            self.device_ids = device_ids_map[node_name]
+        else:
+            hostname_to_device_ids = config["hostname_to_device_ids"]
+            hostname = os.uname().nodename
+            # choose a random one of the available devices
+            ind = self.node_id % len(hostname_to_device_ids[hostname])
+            self.device_ids = [hostname_to_device_ids[hostname][ind]]
         gpu_id = self.device_ids[0]
 
         if isinstance(gpu_id, int) and torch.cuda.is_available():

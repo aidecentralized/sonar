@@ -354,6 +354,14 @@ grpc_system_config: ConfigType = {
     "exp_keys": [],
     "dropout_dicts": dropout_dicts,
     "test_samples_per_user": 200,
+    "log_memory": True,
+    "assign_based_on_host": True,
+    "hostname_to_device_ids": {
+        "matlaber1": [2, 3, 4, 5, 6, 7],
+        "matlaber12": [0, 1, 2, 3],
+        "matlaber3": [0, 1, 2, 3],
+        "matlaber4": [0, 2, 3, 4, 5, 6, 7],
+    }
 }
 
 current_config = grpc_system_config
