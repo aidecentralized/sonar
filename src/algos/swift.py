@@ -19,6 +19,7 @@ class SwiftNode(FedStaticNode):
         self, config: Dict[str, Any], comm_utils: CommunicationManager
     ) -> None:
         super().__init__(config, comm_utils)
+        assert self.streaming_aggregation == False, "Streaming aggregation not supported for push-based algorithms for now."
 
     def run_protocol(self) -> None:
         """
