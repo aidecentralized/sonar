@@ -31,12 +31,18 @@ jobs:
       # Step 4: Run gRPC server and client
       - name: Run test
         run: |
+          mkdir ./sonar_experiments/  
+
           # Start the gRPC server in the background
-          python /src/main.py -super true & 
+          python /src/main.py -super true -b & "./configs/algo_config_test.py" -s "./configs/sys_config_test.py"
           SERVER_PID=$!
 
           # Run the gRPC client to test communication
-          python main_grpc.py -n 5 -host localhost
+          python main_grpc.py -n 5 -host localhost -b "./configs/algo_config_test.py" -s "./configs/sys_config_test.py"
+
+      - name: Clean up
+        run: |
+          rm -rf ./sonar_experiments/  
 
           # Clean up the server process
           kill $SERVER_PID
