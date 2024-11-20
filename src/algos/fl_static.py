@@ -28,7 +28,7 @@ class FedStaticNode(BaseFedAvgClient):
         """
         Returns a list of neighbours for the client.
         """
-        neighbors = self.topology.sample_neighbours(self.num_collaborators)
+        neighbors = self.topology.sample_neighbours(self.num_collaborators, mode="pull")
         self.stats["neighbors"] = neighbors
 
         return neighbors
