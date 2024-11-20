@@ -22,18 +22,20 @@ class FedStaticNode(BaseFedAvgClient):
         self.topology = select_topology(config, self.node_id)
         self.topology.initialize()
 
+
     def get_representation(self, **kwargs: Any) -> Dict[str, int|Dict[str, Any]]:
         """
         Returns a list of neighbours for the client.
         """
         return self.get_model_weights()
-    
+
+
     def get_neighbors(self) -> List[int]:
         """
         Returns a list of neighbours for the clients
         """
-        neighbors = self.topology.sample_neighbours(self.num_collaborators)
-        self.stats["neighbors"] = neighbors # type: ignore, where the hell self.stats is coming from
+        neighbors = self.topology.sample_neighbours(self.num_collaborators, mode="pull")
+        self.stats["neighbors"] = neighbors  # type: ignore, where the hell self.stats is coming from
 
         return neighbors
 
