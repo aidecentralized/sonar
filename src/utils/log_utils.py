@@ -17,8 +17,8 @@ import numpy as np
 import pandas as pd
 from utils.types import ConfigType
 import json
-import networkx as nx
-from networkx import Graph
+import matplotlib.pyplot as plt
+
 
 def deprocess(img: torch.Tensor) -> torch.Tensor:
     """
@@ -224,6 +224,61 @@ class LogUtils:
         save_image(grid_img, f"{self.log_dir}/{iteration}_{key}.png")
         self.writer.add_image(key, grid_img.numpy(), iteration)
 
+    def log_gia_image(self, 
+                      data, 
+                      target, 
+                      node_id,
+                      dm=torch.as_tensor([0.4914, 0.4822, 0.4465])[:, None, None], 
+                      ds=torch.as_tensor([0.2023, 0.1994, 0.2010])[:, None, None],
+                      label=None):
+        """
+        Plots a grid of images from `data` with corresponding labels from `target`, and saves the plot.
+        
+        Args:
+            data (torch.Tensor): The data tensor with shape (batch, channels, height, width).
+            target (torch.Tensor): The target labels tensor with shape (batch,).
+            node_id (int): The node ID for the client.
+            dm (torch.Tensor): The mean of the dataset used for normalization, with shape (3, 1, 1).
+            ds (torch.Tensor): The standard deviation of the dataset used for normalization, with shape (3, 1, 1).
+        """
+        # Move data and target to CPU if they are on a GPU, and detach from the computation graph
+        data = data.cpu().detach()
+        target = target.cpu().detach()
+
+        # Normalize and clamp the data to the valid range [0, 1]
+        data = data.mul(ds).add(dm)
+        data.clamp_(0, 1)
+
+        # Set up grid size for plotting (e.g., 2 rows of 5 images if batch size is 10)
+        batch_size = data.size(0)
+        rows = 1
+        cols = batch_size // rows if batch_size % rows == 0 else batch_size
+
+        fig, axes = plt.subplots(rows, cols, figsize=(12, 6))
+        axes = axes.flatten()
+
+        # Loop over each image and label in the batch
+        for i in range(batch_size):
+            # Convert image to numpy format for plotting
+            img = data[i].permute(1, 2, 0).numpy()
+            
+            # Plot the image and label
+            axes[i].imshow(img)
+            axes[i].set_title(f"Label: {target[i].item()}")
+            axes[i].axis("off")
+        
+        plt.tight_layout()
+
+        log_lab = "base" if not label else label
+
+        plt.savefig(f"{self.log_dir}/{node_id}_{log_lab}.png")
+        plt.close()
+
+        # Log images to TensorBoard
+        grid_img = make_grid(data, normalize=True, scale_each=True)
+        self.writer.add_image(f"gia_images_node_{node_id}_{log_lab}", grid_img.numpy(), node_id)
+        self.writer.add_text(f"gia_labels_node_{node_id}_{log_lab}", str(target.tolist()), node_id)
+        
     def log_console(self, msg: str):
         """
         Log a message to the console.

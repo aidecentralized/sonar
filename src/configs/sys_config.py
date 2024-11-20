@@ -316,7 +316,7 @@ object_detect_system_config: ConfigType = {
     "exp_keys": [],
 }
 
-num_users = 9
+num_users = 4
 
 dropout_dict = {
     "distribution_dict": { # leave dict empty to disable dropout
@@ -335,6 +335,7 @@ for i in range(1, num_users + 1):
 # for swift or fedavgpush, just modify the algo_configs list
 # for swift, synchronous should preferable be False
 gpu_ids = [2, 3, 5, 6]
+
 grpc_system_config: ConfigType = {
     "exp_id": "static",
     "num_users": num_users,
@@ -354,8 +355,37 @@ grpc_system_config: ConfigType = {
     "exp_keys": [],
     "dropout_dicts": dropout_dicts,
     "test_samples_per_user": 200,
+    "log_memory": True,
+    # "streaming_aggregation": True, # Make it true for fedstatic
+    "assign_based_on_host": True,
+    "hostname_to_device_ids": {
+        "matlaber1": [2, 3, 4, 5, 6, 7],
+        "matlaber12": [0, 1, 2, 3],
+        "matlaber3": [0, 1, 2, 3],
+        "matlaber4": [0, 2, 3, 4, 5, 6, 7],
+    }
 }
 
+grpc_system_config_gia: ConfigType = {
+    "exp_id": "static",
+    "num_users": num_users,
+    "num_collaborators": NUM_COLLABORATORS,
+    "comm": {"type": "GRPC", "synchronous": True, "peer_ids": ["localhost:50048"]},  # The super-node
+    "dset": CIFAR10_DSET,
+    "dump_dir": DUMP_DIR,
+    "dpath": CIAR10_DPATH,
+    "seed": 2,
+    "device_ids": get_device_ids(num_users, gpu_ids),
+    # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
+    "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
+    "samples_per_user": 50000 // num_users,  # distributed equally
+    "train_label_distribution": "iid",
+    "test_label_distribution": "iid",
+    "exp_keys": [],
+    "dropout_dicts": dropout_dicts,
+    "gia":True,
+    "gia_attackers":[1]
+}
 
 current_config = grpc_system_config
 # current_config = mpi_system_config
