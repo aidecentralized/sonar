@@ -64,40 +64,130 @@ def combine_and_plot(
         plt.grid(True, linestyle='--', alpha=0.5)
 
         # Save the combined plot
-        plt.savefig(os.path.join(output_dir, f"{exp_name}_{metric_name}_combined_plot.png"), bbox_inches='tight')
+        plt.savefig(os.path.join(output_dir, 'plots', f"{exp_name}_{metric_name}_combined_plot.png"), bbox_inches='tight')
         plt.close()
 
-        print(f"Combined plot for {exp_name} {metric_name} saved to {output_dir}")
+        print(f"Combined plot for {exp_name} {metric_name} saved to {output_dir}/plots/")
 
-        # Optionally, save the combined data for further analysis
-        # combined_mean_df = pd.DataFrame({exp: pd.read_csv(os.path.join(path, f"{metric_name}_avg.csv")).values.flatten()
-        #                                  for exp, path in experiment_map.items()})
-        # combined_mean_df.to_csv(os.path.join(output_dir, f"{metric_name}_combined_avg.csv"), index=False)
+        if include_logs:
+            if not os.path.exists(os.path.join(output_dir, 'logs')):
+                os.makedirs(os.path.join(output_dir, 'logs'))
 
-        # combined_std_df = pd.DataFrame({exp: pd.read_csv(os.path.join(path, f"{metric_name}_std.csv")).values.flatten()
-        #                                  for exp, path in experiment_map.items()})
-        # combined_std_df.to_csv(os.path.join(output_dir, f"{metric_name}_combined_std.csv"), index=False)
+            # Optionally, save the combined data for further analysis
+            # catch error if something goes wrong
+            try:
+                combined_mean_df = pd.DataFrame({exp: pd.read_csv(os.path.join(path, f"{metric_name}_avg.csv")).values.flatten()
+                                                for exp, path in experiment_map.items()})
+                combined_mean_df.to_csv(os.path.join(output_dir, 'logs', f"{exp_name}_{metric_name}_combined_avg.csv"), index=False)
 
-        # combined_ci_df = pd.DataFrame({exp: pd.read_csv(os.path.join(path, f"{metric_name}_ci95.csv")).values.flatten()
-        #                                for exp, path in experiment_map.items()})
-        # combined_ci_df.to_csv(os.path.join(output_dir, f"{metric_name}_combined_ci95.csv"), index=False)
+                combined_std_df = pd.DataFrame({exp: pd.read_csv(os.path.join(path, f"{metric_name}_std.csv")).values.flatten()
+                                                for exp, path in experiment_map.items()})
+                combined_std_df.to_csv(os.path.join(output_dir, 'logs', f"{exp_name}_{metric_name}_combined_std.csv"), index=False)
+
+                combined_ci_df = pd.DataFrame({exp: pd.read_csv(os.path.join(path, f"{metric_name}_ci95.csv")).values.flatten()
+                                            for exp, path in experiment_map.items()})
+                combined_ci_df.to_csv(os.path.join(output_dir,  'logs', f"{exp_name}_{metric_name}_combined_ci95.csv"), index=False)
+
+                print(f"Combined logs for {exp_name} {metric_name} saved to {output_dir}/logs/")
+            except Exception as e:
+                print(f"Error saving logs: {e} for {exp_name} {metric_name}")
 
 # Example usage for malicious attacks
 if __name__ == "__main__":
+    # exp 0_scalability
+    # /mas/camera/Experiments/SONAR/jyuan/0_scalability/cifar10_4users_12500_scalability_erdos_renyi_seed1
+    # base_dir = "/mas/camera/Experiments/SONAR/jyuan/0_scalability"
+    # exp_names = ["erdos_renyi", "torus"]
+    # plot_names = ["Erdos-Renyi (p=0.3)", "Torus"]
+    # num_users = [4, 9, 16, 36, 64, 121]
+
+    # for exp_ind, exp_name in enumerate(exp_names):
+    #     exp_map = {}
+    #     for num_user in num_users:
+    #         exp_map[f"{num_user}_users"] = os.path.join(base_dir, f"cifar10_{num_user}users_{50000//num_user}_scalability_{exp_name}_seed1/logs/plots/")
+    #     metrics_list = ["test_acc", "test_loss"]
+    #     plot_titles = [f"{plot_names[exp_ind]}: Test Accuracy", f"{plot_names[exp_ind]}: Test Loss"]
+    #     xlabels = ["Rounds", "Rounds"]
+    #     ylabels = ["Accuracy", "Loss"]
+    #     combine_and_plot(exp_name, exp_map, metrics_list, plot_titles, xlabels, ylabels, base_dir)
+
+    # exp 2_attack_topo
+    # /mas/camera/Experiments/SONAR/jyuan/2_attack_topo/cifar10_36users_1388_topo_erdos_renyixbad_weights_1_malicious_seed2
+    # base_dir = "/mas/camera/Experiments/SONAR/jyuan/2_attack_topo"
+    # exp_names = ["bad_weights_1_malicious", "label_flip_1_malicious", "bad_weights_4_malicious", "label_flip_4_malicious"]
+    # plot_names = ["Topology Robustness with Bad Weights Attack (m=1)", "Topology Robustness with Label Flip Attack (m=1)", "Topology Robustness with Bad Weights Attack (m=4)", "Topology Robustness with Label Flip Attack (m=4)"]
+    # topos = ["ring", "torus", "fully_connected", "erdos_renyi", "fedavg"]
+    # # TODO: swift x label_flip
+
+    # for exp_ind, exp_name in enumerate(exp_names):
+    #     experiment_map = {}
+    #     for topo in topos:
+    #         experiment_map[f"{topo}"] = os.path.join(base_dir, f"cifar10_36users_1388_topo_{topo}x{exp_name}_seed2/logs/plots/")
+    #     metrics_list = ["test_acc"]
+    #     plot_titles = [f"{plot_names[exp_ind]}: Test Accuracy"]
+    #     xlabels = ["Rounds"]
+    #     ylabels = ["Accuracy"]
+    #     combine_and_plot(exp_name, experiment_map, metrics_list, plot_titles, xlabels, ylabels, base_dir)
+
+    # exp 3_attack_defense
+    # /mas/camera/Experiments/SONAR/jyuan/3_attack_defense/cifar10_40users_1250_bad_weightsxmedian_0_malicious_seed1
+    # TODO: bad weights x no defenses properly
+    base_dir = "/mas/camera/Experiments/SONAR/jyuan/3_attack_defense"
+    attacks = ["data_poisoning", "label_flip", "bad_weights"]
+    attack_names = ["Data Poisoning Attack", "Label Flip Attack", "Bad Weights Attack"]
+    exp_names = [f"{a}_{num}_malicious" for a in attacks for num in [0, 1, 4, 8, 12]]
+    plot_names = [f'{a} (M = {num})' for a in attack_names for num in [0, 1, 4, 8, 12]]
+    defenses = ["median", "trim_mean", "none"]
+
+    # for exp_ind, exp_name in enumerate(exp_names):
+    #     experiment_map = {}
+    #     for defense in defenses:
+    #         num_mal = int(exp_name.split("_")[-2])
+    #         attack_name = '_'.join(exp_name.split("_")[0:2])
+    #         if defense == "none":
+    #             experiment_map[f"{defense}"] = os.path.join(base_dir, f"cifar10_40users_1250_{attack_name}_{num_mal}_malicious_seed1/logs/plots/")
+    #         else:
+    #             experiment_map[f"{defense}"] = os.path.join(base_dir, f"cifar10_40users_1250_{attack_name}x{defense}_{num_mal}_malicious_seed1/logs/plots/")
+    #     metrics_list = ["test_acc", "test_loss"]
+    #     plot_titles = [f"{plot_names[exp_ind]}: Test Accuracy", f"{plot_names[exp_ind]}: Test Loss"]
+    #     xlabels = ["Rounds", "Rounds"]
+    #     ylabels = ["Accuracy", "Loss"]
+    #     combine_and_plot(exp_name, experiment_map, metrics_list, plot_titles, xlabels, ylabels, base_dir)
+
+    defenses = ["median", "trim_mean", "none"]
+    defense_names = ["Median", "Trim Mean", "No Defense"]
+    for d_ind, defense in enumerate(defenses):
+        for a_ind, attack in enumerate(attacks):
+            exp_map = {}
+            exp_name = f"{attack}x{defense}"
+            for num_mal in [0, 1, 4, 8, 12]:
+                if defense == "none":
+                    exp_map[f"{num_mal}_malicious"] = os.path.join(base_dir, f"cifar10_40users_1250_{attack}_{num_mal}_malicious_seed1/logs/plots/")
+                else:
+                    exp_map[f"{num_mal}_malicious"] = os.path.join(base_dir, f"cifar10_40users_1250_{attack}x{defense}_{num_mal}_malicious_seed1/logs/plots/")
+            metrics_list = ["test_acc", "test_loss"]
+            plot_titles = [f"{attack_names[a_ind]} with {defense_names[d_ind]}: Test Accuracy", f"{attack_names[a_ind]} with {defense_names[d_ind]}: Test Loss"]
+            xlabels = ["Rounds", "Rounds"]
+            ylabels = ["Accuracy", "Loss"]
+            try: 
+                combine_and_plot(exp_name, exp_map, metrics_list, plot_titles, xlabels, ylabels, base_dir)
+            except Exception as e:
+                print(f"Error combining and plotting {exp_name}: {e}")
+
+
+    # exp 4_attack_scaling
     # /mas/camera/Experiments/SONAR/jyuan/4_attack_scaling/cifar10_40users_1250_bad_weights_0_malicious_seed1/logs/plots/test_acc_avg.csv
+    # base_dir = "/mas/camera/Experiments/SONAR/jyuan/4_attack_scaling"
+    # exp_names = ["bad_weights", "data_poisoning", "gradient_attack", "label_flip"]
+    # plot_names = ["Bad Weights Attack", "Data Poisoning Attack", "Gradient Attack", "Label Flip Attack"]
+    # num_malicious = [0, 1, 4, 8, 12]
 
-    base_dir = "/mas/camera/Experiments/SONAR/jyuan/4_attack_scaling"
-    exp_names = ["bad_weights", "data_poisoning", "gradient_attack", "label_flip"]
-    plot_names = ["Bad Weights Attack", "Data Poisoning Attack", "Gradient Attack", "Label Flip Attack"]
-    num_malicious = [0, 1, 4, 8, 12]
-    output_dir = "/mas/camera/Experiments/SONAR/jyuan/4_attack_scaling/plots/"
-
-    for exp_ind, exp_name in enumerate(exp_names):
-        experiment_map = {}
-        for num_mal in num_malicious:
-            experiment_map[f"{num_mal}_malicious"] = os.path.join(base_dir, f"cifar10_40users_1250_{exp_name}_{num_mal}_malicious_seed1/logs/plots/")
-        metrics_list = ["test_acc"]
-        plot_titles = [f"{plot_names[exp_ind]}: Test Accuracy Over Time"]
-        xlabels = ["Rounds"]
-        ylabels = ["Accuracy"]
-        combine_and_plot(exp_name, experiment_map, metrics_list, plot_titles, xlabels, ylabels, output_dir)
+    # for exp_ind, exp_name in enumerate(exp_names):
+    #     experiment_map = {}
+    #     for num_mal in num_malicious:
+    #         experiment_map[f"{num_mal}_malicious"] = os.path.join(base_dir, f"cifar10_40users_1250_{exp_name}_{num_mal}_malicious_seed1/logs/plots/")
+    #     metrics_list = ["test_acc", "test_loss"]
+    #     plot_titles = [f"{plot_names[exp_ind]}: Test Accuracy", f"{plot_names[exp_ind]}: Test Loss"]
+    #     xlabels = ["Rounds", "Rounds"]
+    #     ylabels = ["Accuracy", "Loss"]
+    #     combine_and_plot(exp_name, experiment_map, metrics_list, plot_titles, xlabels, ylabels, base_dir)

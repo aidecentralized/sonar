@@ -158,7 +158,7 @@ CIFAR10_DSET = "cifar10"
 CIAR10_DPATH = "./datasets/imgs/cifar10/"
 
 NUM_COLLABORATORS = 1
-DUMP_DIR = "/mas/camera/Experiments/SONAR/abhi/"
+DUMP_DIR = "/mas/camera/Experiments/SONAR/jyuan/"
 
 mpi_system_config: ConfigType = {
     "exp_id": "",
@@ -316,7 +316,7 @@ object_detect_system_config: ConfigType = {
     "exp_keys": [],
 }
 
-num_users = 9
+num_users = 32
 
 dropout_dict = {
     "distribution_dict": { # leave dict empty to disable dropout
@@ -327,23 +327,23 @@ dropout_dict = {
     "dropout_correlation": 0.0, # correlation between dropouts of successive rounds: [0,1]
 }
 
-
+dropout_dict = {}
 dropout_dicts = {"node_0": {}}
 for i in range(1, num_users + 1):
     dropout_dicts[f"node_{i}"] = dropout_dict
 
 # for swift or fedavgpush, just modify the algo_configs list
 # for swift, synchronous should preferable be False
-gpu_ids = [2, 3, 5, 6]
+gpu_ids = [0, 1, 4, 5, 6, 7]
 grpc_system_config: ConfigType = {
-    "exp_id": "static",
+    "exp_id": "gossip_32",
     "num_users": num_users,
     "num_collaborators": NUM_COLLABORATORS,
-    "comm": {"type": "GRPC", "synchronous": True, "peer_ids": ["localhost:50048"]},  # The super-node
+    "comm": {"type": "GRPC", "synchronous": False, "peer_ids": ["matlaber4.media.mit.edu:1112"]},  # The super-node
     "dset": CIFAR10_DSET,
     "dump_dir": DUMP_DIR,
     "dpath": CIAR10_DPATH,
-    "seed": 2,
+    "seed": 1,
     "device_ids": get_device_ids(num_users, gpu_ids),
     # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
     "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore

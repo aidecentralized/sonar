@@ -61,3 +61,12 @@ malicious_config_list: Dict[str, ConfigType] = {
     "backdoor_attack": backdoor_attack,
     "data_poisoning": data_poisoning,
 }
+
+malicious_experiment_config_list: list[ConfigType] = [
+    data_poisoning,
+    gradient_attack,
+    backdoor_attack,
+    bad_weights,
+    sign_flip,
+    label_flip,
+]

@@ -463,7 +463,7 @@ def plot_all_metrics(logs_dir: str, per_round: bool = True, per_time: bool = Tru
 # Use if you want to compute for multiple experiment folders
 if __name__ == "__main__":
     # Define the base directory where your experiment logs are saved
-    base_logs_dir = '/mas/camera/Experiments/SONAR/abhi/'
+    base_logs_dir = '/mas/camera/Experiments/SONAR/jyuan/2_attack_topo/'
 
     # Iterate over each subdirectory in the base directory
     for experiment_folder in os.listdir(base_logs_dir):
