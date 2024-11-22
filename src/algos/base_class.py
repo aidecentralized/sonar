@@ -256,17 +256,42 @@ class BaseNode(ABC):
     def local_round_done(self) -> None:
         self.round += 1
 
-    def get_model_weights(self) -> Dict[str, Tensor]:
+    def get_model_weights(self, **kwargs: Any) -> Dict[str, Any]:
         """
-        Share the model weights
+        Overwrite the get_model_weights method of the BaseNode
+        to add malicious attacks
+        TODO: this should be moved to BaseClient
         """
-        message = {"sender": self.node_id, "round": self.round, "model": self.model.state_dict()}
 
-        # Move to CPU before sending
+        message = {"sender": self.node_id, "round": self.round}
+
+        malicious_type = self.config.get("malicious_type", "normal")
+
+        if malicious_type == "normal":
+            message["model"] = self.model.state_dict()  # type: ignore
+        elif malicious_type == "bad_weights":
+            # Corrupt the weights
+            message["model"] = BadWeightsAttack(
+                self.config, self.model.state_dict()
+            ).get_representation()
+        elif malicious_type == "sign_flip":
+            # Flip the sign of the weights, also TODO: consider label flipping
+            message["model"] = SignFlipAttack(
+                self.config, self.model.state_dict()
+            ).get_representation()
+        elif malicious_type == "add_noise":
+            # Add noise to the weights
+            message["model"] = AddNoiseAttack(
+                self.config, self.model.state_dict()
+            ).get_representation()
+        else:
+            message["model"] = self.model.state_dict()  # type: ignore
+
+        # move the model to cpu before sending
         for key in message["model"].keys():
             message["model"][key] = message["model"][key].to("cpu")
-            
-        return message
+    
+        return message  # type: ignore
 
     def get_local_rounds(self) -> int:
         return self.round
