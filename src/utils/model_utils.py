@@ -523,3 +523,11 @@ class ModelUtils:
         Get the memory usage
         """
         return torch.cuda.memory_allocated(self.device)
+
+    def get_split_model(self, model: nn.Module, split: int) -> Tuple[nn.Module, nn.Module]:
+        """
+        Split the model into two parts
+        """
+        model1 = nn.Sequential(*nn.ModuleList(list(model.children()))[:split])
+        model2 = nn.Sequential(*nn.ModuleList(list(model.children()))[split:])
+        return model1, model2

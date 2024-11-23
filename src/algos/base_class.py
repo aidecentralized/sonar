@@ -94,6 +94,7 @@ class BaseNode(ABC):
         self, config: Dict[str, Any], comm_utils: CommunicationManager
     ) -> None:
         self.set_constants()
+        self.config = config
         self.comm_utils = comm_utils
         self.node_id = self.comm_utils.get_rank()
         self.comm_utils.register_node(self)
@@ -243,16 +244,24 @@ class BaseNode(ABC):
     def local_round_done(self) -> None:
         self.round += 1
 
-    def get_model_weights(self) -> Dict[str, Tensor]:
+    def get_model_weights(self, chop_model:bool=False) -> Dict[str, int|Dict[str, Any]]:
         """
         Share the model weights
+        params:
+        @chop_model: bool, if True, the model will only send the client part of the model. Only being used by Split Learning
         """
-        message = {"sender": self.node_id, "round": self.round, "model": self.model.state_dict()}
+        if chop_model:
+            model, _ = self.model_utils.get_split_model(self.model, self.config["split_layer"])
+            model = model.state_dict()
+        else:
+            model = self.model.state_dict()
+        message: Dict[str, int|Dict[str, Any]] = {"sender": self.node_id, "round": self.round, "model": model}
 
         # Move to CPU before sending
-        for key in message["model"].keys():
-            message["model"][key] = message["model"][key].to("cpu")
-            
+        if isinstance(message["model"], dict):
+            for key in message["model"].keys():
+                message["model"][key] = message["model"][key].to("cpu")
+
         return message
 
     def get_local_rounds(self) -> int:

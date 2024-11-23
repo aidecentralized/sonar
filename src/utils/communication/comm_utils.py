@@ -82,8 +82,8 @@ class CommunicationManager:
     def get_comm_cost(self):
         return self.comm.get_comm_cost()
 
-    def receive_pushed(self):
-        return self.comm.receive_pushed()
+    def receive_pushed(self, num_tries: int = 20, time_to_wait: int = 2):
+        return self.comm.receive_pushed(num_tries, time_to_wait)
 
     def all_gather_pushed(self):
         return self.comm.all_gather_pushed()

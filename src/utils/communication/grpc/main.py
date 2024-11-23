@@ -449,15 +449,13 @@ class GRPCCommunication(CommunicationInterface):
             items.append(item)
         return items
 
-    def receive_pushed(self) -> List[OrderedDict[str, Any]]:
+    def receive_pushed(self, num_tries:int = 20, time_to_wait:int = 2) -> List[OrderedDict[str, Any]]:
         # Fetch messages from self.servicer.received_data that have the same or earlier round than  self_round = self.servicer.base_node.get_local_rounds()
         if not self.servicer.base_node:
             raise Exception("Base node not registered")
         self_round = self.servicer.base_node.get_local_rounds()
         items: List[OrderedDict[str, Any]] = []
-        
-        num_tries = 20
-        time_to_wait = 2
+
         while num_tries > 0:
             while self.servicer.received_data.empty() and num_tries > 0:
                 num_tries -= 1
@@ -532,6 +530,16 @@ class GRPCCommunication(CommunicationInterface):
 
     def get_comm_cost(self):
         return self.servicer.get_comm_cost()
+
+    def send_start(self, client_id: int, model: OrderedDict[str, Any]):
+        if self.rank != 0:
+            # throw an error if rank is not 0
+            raise Exception("Only the super node can send start")
+        else:
+            host = self.get_host_from_rank(client_id)
+            with grpc.insecure_channel(host) as channel: # type: ignore
+                stub = comm_pb2_grpc.CommunicationServerStub(channel)
+                stub.send_model(comm_pb2.Model(buffer=serialize_message(model))) # type: ignore
 
     def finalize(self):
         # 1. All nodes send finished to the super node
