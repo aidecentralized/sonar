@@ -158,7 +158,7 @@ CIFAR10_DSET = "cifar10"
 CIAR10_DPATH = "./datasets/imgs/cifar10/"
 
 NUM_COLLABORATORS = 1
-DUMP_DIR = "/mas/camera/Experiments/SONAR/abhi/"
+DUMP_DIR = "/mas/camera/Experiments/SONAR/jyuan/"
 
 mpi_system_config: ConfigType = {
     "exp_id": "",
@@ -357,5 +357,33 @@ grpc_system_config: ConfigType = {
 }
 
 
-current_config = grpc_system_config
+num_users = 3
+dropout_dict = {}
+dropout_dicts = {"node_0": {}}
+for i in range(1, num_users + 1):
+    dropout_dicts[f"node_{i}"] = dropout_dict
+
+# for swift or fedavgpush, just modify the algo_configs list
+# for swift, synchronous should preferable be False
+gpu_ids = [6, 7]
+rtc_config: ConfigType = {
+    "exp_id": "test_rtc",
+    "num_users": num_users,
+    "num_collaborators": NUM_COLLABORATORS,
+    "comm": {"type": "RTC"},
+    "dset": CIFAR10_DSET,
+    "dump_dir": DUMP_DIR,
+    "dpath": CIAR10_DPATH,
+    "seed": 2,
+    "device_ids": get_device_ids(num_users, gpu_ids),
+    # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
+    "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
+    "samples_per_user": 20,  # distributed equally
+    "train_label_distribution": "iid",
+    "test_label_distribution": "iid",
+    "dropout_dicts": dropout_dicts,
+    "exp_keys": [],
+}
+
+current_config = rtc_config
 # current_config = mpi_system_config

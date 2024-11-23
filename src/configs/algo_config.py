@@ -191,8 +191,8 @@ swarm: ConfigType = {
 fedstatic: ConfigType = {
     # Collaboration setup
     "algo": "fedstatic",
-    "topology": {"name": "watts_strogatz", "k": 3, "p": 0.2}, # type: ignore
-    "rounds": 20,
+    "topology": {"name": "ring"}, # type: ignore
+    "rounds": 2,
 
     # Model parameters
     "model": "resnet10",
