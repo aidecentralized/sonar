@@ -30,6 +30,7 @@ from algos.fl_central import CentralizedCLient, CentralizedServer
 from algos.fl_data_repr import FedDataRepClient, FedDataRepServer
 from algos.fl_val import FedValClient, FedValServer
 from algos.fl_push import FedAvgPushClient, FedAvgPushServer
+# from algos.fl_rtc import FedRTCNode, FedRTCServer
 
 from utils.communication.comm_utils import CommunicationManager
 from utils.config_utils import load_config, process_config
@@ -54,6 +55,7 @@ algo_map: Dict[str, List[FedAvgClient]] = { # type: ignore
     "fedval": [FedValServer, FedValClient],
     "swift": [SwiftServer, SwiftNode],
     "fedavgpush": [FedAvgPushServer, FedAvgPushClient],
+    # "fedrtc": [FedRTCServer, FedRTCNode]
 }
 
 
@@ -133,4 +135,4 @@ class Scheduler:
 
     def run_job(self) -> None:
         self.node.run_protocol()
-        self.communication.finalize()
+        # self.communication.finalize()

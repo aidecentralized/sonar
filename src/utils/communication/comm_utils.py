@@ -1,6 +1,7 @@
 from enum import Enum
 from utils.communication.grpc.main import GRPCCommunication
 from typing import Any, Dict, List, TYPE_CHECKING
+from utils.communication.rtc import RTCCommUtils
 # from utils.communication.mpi import MPICommUtils
 
 if TYPE_CHECKING:
@@ -11,6 +12,7 @@ class CommunicationType(Enum):
     MPI = 1
     GRPC = 2
     HTTP = 3
+    RTC = 4
 
 
 class CommunicationFactory:
@@ -25,6 +27,8 @@ class CommunicationFactory:
             return GRPCCommunication(config)
         elif comm_type == CommunicationType.HTTP:
             raise NotImplementedError("HTTP communication not yet implemented")
+        elif comm_type == CommunicationType.RTC:
+            return RTCCommUtils(config)
         else:
             raise ValueError("Invalid communication type", comm_type)
 
@@ -46,6 +50,8 @@ class CommunicationManager:
         elif self.comm_type == CommunicationType.GRPC:
             if self.comm.rank is None:
                 raise ValueError("Rank not set for gRPC")
+            return self.comm.rank
+        elif self.comm_type == CommunicationType.RTC:
             return self.comm.rank
         else:
             raise NotImplementedError(
