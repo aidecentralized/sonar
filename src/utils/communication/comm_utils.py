@@ -1,8 +1,9 @@
 from enum import Enum
 from utils.communication.grpc.main import GRPCCommunication
 from typing import Any, Dict, List, TYPE_CHECKING
-from utils.communication.rtc import RTCCommUtils
+from utils.communication.rtc2 import RTCCommUtils
 # from utils.communication.mpi import MPICommUtils
+import asyncio
 
 if TYPE_CHECKING:
     from algos.base_class import BaseNode
@@ -37,7 +38,33 @@ class CommunicationManager:
     def __init__(self, config: Dict[str, Any]):
         self.comm_type = CommunicationType[config["comm"]["type"]]
         self.comm = CommunicationFactory.create_communication(config, self.comm_type)
-        self.comm.initialize()
+        # self.comm.initialize()
+        self._ready = asyncio.Event()
+    
+    #################################################
+    @property
+    def is_ready(self) -> bool:
+        """Check if communication manager is ready."""
+        return self._ready.is_set()
+        
+    async def setup(self) -> None:
+        """
+        Async setup method to initialize communication.
+        This must be called after creating the CommunicationManager instance.
+        """
+        try:
+            success = await self.comm.initialize()
+            if success:
+                self._ready.set()
+            else:
+                raise RuntimeError("Communication initialization failed")
+        except Exception as e:
+            raise RuntimeError(f"Failed to initialize communication: {e}")
+            
+    async def ensure_ready(self) -> None:
+        """Wait for communication manager to be ready."""
+        await self._ready.wait()
+    #################################################
 
     def register_node(self, obj: "BaseNode"):
         self.comm.register_self(obj)
