@@ -14,7 +14,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\ncomm.proto\"\x07\n\x05\x45mpty\"\x17\n\x05Model\x12\x0e\n\x06\x62uffer\x18\x01 \x01(\x0c\")\n\x04\x44\x61ta\x12\n\n\x02id\x18\x01 \x01(\t\x12\x15\n\x05model\x18\x02 \x01(\x0b\x32\x06.Model\"\x14\n\x04Rank\x12\x0c\n\x04rank\x18\x01 \x01(\x05\"\x16\n\x05Round\x12\r\n\x05round\x18\x01 \x01(\x05\"\x14\n\x04Port\x12\x0c\n\x04port\x18\x01 \x01(\x05\">\n\x06PeerId\x12\x13\n\x04rank\x18\x01 \x01(\x0b\x32\x05.Rank\x12\x13\n\x04port\x18\x02 \x01(\x0b\x32\x05.Port\x12\n\n\x02ip\x18\x03 \x01(\t\"k\n\x07PeerIds\x12\'\n\x08peer_ids\x18\x01 \x03(\x0b\x32\x15.PeerIds.PeerIdsEntry\x1a\x37\n\x0cPeerIdsEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12\x16\n\x05value\x18\x02 \x01(\x0b\x32\x07.PeerId:\x02\x38\x01\"\x18\n\x06Quorum\x12\x0e\n\x06quorum\x18\x01 \x01(\x08\x32\xc1\x02\n\x13\x43ommunicationServer\x12\x1c\n\tsend_data\x12\x05.Data\x1a\x06.Empty\"\x00\x12\x1e\n\nsend_model\x12\x06.Model\x1a\x06.Empty\"\x00\x12\x1b\n\x08get_rank\x12\x06.Empty\x1a\x05.Rank\"\x00\x12\x1d\n\tget_model\x12\x06.Empty\x1a\x06.Model\"\x00\x12%\n\x11get_current_round\x12\x06.Empty\x1a\x06.Round\"\x00\x12 \n\x0bupdate_port\x12\x07.PeerId\x1a\x06.Empty\"\x00\x12#\n\rsend_peer_ids\x12\x08.PeerIds\x1a\x06.Empty\"\x00\x12 \n\x0bsend_quorum\x12\x07.Quorum\x1a\x06.Empty\"\x00\x12 \n\rsend_finished\x12\x05.Rank\x1a\x06.Empty\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\ncomm.proto\"\x07\n\x05\x45mpty\"\x19\n\x06Status\x12\x0f\n\x07message\x18\x01 \x01(\t\"\x17\n\x05Model\x12\x0e\n\x06\x62uffer\x18\x01 \x01(\x0c\")\n\x04\x44\x61ta\x12\n\n\x02id\x18\x01 \x01(\t\x12\x15\n\x05model\x18\x02 \x01(\x0b\x32\x06.Model\"\x14\n\x04Rank\x12\x0c\n\x04rank\x18\x01 \x01(\x05\"\x16\n\x05Round\x12\r\n\x05round\x18\x01 \x01(\x05\"\x14\n\x04Port\x12\x0c\n\x04port\x18\x01 \x01(\x05\">\n\x06PeerId\x12\x13\n\x04rank\x18\x01 \x01(\x0b\x32\x05.Rank\x12\x13\n\x04port\x18\x02 \x01(\x0b\x32\x05.Port\x12\n\n\x02ip\x18\x03 \x01(\t\"k\n\x07PeerIds\x12\'\n\x08peer_ids\x18\x01 \x03(\x0b\x32\x15.PeerIds.PeerIdsEntry\x1a\x37\n\x0cPeerIdsEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12\x16\n\x05value\x18\x02 \x01(\x0b\x32\x07.PeerId:\x02\x38\x01\"\x18\n\x06Quorum\x12\x0e\n\x06quorum\x18\x01 \x01(\x08\x32\xe3\x02\n\x13\x43ommunicationServer\x12 \n\x0bsend_status\x12\x06.Empty\x1a\x07.Status\"\x00\x12\x1c\n\tsend_data\x12\x05.Data\x1a\x06.Empty\"\x00\x12\x1e\n\nsend_model\x12\x06.Model\x1a\x06.Empty\"\x00\x12\x1b\n\x08get_rank\x12\x06.Empty\x1a\x05.Rank\"\x00\x12\x1d\n\tget_model\x12\x06.Empty\x1a\x06.Model\"\x00\x12%\n\x11get_current_round\x12\x06.Empty\x1a\x06.Round\"\x00\x12 \n\x0bupdate_port\x12\x07.PeerId\x1a\x06.Empty\"\x00\x12#\n\rsend_peer_ids\x12\x08.PeerIds\x1a\x06.Empty\"\x00\x12 \n\x0bsend_quorum\x12\x07.Quorum\x1a\x06.Empty\"\x00\x12 \n\rsend_finished\x12\x05.Rank\x1a\x06.Empty\"\x00\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -25,24 +25,26 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_PEERIDS_PEERIDSENTRY']._serialized_options = b'8\001'
   _globals['_EMPTY']._serialized_start=14
   _globals['_EMPTY']._serialized_end=21
-  _globals['_MODEL']._serialized_start=23
-  _globals['_MODEL']._serialized_end=46
-  _globals['_DATA']._serialized_start=48
-  _globals['_DATA']._serialized_end=89
-  _globals['_RANK']._serialized_start=91
-  _globals['_RANK']._serialized_end=111
-  _globals['_ROUND']._serialized_start=113
-  _globals['_ROUND']._serialized_end=135
-  _globals['_PORT']._serialized_start=137
-  _globals['_PORT']._serialized_end=157
-  _globals['_PEERID']._serialized_start=159
-  _globals['_PEERID']._serialized_end=221
-  _globals['_PEERIDS']._serialized_start=223
-  _globals['_PEERIDS']._serialized_end=330
-  _globals['_PEERIDS_PEERIDSENTRY']._serialized_start=275
-  _globals['_PEERIDS_PEERIDSENTRY']._serialized_end=330
-  _globals['_QUORUM']._serialized_start=332
-  _globals['_QUORUM']._serialized_end=356
-  _globals['_COMMUNICATIONSERVER']._serialized_start=359
-  _globals['_COMMUNICATIONSERVER']._serialized_end=680
+  _globals['_STATUS']._serialized_start=23
+  _globals['_STATUS']._serialized_end=48
+  _globals['_MODEL']._serialized_start=50
+  _globals['_MODEL']._serialized_end=73
+  _globals['_DATA']._serialized_start=75
+  _globals['_DATA']._serialized_end=116
+  _globals['_RANK']._serialized_start=118
+  _globals['_RANK']._serialized_end=138
+  _globals['_ROUND']._serialized_start=140
+  _globals['_ROUND']._serialized_end=162
+  _globals['_PORT']._serialized_start=164
+  _globals['_PORT']._serialized_end=184
+  _globals['_PEERID']._serialized_start=186
+  _globals['_PEERID']._serialized_end=248
+  _globals['_PEERIDS']._serialized_start=250
+  _globals['_PEERIDS']._serialized_end=357
+  _globals['_PEERIDS_PEERIDSENTRY']._serialized_start=302
+  _globals['_PEERIDS_PEERIDSENTRY']._serialized_end=357
+  _globals['_QUORUM']._serialized_start=359
+  _globals['_QUORUM']._serialized_end=383
+  _globals['_COMMUNICATIONSERVER']._serialized_start=386
+  _globals['_COMMUNICATIONSERVER']._serialized_end=741
 # @@protoc_insertion_point(module_scope)

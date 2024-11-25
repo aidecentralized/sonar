@@ -175,6 +175,9 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
             self.peer_ids[request.rank.rank]["ip"] = request.ip  # type: ignore
             self.peer_ids[request.rank.rank]["port"] = request.port.port  # type: ignore
             return comm_pb2.Empty()  # type: ignore
+        
+    def send_status(self, request, context) -> comm_pb2.Status:
+        return comm_pb2.Status(message="Ready")  # type: ignore
 
     def send_peer_ids(self, request: comm_pb2.PeerIds, context) -> comm_pb2.Empty:  # type: ignore
         """
