@@ -53,6 +53,8 @@ class SignalingServer:
         #     'west': row * grid_size + ((col - 1 + grid_size) % grid_size),
         #     'east': row * grid_size + ((col + 1) % grid_size)
         # }
+        neighbor = rank + 1 if rank + 1 < len(session.clients) else 1
+        if rank == 0: return {'neighbor': None}
         return {'neighbor': (rank + 1) % len(session.clients)}
 
     async def handle_client(self, websocket: websockets.WebSocketServerProtocol):
@@ -139,7 +141,7 @@ class SignalingServer:
                 logging.info(f"Client joined session {session_id} with rank {rank}")
                 
                 # If session is full, broadcast topology to all clients
-                if len(session.clients) == session.max_clients:
+                if len(session.clients) == session.max_clients + 1:
                     logging.info(f"Session {session_id} is full, broadcasting topology")
                     await self.broadcast_session_ready(session)
                     await self.broadcast_topology(session)
@@ -204,14 +206,18 @@ class SignalingServer:
     async def broadcast_topology(self, session: SessionInfo):
         grid_size = self.calculate_grid_size(session)
         for ws, info in session.clients.items():
-            neighbors = self.get_neighbor_ranks(session, info.rank)
-            await ws.send(json.dumps({
-                'type': 'topology',
-                'rank': info.rank,
-                'neighbors': neighbors,
-                'gridSize': grid_size,
-                'totalClients': len(session.clients)
-            }))
+            try:
+                neighbors = self.get_neighbor_ranks(session, info.rank)
+                await ws.send(json.dumps({
+                    'type': 'topology',
+                    'rank': info.rank,
+                    'neighbors': neighbors,
+                    'gridSize': grid_size,
+                    'totalClients': len(session.clients)
+                }))
+            except websockets.exceptions.ConnectionClosed:
+                logging.error(f"Failed to send topology to client {info.rank}")
+                pass
     
     async def broadcast_session_ready(self, session: SessionInfo):
         message = json.dumps({
