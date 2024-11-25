@@ -104,7 +104,6 @@ class LogUtils:
     """
     Utility class for logging and saving experiment data.
     """
-    # nx_layout = None
 
     def __init__(self, config: ConfigType) -> None:
         log_dir = config["log_path"]
@@ -125,34 +124,7 @@ class LogUtils:
         self.init_npy()
         self.init_summary()
         self.init_csv()
-        self.nx_layout = None
-        self.init_nx_graph(config)
 
-    def init_nx_graph(self, config: ConfigType):
-        """
-        Initialize the networkx graph for the topology.
-
-        Args:
-            config (ConfigType): Configuration dictionary.
-            rank (int): Rank of the current node.
-        """
-        if "topology" in config:
-            self.topology  = config["topology"]
-        self.num_users = config["num_users"]
-        self.graph = nx.DiGraph()
-
-
-
-    def log_nx_graph(self, graph: Graph, iteration: int, directory: str|None = None):
-        """
-        Log the networkx graph to a file.
-        """
-        # print(graph)
-        if directory:
-            nx.write_adjlist(graph, f"{directory}/graph_{iteration}.adjlist", comments='#', delimiter=' ', encoding='utf-8') # type: ignore
-        else:
-            nx.write_adjlist(graph, f"{self.log_dir}/graph_{iteration}.adjlist", comments='#', delimiter=' ', encoding='utf-8') # type: ignore
-            
     def log_config(self, config: ConfigType):
         """
         Log the configuration to a json file. 
@@ -193,11 +165,6 @@ class LogUtils:
         csv_path = f"{self.log_dir}/csv"
         if not os.path.exists(csv_path) or not os.path.isdir(csv_path):
             os.makedirs(csv_path)
-
-        parent = os.path.dirname(self.log_dir) + "/csv" # type: ignore
-        if not os.path.exists(parent) or not os.path.isdir(parent): # type: ignore
-            os.makedirs(parent) # type: ignore
-
 
     def log_summary(self, text: str):
         """
@@ -327,64 +294,6 @@ class LogUtils:
         
         # Append the metrics to the CSV file
         df.to_csv(log_file, mode='a', header=not file_exists, index=False)
-
-        #make a global file to store all the neighbors of each round
-        if key == "neighbors":
-            self.log_global_csv(iteration, key, value)
-            
-    def log_global_csv(self, iteration: int, key: str, value: Any):
-        """
-        Log a value to a CSV file.
-        """
-        parent = os.path.dirname(self.log_dir) # type: ignore
-        log_file = f"{parent}/csv/neighbors_{iteration}.csv"
-        node = self.log_dir.split("_")[-1] # type: ignore
-        row = {"iteration": iteration, "node": node ,  key: value}
-        df = pd.DataFrame([row])
-        file_exists = os.path.isfile(log_file)
-        df.to_csv(log_file, mode='a', header=not file_exists, index=False)
-
-        if len(pd.read_csv(log_file)) == self.num_users:
-            adjacency_list = self.create_adjacency_list(log_file)
-            graph = nx.DiGraph(adjacency_list)
-            self.log_nx_graph(graph, iteration, f"{parent}/csv")
-
-
-
-
-    def create_adjacency_list(self, file_path: str) -> Dict[str, list]: # type: ignore
-        # Load the CSV file
-        """
-        Load the CSV file, populate the adjacency list and return it.
-
-        Parameters
-        ----------
-        file_path : str
-            The path to the CSV file
-
-        Returns
-        -------
-        adjacency_list : Dict[str, list]
-            The adjacency list
-        """
-        data = pd.read_csv(str(file_path)) # type: ignore
-        
-        # Initialize the adjacency list
-        adjacency_list : Dict[str, list] = {} # type: ignore
-        
-        # Populate the adjacency list
-        for _, row in data.iterrows(): # type: ignore
-            node = row["node"] # type: ignore
-            # Convert string representation of list to actual list
-            neighbors = eval(row["neighbors"]) # type: ignore
-            
-            if node not in adjacency_list:
-                adjacency_list[node] = neighbors
-            else:
-                adjacency_list[node].extend(neighbors) # type: ignore
-        
-        return adjacency_list # type: ignore
-
 
 
     def log_max_stats_per_client(
