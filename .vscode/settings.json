@@ -1,3 +1,10 @@
 {
-    "python.analysis.typeCheckingMode": "strict"
+  "python.analysis.typeCheckingMode": "strict",
+  "sshfs.configs": [
+    {
+      "name": "matlaber",
+      "host": "matlaber7.media.mit.edu",
+      "username": "kle"
+    }
+  ]
 }

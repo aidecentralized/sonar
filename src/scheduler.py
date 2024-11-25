@@ -129,6 +129,8 @@ class Scheduler:
             rank=self.communication.get_rank(),
             comm_utils=self.communication,
         )
+        print("sending quorum now")
+        self.communication.send_quorum()
 
     def run_job(self) -> None:
         self.node.run_protocol()

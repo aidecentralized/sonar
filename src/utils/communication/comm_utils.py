@@ -71,6 +71,9 @@ class CommunicationManager:
     def broadcast(self, data: Any, tag: int = 0):
         self.comm.broadcast(data)
 
+    def send_quorum(self):
+        self.comm.send_quorum()
+
     def all_gather(self, tag: int = 0):
         return self.comm.all_gather()
 

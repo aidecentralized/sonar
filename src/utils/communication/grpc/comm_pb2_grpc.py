@@ -39,6 +39,11 @@ class CommunicationServerStub(object):
         Args:
             channel: A grpc.Channel.
         """
+        self.send_status = channel.unary_unary(
+                '/CommunicationServer/send_status',
+                request_serializer=comm__pb2.Empty.SerializeToString,
+                response_deserializer=comm__pb2.Status.FromString,
+                _registered_method=True)
         self.send_data = channel.unary_unary(
                 '/CommunicationServer/send_data',
                 request_serializer=comm__pb2.Data.SerializeToString,
@@ -88,6 +93,12 @@ class CommunicationServerStub(object):
 
 class CommunicationServerServicer(object):
     """Missing associated documentation comment in .proto file."""
+
+    def send_status(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def send_data(self, request, context):
         """Missing associated documentation comment in .proto file."""
@@ -146,6 +157,11 @@ class CommunicationServerServicer(object):
 
 def add_CommunicationServerServicer_to_server(servicer, server):
     rpc_method_handlers = {
+            'send_status': grpc.unary_unary_rpc_method_handler(
+                    servicer.send_status,
+                    request_deserializer=comm__pb2.Empty.FromString,
+                    response_serializer=comm__pb2.Status.SerializeToString,
+            ),
             'send_data': grpc.unary_unary_rpc_method_handler(
                     servicer.send_data,
                     request_deserializer=comm__pb2.Data.FromString,
@@ -201,6 +217,33 @@ def add_CommunicationServerServicer_to_server(servicer, server):
  # This class is part of an EXPERIMENTAL API.
 class CommunicationServer(object):
     """Missing associated documentation comment in .proto file."""
+
+    @staticmethod
+    def send_status(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/CommunicationServer/send_status',
+            comm__pb2.Empty.SerializeToString,
+            comm__pb2.Status.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def send_data(request,

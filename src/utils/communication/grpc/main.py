@@ -175,6 +175,9 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
             self.peer_ids[request.rank.rank]["ip"] = request.ip  # type: ignore
             self.peer_ids[request.rank.rank]["port"] = request.port.port  # type: ignore
             return comm_pb2.Empty()  # type: ignore
+        
+    def send_status(self, request, context) -> comm_pb2.Status:
+        return comm_pb2.Status(message="Ready")  # type: ignore
 
     def send_peer_ids(self, request: comm_pb2.PeerIds, context) -> comm_pb2.Empty:  # type: ignore
         """
@@ -343,7 +346,31 @@ class GRPCCommunication(CommunicationInterface):
                             peer_ids=self.peer_ids_to_proto(self.servicer.peer_ids)
                         )
                         stub.send_peer_ids(proto_msg)  # type: ignore
+                        # stub.send_quorum(comm_pb2.Quorum(quorum=True))  # type: ignore
+    
+    def send_quorum(self):
+        if self.rank == 0:
+            for peer_id in self.servicer.peer_ids:
+                host_ip = self.servicer.peer_ids[peer_id].get("ip")
+                if peer_id != self.rank:
+                    port = self.servicer.peer_ids[peer_id].get("port")
+                    address = f"{host_ip}:{port}"
+                    print(f"Sending peer_ids to {address}")
+                    with grpc.insecure_channel(address) as channel:  # type: ignore
+                        stub = comm_pb2_grpc.CommunicationServerStub(channel)  # type: ignore
+                        stub.send_status(comm_pb2.Empty()) # type: ignore
+            print("status message sent")
+        else:
+            for peer_id in self.servicer.peer_ids:
+                host_ip = self.servicer.peer_ids[peer_id].get("ip")
+                if peer_id != self.rank:
+                    port = self.servicer.peer_ids[peer_id].get("port")
+                    address = f"{host_ip}:{port}"
+                    with grpc.insecure_channel(address) as channel:  # type: ignore
+                        stub = comm_pb2_grpc.CommunicationServerStub(channel)  # type: ignore
+                        # status = stub.send_status(comm_pb2.Empty()) # type: ignore
                         stub.send_quorum(comm_pb2.Quorum(quorum=True))  # type: ignore
+            print("quorum sent")
 
     def get_host_from_rank(self, rank: int) -> str:
         for peer_id in self.servicer.peer_ids:
@@ -368,7 +395,6 @@ class GRPCCommunication(CommunicationInterface):
                 else:
                     return
             raise Exception("Failed to send data. Receiver unreachable.")
-
 
 
     def send(self, dest: str | int, data: OrderedDict[str, Any]):
