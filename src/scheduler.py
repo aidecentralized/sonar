@@ -109,6 +109,7 @@ class Scheduler:
         numpy.random.seed(seed)
         self.merge_configs()
         if self.communication.get_rank() == 0:
+            print("initializing super node")
             if copy_souce_code:
                 copy_source_code(self.config)
             else:
@@ -129,7 +130,7 @@ class Scheduler:
             rank=self.communication.get_rank(),
             comm_utils=self.communication,
         )
-        print("sending quorum now")
+        print(f"Node {self.communication.get_rank()} finished get ndoe")
         self.communication.send_quorum()
 
     def run_job(self) -> None:

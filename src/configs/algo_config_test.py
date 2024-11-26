@@ -1,12 +1,10 @@
-#!/usr/bin/env python3
-
 from utils.types import ConfigType
 
 fedstatic: ConfigType = {
     # Collaboration setup
     "algo": "fedstatic",
     "topology": {"name": "watts_strogatz", "k": 3, "p": 0.2}, # type: ignore
-    "rounds": 5,
+    "rounds": 1,
 
     # Model parameters
     "model": "resnet10",
