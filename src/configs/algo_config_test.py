@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 from utils.types import ConfigType
 
 # fedstatic: ConfigType = {
