@@ -31,7 +31,7 @@ iid_dispfl_clients_new: ConfigType = {
 traditional_fl: ConfigType = {
     # Collaboration setup
     "algo": "fedavg",
-    "rounds": 2,
+    "rounds": 1,
 
     # Model parameters
     "model": "resnet10",
