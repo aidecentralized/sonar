@@ -158,7 +158,8 @@ CIFAR10_DSET = "cifar10"
 CIAR10_DPATH = "./datasets/imgs/cifar10/"
 
 NUM_COLLABORATORS = 1
-DUMP_DIR = "../../../../../../../home/"
+# DUMP_DIR = "../../../../../../../home/"
+DUMP_DIR = "./"
 
 num_users = 3
 mpi_system_config: ConfigType = {
