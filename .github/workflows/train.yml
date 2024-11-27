@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
   push:
     branches:
-      # - main
-      - "*"
+      - main
+      # - "*"
   pull_request:
     branches:
       - main
@@ -21,20 +21,6 @@ jobs:
       # Step 1: Checkout the code
       - name: Checkout repository
         uses: actions/checkout@v3
-
-      # - name: check directories
-      #   run: |
-      #     cd src
-      #     DIR="../../../../../../../home"
-      #     if [ -d "$DIR" ]; then
-      #       ### Take action if $DIR exists ###
-      #       echo "Installing config files in ${DIR}"
-      #       exit 1
-      #     else
-      #       ###  Control will jump here if $DIR does NOT exists ###
-      #       echo "Error: ${DIR} not found. Can not continue."
-      #       exit 1
-      #     fi
 
       # Step 2: Set up Python
       - name: Set up Python
@@ -63,12 +49,8 @@ jobs:
           python main.py -super true -s "./configs/sys_config_test.py"
           echo "done"
 
-      - name: Clean up
-        run: |
-          rm -rf ./sonar_experiments/  
-
-          # further checks:
-            # only 5 rounds
-            # gRPC only? or also MPI?
-            # num of samples
-            # num users and nodes
+      # further checks:
+      # only 5 rounds
+      # gRPC only? or also MPI?
+      # num of samples
+      # num users and nodes
