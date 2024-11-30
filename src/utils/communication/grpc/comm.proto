@@ -3,7 +3,6 @@
 syntax = "proto3";
 
 service CommunicationServer {
-  rpc send_status(Empty) returns (Status) {}
   rpc send_data (Data) returns (Empty) {}
   rpc send_model (Model) returns (Empty) {}
   rpc get_rank (Empty) returns (Rank) {}
@@ -16,10 +15,6 @@ service CommunicationServer {
 }
 
 message Empty {}
-
-message Status{
-  string message = 1;
-}
 
 message Model {
   bytes buffer = 1;
