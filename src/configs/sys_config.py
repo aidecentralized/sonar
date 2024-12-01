@@ -171,7 +171,6 @@ mpi_system_config: ConfigType = {
     "dump_dir": DUMP_DIR,
     "dpath": CIAR10_DPATH,
     "seed": 32,
-    "seed": 2,
     # node_0 is a server currently
     # The device_ids dictionary depicts the GPUs on which the nodes reside.
     # For a single-GPU environment, the config will look as follows (as it follows a 0-based indexing):
