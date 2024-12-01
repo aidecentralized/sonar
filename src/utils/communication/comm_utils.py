@@ -1,12 +1,13 @@
 from enum import Enum
 from utils.communication.grpc.main import GRPCCommunication
-from typing import Any, Dict, List, TYPE_CHECKING
-from utils.communication.mpi import MPICommUtils
-from mpi4py import MPI
+from typing import Any, Dict, List, Tuple, TYPE_CHECKING
+# from utils.communication.mpi import MPICommUtils
+# from mpi4py import MPI
 
 if TYPE_CHECKING:
     from algos.base_class import BaseNode
 
+import numpy as np
 
 class CommunicationType(Enum):
     MPI = 1
@@ -60,7 +61,7 @@ class CommunicationManager:
         else:
             print(f"Sending data to {dest}")
             self.comm.send(dest=int(dest), data=data)
-
+    
     def receive(self, node_ids: List[int]) -> Any:
         """
         Receive data from the specified node
