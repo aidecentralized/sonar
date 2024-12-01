@@ -216,7 +216,7 @@ class FedAvgServer(BaseServer):
         avg_wts = self.aggregate(reprs)
         self.set_representation(avg_wts)
 
-    def single_round(self, round: int, attack_start_round: int = 0, attack_end_round: int = 1):
+    def single_round(self, round: int, attack_start_round: int = 0, attack_end_round: int = 1, dump_file_name=""):
         """
         Runs the whole training procedure.
         
