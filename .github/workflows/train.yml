@@ -38,6 +38,8 @@ jobs:
           sudo apt-get install -y libgl1 libglib2.0-0
 
           pip install -r requirements_cpu.txt
+          python -c "import torch"
+          python -c "import torchvision"
 
       # Step 4: Run gRPC server and client
       - name: Run test
