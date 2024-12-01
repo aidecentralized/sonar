@@ -343,7 +343,18 @@ class GRPCCommunication(CommunicationInterface):
                             peer_ids=self.peer_ids_to_proto(self.servicer.peer_ids)
                         )
                         stub.send_peer_ids(proto_msg)  # type: ignore
+                        # stub.send_quorum(comm_pb2.Quorum(quorum=True))  # type: ignore
+    
+    def send_quorum(self):
+        """ Send the quorum status to all nodes after peer IDs are sent. """
+        if self.rank == 0:
+            for peer_id in self.servicer.peer_ids:
+                if not self.is_own_id(peer_id):
+                    host = self.get_host_from_rank(peer_id)
+                    with grpc.insecure_channel(host) as channel:  # type: ignore
+                        stub = comm_pb2_grpc.CommunicationServerStub(channel)
                         stub.send_quorum(comm_pb2.Quorum(quorum=True))  # type: ignore
+            print(f"Quorum status sent to all nodes.")
 
     def get_host_from_rank(self, rank: int) -> str:
         for peer_id in self.servicer.peer_ids:
@@ -368,7 +379,6 @@ class GRPCCommunication(CommunicationInterface):
                 else:
                     return
             raise Exception("Failed to send data. Receiver unreachable.")
-
 
 
     def send(self, dest: str | int, data: OrderedDict[str, Any]):

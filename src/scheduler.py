@@ -108,7 +108,6 @@ class Scheduler:
         random.seed(seed)
         numpy.random.seed(seed)
         self.merge_configs()
-
         if self.communication.get_rank() == 0:
             if copy_souce_code:
                 copy_source_code(self.config)
@@ -130,6 +129,7 @@ class Scheduler:
             rank=self.communication.get_rank(),
             comm_utils=self.communication,
         )
+        self.communication.send_quorum()
 
     def run_job(self) -> None:
         self.node.run_protocol()

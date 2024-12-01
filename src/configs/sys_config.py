@@ -158,11 +158,14 @@ CIFAR10_DSET = "cifar10"
 CIAR10_DPATH = "./datasets/imgs/cifar10/"
 
 NUM_COLLABORATORS = 1
-DUMP_DIR = "/mas/camera/Experiments/SONAR/abhi/"
+# DUMP_DIR = "../../../../../../../home/"
+DUMP_DIR = "/tmp/"
 
+num_users = 3
 mpi_system_config: ConfigType = {
     "exp_id": "",
     "comm": {"type": "MPI"},
+    "num_users": num_users,
     "num_collaborators": NUM_COLLABORATORS,
     "dset": CIFAR10_DSET,
     "dump_dir": DUMP_DIR,
@@ -177,11 +180,9 @@ mpi_system_config: ConfigType = {
     # "algo": get_algo_configs(num_users=3, algo_configs=algo_configs_list),
     "algos": get_algo_configs(
         num_users=3,
-        algo_configs=malicious_algo_config_list,
-        assignment_method="distribution",
-        distribution={0: 1, 1: 1, 2: 1},
+        algo_configs=default_config_list
     ),  # type: ignore
-    "samples_per_user": 1000,  # TODO: To model scenarios where different users have different number of samples
+    "samples_per_user": 5555,  # TODO: To model scenarios where different users have different number of samples
     # we need to make this a dictionary with user_id as key and number of samples as value
     "train_label_distribution": "iid",  # Either "iid", "non_iid" "support"
     "test_label_distribution": "iid",  # Either "iid", "non_iid" "support"
@@ -348,7 +349,8 @@ grpc_system_config: ConfigType = {
     "device_ids": get_device_ids(num_users, gpu_ids),
     # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
     "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
-    "samples_per_user": 50000 // num_users,  # distributed equally
+    # "samples_per_user": 50000 // num_users,  # distributed equally
+    "samples_per_user": 100,
     "train_label_distribution": "non_iid",
     "test_label_distribution": "iid",
     "alpha_data": 1.0,
@@ -389,3 +391,4 @@ grpc_system_config_gia: ConfigType = {
 
 current_config = grpc_system_config
 # current_config = mpi_system_config
+
