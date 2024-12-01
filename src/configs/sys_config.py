@@ -159,7 +159,7 @@ CIAR10_DPATH = "./datasets/imgs/cifar10/"
 
 NUM_COLLABORATORS = 1
 # DUMP_DIR = "../../../../../../../home/"
-DUMP_DIR = "./"
+DUMP_DIR = "/tmp/"
 
 num_users = 3
 mpi_system_config: ConfigType = {
@@ -170,7 +170,7 @@ mpi_system_config: ConfigType = {
     "dset": CIFAR10_DSET,
     "dump_dir": DUMP_DIR,
     "dpath": CIAR10_DPATH,
-    # "seed": 32,
+    "seed": 32,
     "seed": 2,
     # node_0 is a server currently
     # The device_ids dictionary depicts the GPUs on which the nodes reside.

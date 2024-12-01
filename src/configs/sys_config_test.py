@@ -81,7 +81,7 @@ CIFAR10_DSET = "cifar10"
 CIAR10_DPATH = "./datasets/imgs/cifar10/"
 
 # DUMP_DIR = "../../../../../../../home/"
-DUMP_DIR = "./"
+DUMP_DIR = "/tmp/"
 
 NUM_COLLABORATORS = 1
 num_users = 4
