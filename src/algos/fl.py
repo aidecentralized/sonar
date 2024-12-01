@@ -243,7 +243,7 @@ class FedAvgServer(BaseServer):
             self.round_init()
 
             self.local_round_done()
-            self.single_round()
+            self.single_round(round)
             self.test()
 
             self.round_finalize()
