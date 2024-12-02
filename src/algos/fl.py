@@ -169,11 +169,8 @@ class FedAvgServer(BaseServer):
         self.stats["test_loss"], self.stats["test_acc"], self.stats["test_time"] = test_loss, test_acc, time_taken
         return test_loss, test_acc, time_taken
 
-    def receive_attack_and_aggregate(self, round: int, attack_start_round: int, attack_end_round: int, dump_file_name: str = ""):
+    def receive_attack_and_aggregate(self, round: int, attack_start_round: int, attack_end_round: int):
         reprs = self.comm_utils.all_gather()
-
-        with open(dump_file_name, "wb") as f:
-            pickle.dump(reprs, f)
 
         # Handle GIA-specific logic
         if "gia" in self.config:
