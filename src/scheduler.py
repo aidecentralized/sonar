@@ -129,6 +129,7 @@ class Scheduler:
             rank=self.communication.get_rank(),
             comm_utils=self.communication,
         )
+
         self.communication.send_quorum()
 
     def run_job(self) -> None:

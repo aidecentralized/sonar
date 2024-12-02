@@ -1,11 +1,13 @@
 name: Test Training Code with gRPC
 
 on:
-  workflow_dispatch:
+  # used for debugging purposes
+  # workflow_dispatch:
   push:
     branches:
-      # - main
-      - "*"
+      # run test on push to main only
+      - main
+      # - "*"
   pull_request:
     branches:
       - main
@@ -16,6 +18,8 @@ env:
 jobs:
   train-check:
     runs-on: ubuntu-latest
+    env:
+      DEVICE: cpu
 
     steps:
       # Step 1: Checkout the code
@@ -35,7 +39,7 @@ jobs:
           sudo apt install -y libopenmpi-dev openmpi-bin
           sudo apt-get install -y libgl1 libglib2.0-0
 
-          pip install -r requirements.txt
+          pip install -r requirements_cpu.txt
 
       # Step 4: Run gRPC server and client
       - name: Run test

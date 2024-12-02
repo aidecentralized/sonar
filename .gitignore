@@ -5,6 +5,7 @@ di_test/
 imgs/
 pascal/
 data/
+!src/inversefed/data/
 notes.txt
 removeme*.png
 
