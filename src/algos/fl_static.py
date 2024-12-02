@@ -10,8 +10,6 @@ import torch
 from algos.base_class import BaseFedAvgClient
 from algos.topologies.collections import select_topology
 
-from utils.gias import gia_main
-
 class FedStaticNode(BaseFedAvgClient):
     """
     Federated Static Client Class.
