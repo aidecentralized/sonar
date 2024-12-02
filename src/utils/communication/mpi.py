@@ -153,8 +153,6 @@ class MPICommUtils(CommunicationInterface):
         """
         items: List[Any] = []
         for i in range(1, self.size):
-            print(f"receiving this data: {self.receive(i)}")
-            print(f"receiving this data: {self.receive(i)}")
             items.append(self.receive(i))
         return items
     
