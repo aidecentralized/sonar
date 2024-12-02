@@ -38,7 +38,6 @@ from utils.community_utils import (
 )
 from utils.types import ConfigType
 from utils.dropout_utils import NodeDropout
-from utils.gias import gia_main
 
 import torchvision.transforms as T  # type: ignore
 import os
@@ -761,7 +760,8 @@ class BaseClient(BaseNode):
         """
         Receives updates, launches GIA attack when second update is seen from a neighbor
         """
-        print("CLIENT RECEIVING ATTACK AND AGGREGATING")
+        from utils.gias import gia_main
+        
         if self.is_working:
             # Receive the model updates from the neighbors
             model_updates = self.comm_utils.receive(node_ids=neighbors)

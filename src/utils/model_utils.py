@@ -196,6 +196,7 @@ class ModelUtils:
                 output = nn.functional.log_softmax(output, dim=1)  # type: ignore
             if kwargs.get("gia", False):
                 from inversefed.reconstruction_algorithms import loss_steps
+                
                 # Sum the loss and create gradient graph like in loss_steps
                 # Use modified loss_steps function that returns loss
                 model.eval()
