@@ -227,7 +227,7 @@ class FedAvgServer(BaseServer):
         """
         
         # Determine if the attack should be performed
-        attack_in_progress = self.gia_attacker and attack_start_round <= round <= attack_end_round
+        attack_in_progress = hasattr(FedAvgServer, "gia_attacker") and attack_start_round <= round <= attack_end_round
         
         if attack_in_progress:
             self.receive_attack_and_aggregate(round, attack_start_round, attack_end_round)
