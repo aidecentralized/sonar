@@ -316,7 +316,7 @@ object_detect_system_config: ConfigType = {
     "exp_keys": [],
 }
 
-num_users = 9
+num_users = 3
 
 dropout_dict = {
     "distribution_dict": { # leave dict empty to disable dropout
@@ -346,8 +346,8 @@ grpc_system_config: ConfigType = {
     "seed": 2,
     "device_ids": get_device_ids(num_users, gpu_ids),
     # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
-    "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
-    "samples_per_user": 50000 // num_users,  # distributed equally
+    "algos": get_algo_configs(num_users=num_users, algo_configs=[traditional_fl]),  # type: ignore
+    "samples_per_user": 100,  # distributed equally
     "train_label_distribution": "non_iid",
     "test_label_distribution": "iid",
     "alpha_data": 1.0,

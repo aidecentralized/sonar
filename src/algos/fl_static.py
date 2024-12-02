@@ -71,7 +71,7 @@ class FedStaticServer(BaseFedAvgClient):
     def __init__(
         self, config: Dict[str, Any], comm_utils: CommunicationManager
     ) -> None:
-        pass
+        super().__init__(config, comm_utils)
 
     def run_protocol(self) -> None:
         pass
