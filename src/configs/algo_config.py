@@ -204,7 +204,6 @@ fedstatic: ConfigType = {
     "algo": "fedstatic",
     "topology": {"name": "watts_strogatz", "k": 3, "p": 0.2}, # type: ignore
     "rounds": 3,
-
     # Model parameters
     "optimizer": "sgd", # TODO comment out for real training
     "model": "resnet10",
@@ -363,3 +362,4 @@ malicious_algo_config_list: List[ConfigType] = [
 ]
 
 default_config_list: List[ConfigType] = [traditional_fl]
+# default_config_list: List[ConfigType] = [fedstatic, fedstatic, fedstatic, fedstatic]
