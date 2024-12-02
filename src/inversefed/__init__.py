@@ -3,7 +3,7 @@
 from inversefed import nn
 from inversefed.nn import construct_model, MetaMonkey
 
-from inversefed.data import construct_dataloaders
+# from inversefed.data import construct_dataloaders
 from inversefed.training import train
 from inversefed import utils
 

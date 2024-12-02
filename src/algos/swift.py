@@ -1,7 +1,7 @@
 """
 Module for FedStaticClient and FedStaticServer in Federated Learning.
 """
-from typing import Any, Dict, OrderedDict
+from typing import Any, Dict, OrderedDict, List
 from utils.communication.comm_utils import CommunicationManager
 import torch
 import time
@@ -20,6 +20,15 @@ class SwiftNode(FedStaticNode):
     ) -> None:
         super().__init__(config, comm_utils)
         assert self.streaming_aggregation == False, "Streaming aggregation not supported for push-based algorithms for now."
+
+    def get_neighbors(self) -> List[int]:
+        """
+        Returns a list of neighbours for the client.
+        """
+        neighbors = self.topology.sample_neighbours(self.num_collaborators, mode="push")
+        self.stats["neighbors"] = neighbors
+
+        return neighbors
 
     def run_protocol(self) -> None:
         """
