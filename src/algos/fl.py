@@ -229,12 +229,13 @@ class FedAvgServer(BaseServer):
             attack_end_round (int): The last round for the attack to be performed.
         """
         
-        # Normal training when outside the attack range
-
-        if round < attack_start_round or round > attack_end_round:
-            self.receive_and_aggregate()
+        # Determine if the attack should be performed
+        attack_in_progress = self.gia_attacker and attack_start_round <= round <= attack_end_round
+        
+        if attack_in_progress:
+            self.receive_attack_and_aggregate(round, attack_start_round, attack_end_round)
         else:
-            self.receive_attack_and_aggregate(round, attack_start_round, attack_end_round, dump_file_name)
+            self.receive_and_aggregate()
          
 
     def run_protocol(self):
