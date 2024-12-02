@@ -346,7 +346,7 @@ grpc_system_config: ConfigType = {
     "seed": 2,
     "device_ids": get_device_ids(num_users, gpu_ids),
     # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
-    "algos": get_algo_configs(num_users=num_users, algo_configs=[traditional_fl]),  # type: ignore
+    "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
     "samples_per_user": 100,  # distributed equally
     "train_label_distribution": "non_iid",
     "test_label_distribution": "iid",
