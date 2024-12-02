@@ -13,8 +13,6 @@ import resnet_in
 import yolo
 from utils.types import ConfigType
 
-from inversefed.reconstruction_algorithms import loss_steps
-
 class ModelUtils:
     def __init__(self, device: torch.device, config: ConfigType) -> None:
         self.device = device
@@ -197,6 +195,7 @@ class ModelUtils:
                 print("here, applying softmax")
                 output = nn.functional.log_softmax(output, dim=1)  # type: ignore
             if kwargs.get("gia", False):
+                from inversefed.reconstruction_algorithms import loss_steps
                 # Sum the loss and create gradient graph like in loss_steps
                 # Use modified loss_steps function that returns loss
                 model.eval()

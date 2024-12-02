@@ -361,6 +361,5 @@ malicious_algo_config_list: List[ConfigType] = [
     malicious_traditional_model_update_attack,
 ]
 
-
 default_config_list: List[ConfigType] = [traditional_fl]
 # default_config_list: List[ConfigType] = [fedstatic, fedstatic, fedstatic, fedstatic]
