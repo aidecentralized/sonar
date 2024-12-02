@@ -11,8 +11,6 @@ from algos.attack_add_noise import AddNoiseAttack
 from algos.attack_bad_weights import BadWeightsAttack
 from algos.attack_sign_flip import SignFlipAttack
 
-from utils.gias import gia_main
-
 import pickle
 
 class FedAvgClient(BaseClient):
@@ -174,9 +172,10 @@ class FedAvgServer(BaseServer):
 
         # Handle GIA-specific logic
         if "gia" in self.config:
+            from utils.gias import gia_main
+
             print("Server Running GIA attack")
             base_params = [key for key, _ in self.model.named_parameters()]
-            print(base_params)
 
             for rep in reprs:
                 client_id = rep["sender"]
@@ -216,7 +215,7 @@ class FedAvgServer(BaseServer):
         avg_wts = self.aggregate(reprs)
         self.set_representation(avg_wts)
 
-    def single_round(self, round: int, attack_start_round: int = 0, attack_end_round: int = 1):
+    def single_round(self, round: int = 0, attack_start_round: int = 0, attack_end_round: int = 1):
         """
         Runs the whole training procedure.
         
@@ -227,7 +226,7 @@ class FedAvgServer(BaseServer):
         """
         
         # Determine if the attack should be performed
-        attack_in_progress = hasattr(FedAvgServer, "gia_attacker") and attack_start_round <= round <= attack_end_round
+        attack_in_progress = hasattr(self, 'gia_attacker') and self.gia_attacker and attack_start_round <= round <= attack_end_round
         
         if attack_in_progress:
             self.receive_attack_and_aggregate(round, attack_start_round, attack_end_round)
