@@ -39,18 +39,16 @@ jobs:
           sudo apt install -y libopenmpi-dev openmpi-bin
           sudo apt-get install -y libgl1 libglib2.0-0
 
-          pip install -r requirements_cpu.txt
+          pip install -r requirements.txt
 
       # Step 4: Run gRPC server and client
       - name: Run test
         run: |
           cd src
-          # chmod +x ./configs/algo_config_test.py
-
           echo "starting main grpc"
-          python main_grpc.py -n 4 -host localhost 
+          python main_grpc.py -n 4 -host localhost -dev True
           echo "starting main"
-          python main.py -super true -s "./configs/sys_config_test.py"
+          python main.py -b "./configs/algo_config_test.py" -s "./configs/sys_config_test.py" -super true
           echo "done"
 
       # further checks:

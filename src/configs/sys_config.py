@@ -365,7 +365,8 @@ grpc_system_config: ConfigType = {
         "matlaber12": [0, 1, 2, 3],
         "matlaber3": [0, 1, 2, 3],
         "matlaber4": [0, 2, 3, 4, 5, 6, 7],
-    }
+    },
+    "workflow_test": False,
 }
 
 grpc_system_config_gia: ConfigType = {

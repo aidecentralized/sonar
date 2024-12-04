@@ -37,6 +37,7 @@ traditional_fl: ConfigType = {
     "model": "resnet10",
     "model_lr": 3e-4,
     "batch_size": 256,
+    "workflow_test": False,
 }
 
 test_fl_inversion: ConfigType = {
