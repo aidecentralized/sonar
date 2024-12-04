@@ -2,12 +2,12 @@ name: Test Training Code with gRPC
 
 on:
   # used for debugging purposes
-  workflow_dispatch:
+  # workflow_dispatch:
   push:
     branches:
       # run test on push to main only
-      # - main
-      - "*"
+      - main
+      # - "*"
   pull_request:
     branches:
       - main
