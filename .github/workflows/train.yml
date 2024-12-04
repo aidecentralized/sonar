@@ -6,8 +6,8 @@ on:
   push:
     branches:
       # run test on push to main only
-      - main
-      # - "*"
+      # - main
+      - "*"
   pull_request:
     branches:
       - main
