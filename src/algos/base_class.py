@@ -532,13 +532,6 @@ class BaseClient(BaseNode):
             if config.get("test_samples_per_class", None) is not None:
                 test_dset, _ = balanced_subset(test_dset, config["test_samples_per_class"])
 
-            #reduce test_dset size
-            if config.get("workflow_test", False):
-                print("Workflow testing: Reducing test size...")
-                reduced_test_size = 1000
-                indices = np.random.choice(len(test_dset), reduced_test_size, replace=False)
-                test_dset = Subset(test_dset, indices)
-
             samples_per_user = config["samples_per_user"]
             batch_size: int = config["batch_size"] # type: ignore
             print(f"samples per user: {samples_per_user}, batch size: {batch_size}")
@@ -693,7 +686,14 @@ class BaseClient(BaseNode):
             if self.dset.startswith("domainnet"):
                 test_dset = CacheDataset(test_dset)
 
+            # reduce test_dset size
+            if config.get("test_samples_per_user", 0) != 0:
+                print(f"Reducing test size to {config.get('test_samples_per_user', 0)}")
+                reduced_test_size = config.get("test_samples_per_user", 0)
+                indices = np.random.choice(len(test_dset), reduced_test_size, replace=False)
+                test_dset = Subset(test_dset, indices)
             print(f"test_dset size: {len(test_dset)}")
+
             self._test_loader = DataLoader(test_dset, batch_size=batch_size)
             # TODO: fix print_data_summary
             # self.print_data_summary(train_dset, test_dset, val_dset=val_dset)
