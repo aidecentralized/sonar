@@ -19,6 +19,10 @@ class CommunicationInterface(ABC):
         pass
 
     @abstractmethod
+    def send_quorum(self) -> Any:
+        pass
+
+    @abstractmethod
     def broadcast(self, data: Any):
         pass
 

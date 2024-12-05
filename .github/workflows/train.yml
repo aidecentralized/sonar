@@ -1,0 +1,58 @@
+name: Test Training Code with gRPC
+
+on:
+  # used for debugging purposes
+  # workflow_dispatch:
+  push:
+    branches:
+      # run test on push to main only
+      - main
+      # - "*"
+  pull_request:
+    branches:
+      - main
+
+env:
+  ACTIONS_STEP_DEBUG: true
+
+jobs:
+  train-check:
+    runs-on: ubuntu-latest
+    env:
+      DEVICE: cpu
+
+    steps:
+      # Step 1: Checkout the code
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Step 2: Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10" # Specify the Python version you're using
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y libopenmpi-dev openmpi-bin
+          sudo apt-get install -y libgl1 libglib2.0-0
+
+          pip install -r requirements_cpu.txt
+
+      # Step 4: Run gRPC server and client
+      - name: Run test
+        run: |
+          cd src
+          echo "starting main grpc"
+          python main_grpc.py -n 4 -host localhost -dev True
+          echo "starting main"
+          python main.py -b "./configs/algo_config_test.py" -s "./configs/sys_config_test.py" -super true
+          echo "done"
+
+      # further checks:
+      # only 5 rounds
+      # gRPC only? or also MPI?
+      # num of samples
+      # num users and nodes

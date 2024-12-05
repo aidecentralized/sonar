@@ -39,6 +39,18 @@ traditional_fl: ConfigType = {
     "batch_size": 256,
 }
 
+test_fl_inversion: ConfigType = {
+    # Collaboration setup
+    "algo": "fedavg",
+    "rounds": 5,
+    "optimizer": "sgd",
+    # Model parameters
+    "model": "resnet10",
+    "model_lr": 3e-4,
+    # "batch_size": 256,
+    "gia": True,
+}
+
 fedweight: ConfigType = {
     "algo": "fedweight",
     "num_rep": 1,
@@ -193,8 +205,8 @@ fedstatic: ConfigType = {
     "algo": "fedstatic",
     "topology": {"name": "watts_strogatz", "k": 3, "p": 0.2}, # type: ignore
     "rounds": 1,
-
     # Model parameters
+    "optimizer": "sgd", # TODO comment out for real training
     "model": "resnet10",
     "model_lr": 3e-4,
     "batch_size": 256,
@@ -350,6 +362,5 @@ malicious_algo_config_list: List[ConfigType] = [
     malicious_traditional_model_update_attack,
 ]
 
-
-# default_config_list: List[ConfigType] = [traditional_fl]
-default_config_list: List[ConfigType] = [fedstatic, fedstatic, fedstatic, fedstatic]
+default_config_list: List[ConfigType] = [traditional_fl]
+# default_config_list: List[ConfigType] = [fedstatic, fedstatic, fedstatic, fedstatic]

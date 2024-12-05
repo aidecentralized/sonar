@@ -130,6 +130,8 @@ class Scheduler:
             comm_utils=self.communication,
         )
 
+        self.communication.send_quorum()
+
     def run_job(self) -> None:
         self.node.run_protocol()
         self.communication.finalize()
