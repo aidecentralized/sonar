@@ -7,6 +7,7 @@ import torch
 
 from algos.base_class import BaseFedAvgClient
 from algos.topologies.collections import select_topology
+from utils.data_utils import get_dataset
 
 
 class FedStaticNode(BaseFedAvgClient):
@@ -71,7 +72,19 @@ class FedStaticServer(BaseFedAvgClient):
     def __init__(
         self, config: Dict[str, Any], comm_utils: CommunicationManager
     ) -> None:
-        super().__init__(config, comm_utils)
+        self.comm_utils = comm_utils
+        self.node_id = self.comm_utils.get_rank()
+        self.comm_utils.register_node(self)
+        self.is_working = True
+        if isinstance(config["dset"], dict):
+            if self.node_id != 0:
+                config["dset"].pop("0") # type: ignore
+            self.dset = str(config["dset"][str(self.node_id)]) # type: ignore
+            config["dpath"] = config["dpath"][self.dset]
+        else:
+            self.dset = config["dset"]
+        print(f"Node {self.node_id} getting dset at {self.dset}")
+        self.dset_obj = get_dataset(self.dset, dpath=config["dpath"])
 
     def run_protocol(self) -> None:
         pass

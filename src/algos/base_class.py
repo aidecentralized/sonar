@@ -113,7 +113,6 @@ class BaseNode(ABC):
         self.setup_cuda(config)
         self.model_utils = ModelUtils(self.device, config)
 
-        print("getting dataset!!")
         self.dset_obj = get_dataset(self.dset, dpath=config["dpath"])
 
         dropout_seed = 1 * config.get("num_users", 9) + self.node_id * config.get("num_users", 9) + config.get("seed", 20) # arbitrarily chosen
