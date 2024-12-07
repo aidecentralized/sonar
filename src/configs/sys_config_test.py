@@ -81,7 +81,6 @@ def get_algo_configs(
 CIFAR10_DSET = "cifar10"
 CIAR10_DPATH = "./datasets/imgs/cifar10/"
 
-# DUMP_DIR = "../../../../../../../home/"
 DUMP_DIR = "/tmp/"
 
 NUM_COLLABORATORS = 1

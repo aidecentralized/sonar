@@ -158,7 +158,7 @@ CIFAR10_DSET = "cifar10"
 CIAR10_DPATH = "./datasets/imgs/cifar10/"
 
 NUM_COLLABORATORS = 1
-DUMP_DIR = "/Users/kathryn/MIT/UROP/Media Lab/sonar_experiments/"
+DUMP_DIR = "/tmp/"
 
 num_users = 4
 
