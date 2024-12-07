@@ -45,12 +45,10 @@ jobs:
       - name: Run test
         run: |
           cd src
-          # chmod +x ./configs/algo_config_test.py
-
           echo "starting main grpc"
-          python main_grpc.py -n 4 -host localhost 
+          python main_grpc.py -n 4 -host localhost -dev True
           echo "starting main"
-          python main.py -super true -s "./configs/sys_config_test.py"
+          python main.py -b "./configs/algo_config_test.py" -s "./configs/sys_config_test.py" -super true
           echo "done"
 
       # further checks:

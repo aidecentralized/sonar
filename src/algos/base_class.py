@@ -265,8 +265,8 @@ class BaseNode(ABC):
                 )
             else:
                 raise ValueError(f"Unknown community type: {community_type}.")
-        if self.node_id == 0:
-            self.log_utils.log_console(f"Communities: {self.communities}")
+        # if self.node_id == 0:
+        #     self.log_utils.log_console(f"Communities: {self.communities}")
 
     def local_round_done(self) -> None:
         self.round += 1
@@ -685,6 +685,14 @@ class BaseClient(BaseNode):
 
             if self.dset.startswith("domainnet"):
                 test_dset = CacheDataset(test_dset)
+
+            # reduce test_dset size
+            if config.get("test_samples_per_user", 0) != 0:
+                print(f"Reducing test size to {config.get('test_samples_per_user', 0)}")
+                reduced_test_size = config.get("test_samples_per_user", 0)
+                indices = np.random.choice(len(test_dset), reduced_test_size, replace=False)
+                test_dset = Subset(test_dset, indices)
+            print(f"test_dset size: {len(test_dset)}")
 
             self._test_loader = DataLoader(test_dset, batch_size=batch_size)
             # TODO: fix print_data_summary
