@@ -160,8 +160,7 @@ CIAR10_DPATH = "./datasets/imgs/cifar10/"
 NUM_COLLABORATORS = 1
 DUMP_DIR = "/tmp/"
 
-num_users = 4
-
+num_users = 3
 mpi_system_config: ConfigType = {
     "exp_id": "",
     "comm": {"type": "MPI"},
@@ -175,11 +174,11 @@ mpi_system_config: ConfigType = {
     # The device_ids dictionary depicts the GPUs on which the nodes reside.
     # For a single-GPU environment, the config will look as follows (as it follows a 0-based indexing):
     #  "device_ids": {"node_0": [0], "node_1": [0], "node_2": [0], "node_3": [0]},
-    "device_ids": get_device_ids(num_users=4, gpus_available=[1, 2]),
+    "device_ids": get_device_ids(num_users=3, gpus_available=[1, 2]),
     # use this when the list needs to be imported from the algo_config
     # "algo": get_algo_configs(num_users=3, algo_configs=algo_configs_list),
     "algos": get_algo_configs(
-        num_users=4,
+        num_users=3,
         algo_configs=default_config_list
     ),  # type: ignore
     "samples_per_user": 5555,  # TODO: To model scenarios where different users have different number of samples
@@ -365,7 +364,7 @@ grpc_system_config: ConfigType = {
         "matlaber12": [0, 1, 2, 3],
         "matlaber3": [0, 1, 2, 3],
         "matlaber4": [0, 2, 3, 4, 5, 6, 7],
-    },
+    }
 }
 
 grpc_system_config_gia: ConfigType = {
@@ -388,6 +387,5 @@ grpc_system_config_gia: ConfigType = {
     "gia":True,
     "gia_attackers":[1]
 }
-  
 current_config = grpc_system_config
 # current_config = mpi_system_config

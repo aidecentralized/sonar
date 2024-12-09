@@ -120,7 +120,7 @@ grpc_system_config: ConfigType = {
     "alpha_data": 1.0,
     "exp_keys": [],
     "dropout_dicts": dropout_dicts,
-    "test_samples_per_user": 1000,
+    "test_samples_per_user": 200,
     "log_memory": True,
     # "streaming_aggregation": True, # Make it true for fedstatic
     "assign_based_on_host": True,
@@ -129,6 +129,6 @@ grpc_system_config: ConfigType = {
         "matlaber12": [0, 1, 2, 3],
         "matlaber3": [0, 1, 2, 3],
         "matlaber4": [0, 2, 3, 4, 5, 6, 7],
-    },
+    }
 }
 current_config = grpc_system_config
