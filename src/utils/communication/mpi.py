@@ -48,6 +48,7 @@ class MPICommUtils(CommunicationInterface):
     def send_quorum(self) -> Any:
         # return super().send_quorum(node_ids)
         pass
+    
     def register_self(self, obj: "BaseNode"):
         self.base_node = obj
     
@@ -75,6 +76,7 @@ class MPICommUtils(CommunicationInterface):
                 self.comm.recv(source=dest, tag=1)
                 self.send(dest)
         print(f"Node {self.rank} listener thread ended")
+
     def get_model(self) -> List[OrderedDict[str, Tensor]] | None:
         print(f"getting model from {self.rank}, {self.base_node}")
         if not self.base_node:
