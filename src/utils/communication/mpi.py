@@ -48,7 +48,7 @@ class MPICommUtils(CommunicationInterface):
     def send_quorum(self) -> Any:
         # return super().send_quorum(node_ids)
         pass
-
+    
     def register_self(self, obj: "BaseNode"):
         self.base_node = obj
     

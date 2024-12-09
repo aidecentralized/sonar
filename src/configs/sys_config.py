@@ -158,7 +158,6 @@ CIFAR10_DSET = "cifar10"
 CIAR10_DPATH = "./datasets/imgs/cifar10/"
 
 NUM_COLLABORATORS = 1
-# DUMP_DIR = "../../../../../../../home/"
 DUMP_DIR = "/tmp/"
 
 num_users = 3
@@ -391,4 +390,3 @@ grpc_system_config_gia: ConfigType = {
 
 current_config = grpc_system_config
 # current_config = mpi_system_config
-
