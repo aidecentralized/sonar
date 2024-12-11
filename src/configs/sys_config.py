@@ -356,6 +356,31 @@ grpc_system_config: ConfigType = {
     "test_samples_per_user": 200,
 }
 
+num_users = 3
+dropout_dict = {}
+dropout_dicts = {"node_0": {}}
+for i in range(1, num_users + 1):
+    dropout_dicts[f"node_{i}"] = dropout_dict
+gpu_ids = [6]
+medmnist_grpc_config: ConfigType = {
+    "exp_id": "mednist_test2",
+    "num_users": num_users,
+    "num_collaborators": NUM_COLLABORATORS,
+    "comm": {"type": "GRPC", "synchronous": True, "peer_ids": ["matlaber1.media.mit.edu:1112"]},  # The super-node
+    "dset": "bloodmnist",
+    "dump_dir": DUMP_DIR,
+    "dpath": "./datasets/imgs/bloodmnist/",
+    "seed": 2,
+    "device_ids": get_device_ids(num_users, gpu_ids),
+    # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
+    "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
+    "samples_per_user": 50000 // num_users,  # distributed equally
+    "train_label_distribution": "iid",
+    "test_label_distribution": "iid",
+    "exp_keys": [],
+    "dropout_dicts": dropout_dicts,
+    "test_samples_per_user": 200,
+}
 
 num_users = 3
 dropout_dict = {}
@@ -367,8 +392,9 @@ for i in range(1, num_users + 1):
 # for swift, synchronous should preferable be False
 gpu_ids = [6, 7]
 rtc_config: ConfigType = {
-    "exp_id": "test_rtc",
+    "exp_id": "test_rtc8",
     "num_users": num_users,
+    "session_id": 1111,
     "num_collaborators": NUM_COLLABORATORS,
     "comm": {"type": "RTC"},
     "dset": CIFAR10_DSET,

@@ -61,6 +61,34 @@ class FedStaticNode(BaseFedAvgClient):
 
             self.round_finalize()
 
+    async def run_async_protocol(self) -> None:
+        """
+        Asynchronous version of run_protocol
+        """
+        print(f"Client {self.node_id} ready to start training")
+        start_round = self.config.get("start_round", 0)
+        if start_round != 0:
+            raise NotImplementedError(
+                "Start round different from 0 not implemented yet"
+            )
+        total_rounds = self.config["rounds"]
+        epochs_per_round = self.config.get("epochs_per_round", 1)
+        for it in range(start_round, total_rounds):
+            self.round_init()
+
+            # Train locally and send the representation to the server
+            self.local_train(
+                it, epochs_per_round
+            )
+            self.local_round_done()
+            # Collect the representations from all other nodes from the server
+            neighbors = self.get_neighbors()
+            await self.receive_and_aggregate_async(neighbors)
+            # evaluate the model on the test data
+            self.local_test()
+
+            self.round_finalize()
+
 
 
 class FedStaticServer(BaseFedAvgClient):

@@ -102,8 +102,14 @@ class RTCCommUtils(CommunicationInterface):
             self.state = new_state
             self.logger.info(f"Node {self.rank} state changed to {new_state}")
 
+    def register_node(self, obj: "BaseNode"):
+        self.base_node = obj
+        
     def register_self(self, obj: "BaseNode"):
         self.base_node = obj
+
+    def get_rank(self) -> int:
+        return self.rank
 
     async def setup_data_channel(self, channel: RTCDataChannel, peer_rank: int):
         """
@@ -534,7 +540,7 @@ class RTCCommUtils(CommunicationInterface):
                 
                 # Wait for the network to be ready with a timeout
                 try:
-                    network_ready = await asyncio.wait_for(wait_for_network_ready(), timeout=60.0)
+                    network_ready = await asyncio.wait_for(wait_for_network_ready(), timeout=600.0)
                     if not network_ready:
                         raise RuntimeError("Network initialization failed")
                 except asyncio.TimeoutError:
