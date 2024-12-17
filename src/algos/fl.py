@@ -37,52 +37,52 @@ class FedAvgClient(BaseClient):
         return test_loss, test_acc, time_taken
 
 
-    def get_model_weights(self, **kwargs: Any) -> Dict[str, Any]:
-        """
-        Overwrite the get_model_weights method of the BaseNode
-        to add malicious attacks
-        TODO: this should be moved to BaseClient
-        """
+    # def get_model_weights(self, **kwargs: Any) -> Dict[str, Any]:
+    #     """
+    #     Overwrite the get_model_weights method of the BaseNode
+    #     to add malicious attacks
+    #     TODO: this should be moved to BaseClient
+    #     """
 
-        message = {"sender": self.node_id, "round": self.round}
+    #     message = {"sender": self.node_id, "round": self.round}
 
-        malicious_type = self.config.get("malicious_type", "normal")
+    #     malicious_type = self.config.get("malicious_type", "normal")
 
-        if malicious_type == "normal":
-            message["model"] = self.model.state_dict()  # type: ignore
-        elif malicious_type == "bad_weights":
-            # Corrupt the weights
-            message["model"] = BadWeightsAttack(
-                self.config, self.model.state_dict()
-            ).get_representation()
-        elif malicious_type == "sign_flip":
-            # Flip the sign of the weights, also TODO: consider label flipping
-            message["model"] = SignFlipAttack(
-                self.config, self.model.state_dict()
-            ).get_representation()
-        elif malicious_type == "add_noise":
-            # Add noise to the weights
-            message["model"] = AddNoiseAttack(
-                self.config, self.model.state_dict()
-            ).get_representation()
-        else:
-            message["model"] = self.model.state_dict()  # type: ignore
+    #     if malicious_type == "normal":
+    #         message["model"] = self.model.state_dict()  # type: ignore
+    #     elif malicious_type == "bad_weights":
+    #         # Corrupt the weights
+    #         message["model"] = BadWeightsAttack(
+    #             self.config, self.model.state_dict()
+    #         ).get_representation()
+    #     elif malicious_type == "sign_flip":
+    #         # Flip the sign of the weights, also TODO: consider label flipping
+    #         message["model"] = SignFlipAttack(
+    #             self.config, self.model.state_dict()
+    #         ).get_representation()
+    #     elif malicious_type == "add_noise":
+    #         # Add noise to the weights
+    #         message["model"] = AddNoiseAttack(
+    #             self.config, self.model.state_dict()
+    #         ).get_representation()
+    #     else:
+    #         message["model"] = self.model.state_dict()  # type: ignore
 
-        # move the model to cpu before sending
-        for key in message["model"].keys():
-            message["model"][key] = message["model"][key].to("cpu")
+    #     # move the model to cpu before sending
+    #     for key in message["model"].keys():
+    #         message["model"][key] = message["model"][key].to("cpu")
 
-        # assert hasattr(self, 'images') and hasattr(self, 'labels'), "Images and labels not found"
-        if "gia" in self.config and hasattr(self, 'images') and hasattr(self, 'labels'):
-            # also stream image and labels
-            message["images"] = self.images.to("cpu")
-            message["labels"] = self.labels.to("cpu")
+    #     # assert hasattr(self, 'images') and hasattr(self, 'labels'), "Images and labels not found"
+    #     if "gia" in self.config and hasattr(self, 'images') and hasattr(self, 'labels'):
+    #         # also stream image and labels
+    #         message["images"] = self.images.to("cpu")
+    #         message["labels"] = self.labels.to("cpu")
 
-            message["random_params"] = self.random_params
-            for key in message["random_params"].keys():
-                message["random_params"][key] = message["random_params"][key].to("cpu")
+    #         message["random_params"] = self.random_params
+    #         for key in message["random_params"].keys():
+    #             message["random_params"][key] = message["random_params"][key].to("cpu")
     
-        return message  # type: ignore
+    #     return message  # type: ignore
 
     def run_protocol(self):
         print(f"Client {self.node_id} ready to start training")
