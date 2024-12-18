@@ -88,7 +88,7 @@ class ModelUtils:
                 model, optim, dloader, loss_fn, device, test_loader=None, **kwargs
             )
             return mean_loss, acc
-        elif self.malicious_type == "backdoor_attack" or self.malicious_type == "gradient_attack":
+        elif self.malicious_type == "backdoor_attack" or self.malicious_type == "gradient_attack" or self.malicious_type == "label_flip":
             train_loss, acc = self.train_classification_malicious(
                 model, optim, dloader, loss_fn, device, test_loader=None, **kwargs
             )
@@ -308,6 +308,7 @@ class ModelUtils:
                 loss.backward()
             elif self.malicious_type == "label_flip":
                 # permutation = torch.tensor(self.config.get("permutation", [i for i in range(10)]))
+                print("flipping labels")
                 permute_labels = self.config.get("permute_labels", 10)
                 permutation = torch.randperm(permute_labels)
                 permutation = permutation.to(target.device)
