@@ -251,7 +251,8 @@ class BaseNode(ABC):
             else:
                 raise ValueError(f"Unknown community type: {community_type}.")
         if self.node_id == 0:
-            self.log_utils.log_console(f"Communities: {self.communities}")
+            print("skipping community setup")
+            # self.log_utils.log_console(f"Communities: {self.communities}")
 
     def local_round_done(self) -> None:
         self.round += 1

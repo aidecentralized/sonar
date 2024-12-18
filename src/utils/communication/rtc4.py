@@ -136,6 +136,7 @@ class RTCCommUtils(CommunicationInterface):
             }))
 
         if len(self.connected_peers) == self.expected_connections:
+            print(f"Node {self.rank} broadcasting node ready")
             self.broadcast_node_ready()
 
     def connection_worker(self):
@@ -380,6 +381,7 @@ class RTCCommUtils(CommunicationInterface):
         # Set the variables to class variables
         max_clients = self.size
         session_id = self.session_id
+        print("before initializing, rank is", self.rank)
 
         try:
             # Initialize the websocket connection
@@ -424,6 +426,7 @@ class RTCCommUtils(CommunicationInterface):
             return False
 
     def wait_for_network_ready(self) -> bool:
+        print("Waiting for network to be ready")
         try:
             start_time = time.time()
             timeout = 600.0  # 600 second timeout
@@ -435,8 +438,10 @@ class RTCCommUtils(CommunicationInterface):
                     self.logger.info(f"Received message: {data['type']}")
 
                     if data['type'] == 'topology':
+                        print("Received topology")
                         self.handle_topology(data)
                     elif data['type'] == 'signal':
+                        print("Received signaling message")
                         self.handle_signaling_message(data)
                     elif data['type'] == 'network_ready':
                         self.change_state(NodeState.READY)
@@ -466,9 +471,16 @@ class RTCCommUtils(CommunicationInterface):
 
         self.neighbors = new_neighbors
         self.expected_connections = len(new_neighbors)
+        print("Expected connections:", self.expected_connections)
+
+        if self.expected_connections == 0:
+            print(f"Node {self.rank} broadcasting node ready")
+            self.broadcast_node_ready()
 
         # Only initiate connections to higher-ranked neighbors
         for neighbor_rank in self.neighbors.values():
+            if neighbor_rank is None:
+                continue
             if (neighbor_rank not in self.connections and
                 neighbor_rank not in self.pending_connections):
                 self.logger.info(f"Node {self.rank} queueing connection to {neighbor_rank}")

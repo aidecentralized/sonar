@@ -35,7 +35,7 @@ from algos.fl_push import FedAvgPushClient, FedAvgPushServer
 from utils.communication.comm_utils import CommunicationManager
 from utils.config_utils import load_config, process_config
 from utils.log_utils import copy_source_code, check_and_create_path
-from utils.communication.rtc3 import NodeState
+from utils.communication.rtc4 import NodeState
 
 # Mapping of algorithm names to their corresponding client and server classes so that they can be consumed by the scheduler later on.
 algo_map: Dict[str, List[FedAvgClient]] = { # type: ignore

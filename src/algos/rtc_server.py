@@ -54,8 +54,9 @@ class SignalingServer:
         #     'east': row * grid_size + ((col + 1) % grid_size)
         # }
         neighbor = rank + 1 if rank + 1 < len(session.clients) else 1
-        if rank == 0: return {'neighbor': None}
-        return {'neighbor': (rank + 1) % len(session.clients)}
+        if rank == 0: return {}
+        return {'neighbor1': neighbor}
+        # return {'neighbor': (rank + 1) % len(session.clients)}
 
     async def handle_client(self, websocket: websockets.WebSocketServerProtocol):
         try:
@@ -117,7 +118,7 @@ class SignalingServer:
 
                 else:
                     session = self.sessions[session_id]
-                    if len(session.clients) >= session.max_clients:
+                    if len(session.clients) > session.max_clients:
                         await websocket.send(json.dumps({
                             'type': 'error',
                             'message': 'Session is full'
@@ -175,6 +176,7 @@ class SignalingServer:
                     pass
                 elif data['type'] == "node_ready":
                     session.num_ready += 1
+                    print("Upating num_ready to ", session.num_ready)
                     await self.check_session_ready(session)
 
 
@@ -236,7 +238,8 @@ class SignalingServer:
         # )
 
         all_ready = session.num_ready == len(session.clients)
-        
+        print(f"All ready: {all_ready}: {session.num_ready} / {len(session.clients)}")
+
         if all_ready:
             logging.info(f"All nodes in session {session.session_id} are connected!")
             await self.broadcast_network_ready(session)
