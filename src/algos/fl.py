@@ -113,7 +113,7 @@ class FedAvgServer(BaseServer):
             self.config["results_path"], self.node_id
         )
 
-    def fed_avg(self, model_wts: List[OrderedDict[str, Tensor]]):
+    def fed_avg(self, model_wts: List[OrderedDict[str, Tensor]]) -> OrderedDict[str, Tensor]:
         num_users = len(model_wts)
         coeff = 1 / num_users
         avgd_wts: OrderedDict[str, Tensor] = OrderedDict()
