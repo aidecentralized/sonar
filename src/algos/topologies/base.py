@@ -4,7 +4,7 @@ from typing import List
 import numpy as np
 import networkx as nx
 
-from utils.types import ConfigType
+from utils.custom_types import ConfigType
 
 class BaseTopology(ABC):
     """

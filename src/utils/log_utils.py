@@ -15,7 +15,7 @@ from torchvision.utils import make_grid, save_image  # type: ignore
 from tensorboardX import SummaryWriter  # type: ignore
 import numpy as np
 import pandas as pd
-from utils.types import ConfigType
+from utils.custom_types import ConfigType
 import json
 import matplotlib.pyplot as plt
 

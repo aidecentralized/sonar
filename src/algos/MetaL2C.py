@@ -398,7 +398,7 @@ class MetaL2CServer(BaseFedAvgServer):
         total_rounds = self.config["rounds"]
 
         stats = []
-        avg_alpha = None
+        avg_alpha : Dict[str, torch.Tensor] = {}
         for cur_round in range(start_round, total_rounds):
             self.round = cur_round
             self.log_utils.log_console(f"Starting round {cur_round}")

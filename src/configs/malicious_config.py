@@ -1,5 +1,5 @@
 # Malicious Configuration
-from utils.types import ConfigType
+from utils.custom_types import ConfigType
 from typing import Dict
 
 # Weight Update Attacks

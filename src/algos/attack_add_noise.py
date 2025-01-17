@@ -19,7 +19,7 @@ import random
 from collections import OrderedDict
 from typing import Dict
 from torch import Tensor
-from utils.types import ConfigType
+from utils.custom_types import ConfigType
 
 
 class AddNoiseAttack:

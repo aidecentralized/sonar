@@ -36,7 +36,7 @@ from utils.community_utils import (
     get_dset_balanced_communities,
     get_dset_communities,
 )
-from utils.types import ConfigType
+from utils.custom_types import ConfigType
 from utils.dropout_utils import NodeDropout
 
 import torchvision.transforms as T  # type: ignore

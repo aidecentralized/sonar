@@ -1,7 +1,7 @@
 from typing import Dict, List
 from .malicious_config import malicious_config_list
 import random
-from utils.types import ConfigType
+from utils.custom_types import ConfigType
 
 
 def get_malicious_types(malicious_config_list: List[ConfigType]) -> Dict[str, str]:
