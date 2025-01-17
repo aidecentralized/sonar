@@ -1,5 +1,5 @@
 from algos.topologies.base import BaseTopology
-from utils.types import ConfigType
+from utils.custom_types import ConfigType
 
 from math import ceil
 import networkx as nx

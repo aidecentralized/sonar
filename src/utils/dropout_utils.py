@@ -1,5 +1,5 @@
 import random
-from utils.types import ConfigType
+from utils.custom_types import ConfigType
 
 class NodeDropout:
     """

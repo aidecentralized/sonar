@@ -1,4 +1,4 @@
-from utils.types import ConfigType
+from utils.custom_types import ConfigType
 
 fedstatic: ConfigType = {
     # Collaboration setup

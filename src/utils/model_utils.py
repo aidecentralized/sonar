@@ -11,7 +11,7 @@ import resnet
 import resnet_in
 
 import yolo
-from utils.types import ConfigType
+from utils.custom_types import ConfigType
 
 class ModelUtils:
     def __init__(self, device: torch.device, config: ConfigType) -> None:

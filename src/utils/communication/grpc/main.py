@@ -9,7 +9,7 @@ import socket
 import functools
 from typing import Any, Callable, Dict, List, OrderedDict, Union, TYPE_CHECKING, Set
 from urllib.parse import unquote
-import grpc # type: ignore
+import grpc #  
 from torch import Tensor
 from utils.communication.grpc.grpc_utils import deserialize_model, serialize_model, serialize_message, deserialize_message
 import os
@@ -38,15 +38,15 @@ MAX_MESSAGE_LENGTH = 200 * 1024 * 1024 # 200MB
 # 4. Probably a good idea to move the Servicer class to a separate file
 # 5. Not needed for benchmarking but for the system to be robust, we need to implement timeouts and fault tolerance
 # 6. Peer_ids should be indexed by a unique identifier
-# 7. Try to get rid of type: ignore as much as possible
+# 7. Try to get rid of type:ignore as much as possible
 
 
 def is_port_available(port: int) -> bool:
     """
     Check if a port is available for use.
     """
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:  # type: ignore
-        return s.connect_ex(("localhost", port)) != 0  # type: ignore
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:  #  
+        return s.connect_ex(("localhost", port)) != 0  #  
 
 
 def get_port(rank: int, num_users: int) -> int:
@@ -122,30 +122,30 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
         self.base_node = obj
 
     @update_communication_cost
-    def send_model(self, request: comm_pb2.Model, context) -> comm_pb2.Empty:  # type: ignore
+    def send_model(self, request: comm_pb2.Model, context) -> comm_pb2.Empty:  #  
         deserialized_message = deserialize_message(request.buffer)
-        self.received_data.put(deserialized_message)  # type: ignore
-        return comm_pb2.Empty()  # type: ignore
+        self.received_data.put(deserialized_message)  #  
+        return comm_pb2.Empty()  #  
 
     @update_communication_cost
     def get_rank(self, request: comm_pb2.Empty, context: grpc.ServicerContext) -> comm_pb2.Rank | None:  
         try:
             with self.lock:
-                peer = context.peer()  # type: ignore
+                peer = context.peer()  #  
                 # parse the hostname from peer
-                peer_str = parse_peer_address(peer)  # type: ignore
+                peer_str = parse_peer_address(peer)  #  
                 rank = len(self.peer_ids)
                 # TODO: index the peer_ids by a unique identifier
                 self.peer_ids[rank] = {"rank": rank, "port": 0, "ip": peer_str}
                 rank = self.peer_ids[rank].get("rank", -1)  # Default to -1 if not found
-            return comm_pb2.Rank(rank=rank)  # type: ignore
+            return comm_pb2.Rank(rank=rank)  #  
         except Exception as e:
-            context.abort(grpc.StatusCode.INTERNAL, f"Error in get_rank: {str(e)}")  # type: ignore
+            context.abort(grpc.StatusCode.INTERNAL, f"Error in get_rank: {str(e)}")  #  
 
     @update_communication_cost
     def get_model(self, request: comm_pb2.Empty, context: grpc.ServicerContext) -> comm_pb2.Model | None:
         if not self.base_node:
-            context.abort(grpc.StatusCode.INTERNAL, "Base node not registered") # type: ignore
+            context.abort(grpc.StatusCode.INTERNAL, "Base node not registered") #  
             raise Exception("Base node not registered")
         with self.lock:
             message_to_send = self.base_node.get_model_weights()
@@ -154,13 +154,13 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
                 if "model" in message_to_send:
                     del message_to_send["model"]
                 message_to_send[EMPTY_MODEL_TAG] = True
-            model = comm_pb2.Model(buffer=serialize_message(message_to_send)) # type: ignore
+            model = comm_pb2.Model(buffer=serialize_message(message_to_send)) #  
             return model
 
     @update_communication_cost
     def get_current_round(self, request: comm_pb2.Empty, context: grpc.ServicerContext) -> comm_pb2.Round | None:
         if not self.base_node:
-            context.abort(grpc.StatusCode.INTERNAL, "Base node not registered") # type: ignore
+            context.abort(grpc.StatusCode.INTERNAL, "Base node not registered") #  
             raise Exception("Base node not registered")
         with self.lock:
             round = comm_pb2.Round(round=self.base_node.get_local_rounds())
@@ -172,33 +172,33 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
         with self.lock:
             # FIXME: This is a security vulnerability because
             # any node can update the ip and port of any other node
-            self.peer_ids[request.rank.rank]["ip"] = request.ip  # type: ignore
-            self.peer_ids[request.rank.rank]["port"] = request.port.port  # type: ignore
-            return comm_pb2.Empty()  # type: ignore
+            self.peer_ids[request.rank.rank]["ip"] = request.ip  #  
+            self.peer_ids[request.rank.rank]["port"] = request.port.port  #  
+            return comm_pb2.Empty()  #  
 
-    def send_peer_ids(self, request: comm_pb2.PeerIds, context) -> comm_pb2.Empty:  # type: ignore
+    def send_peer_ids(self, request: comm_pb2.PeerIds, context) -> comm_pb2.Empty:  #  
         """
         Used by the super node to update all peers with the peer_ids
         after achieving quorum.
         """
-        peer_ids: comm_pb2.PeerIds = request.peer_ids  # type: ignore
-        for rank in peer_ids:  # type: ignore
-            peer_id_proto = peer_ids[rank]  # type: ignore
+        peer_ids: comm_pb2.PeerIds = request.peer_ids  #  
+        for rank in peer_ids:  #  
+            peer_id_proto = peer_ids[rank]  #  
             peer_id_dict: Dict[str, Union[int, str]] = {
-                "rank": peer_id_proto.rank.rank,  # type: ignore
-                "port": peer_id_proto.port.port,  # type: ignore
-                "ip": peer_id_proto.ip,  # type: ignore
+                "rank": peer_id_proto.rank.rank,  #  
+                "port": peer_id_proto.port.port,  #  
+                "ip": peer_id_proto.ip,  #  
             }
             self.peer_ids[rank] = peer_id_dict
         return comm_pb2.Empty()
 
-    def send_quorum(self, request, context) -> comm_pb2.Empty:  # type: ignore
-        self.quorum.put(request.quorum)  # type: ignore
-        return comm_pb2.Empty()  # type: ignore
+    def send_quorum(self, request, context) -> comm_pb2.Empty:  #  
+        self.quorum.put(request.quorum)  #  
+        return comm_pb2.Empty()  #  
 
-    def send_finished(self, request, context) -> comm_pb2.Empty: # type: ignore
-        self.finished.put(request.rank)  # type: ignore
-        return comm_pb2.Empty()  # type: ignore
+    def send_finished(self, request, context) -> comm_pb2.Empty: #  
+        self.finished.put(request.rank)  #  
+        return comm_pb2.Empty()  #  
 
 class GRPCCommunication(CommunicationInterface):
     def __init__(self, config: Dict[str, Dict[str, Any]]):
@@ -211,7 +211,7 @@ class GRPCCommunication(CommunicationInterface):
         # 2. Once a threshold number of peers have registered, the super node sets quorum to True
         # 3. The super node broadcasts the peer_ids to all peers
         # 4. The nodes will execute rest of the protocol in the same way as before
-        self.num_users: int = int(config["num_users"])  # type: ignore
+        self.num_users: int = int(config["num_users"])  #  
         self.rank: int | None = config["comm"]["rank"]
         # TODO: Get rid of peer_ids now that we are passing [comm][host]
         self.super_node_host: str = config["comm"]["peer_ids"][0]
@@ -237,7 +237,7 @@ class GRPCCommunication(CommunicationInterface):
         self.servicer.register_self(obj)
 
     def recv_with_retries(self, host: str, callback: Callable[[comm_pb2_grpc.CommunicationServerStub], Any]) -> Any:
-        with grpc.insecure_channel(host, options=[ # type: ignore
+        with grpc.insecure_channel(host, options=[ #  
         ('grpc.max_send_message_length', MAX_MESSAGE_LENGTH),
         ('grpc.max_receive_message_length', MAX_MESSAGE_LENGTH),
     ]) as channel:
@@ -263,30 +263,30 @@ class GRPCCommunication(CommunicationInterface):
         3. The node updates its port and sends the updated peer_ids to the super node
         """
         def callback_fn(stub: comm_pb2_grpc.CommunicationServerStub) -> int:
-            rank_data = stub.get_rank(comm_pb2.Empty()) # type: ignore
+            rank_data = stub.get_rank(comm_pb2.Empty()) #  
             with self.servicer.lock:
                 self.servicer.communication_cost_received += rank_data.ByteSize()
-            return rank_data.rank # type: ignore
+            return rank_data.rank #  
 
         self.rank = self.recv_with_retries(self.super_node_host, callback_fn)
-        self.port = get_port(self.rank, self.num_users)  # type: ignore because we are setting it in the register method
-        rank = comm_pb2.Rank(rank=self.rank)  # type: ignore
+        self.port = get_port(self.rank, self.num_users)  #   because we are setting it in the register method
+        rank = comm_pb2.Rank(rank=self.rank)  #  
         port = comm_pb2.Port(port=self.port)
         peer_id = comm_pb2.PeerId(rank=rank, port=port, ip=self.host)
 
-        with grpc.insecure_channel(self.super_node_host) as channel:  # type: ignore
+        with grpc.insecure_channel(self.super_node_host) as channel:  #  
             stub = comm_pb2_grpc.CommunicationServerStub(channel)
-            stub.update_port(peer_id)  # type: ignore
+            stub.update_port(peer_id)  #  
 
     def start_listener(self):
-        self.listener: grpc.Server = grpc.server(  # type: ignore
+        self.listener: grpc.Server = grpc.server(  #  
             futures.ThreadPoolExecutor(max_workers=4),
-            options=[  # type: ignore
+            options=[  #  
                 ("grpc.max_send_message_length", 100 * 1024 * 1024),  # 100MB
                 ("grpc.max_receive_message_length", 100 * 1024 * 1024),  # 100MB
             ],
         )
-        comm_pb2_grpc.add_CommunicationServerServicer_to_server(self.servicer, self.listener)  # type: ignore
+        comm_pb2_grpc.add_CommunicationServerServicer_to_server(self.servicer, self.listener)  #  
         address = f"{self.host}:{self.port}"
         self.listener.add_insecure_port(address)
         self.listener.start()
@@ -297,8 +297,8 @@ class GRPCCommunication(CommunicationInterface):
     ) -> Dict[int, comm_pb2.PeerId]:
         peer_ids_proto: Dict[int, comm_pb2.PeerId] = {}
         for peer_id in peer_ids:
-            rank = comm_pb2.Rank(rank=peer_ids[peer_id].get("rank"))  # type: ignore
-            port = comm_pb2.Port(port=peer_ids[peer_id].get("port"))  # type: ignore
+            rank = comm_pb2.Rank(rank=peer_ids[peer_id].get("rank"))  #  
+            port = comm_pb2.Port(port=peer_ids[peer_id].get("port"))  #  
             ip = str(peer_ids[peer_id].get("ip"))
             peer_ids_proto[peer_id] = comm_pb2.PeerId(rank=rank, port=port, ip=ip)
         return peer_ids_proto
@@ -337,13 +337,13 @@ class GRPCCommunication(CommunicationInterface):
                     port = self.servicer.peer_ids[peer_id].get("port")
                     address = f"{host_ip}:{port}"
                     print(f"Sending peer_ids to {address}")
-                    with grpc.insecure_channel(address) as channel:  # type: ignore
+                    with grpc.insecure_channel(address) as channel:  #  
                         stub = comm_pb2_grpc.CommunicationServerStub(channel)
                         proto_msg = comm_pb2.PeerIds(
                             peer_ids=self.peer_ids_to_proto(self.servicer.peer_ids)
                         )
-                        stub.send_peer_ids(proto_msg)  # type: ignore
-                        # stub.send_quorum(comm_pb2.Quorum(quorum=True))  # type: ignore
+                        stub.send_peer_ids(proto_msg)  #  
+                        # stub.send_quorum(comm_pb2.Quorum(quorum=True))  #  
     
     def send_quorum(self):
         """ Send the quorum status to all nodes after peer IDs are sent. """
@@ -351,25 +351,25 @@ class GRPCCommunication(CommunicationInterface):
             for peer_id in self.servicer.peer_ids:
                 if not self.is_own_id(peer_id):
                     host = self.get_host_from_rank(peer_id)
-                    with grpc.insecure_channel(host) as channel:  # type: ignore
+                    with grpc.insecure_channel(host) as channel:  #  
                         stub = comm_pb2_grpc.CommunicationServerStub(channel)
-                        stub.send_quorum(comm_pb2.Quorum(quorum=True))  # type: ignore
+                        stub.send_quorum(comm_pb2.Quorum(quorum=True))  #  
             print(f"Quorum status sent to all nodes.")
 
     def get_host_from_rank(self, rank: int) -> str:
         for peer_id in self.servicer.peer_ids:
             if self.servicer.peer_ids[peer_id].get("rank") == rank:
-                return self.servicer.peer_ids[peer_id].get("ip") + ":" + str(self.servicer.peer_ids[peer_id].get("port"))  # type: ignore
+                return self.servicer.peer_ids[peer_id].get("ip") + ":" + str(self.servicer.peer_ids[peer_id].get("port"))  #  
         raise Exception(f"Rank {rank} not found in peer_ids")
 
     def send_with_retries(self, dest_host: str, buffer: Any) -> Any:
-        with grpc.insecure_channel(dest_host) as channel:  # type: ignore
-            stub = comm_pb2_grpc.CommunicationServerStub(channel)  # type: ignore
+        with grpc.insecure_channel(dest_host) as channel:  #  
+            stub = comm_pb2_grpc.CommunicationServerStub(channel)  #  
             max_tries = 10
             while max_tries > 0:
                 try:
-                    model = comm_pb2.Model(buffer=buffer)  # type: ignore
-                    stub.send_model(model)  # type: ignore
+                    model = comm_pb2.Model(buffer=buffer)  #  
+                    stub.send_model(model)  #  
                 except grpc.RpcError as e:
                     print(f"RPC failed {10 - max_tries} times: {e}", "Retrying...")
                     # sleep for a random time between 1 and 10 seconds
@@ -410,10 +410,10 @@ class GRPCCommunication(CommunicationInterface):
             raise Exception("Base node not registered")
         self_round = self.servicer.base_node.get_local_rounds()
         def callback_fn(stub: comm_pb2_grpc.CommunicationServerStub) -> int:
-            round = stub.get_current_round(comm_pb2.Empty()) # type: ignore
+            round = stub.get_current_round(comm_pb2.Empty()) #  
             with self.servicer.lock:
                 self.servicer.communication_cost_received += round.ByteSize()
-            return round.round # type: ignore
+            return round.round #  
         
         while True:
             host = self.get_host_from_rank(id)
@@ -444,10 +444,10 @@ class GRPCCommunication(CommunicationInterface):
                 self.wait_until_rounds_match(id)
         items: List[Any] = []
         def callback_fn(stub: comm_pb2_grpc.CommunicationServerStub) -> OrderedDict[str, Tensor]:
-            model = stub.get_model(comm_pb2.Empty()) # type: ignore
+            model = stub.get_model(comm_pb2.Empty()) #  
             with self.servicer.lock:
                 self.servicer.communication_cost_received += model.ByteSize()
-            return deserialize_message(model.buffer) # type: ignore
+            return deserialize_message(model.buffer) #  
 
         for id in node_ids:
             rank = self.get_host_from_rank(id)
@@ -562,18 +562,18 @@ class GRPCCommunication(CommunicationInterface):
             for peer_id in self.servicer.peer_ids:
                 if not self.is_own_id(peer_id):
                     host = self.get_host_from_rank(peer_id)
-                    with grpc.insecure_channel(host) as channel: # type: ignore
+                    with grpc.insecure_channel(host) as channel: #  
                         stub = comm_pb2_grpc.CommunicationServerStub(channel)
-                        stub.send_quorum(comm_pb2.Quorum(quorum=True)) # type: ignore
+                        stub.send_quorum(comm_pb2.Quorum(quorum=True)) #  
         else:
             # send finished to the super node
-            with grpc.insecure_channel(self.super_node_host) as channel: # type: ignore
+            with grpc.insecure_channel(self.super_node_host) as channel: #  
                 stub = comm_pb2_grpc.CommunicationServerStub(channel)
-                stub.send_finished(comm_pb2.Rank(rank=self.rank)) # type: ignore
+                stub.send_finished(comm_pb2.Rank(rank=self.rank)) #  
             status = self.servicer.quorum.get()
             if not status:
                 print("Quorum became false!")
                 sys.exit(1)
         if self.listener:
-            self.listener.stop(0)  # type: ignore
+            self.listener.stop(0)  #  
             print(f"Stopped server on port {self.port}")

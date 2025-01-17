@@ -1,9 +1,9 @@
 from typing import Dict, List, Literal, Optional
 import random
-from utils.types import ConfigType
+from utils.custom_types import ConfigType
 
 from .algo_config_test import (
-    traditional_fl,
+    #traditional_fl,
     fedstatic
 )
 
@@ -99,7 +99,7 @@ dropout_dicts = {"node_0": {}}
 for i in range(1, num_users + 1):
     dropout_dicts[f"node_{i}"] = dropout_dict
 
-gpu_ids = [2, 3, 5, 6]
+gpu_ids : List[int | Literal['cpu']] = [2, 3, 5, 6]
 
 grpc_system_config: ConfigType = {
     "exp_id": "static",

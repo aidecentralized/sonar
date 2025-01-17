@@ -3,7 +3,7 @@
 # is to simulate different real-world scenarios without changing the algorithm configuration.
 from typing import Dict, List, Literal, Optional
 import random
-from utils.types import ConfigType
+from utils.custom_types import ConfigType
 
 # from utils.config_utils import get_sliding_window_support, get_device_ids
 from .algo_config import (
@@ -334,7 +334,7 @@ for i in range(1, num_users + 1):
 
 # for swift or fedavgpush, just modify the algo_configs list
 # for swift, synchronous should preferable be False
-gpu_ids = [2, 3, 5, 6]
+gpu_ids : List[int | Literal['cpu']] = [2, 3, 5, 6]
 
 grpc_system_config: ConfigType = {
     "exp_id": "static",
