@@ -6,7 +6,7 @@ import networkx as nx
 
 
 class RingTopology(BaseTopology):
-    def __init__(self, config: ConfigType, rank: int):
+    def __init__(self, config: ConfigType, rank: int) -> None:
         super().__init__(config, rank)
 
     def generate_graph(self) -> None:
@@ -14,7 +14,7 @@ class RingTopology(BaseTopology):
 
 
 class StarTopology(BaseTopology):
-    def __init__(self, config: ConfigType, rank: int):
+    def __init__(self, config: ConfigType, rank: int) -> None:
         super().__init__(config, rank)
 
     def generate_graph(self) -> None:
@@ -22,7 +22,7 @@ class StarTopology(BaseTopology):
 
 
 class FullyConnectedTopology(BaseTopology):
-    def __init__(self, config: ConfigType, rank: int):
+    def __init__(self, config: ConfigType, rank: int) -> None:
         super().__init__(config, rank)
 
     def generate_graph(self) -> None:
@@ -30,7 +30,7 @@ class FullyConnectedTopology(BaseTopology):
 
 
 class GridTopology(BaseTopology):
-    def __init__(self, config: ConfigType, rank: int):
+    def __init__(self, config: ConfigType, rank: int) -> None:
         super().__init__(config, rank)
         if self.num_users**0.5 != int(self.num_users**0.5):
             raise ValueError("Number of users should be a perfect square for grid topology")
@@ -40,7 +40,7 @@ class GridTopology(BaseTopology):
 
 
 class TorusTopology(BaseTopology):
-    def __init__(self, config: ConfigType, rank: int):
+    def __init__(self, config: ConfigType, rank: int) -> None:
         super().__init__(config, rank)
         if self.num_users**0.5 != int(self.num_users**0.5):
             raise ValueError("Number of users should be a perfect square for grid topology")
@@ -49,14 +49,14 @@ class TorusTopology(BaseTopology):
         self.graph = nx.grid_2d_graph(ceil(self.num_users**0.5), ceil(self.num_users**0.5), periodic=True) # type: ignore
 
 class CircleLadderTopology(BaseTopology):
-    def __init__(self, config: ConfigType, rank: int):
+    def __init__(self, config: ConfigType, rank: int) -> None:
         super().__init__(config, rank)
 
     def generate_graph(self) -> None:
         self.graph = nx.circular_ladder_graph(self.num_users) # type: ignore
 
 class TreeTopology(BaseTopology):
-    def __init__(self, config: ConfigType, rank: int, children: int = 2):
+    def __init__(self, config: ConfigType, rank: int, children: int = 2) -> None:
         super().__init__(config, rank)
         self.children = children
 
@@ -67,7 +67,7 @@ class TreeTopology(BaseTopology):
 
 ######### Random Graphs #########
 class ErdosRenyiTopology(BaseTopology):
-    def __init__(self, config: ConfigType, rank: int):
+    def __init__(self, config: ConfigType, rank: int) -> None:
         p: float = config["topology"]["p"] # type: ignore
         super().__init__(config, rank)
         self.p = p
@@ -78,7 +78,7 @@ class ErdosRenyiTopology(BaseTopology):
 
 
 class WattsStrogatzTopology(BaseTopology):
-    def __init__(self, config: ConfigType, rank: int):
+    def __init__(self, config: ConfigType, rank: int) -> None:
         k: int = config["topology"]["k"] # type: ignore
         p: float = config["topology"]["p"] # type: ignore
         super().__init__(config, rank)
