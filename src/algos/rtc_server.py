@@ -1,12 +1,13 @@
 import asyncio
 import json
-import websockets
 import math
-from dataclasses import dataclass
-from typing import Dict, Set, Optional
-import logging
-from collections import defaultdict
 import secrets
+import logging
+from dataclasses import dataclass
+from typing import Dict, Set
+from collections import defaultdict
+
+import websockets
 
 logging.basicConfig(level=logging.INFO)
 
@@ -25,7 +26,8 @@ class ClientInfo:
 class SessionInfo:
     session_id: str
     max_clients: int
-    clients: Dict[websockets.WebSocketServerProtocol, ClientInfo] = None
+    # Remove deprecated WebSocketServerProtocol from type hints; just use "object" or no annotation
+    clients: Dict[object, ClientInfo] = None
     num_ready: int = 0
     
     def __post_init__(self):
@@ -34,80 +36,83 @@ class SessionInfo:
 class SignalingServer:
     def __init__(self):
         self.sessions: Dict[str, SessionInfo] = {}
+        # Locks to prevent concurrency issues when multiple connections are established simultaneously
         self.connection_locks = defaultdict(asyncio.Lock)
-        
-    def calculate_grid_size(self, session: SessionInfo) -> int:
-        return math.floor(math.sqrt(len(session.clients)))
-        
-    def get_neighbor_ranks(self, session: SessionInfo, rank: int) -> dict:
-        # grid_size = self.calculate_grid_size(session)
-        # if grid_size < 2:
-        #     return {}
-            
-        # row = rank // grid_size
-        # col = rank % grid_size
-        
-        # return {
-        #     'north': ((row - 1 + grid_size) % grid_size) * grid_size + col,
-        #     'south': ((row + 1) % grid_size) * grid_size + col,
-        #     'west': row * grid_size + ((col - 1 + grid_size) % grid_size),
-        #     'east': row * grid_size + ((col + 1) % grid_size)
-        # }
-        neighbor = rank + 1 if rank + 1 < len(session.clients) else 1
-        if rank == 0: return {}
-        return {'neighbor1': neighbor}
-        # return {'neighbor': (rank + 1) % len(session.clients)}
 
-    async def handle_client(self, websocket: websockets.WebSocketServerProtocol):
+    def calculate_grid_size(self, session: SessionInfo) -> int:
+        """
+        (Optional) Example helper: if you want to display or use a grid-based layout.
+        """
+        return math.floor(math.sqrt(len(session.clients)))
+
+    def get_neighbor_ranks(self, session: SessionInfo, rank: int) -> dict:
+        """
+        RING-BASED TOPOLOGY:
+        For N total clients, each node has two neighbors:
+            - (rank - 1) % N
+            - (rank + 1) % N
+        If N=1, no neighbors; if N=2, each sees the other as both 'prev' and 'next'.
+        """
+        total = len(session.clients)
+        if total <= 1:
+            return {}
+
+        prev_rank = (rank - 1) % total
+        next_rank = (rank + 1) % total
+        return {
+            'prev': prev_rank,
+            'next': next_rank
+        }
+
+    async def handle_client(self, websocket):
+        """
+        Main handler for each new client connection.
+        1) Reads initial "create_session" or "join_session".
+        2) Assigns rank, sets up session info.
+        3) Listens for subsequent messages in a loop.
+        """
         try:
-            message = await websocket.recv()
-            data = json.loads(message)
-            
+            # Wait for the first message to determine session creation/join
+            initial_message = await websocket.recv()
+            data = json.loads(initial_message)
+
+            # 1. CREATE SESSION
             if data['type'] == 'create_session':
-                # Generate a unique 6-character session ID if there was no given session id
-                session_id = data.get('sessionId', secrets.token_hex(3)) # 6 characters
-                # session_id = secrets.token_hex(3)  # 6 characters
+                session_id = data.get('sessionId', secrets.token_hex(3))
                 max_clients = int(data['maxClients'])
-                
+
                 # Create new session
                 self.sessions[session_id] = SessionInfo(
                     session_id=session_id,
                     max_clients=max_clients
                 )
-                
-                # Add first client to session
+
+                # Add first client
                 self.sessions[session_id].clients[websocket] = ClientInfo(
                     rank=0,
                     client_type=data.get('clientType', 'javascript'),
                     session_id=session_id
                 )
-                
-                # Send session ID back to creator
+
+                # Respond with session info
                 await websocket.send(json.dumps({
                     'type': 'session_created',
                     'sessionId': session_id,
                     'rank': 0
                 }))
-                
                 logging.info(f"Created session {session_id} for {max_clients} clients")
-                
+
+            # 2. JOIN SESSION
             elif data['type'] == 'join_session':
                 session_id = data['sessionId']
+                
+                # If session doesn't exist, create it on the fly
                 if session_id not in self.sessions:
-                    # await websocket.send(json.dumps({
-                    #     'type': 'error',
-                    #     'message': 'Invalid session ID'
-                    # }))
-                    # return
-
-                    # Create new session if it doesn't exist
                     max_clients = int(data['maxClients'])
                     self.sessions[session_id] = SessionInfo(
                         session_id=session_id,
                         max_clients=max_clients
                     )
-
-                    # Add first client to session
                     rank = 0
                     self.sessions[session_id].clients[websocket] = ClientInfo(
                         rank=0,
@@ -115,47 +120,60 @@ class SignalingServer:
                         session_id=session_id
                     )
                     session = self.sessions[session_id]
-
                 else:
                     session = self.sessions[session_id]
-                    if len(session.clients) > session.max_clients:
+
+                    # Check if session is at capacity
+                    if len(session.clients) >= session.max_clients:
                         await websocket.send(json.dumps({
                             'type': 'error',
                             'message': 'Session is full'
                         }))
                         return
                     
-                    # Add client to session
+                    # Otherwise assign next rank to new client
                     rank = len(session.clients)
                     session.clients[websocket] = ClientInfo(
                         rank=rank,
                         client_type=data.get('clientType', 'javascript'),
                         session_id=session_id
                     )
-                
+
+                # Acknowledge join
                 await websocket.send(json.dumps({
                     'type': 'session_joined',
                     'sessionId': session_id,
                     'rank': rank
                 }))
-                
                 logging.info(f"Client joined session {session_id} with rank {rank}")
-                
-                # If session is full, broadcast topology to all clients
-                if len(session.clients) == session.max_clients + 1:
-                    logging.info(f"Session {session_id} is full, broadcasting topology")
-                    await self.broadcast_session_ready(session)
-                    await self.broadcast_topology(session)
-            
-            async for message in websocket:
-                data = json.loads(message)
-                session = self.sessions[data['sessionId']]
-                
+
+            else:
+                # Invalid initial message type
+                await websocket.send(json.dumps({
+                    'type': 'error',
+                    'message': 'Invalid initial message type.'
+                }))
+                return
+
+            # After the initial session handling, listen for further messages
+            async for msg in websocket:
+                data = json.loads(msg)
+                session_id = data.get('sessionId')
+                if not session_id or session_id not in self.sessions:
+                    # Possibly unknown session
+                    continue
+
+                session = self.sessions[session_id]
+                client_info = session.clients.get(websocket)
+
                 if data['type'] == 'signal':
-                    sender_rank = session.clients[websocket].rank
+                    # 3. SIGNAL MESSAGES
+                    sender_rank = client_info.rank
                     target_rank = data['targetRank']
-                    
-                    async with self.connection_locks[f"{min(sender_rank, target_rank)}-{max(sender_rank, target_rank)}"]:
+
+                    # Use a lock to avoid concurrency for the same pair
+                    lock_key = f"{min(sender_rank, target_rank)}-{max(sender_rank, target_rank)}"
+                    async with self.connection_locks[lock_key]:
                         target_ws = next(
                             (ws for ws, info in session.clients.items() if info.rank == target_rank),
                             None
@@ -164,49 +182,51 @@ class SignalingServer:
                             await target_ws.send(json.dumps({
                                 'type': 'signal',
                                 'senderRank': sender_rank,
-                                'senderType': session.clients[websocket].client_type,
+                                'senderType': client_info.client_type,
                                 'data': data['data']
                             }))
-                elif data['type'] == 'connection_established':
-                    # peer_rank = data['peerRank']
-                    # session.clients[websocket].connected_peers.add(peer_rank)
-                    
-                    # Check if all connections in the session are established
-                    # await self.check_session_ready(session)
-                    pass
-                elif data['type'] == "node_ready":
+
+                elif data['type'] == 'node_ready':
+                    # 4. READY MESSAGES
                     session.num_ready += 1
-                    print("Upating num_ready to ", session.num_ready)
+                    logging.info(f"Session {session_id} now has {session.num_ready} ready clients.")
                     await self.check_session_ready(session)
 
-
         except websockets.exceptions.ConnectionClosed:
-            # Find and clean up the client's session
-            for session in self.sessions.values():
-                if websocket in session.clients:
-                    await self.handle_disconnect(websocket, session)
+            # Handle client disconnection
+            for sess in self.sessions.values():
+                if websocket in sess.clients:
+                    await self.handle_disconnect(websocket, sess)
                     break
 
-    async def handle_disconnect(self, websocket: websockets.WebSocketServerProtocol, session: SessionInfo):
+    async def handle_disconnect(self, websocket, session: SessionInfo):
+        """
+        Remove disconnected client from session,
+        re-broadcast updated topology if needed.
+        """
         if websocket in session.clients:
             disconnected_rank = session.clients[websocket].rank
             del session.clients[websocket]
-            
-            # Reset connection state for affected neighbors
+
+            # Remove from connected peers
             for _, info in session.clients.items():
                 if disconnected_rank in info.connected_peers:
                     info.connected_peers.remove(disconnected_rank)
                     info.ready = False
-            
-            # If session is empty, remove it
+
+            # If session is empty, remove entirely
             if not session.clients:
                 del self.sessions[session.session_id]
-                logging.info(f"Session {session.session_id} removed")
+                logging.info(f"Session {session.session_id} removed.")
             else:
+                # Re-broadcast new ring topology to remaining clients
                 await self.broadcast_topology(session)
 
     async def broadcast_topology(self, session: SessionInfo):
-        grid_size = self.calculate_grid_size(session)
+        """
+        Send each client the ring neighbors after any change.
+        """
+        grid_size = self.calculate_grid_size(session)  # if you need it
         for ws, info in session.clients.items():
             try:
                 neighbors = self.get_neighbor_ranks(session, info.rank)
@@ -219,32 +239,33 @@ class SignalingServer:
                 }))
             except websockets.exceptions.ConnectionClosed:
                 logging.error(f"Failed to send topology to client {info.rank}")
-                pass
-    
+
     async def broadcast_session_ready(self, session: SessionInfo):
+        """
+        Send a session_ready message to all clients.
+        """
         message = json.dumps({
             'type': 'session_ready',
-            'message': f'All {len(session.clients)} clients connected'
+            'message': f"All {len(session.clients)} clients connected"
         })
         await asyncio.gather(*[
             ws.send(message) for ws in session.clients
         ])
-            
+
     async def check_session_ready(self, session: SessionInfo):
-        # expected_connections = 2  # Each node should connect to 2 neighbors
-        # all_ready = all(
-        #     len(info.connected_peers) == expected_connections 
-        #     for info in session.clients.values()
-        # )
-
+        """
+        If all clients in the session are marked ready,
+        broadcast 'network_ready'.
+        """
         all_ready = session.num_ready == len(session.clients)
-        print(f"All ready: {all_ready}: {session.num_ready} / {len(session.clients)}")
-
         if all_ready:
-            logging.info(f"All nodes in session {session.session_id} are connected!")
+            logging.info(f"All nodes in session {session.session_id} reported ready!")
             await self.broadcast_network_ready(session)
-            
+
     async def broadcast_network_ready(self, session: SessionInfo):
+        """
+        Notify all clients that the network is ready.
+        """
         message = json.dumps({'type': 'network_ready'})
         await asyncio.gather(*[
             ws.send(message) for ws in session.clients
@@ -253,6 +274,7 @@ class SignalingServer:
 async def main():
     server = SignalingServer()
     async with websockets.serve(server.handle_client, "localhost", 8765):
+        logging.info("Signaling server started on ws://localhost:8765")
         await asyncio.Future()  # run forever
 
 if __name__ == "__main__":

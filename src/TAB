@@ -1,0 +1,23 @@
+alias vsc="code"
+export JAVA_HOME=$(/usr/libexec/java_home)
+export PATH="$HOME/.pyenv/shims:$PATH"
+export PATH="$HOME/.pyenv/versions/3.9.0/bin:$PATH"
+export PYENV_ROOT="$HOME/.pyenv"
+export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init --path)"
+eval "$(pyenv init -)"
+export MAGICK_HOME="$(brew --prefix imagemagick)"
+export DYLD_LIBRARY_PATH="$MAGICK_HOME/lib:$DYLD_LIBRARY_PATH"
+
+# Created by `pipx` on 2024-08-10 04:54:07
+export PATH="$PATH:/Users/ayanshsingh/.local/bin"
+export PATH="/opt/homebrew/opt/ruby/bin:$PATH"
+export PATH="$PATH:$HOME/platform-tools/"
+
+#THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
+export SDKMAN_DIR="$HOME/.sdkman"
+[[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
+
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
