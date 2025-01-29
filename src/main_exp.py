@@ -6,7 +6,7 @@ and runs the main.py script for each experiment
 
 import argparse
 import subprocess
-from typing import List
+from typing import List, Dict, Any, Union, Literal
 
 from utils.types import ConfigType
 from utils.config_utils import process_config
@@ -19,8 +19,8 @@ from configs.sys_config import grpc_system_config
 post_hoc_plot: bool = True
 
 # for each experiment key, write the modifications to the config file
-gpu_ids = [2, 3, 5, 6]
-exp_dict = {
+gpu_ids: List[Union[int, Literal["cpu"]]] = [2, 3, 5, 6] # can be either a list of ids or "cpu"
+exp_dict: Dict[str, Dict[str, Any]] = { # keys are strings, values can be Any
     "experiment_1": {
         "algo_config": traditional_fl,
         "sys_config": grpc_system_config,
