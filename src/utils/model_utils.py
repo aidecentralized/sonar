@@ -541,14 +541,14 @@ class ModelUtils:
             res[key] = param - model2[key]
         return res
 
-    def get_last_layer_keys(self, model_wts: OrderedDict[str, Tensor]):
+    def get_last_layer_keys(self, model_wts: OrderedDict[str, Tensor]) -> List[str]:
         # Assume one layer is composed of multiple weights named as "layer_name.weight_name"
 
         reversed_model_wts = reversed(model_wts)
         last_key = next(reversed_model_wts)
         last_layer = last_key.split(".")[0]
 
-        last_layer_keys = []
+        last_layer_keys: List[str] = []
 
         while last_key is not None and last_key.startswith(last_layer + "."):
             last_layer_keys.append(last_key)
@@ -557,16 +557,16 @@ class ModelUtils:
 
     def filter_model_weights(
         self, model_wts: OrderedDict[str, Tensor], key_to_ignore: List[str]
-    ):
+    ) -> OrderedDict[str, Tensor]:
         # Assume one layer is composed of multiple weights named as "layer_name.weight_name"
 
-        filtered_model_wts = OrderedDict()
+        filtered_model_wts: OrderedDict[str, Tensor] = OrderedDict()
         for key, param in model_wts.items():
             if key not in key_to_ignore:
                 filtered_model_wts[key] = param
         return filtered_model_wts
 
-    def get_memory_usage(self):
+    def get_memory_usage(self) -> int:
         """
         Get the memory usage
         """

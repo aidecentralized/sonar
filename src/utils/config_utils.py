@@ -43,8 +43,8 @@ def process_config(config: Dict[str, Any]) -> Dict[str, Any]:
         # experiment_name += "_{}_{}".format(key, item)
         experiment_name += "_{}".format(item)
 
-    experiments_folder = config["dump_dir"]
-    results_path = experiments_folder + experiment_name + f"_seed{config['seed']}"
+    experiments_folder: str = config["dump_dir"]
+    results_path: str = experiments_folder + experiment_name + f"_seed{config['seed']}"
 
     log_path = results_path + "/logs/"
     images_path = results_path + "/images/"
@@ -79,7 +79,7 @@ def get_device_ids(num_users: int, num_client_per_gpu: int, available_gpus: list
     assert num_users <= len(available_gpus) * num_client_per_gpu
     device_ids: Dict[str, List[int]] = {}
 
-    gpu_id = 0
+    gpu_id: int = 0
     for i in range(1, num_users + 1):
         device_ids[f"node_{i}"] = [available_gpus[gpu_id]]
         gpu_id = (gpu_id + 1) % len(available_gpus)  # Alternate GPU assignment
