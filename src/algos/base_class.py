@@ -145,7 +145,8 @@ class BaseNode(ABC):
             - Logs the configuration to the console if the node ID is 0.
         """
         try:
-            config["log_path"] = f"{config['log_path']}/node_{self.node_id}" # type: ignore
+            config.setdefault("log_path", "./logs")
+            config["log_path"] = f"{config['log_path']}/node_{self.node_id}"
             os.makedirs(config["log_path"])
         except FileExistsError:
             color_code = "\033[91m"  # Red color

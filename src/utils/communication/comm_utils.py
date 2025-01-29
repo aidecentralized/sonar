@@ -2,12 +2,10 @@ from enum import Enum
 from utils.communication.grpc.main import GRPCCommunication
 from typing import Any, Dict, List, TYPE_CHECKING
 from utils.communication.rtc4 import RTCCommUtils
-# from utils.communication.mpi import MPICommUtils
 import asyncio
 
 if TYPE_CHECKING:
     from algos.base_class import BaseNode
-
 
 class CommunicationType(Enum):
     MPI = 1
@@ -15,15 +13,11 @@ class CommunicationType(Enum):
     HTTP = 3
     RTC = 4
 
-
 class CommunicationFactory:
     @staticmethod
-    def create_communication(
-        config: Dict[str, Any], comm_type: CommunicationType
-    ):
-        comm_type = comm_type
+    def create_communication(config: Dict[str, Any], comm_type: CommunicationType):
         if comm_type == CommunicationType.MPI:
-            raise NotImplementedError("MPI's new version not yet implemented. Please use GRPC. See https://github.com/aidecentralized/sonar/issues/96 for more details.")
+            raise NotImplementedError("MPI's new version not yet implemented. Please use GRPC.")
         elif comm_type == CommunicationType.GRPC:
             return GRPCCommunication(config)
         elif comm_type == CommunicationType.HTTP:
@@ -33,25 +27,24 @@ class CommunicationFactory:
         else:
             raise ValueError("Invalid communication type", comm_type)
 
-
 class CommunicationManager:
     def __init__(self, config: Dict[str, Any]):
-        self.comm_type = CommunicationType[config["comm"]["type"]]
+        if "comm" not in config or "type" not in config["comm"]:
+            raise KeyError("Missing 'comm' or 'type' in config")
+        
+        try:
+            self.comm_type = CommunicationType[config["comm"]["type"].upper()]
+        except KeyError:
+            raise ValueError(f"Invalid communication type: {config['comm']['type']}. Must be one of {list(CommunicationType.__members__.keys())}")
         self.comm = CommunicationFactory.create_communication(config, self.comm_type)
         self.comm.initialize()
-        # self._ready = asyncio.Event()
+        self._ready = asyncio.Event()
     
-    #################################################
     @property
     def is_ready(self) -> bool:
-        """Check if communication manager is ready."""
         return self._ready.is_set()
         
     async def setup(self) -> None:
-        """
-        Async setup method to initialize communication.
-        This must be called after creating the CommunicationManager instance.
-        """
         try:
             success = await self.comm.initialize()
             if success:
@@ -62,42 +55,35 @@ class CommunicationManager:
             raise RuntimeError(f"Failed to initialize communication: {e}")
             
     async def ensure_ready(self) -> None:
-        """Wait for communication manager to be ready."""
         await self._ready.wait()
-    #################################################
 
     def register_node(self, obj: "BaseNode"):
         self.comm.register_self(obj)
 
     def get_rank(self) -> int:
-        if self.comm_type == CommunicationType.MPI:
-            if self.comm.rank is None:
-                raise ValueError("Rank not set for MPI")
-            return self.comm.rank
-        elif self.comm_type == CommunicationType.GRPC:
-            if self.comm.rank is None:
-                raise ValueError("Rank not set for gRPC")
-            return self.comm.rank
-        elif self.comm_type == CommunicationType.RTC:
-            return self.comm.rank
-        else:
-            raise NotImplementedError(
-                "Rank not implemented for communication type", self.comm_type
-            )
+        print(f"[DEBUG] Checking rank assignment, current type: {self.comm_type}")
+        
+        if self.comm_type == CommunicationType.RTC:
+            if hasattr(self.comm, "rank"):
+                print(f"[DEBUG] RTC rank assigned: {self.comm.rank}")
+                if self.comm.rank is None:
+                    raise ValueError("[ERROR] RTC rank assignment failed.")
+                return self.comm.rank
+            else:
+                raise ValueError("[ERROR] RTC Communication Manager has no rank attribute.")
+        
+        raise NotImplementedError("[ERROR] Rank retrieval not implemented for this communication type")
+
+
 
     def send(self, dest: str | int | List[str | int], data: Any, tag: int = 0):
         if isinstance(dest, list):
             for d in dest:
                 self.comm.send(dest=int(d), data=data)
         else:
-            print(f"Sending data to {dest}")
             self.comm.send(dest=int(dest), data=data)
 
     def receive(self, node_ids: List[int]) -> Any:
-        """
-        Receive data from the specified node
-        Returns a list if multiple node_ids are provided, else just returns the data
-        """
         return self.comm.receive(node_ids)
 
     def broadcast(self, data: Any, tag: int = 0):

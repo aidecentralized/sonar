@@ -1,0 +1,18 @@
+{
+    "topology": "ring",
+    "ring": {
+        "neighbors": {
+            "prev": 1,
+            "next": 3
+        }
+    },
+    "star": {
+        "server_id": 0
+    },
+    "comm": {
+        "type": "rtc"
+    },
+    "fully_connected": {},
+    "log_path": "/Users/ayanshsingh/sonar-2/logs",
+    "plot_path": "/Users/ayanshsingh/sonar-2/plots"
+}

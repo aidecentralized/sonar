@@ -326,28 +326,38 @@ class RTCCommUtils(CommunicationInterface):
         except Exception as e:
             self.logger.error(f"Error in signaling message async handler for {sender_rank}: {e}")
 
-    def create_session(self, max_clients: int) -> bool:
+    async def create_session(self, max_clients=2):
+        """
+        Creates an RTC session and returns a valid session ID.
+        """
+        uri = "ws://localhost:8765"  # Ensure this matches the RTC server
         try:
-            self.websocket.send(json.dumps({
-                'type': 'create_session',
-                'maxClients': max_clients,
-                'clientType': 'python'
-            }))
-            response = self.websocket.recv()
-            data = json.loads(response)
+            async with websockets.connect(uri) as websocket:
+                self.websocket = websocket
+                message = {
+                    "type": "create_session",
+                    "maxClients": max_clients
+                }
+                await websocket.send(json.dumps(message))
 
-            if data['type'] == 'session_created':
-                self.session_id = data['sessionId']
-                self.rank = data['rank']
-                self.logger.info(f"Created session {self.session_id}")
-                print(f"Share this session code with other clients: {self.session_id}")
-                return True
-            else:
-                self.logger.error(f"Failed to create session: {data.get('message', 'Unknown error')}")
-                return False
+                response = await websocket.recv()
+                data = json.loads(response)
+
+                if data.get("type") == "session_created":
+                    self.session_id = data["sessionId"]
+                    self.rank = data["rank"]
+                    print(f"[DEBUG] Successfully created session {self.session_id} with rank {self.rank}")
+                    return self.session_id  # Ensure it returns a valid session ID
+
+                print(f"[ERROR] Failed to create session: {data.get('message', 'Unknown error')}")
+                return None
+
         except Exception as e:
-            self.logger.error(f"Error creating session: {e}")
-            return False
+            print(f"[ERROR] Error creating session: {e}")
+            return None
+
+    def get_rank(self):
+        return self.rank
 
     def join_session(self, session_id: str) -> bool:
         try:

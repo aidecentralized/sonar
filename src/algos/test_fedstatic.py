@@ -1,106 +1,73 @@
-# test_fedstatic.py
-
-import os
-
-# Set environment variables before importing any modules that use wand
-os.environ['MAGICK_HOME'] = "/opt/homebrew/Cellar/imagemagick/7.1.1-43"
-os.environ['DYLD_LIBRARY_PATH'] = "/opt/homebrew/Cellar/imagemagick/7.1.1-43/lib:" + os.environ.get('DYLD_LIBRARY_PATH', '')
-
 import asyncio
 import json
 import websockets
-from algos.fl_static import FedStaticNode
+import logging
+import secrets
 
-# Placeholder config for FedStaticNode
-config = {
-    "rounds": 2,                # number of training rounds
-    "start_round": 0,
-    "epochs_per_round": 1,
-    # ... add other config options you need ...
-}
+logging.basicConfig(level=logging.DEBUG)
 
-# If you have a real CommunicationManager, import it.
-# For now, we can pass None if your code doesn't strictly require it.
-comm_utils = None
+class SignalingServer:
+    def __init__(self):
+        self.sessions = {}  # Store active sessions
 
-# Create our FL node
-node = FedStaticNode(config, comm_utils)
+    async def handle_client(self, websocket):
+        try:
+            message = await websocket.recv()
+            data = json.loads(message)
 
-async def test_fedstatic(action="create_session", session_id=None, max_clients=2):
-    """
-    Connect to the signaling server, create or join a session,
-    receive the ring topology, then run the FL protocol.
-    """
-    uri = "ws://localhost:8765"   # same as your server's host & port
+            if data['type'] == 'create_session':
+                session_id = secrets.token_hex(3)
+                max_clients = int(data['maxClients'])
+                self.sessions[session_id] = {
+                    "session_id": session_id,
+                    "max_clients": max_clients,
+                    "clients": {}
+                }
 
-    async with websockets.connect(uri) as websocket:
-        # 1) Create or join the session
-        if action == "create_session":
-            msg = {
-                "type": "create_session",
-                "maxClients": max_clients,
-                "clientType": "python_test"
-            }
-        else:  # "join_session"
-            msg = {
-                "type": "join_session",
-                "sessionId": session_id,   # must match an existing session
-                "clientType": "python_test"
-            }
+                rank = 0
+                self.sessions[session_id]["clients"][websocket] = {"rank": rank}
 
-        await websocket.send(json.dumps(msg))
-        print(f"Sent {msg}")
+                logging.info(f"[RTC] Created session {session_id} for {max_clients} clients")
 
-        # 2) Listen for server messages
-        while True:
-            try:
-                resp = await websocket.recv()
-            except websockets.exceptions.ConnectionClosed:
-                print("Connection closed by server.")
-                break
+                await websocket.send(json.dumps({
+                    'type': 'session_created',
+                    'sessionId': session_id,
+                    'rank': rank
+                }))
 
-            data = json.loads(resp)
-            print(f"Received: {data}")
+            elif data['type'] == 'join_session':
+                session_id = data.get("sessionId")
 
-            # Handle responses
-            msg_type = data.get("type")
+                if session_id not in self.sessions:
+                    logging.error(f"[ERROR] Invalid session ID: {session_id}")
+                    await websocket.send(json.dumps({'type': 'error', 'message': 'Invalid session ID'}))
+                    return
 
-            if msg_type == "session_created":
-                # Assign node_id from rank, if needed
-                node.node_id = data["rank"]
-                print(f"Session created with rank {node.node_id}")
+                session = self.sessions[session_id]
+                if len(session["clients"]) >= session["max_clients"]:
+                    logging.error(f"[ERROR] Session {session_id} is full")
+                    await websocket.send(json.dumps({'type': 'error', 'message': 'Session is full'}))
+                    return
 
-            elif msg_type == "session_joined":
-                node.node_id = data["rank"]
-                print(f"Joined session with rank {node.node_id}")
+                rank = len(session["clients"])
+                session["clients"][websocket] = {"rank": rank}
 
-            elif msg_type == "topology":
-                # For ring-based neighbors: data["neighbors"] might be {"prev": 0, "next": 2}
-                node.store_server_neighbors(data["neighbors"])
-                print(f"Node {node.node_id} got neighbors: {node.server_neighbors}")
+                logging.info(f"[RTC] Client joined session {session_id} with rank {rank}")
 
-                # Once we have neighbors, we can run the FL protocol
-                # Note: run_protocol() is synchronous, so it will block.
-                # If you want asynchronous, use run_async_protocol() instead.
-                node.run_protocol()
+                await websocket.send(json.dumps({
+                    'type': 'session_joined',
+                    'sessionId': session_id,
+                    'rank': rank
+                }))
 
-            elif msg_type == "session_ready":
-                print("Session is ready for FL.")
-                # Possibly wait for "topology" or do other logic
-
-            elif msg_type == "network_ready":
-                print("All nodes reported ready. (Optional)")
-
-            elif msg_type == "error":
-                print(f"Error from server: {data.get('message')}")
-                break
+        except websockets.exceptions.ConnectionClosed:
+            pass
 
 async def main():
-    # Example: create a session with max 2 clients
-    await test_fedstatic(action="create_session", max_clients=2)
-
-    # If you want a second client to join:
-    # await test_fedstatic(action="join_session", session_id="the_session_id_from_above")
+    server = SignalingServer()
+    async with websockets.serve(server.handle_client, "localhost", 8888):
+        logging.info("[RTC] Server started on ws://localhost:8888")
+        await asyncio.Future()
 
 if __name__ == "__main__":
     asyncio.run(main())
