@@ -7,7 +7,7 @@ import threading
 import time
 import socket
 import functools
-from typing import Any, Callable, Dict, List, OrderedDict, Union, TYPE_CHECKING, Set
+from typing import Any, Callable, Dict, List, OrderedDict, Union, TYPE_CHECKING, Set, Tuple
 from urllib.parse import unquote
 import grpc # type: ignore
 from torch import Tensor
@@ -99,11 +99,11 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
         self.communication_cost_received: int = 0
         self.communication_cost_sent: int = 0
 
-    def get_comm_cost(self):
+    def get_comm_cost(self) -> Tuple[int, int]:
         with self.lock:
             return self.communication_cost_received, self.communication_cost_sent
 
-    def set_is_working(self, is_working: bool):
+    def set_is_working(self, is_working: bool) -> None:
         with self.lock:
             self.is_working = is_working
 
@@ -417,7 +417,7 @@ class GRPCCommunication(CommunicationInterface):
         
         while True:
             host = self.get_host_from_rank(id)
-            round = self.recv_with_retries(host, callback_fn)
+            round: int = self.recv_with_retries(host, callback_fn)
             if round >= self_round:
                 # Strict equality can not be enforced because
                 # the communication is not symmetric

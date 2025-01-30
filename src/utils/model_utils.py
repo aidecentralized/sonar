@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Any, Tuple, List
+from typing import Any, Tuple, List, Dict
 import torch
 from torch import Tensor
 import torch.nn as nn
@@ -535,20 +535,20 @@ class ModelUtils:
         # Expects a list of tuples with each tupe containing two tensors
         return [[item[0].to(device), item[1].to(device)] for item in items]
 
-    def substract_model_weights(self, model1, model2):
-        res = {}
+    def substract_model_weights(self, model1: OrderedDict[str, Tensor], model2: OrderedDict[str, Tensor]):
+        res: OrderedDict[str, Tensor] = {}
         for key, param in model1.items():
             res[key] = param - model2[key]
         return res
 
-    def get_last_layer_keys(self, model_wts: OrderedDict[str, Tensor]):
+    def get_last_layer_keys(self, model_wts: OrderedDict[str, Tensor]) -> List[str]:
         # Assume one layer is composed of multiple weights named as "layer_name.weight_name"
 
         reversed_model_wts = reversed(model_wts)
         last_key = next(reversed_model_wts)
         last_layer = last_key.split(".")[0]
 
-        last_layer_keys = []
+        last_layer_keys: List[str] = []
 
         while last_key is not None and last_key.startswith(last_layer + "."):
             last_layer_keys.append(last_key)
@@ -556,11 +556,11 @@ class ModelUtils:
         return last_layer_keys
 
     def filter_model_weights(
-        self, model_wts: OrderedDict[str, Tensor], key_to_ignore: List[str]
-    ):
+        self, model_wts: Dict[str, Tensor], key_to_ignore: List[str]
+    ) -> Dict[str, Tensor]:
         # Assume one layer is composed of multiple weights named as "layer_name.weight_name"
 
-        filtered_model_wts = OrderedDict()
+        filtered_model_wts: Dict[str, Tensor] = {}
         for key, param in model_wts.items():
             if key not in key_to_ignore:
                 filtered_model_wts[key] = param

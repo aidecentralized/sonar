@@ -4,7 +4,7 @@ framework with collaborative weights in federated learning. It also includes the
 ModelEncoder class for encoding model weights.
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 from utils.communication.comm_utils import CommunicationManager
 import math
 import torch
@@ -28,7 +28,7 @@ class ModelEncoder(nn.Module):
     Args:
         model_dict (dict): Dictionary of model weights to be encoded.
     """
-    def __init__(self, model_dict):
+    def __init__(self, model_dict: Dict[str, torch.Tensor]) -> None:
         super(ModelEncoder, self).__init__()
         self.init_encoder_weights(model_dict)
 
@@ -90,7 +90,7 @@ class ModelEncoder(nn.Module):
         Returns:
             torch.Tensor: A concatenated tensor representation of the model's weights.
         """
-        encoder_outs = []
+        encoder_outs: List[torch.Tensor] = []
         for key in self.ordered_keys:
             wts = model_dict[key]
             if "conv" in key:
@@ -127,7 +127,7 @@ class MetaL2CClient(BaseFedAvgClient):
             self.encoder.parameters(), lr=self.config["alpha_lr"]
         )
 
-        self.model_keys_to_ignore = []
+        self.model_keys_to_ignore: List[str] = []
         if not self.config.get("average_last_layer", True):  # By default include last layer
             keys = self.model_utils.get_last_layer_keys(self.get_model_weights())
             self.model_keys_to_ignore.extend(keys)
