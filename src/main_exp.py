@@ -6,7 +6,7 @@ and runs the main.py script for each experiment
 
 import argparse
 import subprocess
-from typing import List
+from typing import List, Any, Dict
 
 from utils.types import ConfigType
 from utils.config_utils import process_config
@@ -19,8 +19,8 @@ from configs.sys_config import grpc_system_config
 post_hoc_plot: bool = True
 
 # for each experiment key, write the modifications to the config file
-gpu_ids = [2, 3, 5, 6]
-exp_dict = {
+gpu_ids: List[int] = [2, 3, 5, 6]
+exp_dict: Dict[str, Dict] = {
     "experiment_1": {
         "algo_config": traditional_fl,
         "sys_config": grpc_system_config,
@@ -54,7 +54,7 @@ parser.add_argument(
     help=f"host address of the nodes",
 )
 
-args = parser.parse_args()
+args: argparse.Namespace = parser.parse_args()
 
 for exp_id, exp_config in exp_dict.items():
     # update the algo config with config settings
@@ -96,8 +96,8 @@ for exp_id, exp_config in exp_dict.items():
 
     # run the post-hoc analysis
     if post_hoc_plot:
-        full_config = process_config(full_config) # this populates the results path
-        logs_dir = full_config["results_path"] + '/logs/'
+        full_config: Dict[str, Any]= process_config(full_config) # this populates the results path
+        logs_dir:str = full_config["results_path"] + '/logs/'
 
         # aggregate metrics across all users
         aggregate_metrics_across_users(logs_dir)

@@ -51,9 +51,11 @@ class TorusTopology(BaseTopology):
 class CircleLadderTopology(BaseTopology):
     def __init__(self, config: ConfigType, rank: int):
         super().__init__(config, rank)
+        if self.num_users%2 != 0:
+            raise ValueError("Number of users should be an even number for circle ladder topology")
 
     def generate_graph(self) -> None:
-        self.graph = nx.circular_ladder_graph(self.num_users) # type: ignore
+        self.graph = nx.circular_ladder_graph(int(self.num_users/2)) # type: ignore
 
 class TreeTopology(BaseTopology):
     def __init__(self, config: ConfigType, rank: int, children: int = 2):
@@ -61,7 +63,47 @@ class TreeTopology(BaseTopology):
         self.children = children
 
     def generate_graph(self) -> None:
-        self.graph = nx.full_rary_tree(self.children, self.num_users)
+        self.graph = nx.full_rary_tree(self.children, self.num_users) # type: ignore
+
+class LadderTopology(BaseTopology):
+    def __init__(self, config: ConfigType, rank: int):
+        super().__init__(config, rank)
+        if self.num_users%2 != 0:
+            raise ValueError("Number of users should be an even number for ladder topology")
+
+    def generate_graph(self) -> None:
+        self.graph = nx.ladder_graph(int(self.num_users/2)) # type: ignore
+
+class WheelTopology(BaseTopology):
+    def __init__(self, config: ConfigType, rank: int):
+        super().__init__(config, rank)
+
+    def generate_graph(self) -> None:
+        self.graph = nx.wheel_graph(self.num_users) # type: ignore
+
+class BipartiteTopology(BaseTopology):
+    def __init__(self, config: ConfigType, rank: int):
+        super().__init__(config, rank)
+        if self.num_users<2:
+            raise ValueError("Need at least 2 users for a bipartite topology")
+
+    def generate_graph(self) -> None:
+        self.graph = nx.turan_graph(self.num_users,2) # type: ignore
+
+class BarbellTopology(BaseTopology):
+    def __init__(self, config: ConfigType, rank: int):
+        b: int = config["topology"]["b"] # type: ignore
+        super().__init__(config, rank)
+        self.barbell_size = b
+        self.path_length = self.num_users - (2*self.barbell_size)
+        if self.barbell_size<=2:
+            raise ValueError("Need at least 2 nodes b in each barbell")
+        elif self.path_length<0:
+            raise ValueError("Need at least path length 0 between barbells")
+    
+
+    def generate_graph(self) -> None:
+        self.graph = nx.barbell_graph(self.barbell_size, self.path_length) # type: ignore
 
 
 
@@ -89,6 +131,18 @@ class WattsStrogatzTopology(BaseTopology):
     def generate_graph(self) -> None:
         self.graph = nx.watts_strogatz_graph(self.num_users, self.k, self.p, self.seed) # type: ignore
 
+class RandomRegularTopology(BaseTopology):
+    def __init__(self, config: ConfigType, rank: int):
+        d: int = config["topology"]["d"] # type: ignore
+        super().__init__(config, rank)
+        self.d = d
+        self.seed = config["seed"]
+        if (d*self.num_users)%2 != 0:
+            raise ValueError("d * number of users must be even to make a valid graph")
+
+    def generate_graph(self) -> None:
+        self.graph = nx.random_regular_graph(self.d, self.num_users, self.seed) # type: ignore
+
 
 def select_topology(config: ConfigType, rank: int) -> BaseTopology:
     """
@@ -113,4 +167,14 @@ def select_topology(config: ConfigType, rank: int) -> BaseTopology:
         return WattsStrogatzTopology(config, rank)
     if topology_name == "tree":
         return TreeTopology(config, rank)
+    if topology_name == "ladder":
+        return LadderTopology(config, rank)
+    if topology_name == "wheel":
+        return WheelTopology(config, rank)
+    if topology_name == "bipartite":
+        return BipartiteTopology(config, rank)
+    if topology_name == "random_regular":
+        return RandomRegularTopology(config, rank)
+    if topology_name == "barbell":
+        return BarbellTopology(config, rank)
     raise ValueError(f"Topology {topology_name} not implemented")
