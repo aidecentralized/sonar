@@ -1,5 +1,5 @@
 import importlib
-from typing import Any, List, Sequence, Tuple, Optional
+from typing import Any, List, Sequence, Tuple, Optional, Dict
 import numpy as np
 import torch
 import torchvision.transforms as T
@@ -41,7 +41,7 @@ class TransformDataset(Dataset):
         img = self.transform(img)
         return img, label
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.dset)
     
 # Custom dataset wrapper to apply corruption
@@ -111,7 +111,7 @@ def get_dataset(dname: str, dpath: str):
         return dataset_class(dpath)
 
 
-def filter_by_class(dataset: Subset[Any], classes: List[str]):
+def filter_by_class(dataset: Subset[Any], classes: List[str]) -> Tuple[Subset[Any], np.ndarray]:
     """
     Filters the dataset by specified classes.
     """
@@ -129,7 +129,7 @@ def random_samples(
     return Subset(dataset, indices), indices
 
 
-def extr_noniid(train_dataset: Any, samples_per_user: int, classes: Sequence[int]):
+def extr_noniid(train_dataset: Any, samples_per_user: int, classes: Sequence[int]) -> Tuple[Subset[Any]]:
     """
     Extracts non-IID data from the training dataset.
     """
@@ -147,7 +147,7 @@ def cifar_extr_noniid(
     n_class: int,
     num_samples: int,
     rate_unbalance: float,
-):
+) -> Tuple[Dict[int, np.ndarray], Dict[int, np.ndarray]]:
     """
     Extracts non-IID data for CIFAR-10 dataset.
     """
