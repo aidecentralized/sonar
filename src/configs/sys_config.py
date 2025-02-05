@@ -15,7 +15,7 @@ from .algo_config import (
     fedavgpush
 )
 
-sliding_window_8c_4cpc_support = {
+sliding_window_8c_4cpc_support: Dict[str, List[int]] = { #added type hint
     "1": [0, 1, 2, 3],
     "2": [1, 2, 3, 4],
     "3": [2, 3, 4, 5],
@@ -112,14 +112,14 @@ def get_domain_support(
     return support
 
 
-DOMAINNET_DMN = ["real", "sketch", "clipart"]
+DOMAINNET_DMN: List[str] = ["real", "sketch", "clipart"] #added type hint
 
 
 def get_domainnet_support(num_users: int, domains: List[str] = DOMAINNET_DMN):
     return get_domain_support(num_users, "domainnet", domains)
 
 
-domainnet_base_dir = "/u/abhi24/matlaberp2/p2p/imgs/domainnet/"
+domainnet_base_dir: str = "/u/abhi24/matlaberp2/p2p/imgs/domainnet/"
 domainnet_dpath = {
     "domainnet_real": domainnet_base_dir,
     "domainnet_sketch": domainnet_base_dir,
@@ -129,8 +129,8 @@ domainnet_dpath = {
     "domainnet_painting": domainnet_base_dir,
 }
 
-CAMELYON17_DMN = [0, 3, 4]  # + 1, 2 in test set
-CAMELYON17_DMN_EXT = [0, 1, 2, 3, 4]  # + 1, 2 in test set
+CAMELYON17_DMN: List[int] = [0, 3, 4]  # + 1, 2 in test set + added type hint
+CAMELYON17_DMN_EXT: List[int]= [0, 1, 2, 3, 4]  # + 1, 2 in test set + added type hint
 
 
 def get_camelyon17_support(num_users: int, domains: List[int] = CAMELYON17_DMN):
@@ -157,7 +157,7 @@ digit_five_dpath = {
 CIFAR10_DSET = "cifar10"
 CIAR10_DPATH = "./datasets/imgs/cifar10/"
 
-NUM_COLLABORATORS = 1
+NUM_COLLABORATORS: int = 1 #type hint
 DUMP_DIR = "/tmp/"
 
 num_users = 3
@@ -318,10 +318,11 @@ object_detect_system_config: ConfigType = {
 
 num_users = 4
 
-dropout_dict = {
+dropout_dict= {
     "distribution_dict": { # leave dict empty to disable dropout
         "method": "uniform",  # "uniform", "normal"
-        "parameters": {} # "mean": 0.5, "std": 0.1 in case of normal distribution
+        "parameters": Dict[str, float] # "mean": 0.5, "std": 0.1 in case of normal distribution
+                                       # added type-hint
     },
     "dropout_rate": 0.0, # cutoff for dropout: [0,1]
     "dropout_correlation": 0.0, # correlation between dropouts of successive rounds: [0,1]
@@ -334,18 +335,20 @@ for i in range(1, num_users + 1):
 
 # for swift or fedavgpush, just modify the algo_configs list
 # for swift, synchronous should preferable be False
-gpu_ids = [2, 3, 5, 6]
+
+#gpu_ids = [2, 3, 5, 6] changing this to match the expected type "List[int | Literal['cpu']]"
+gpu_ids: List[int | Literal["cpu"]] = [2, 3, 5, 6] #fixed type error 
 
 grpc_system_config: ConfigType = {
     "exp_id": "static",
     "num_users": num_users,
     "num_collaborators": NUM_COLLABORATORS,
-    "comm": {"type": "GRPC", "synchronous": True, "peer_ids": ["localhost:50048"]},  # The super-node
+    "comm": {"type": "GRPC", "synchronous": True, "peer_ids": ["localhost:50049"]},  # The super-node
     "dset": CIFAR10_DSET,
     "dump_dir": DUMP_DIR,
     "dpath": CIAR10_DPATH,
     "seed": 2,
-    "device_ids": get_device_ids(num_users, gpu_ids),
+    "device_ids": get_device_ids(num_users, gpu_ids), #fixed type error here
     # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
     "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
     # "samples_per_user": 50000 // num_users,  # distributed equally
@@ -376,7 +379,7 @@ grpc_system_config_gia: ConfigType = {
     "dump_dir": DUMP_DIR,
     "dpath": CIAR10_DPATH,
     "seed": 2,
-    "device_ids": get_device_ids(num_users, gpu_ids),
+    "device_ids": get_device_ids(num_users, gpu_ids), #fixed type error here
     # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
     "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
     "samples_per_user": 50000 // num_users,  # distributed equally
