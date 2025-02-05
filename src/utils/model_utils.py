@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Any, Tuple, List
+from typing import Any, Tuple, List, Optional
 import torch
 from torch import Tensor
 import torch.nn as nn
@@ -267,12 +267,12 @@ class ModelUtils:
     def train_classification_malicious(
         self,
         model: nn.Module,
-        optim,
-        dloader,
-        loss_fn,
+        optim: torch.optim.Optimizer,
+        dloader: DataLoader[Any],
+        loss_fn: Any,
         device: torch.device,
-        test_loader=None,
-        **kwargs,
+        test_loader: Optional[DataLoader[Any]]=None,
+        **kwargs: Any,
     ) -> Tuple[float, float]:
         correct = 0
         train_loss = 0
