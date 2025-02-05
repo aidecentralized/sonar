@@ -1,6 +1,6 @@
 from enum import Enum
 from utils.communication.grpc.main import GRPCCommunication
-from typing import Any, Dict, List, Tuple, TYPE_CHECKING
+from typing import Any, Dict, Union, List, Tuple, TYPE_CHECKING
 # from utils.communication.mpi import MPICommUtils
 # from mpi4py import MPI
 
@@ -54,7 +54,7 @@ class CommunicationManager:
                 "Rank not implemented for communication type", self.comm_type
             )
 
-    def send(self, dest: str | int | List[str | int], data: Any, tag: int = 0):
+    def send(self, dest: Union[str, int, List[Union[str, int]]], data: Any, tag: int = 0):
         if isinstance(dest, list):
             for d in dest:
                 self.comm.send(dest=int(d), data=data)
