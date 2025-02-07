@@ -6,7 +6,7 @@ import websockets
 from aiortc import RTCPeerConnection, RTCSessionDescription, RTCDataChannel, RTCConfiguration, RTCIceServer
 import logging
 from collections import defaultdict
-from typing import Dict, Set, List, Any, Optional
+from typing import Dict, Set, List, Any, Optional, OrderedDict
 from enum import Enum
 import time
 import argparse
@@ -145,7 +145,7 @@ class RTCCommUtils(CommunicationInterface):
         def on_message(message):
             try:
                 data = json.loads(message)
-                self.logger.info("Received message: " + str(data))
+                self.logger.info("[WebRTC] Putting into message_queue message from peer " + str(peer_rank) + ' of type ' + str(data["type"])) # + str(data))
                 self.message_queue.put([peer_rank, data])
                 # if data["type"] == "ping":
                 #     self.logger.info(f"{self.rank} Received ping from {peer_rank}")
@@ -539,9 +539,11 @@ class RTCCommUtils(CommunicationInterface):
 
     # TODO: Here are all the functions that are not going to be on the listening thread
     def get_peer_weights(self, peer_rank: int, max_retries: int = 3) -> Optional[np.ndarray]:
+        requests = set()
         for attempt in range(max_retries):
             try:
                 request_id = f"weights_request_{time.time()}_{random.randint(0, 1000)}"
+                requests.add(request_id)
 
                 # Create an event for synchronization
                 # response_event = threading.Event()
@@ -562,10 +564,15 @@ class RTCCommUtils(CommunicationInterface):
                 # if response_event.wait(timeout=5.0):
                 #     return np.array(response_data[0]["weights"])
                 message = self.message_queue.get(timeout=5.0)
-                print(f"[Main Thread] Received: {message}")
+                self.logger.info(f"[Main Thread] Popped from message_queue: from peer {message[0]} of type {message[1]['type']}")
 
                 if (message):
-                    self.handle_data_channel_message(message[0], message[1])
+                    peer_rank = message[0]
+                    data = message[1]
+                    self.handle_data_channel_message(peer_rank, data)
+                    if (data["type"] == "weights_response" and data["request_id"] in requests):
+                        self.logger.info(f"request id matched!")
+                        return data["weights"]
 
                 self.logger.warning(f"Timeout getting weights from peer {peer_rank}, attempt {attempt + 1}")
 
@@ -577,16 +584,34 @@ class RTCCommUtils(CommunicationInterface):
 
         return None
 
-    def receive(self, node_ids: List[int]) -> List[Any]:
+    def receive(self, node_ids: List[int]) -> List[OrderedDict[str, Any]]:
         items = []
         for peer_rank in node_ids:
             # self.wait_until_rounds_match(peer_rank)
             weights = self.get_peer_weights(peer_rank)
+            self.logger.info("get_peer_weights() returned " + str(weights))
             items.append(weights)
+
+        # keep processing messages for 5 more seconds
+        timestamp = time.time()
+        self.logger.info(f"Processing messages for 5 more seconds")
+        while time.time() - timestamp < 5:
+            try:
+                message = self.message_queue.get(timeout=0.1)
+                if (message):
+                    peer_rank = message[0]
+                    data = message[1]
+                    self.handle_data_channel_message(peer_rank, data)
+                    self.logger.info(f"[Main Thread] Popped from message queue type {data['type']} from peer {peer_rank}")
+            except Empty:
+                pass
+
+        self.logger.info(f"Finished processing messages for 5 seconds")
+
         return items
     
     def send_to_peer(self, peer_rank: int, data: dict):
-        self.logger.info(f"[Main Thread] Putting message in send queue for peer {peer_rank}: {data}")
+        self.logger.info(f"[Main Thread] Putting message of type {data['type']} in send queue for peer {peer_rank}")
         self.send_queue.put([peer_rank, data])
 
     def handle_data_channel_message(self, peer_rank: int, message: str):
@@ -615,9 +640,12 @@ class RTCCommUtils(CommunicationInterface):
                     self.logger.warning(f"Invalid 'round_update_response' from peer {peer_rank}: {message}")
 
             elif msg_type == "weights_request":
+                self.logger.info(f"Received weights request from peer {peer_rank}")
+                # self.logger.info(f"Keys from base node are {self.base_node.get_model_weights().keys()}")
                 response = {
                     "type": "weights_response",
                     "weights": self.model_weights.tolist(),
+                    # "weights": {k: v.tolist() for k, v in self.base_node.get_model_weights().items()},
                     "round": self.current_round,
                     "request_id": data["request_id"]
                 }
@@ -625,7 +653,9 @@ class RTCCommUtils(CommunicationInterface):
 
             elif msg_type == "weights_response":
                 request_id = data["request_id"]
-                self.logger.info(f"Received weights response from peer {peer_rank}: {data}")
+                self.logger.info(f"Received weights response from peer {peer_rank}")
+                self.peer_weights[peer_rank] = data["weights"]
+                # return OrderedDict(data["weights"])
                 # if request_id in self.message_callbacks:
                 #     callback = self.message_callbacks.pop(request_id)
                 #     callback(data)
@@ -649,8 +679,8 @@ class RTCCommUtils(CommunicationInterface):
 
     def finalize(self):
         self.logger.info("Finalizing RTCCommUtils")
-        self.loop.call_soon_threadsafe(self.loop.stop)
-        self.loop_thread.join()
+        # self.loop.call_soon_threadsafe(self.loop.stop)
+        # self.loop_thread.join()
         self.stop_workers = True
         if self.websocket:
             self.websocket.close()
