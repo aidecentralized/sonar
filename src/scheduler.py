@@ -35,7 +35,7 @@ from algos.fl_push import FedAvgPushClient, FedAvgPushServer
 from utils.communication.comm_utils import CommunicationManager
 from utils.config_utils import load_config, process_config
 from utils.log_utils import copy_source_code, check_and_create_path
-from utils.communication.rtc4 import NodeState
+from utils.communication.rtc_async_ver import NodeState
 
 # Mapping of algorithm names to their corresponding client and server classes so that they can be consumed by the scheduler later on.
 algo_map: Dict[str, List[FedAvgClient]] = { # type: ignore
@@ -64,8 +64,8 @@ def get_node(
     config: Dict[str, Any], rank: int, comm_utils: CommunicationManager
 ) -> BaseNode:
     algo_name = config["algo"]
-    # node_class = algo_map[algo_name][rank > 0]
-    node_class = algo_map[algo_name][rank >= 0]
+    node_class = algo_map[algo_name][rank > 0]
+    # node_class = algo_map[algo_name][rank >= 0]
     node = node_class(config, comm_utils) # type: ignore
     return node # type: ignore
 
@@ -106,6 +106,11 @@ class Scheduler:
     def initialize(self, copy_souce_code: bool = True) -> None:
         assert self.config is not None, "Config should be set when initializing"
         self.communication : CommunicationManager = CommunicationManager(self.config)
+
+        if self.config["comm"]["type"] == "RTC":
+            print("Sleeping for 30 seconds...")
+            time.sleep(30)
+            print("Done sleeping.")
 
         # if self.config["comm"]["type"] == "RTC":
         #     print(f"Initial communication state: {self.communication.comm.state}")
