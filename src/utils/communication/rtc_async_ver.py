@@ -14,7 +14,8 @@ import numpy as np
 import random
 from queue import Queue, Empty
 from utils.communication.interface import CommunicationInterface
-
+import torch
+import io
 
 class NodeState(Enum):
     CONNECTING = 1
@@ -22,6 +23,49 @@ class NodeState(Enum):
     DISCONNECTING = 3
 
 logging.basicConfig(level=logging.INFO)
+
+import json
+import torch
+import numpy as np
+from typing import Dict, Any
+
+def tensor_to_serializable(obj: Any) -> Any:
+    """Convert PyTorch tensors to serializable format."""
+    if isinstance(obj, torch.Tensor):
+        # Convert tensor to numpy array and then to list
+        return {
+            "__tensor__": True,
+            "data": obj.cpu().detach().numpy().tolist(),
+            "dtype": str(obj.dtype),
+            "shape": list(obj.shape)
+        }
+    elif isinstance(obj, dict):
+        return {key: tensor_to_serializable(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [tensor_to_serializable(item) for item in obj]
+    return obj
+
+def serializable_to_tensor(obj: Any) -> Any:
+    """Convert serializable format back to PyTorch tensors."""
+    if isinstance(obj, dict):
+        if "__tensor__" in obj:
+            # Convert back to tensor
+            data = torch.tensor(obj["data"], dtype=getattr(torch, obj["dtype"].split('.')[-1]))
+            return data.reshape(obj["shape"])
+        return {key: serializable_to_tensor(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [serializable_to_tensor(item) for item in obj]
+    return obj
+
+def serialize_message(message: Dict[str, Any]) -> str:
+    """Serialize PyTorch dictionary to JSON string."""
+    serializable_dict = tensor_to_serializable(message)
+    return json.dumps(serializable_dict)
+
+def deserialize_message(json_str: str) -> Dict[str, Any]:
+    """Deserialize JSON string back to PyTorch dictionary."""
+    serializable_dict = json.loads(json_str)
+    return serializable_to_tensor(serializable_dict)
 
 class RTCCommUtils(CommunicationInterface):
     def __init__(self, config: Dict[str, Dict[str, Any]]):
@@ -49,7 +93,8 @@ class RTCCommUtils(CommunicationInterface):
 
         # Training attributes
         self.current_round = 0
-        self.model_weights = np.zeros(10)  # Example model weights
+        # self.model_weights = np.zeros(10)  # Example model weights
+        self.model_weights = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
         self.peer_rounds: Dict[int, int] = {}
         self.peer_weights: Dict[int, Any] = {}
         self.message_callbacks: Dict[str, Any] = {}
@@ -132,11 +177,12 @@ class RTCCommUtils(CommunicationInterface):
                         if channel.readyState == "open":
                             message = json.dumps(data)
                             channel.send(message)
+                            self.logger.info(f"Successfully sent message to peer {peer_rank}")
                         else:
                             self.logger.error(f"Channel to peer {peer_rank} not open")
                     else:
                         self.logger.error(f"No channel to peer {peer_rank}")
-                    print(f"[WebRTC] Sent: {message}")
+                    print(f"[WebRTC] Sent a message to peer {peer_rank}")
                 except Empty:
                     # print("[WebRTC] No message in send_queue, sleeping...")
                     await asyncio.sleep(0.05)  # Reduced sleep duration for faster checks
@@ -159,6 +205,8 @@ class RTCCommUtils(CommunicationInterface):
                 #     self.logger.info(f"{self.rank} Received pong from {peer_rank}, RTT: {rtt:.2f}ms")
             except json.JSONDecodeError:
                 self.logger.error(f"Failed to parse message from {peer_rank}: {message}")
+            except Exception as e:
+                self.logger.error(f"Failed to handle message from {peer_rank}: {e}")
 
         asyncio.create_task(send_messages())
 
@@ -564,15 +612,21 @@ class RTCCommUtils(CommunicationInterface):
                 # if response_event.wait(timeout=5.0):
                 #     return np.array(response_data[0]["weights"])
                 message = self.message_queue.get(timeout=5.0)
-                self.logger.info(f"[Main Thread] Popped from message_queue: from peer {message[0]} of type {message[1]['type']}")
+                self.logger.info('########after message_queue.get', message)
+                self.logger.info(f"[Main Thread] Popped from message_queue, reading...")
 
                 if (message):
+                    self.logger.info(f"[Main Thread] Received from peer {message[0]} of type {message[1]['type']}")
                     peer_rank = message[0]
                     data = message[1]
                     self.handle_data_channel_message(peer_rank, data)
                     if (data["type"] == "weights_response" and data["request_id"] in requests):
                         self.logger.info(f"request id matched!")
-                        return data["weights"]
+                        # reconstructed_weights = OrderedDict({k: torch.tensor(v) if isinstance(v, list) else v for k, v in data["weights"].items()})
+                        sender = peer_rank
+                        curr_round = data["round"]
+                        deserialized_weights = deserialize_message(data["weights"])
+                        return {'sender': sender, 'round': curr_round, 'model': deserialized_weights}
 
                 self.logger.warning(f"Timeout getting weights from peer {peer_rank}, attempt {attempt + 1}")
 
@@ -586,11 +640,13 @@ class RTCCommUtils(CommunicationInterface):
 
     def receive(self, node_ids: List[int]) -> List[OrderedDict[str, Any]]:
         items = []
-        for peer_rank in node_ids:
+        # for peer_rank in node_ids: # TODO: change this back, small change for testing
+        for peer_rank in self.neighbors.values():
             # self.wait_until_rounds_match(peer_rank)
-            weights = self.get_peer_weights(peer_rank)
-            self.logger.info("get_peer_weights() returned " + str(weights))
-            items.append(weights)
+            model_data = self.get_peer_weights(peer_rank)
+            if (model_data):
+                self.logger.info(f"get_peer_weights() returned {model_data.keys()}")
+                items.append(model_data)
 
         # keep processing messages for 5 more seconds
         timestamp = time.time()
@@ -641,24 +697,35 @@ class RTCCommUtils(CommunicationInterface):
 
             elif msg_type == "weights_request":
                 self.logger.info(f"Received weights request from peer {peer_rank}")
-                # self.logger.info(f"Keys from base node are {self.base_node.get_model_weights().keys()}")
+                node_data = self.base_node.get_model_weights()
+                curr_round = node_data["round"]
+                serializable_weights = serialize_message(node_data['model'])
+                dummy_weights = self.model_weights.tolist()
+
                 response = {
                     "type": "weights_response",
-                    "weights": self.model_weights.tolist(),
-                    # "weights": {k: v.tolist() for k, v in self.base_node.get_model_weights().items()},
-                    "round": self.current_round,
+                    "weights": serializable_weights,
+                    "round": curr_round,
                     "request_id": data["request_id"]
                 }
+
+                # response = serialize_message(response)
                 self.send_to_peer(peer_rank, response)
 
             elif msg_type == "weights_response":
-                request_id = data["request_id"]
-                self.logger.info(f"Received weights response from peer {peer_rank}")
-                self.peer_weights[peer_rank] = data["weights"]
+                # request_id = data["request_id"]
+                self.logger.info(f"Received weights response from peer {peer_rank} with keys {data.keys()}")
+
+                received_weights = deserialize_message(data["weights"])
+                self.peer_weights[peer_rank] = received_weights
                 # return OrderedDict(data["weights"])
                 # if request_id in self.message_callbacks:
                 #     callback = self.message_callbacks.pop(request_id)
                 #     callback(data)
+
+                # Deserialize model weights
+                # reconstructed_weights = OrderedDict({k: torch.tensor(v) if isinstance(v, list) else v for k, v in received_weights.items()})
+                # Use reconstructed_weights as needed
 
         except json.JSONDecodeError:
             self.logger.error(f"Failed to parse message from {peer_rank}: {message}")
@@ -687,6 +754,11 @@ class RTCCommUtils(CommunicationInterface):
         for rank in list(self.connections.keys()):
             self.cleanup_connection(rank)
         self.logger.info("RTCCommUtils finalized")
+
+    def get_comm_cost(self):
+        self.logger.info("get_comm_cost not yet implemented")
+        # return self.communication_cost_received, self.communication_cost_sent
+        return 0, 0
 
     def set_is_working(self, is_working: bool):
         self.is_working = is_working
