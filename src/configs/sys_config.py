@@ -392,7 +392,7 @@ for i in range(1, num_users + 1):
 # for swift, synchronous should preferable be False
 gpu_ids = [0, 1]
 rtc_config: ConfigType = {
-    "exp_id": "test_rtc12",
+    "exp_id": "test_rtc13",
     "num_users": num_users,
     "session_id": 1111,
     "num_collaborators": NUM_COLLABORATORS,
