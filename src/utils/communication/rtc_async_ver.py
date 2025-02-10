@@ -93,10 +93,11 @@ class RTCCommUtils(CommunicationInterface):
 
         # Training attributes
         self.current_round = 0
+        self.clear_peer_weights = False # boolean to clear
         # self.model_weights = np.zeros(10)  # Example model weights
         self.model_weights = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
         self.peer_rounds: Dict[int, int] = {}
-        self.peer_weights: Dict[int, Any] = {}
+        self.peer_weights: Dict[Any, Any] = {}
         self.message_callbacks: Dict[str, Any] = {}
         self.rounds_match_events: Dict[int, threading.Event] = {}
 
@@ -122,7 +123,7 @@ class RTCCommUtils(CommunicationInterface):
     def setup_file_logging(self):
         if self.rank is not None:
             # Create file handler
-            fh = logging.FileHandler(f"logs/client_{self.rank}.log")
+            fh = logging.FileHandler(f"logs/client_{self.rank}_new.log")
             fh.setLevel(logging.INFO)
             
             # Create formatter
@@ -177,12 +178,12 @@ class RTCCommUtils(CommunicationInterface):
                         if channel.readyState == "open":
                             message = json.dumps(data)
                             channel.send(message)
-                            self.logger.info(f"Successfully sent message to peer {peer_rank}")
+                            # self.logger.info(f"Successfully sent message to peer {peer_rank}")
                         else:
                             self.logger.error(f"Channel to peer {peer_rank} not open")
                     else:
                         self.logger.error(f"No channel to peer {peer_rank}")
-                    print(f"[WebRTC] Sent a message to peer {peer_rank}")
+                    # print(f"[WebRTC] Sent a message to peer {peer_rank}")
                 except Empty:
                     # print("[WebRTC] No message in send_queue, sleeping...")
                     await asyncio.sleep(0.05)  # Reduced sleep duration for faster checks
@@ -191,7 +192,7 @@ class RTCCommUtils(CommunicationInterface):
         def on_message(message):
             try:
                 data = json.loads(message)
-                self.logger.info("[WebRTC] Putting into message_queue message from peer " + str(peer_rank) + ' of type ' + str(data["type"])) # + str(data))
+                # self.logger.info("[WebRTC] Putting into message_queue message from peer " + str(peer_rank) + ' of type ' + str(data["type"])) # + str(data))
                 self.message_queue.put([peer_rank, data])
                 # if data["type"] == "ping":
                 #     self.logger.info(f"{self.rank} Received ping from {peer_rank}")
@@ -584,6 +585,12 @@ class RTCCommUtils(CommunicationInterface):
                 "sessionId": self.session_id,
             }))
 
+    def chunk_tensor(self, tensor, chunk_size):
+        """Yield successive chunks from a tensor, including its original shape."""
+        original_shape = tensor.shape
+        num_chunks = (tensor.numel() + chunk_size - 1) // chunk_size
+        for i in range(num_chunks):
+            yield tensor.flatten()[i * chunk_size:(i + 1) * chunk_size].reshape(-1), num_chunks, original_shape
 
     # TODO: Here are all the functions that are not going to be on the listening thread
     def get_peer_weights(self, peer_rank: int, max_retries: int = 3) -> Optional[np.ndarray]:
@@ -607,6 +614,8 @@ class RTCCommUtils(CommunicationInterface):
                     "type": "weights_request",
                     "request_id": request_id
                 })
+
+                return # for testing
 
                 # Wait for response with timeout
                 # if response_event.wait(timeout=5.0):
@@ -650,24 +659,33 @@ class RTCCommUtils(CommunicationInterface):
 
         # keep processing messages for 5 more seconds
         timestamp = time.time()
-        self.logger.info(f"Processing messages for 5 more seconds")
-        while time.time() - timestamp < 5:
+        # self.logger.info(f"Processing messages for 60 more seconds")
+        finished = False
+        while not finished:
             try:
                 message = self.message_queue.get(timeout=0.1)
                 if (message):
                     peer_rank = message[0]
                     data = message[1]
                     self.handle_data_channel_message(peer_rank, data)
-                    self.logger.info(f"[Main Thread] Popped from message queue type {data['type']} from peer {peer_rank}")
+                    if data["type"] == "weights_finished":
+                        finished = True
+                    # self.logger.info(f"[Main Thread] Popped from message queue type {data['type']} from peer {peer_rank}")
             except Empty:
                 pass
 
-        self.logger.info(f"Finished processing messages for 5 seconds")
+        # self.logger.info(f"Finished processing messages for 5 seconds")
 
-        return items
+        # log the time it took to send in a nice format, and the keys of the peer_weights
+        self.logger.info(f"Time to send: {time.strftime('%M:%S', time.gmtime(time.time() - timestamp))}")
+        for key in self.peer_weights:               
+            self.logger.info(f"Layer: {key}, dtype: {self.peer_weights[key].dtype}, size: {self.peer_weights[key].size()}")
+        
+        self.clear_peer_weights = True
+        return [{'model': self.peer_weights}]
     
     def send_to_peer(self, peer_rank: int, data: dict):
-        self.logger.info(f"[Main Thread] Putting message of type {data['type']} in send queue for peer {peer_rank}")
+        # self.logger.info(f"[Main Thread] Putting message of type {data['type']} in send queue for peer {peer_rank}")
         self.send_queue.put([peer_rank, data])
 
     def handle_data_channel_message(self, peer_rank: int, message: str):
@@ -699,37 +717,45 @@ class RTCCommUtils(CommunicationInterface):
                 self.logger.info(f"Received weights request from peer {peer_rank}")
                 node_data = self.base_node.get_model_weights()
                 curr_round = node_data["round"]
-
                 # serializable_weights = serialize_message(node_data['model'])
-                total_size = sum(tensor.numel() * tensor.element_size() for tensor in node_data['model'].values())
-                first_layer = OrderedDict({list(node_data['model'].items())[0]})
-                serializable_weights = serialize_message(first_layer)
-                first_layer_size = sum(tensor.numel() * tensor.element_size() for tensor in first_layer.values())
-                self.logger.info(f"First layer size: {first_layer_size} / {total_size} bytes")
+                # total_size = sum(tensor.numel() * tensor.element_size() for tensor in node_data['model'].values())
+                # first_layer = OrderedDict({list(node_data['model'].items())[0]})
+                # serializable_weights = serialize_message(first_layer)
+                # first_layer_size = sum(tensor.numel() * tensor.element_size() for tensor in first_layer.values())
+                # self.logger.info(f"First layer size: {first_layer_size} / {total_size} bytes")
                 # dummy_weights = self.model_weights.tolist()
-                dummy_weights = OrderedDict({
-                    'layer1.weight': torch.tensor([[[0.1, 0.2], [0.3, 0.4]], [[0.5, 0.6], [0.7, 0.8]]]),
-                    'layer2.weight': torch.tensor([[[0.9, 1.0], [1.1, 1.2]], [[1.3, 1.4], [1.5, 1.6]]])
-                })
+                # dummy_weights = OrderedDict({
+                #     'layer1.weight': torch.tensor([[[0.1, 0.2], [0.3, 0.4]], [[0.5, 0.6], [0.7, 0.8]]]),
+                #     'layer2.weight': torch.tensor([[[0.9, 1.0], [1.1, 1.2]], [[1.3, 1.4], [1.5, 1.6]]])
+                # })
                 # self.logger.info(f"dummy_weights: {dummy_weights}")
                 # serializable_weights = serialize_message(dummy_weights)
 
-                response = {
-                    "type": "weights_response",
-                    "weights": serializable_weights,
-                    "round": curr_round,
-                    "request_id": data["request_id"]
-                }
+                chunk_size = 15000 # supposedly 16kb is limit
+                self.logger.info(f"Sending model weights. Keys: {node_data['model'].keys()}")
+                for layer_name, tensor in node_data['model'].items():
+                    self.logger.info(f"Layer: {layer_name}, dtype: {tensor.dtype}, size: {tensor.size()}")
+                    for chunk, num_chunks, original_shape in self.chunk_tensor(tensor, chunk_size):
+                        serializable_chunk = serialize_message({'layer_name': layer_name, 'chunk': chunk, 'num_chunks': num_chunks, 'original_shape': original_shape})
+                        response = {
+                            "type": "weights_response",
+                            "weights": serializable_chunk,
+                            "round": curr_round,
+                            "request_id": data["request_id"]
+                        }
+                        self.send_to_peer(peer_rank, response)
 
-                # response = serialize_message(response)
-                self.send_to_peer(peer_rank, response)
+                finished_message = {
+                    "type": "weights_finished",
+                    "request_id": data["request_id"],
+                    "round": curr_round
+                }
+                self.send_to_peer(peer_rank, finished_message)
 
             elif msg_type == "weights_response":
-                # request_id = data["request_id"]
-                self.logger.info(f"Received weights response from peer {peer_rank} with keys {data.keys()}")
-
-                received_weights = deserialize_message(data["weights"])
-                self.peer_weights[peer_rank] = received_weights
+                # self.logger.info(f"Received weights response from peer {peer_rank} with keys {data.keys()}")
+                # received_weights = deserialize_message(data["weights"])
+                # self.peer_weights[peer_rank] = received_weights
                 # return OrderedDict(data["weights"])
                 # if request_id in self.message_callbacks:
                 #     callback = self.message_callbacks.pop(request_id)
@@ -738,11 +764,35 @@ class RTCCommUtils(CommunicationInterface):
                 # Deserialize model weights
                 # reconstructed_weights = OrderedDict({k: torch.tensor(v) if isinstance(v, list) else v for k, v in received_weights.items()})
                 # Use reconstructed_weights as needed
+                if self.clear_peer_weights:
+                    self.peer_weights = {}
+                    self.clear_peer_weights = False
+                    
+                chunk_data = deserialize_message(data["weights"])
+                layer_name = chunk_data["layer_name"]
+                chunk = chunk_data["chunk"]
+                num_chunks = chunk_data["num_chunks"]
+                original_shape = chunk_data["original_shape"]
+                if layer_name not in self.peer_weights:
+                    self.peer_weights[layer_name] = []  # Initialize as a list to collect chunks
+                self.peer_weights[layer_name].append(chunk)
+
+                # Check if all chunks are received
+                if len(self.peer_weights[layer_name]) == num_chunks:
+                    full_tensor = torch.cat(self.peer_weights[layer_name])
+                    self.peer_weights[layer_name] = full_tensor.reshape(original_shape)
+                    self.logger.info(f"Reconstructed full tensor for {layer_name}")
+                else:
+                    self.logger.info(f"Received {len(self.peer_weights[layer_name])} / {num_chunks} chunks for {layer_name}")
+
+            elif msg_type == "weights_finished":
+                self.logger.info(f"Received finished message for weights from peer {peer_rank}")
+                # Trigger any post-processing or confirmation logic here
 
         except json.JSONDecodeError:
-            self.logger.error(f"Failed to parse message from {peer_rank}: {message}")
+            self.logger.error(f"Failed to parse message from {peer_rank}: {message.keys()}")
         except Exception as e:
-            self.logger.error(f"Error handling message from {peer_rank}: {e}, message: {message}")
+            self.logger.error(f"Error handling message from {peer_rank}: {e}, message: {message.keys()}")
 
     def send(self, dest: str | int, data: Any):
         print("RTCCommUtils send called")
