@@ -5,8 +5,8 @@ import os
 import websockets
 from aiortc import RTCPeerConnection, RTCSessionDescription, RTCDataChannel, RTCConfiguration, RTCIceServer
 import logging
-from collections import defaultdict
-from typing import Dict, Set, List, Any, Optional, OrderedDict
+from collections import defaultdict, OrderedDict
+from typing import Dict, Set, List, Any, Optional
 from enum import Enum
 import time
 import argparse
@@ -699,8 +699,20 @@ class RTCCommUtils(CommunicationInterface):
                 self.logger.info(f"Received weights request from peer {peer_rank}")
                 node_data = self.base_node.get_model_weights()
                 curr_round = node_data["round"]
-                serializable_weights = serialize_message(node_data['model'])
-                dummy_weights = self.model_weights.tolist()
+
+                # serializable_weights = serialize_message(node_data['model'])
+                total_size = sum(tensor.numel() * tensor.element_size() for tensor in node_data['model'].values())
+                first_layer = OrderedDict({list(node_data['model'].items())[0]})
+                serializable_weights = serialize_message(first_layer)
+                first_layer_size = sum(tensor.numel() * tensor.element_size() for tensor in first_layer.values())
+                self.logger.info(f"First layer size: {first_layer_size} / {total_size} bytes")
+                # dummy_weights = self.model_weights.tolist()
+                dummy_weights = OrderedDict({
+                    'layer1.weight': torch.tensor([[[0.1, 0.2], [0.3, 0.4]], [[0.5, 0.6], [0.7, 0.8]]]),
+                    'layer2.weight': torch.tensor([[[0.9, 1.0], [1.1, 1.2]], [[1.3, 1.4], [1.5, 1.6]]])
+                })
+                # self.logger.info(f"dummy_weights: {dummy_weights}")
+                # serializable_weights = serialize_message(dummy_weights)
 
                 response = {
                     "type": "weights_response",
