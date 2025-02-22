@@ -1,6 +1,8 @@
 import * as tf from '@tensorflow/tfjs'
 
 const WebSocket = require('ws');
+const wrtc = require('wrtc');  // Import WebRTC for Node.js
+// TODO: this can be replaced by just the browser-side without wrtc once we use browser
 
 class TorusNode {
     constructor(signalingServer, sessionInfo) {
@@ -67,11 +69,11 @@ class TorusNode {
 
         switch (data.type) {
             case 'session_created':
-                this.updateStatus(`Session created. Waiting for ${data.remainingClients} more clients...`);
+                this.updateStatus(`Session created, rank ${data.rank}`);
                 this.sessionId = data.sessionId;
                 break;
             case 'session_joined':
-                this.updateStatus(`Joined session. Waiting for ${data.remainingClients} more clients...`);
+                this.updateStatus(`Joined session, rank ${data.rank}`);
                 this.sessionId = data.sessionId;
                 break;
             case 'session_ready':
@@ -110,7 +112,7 @@ class TorusNode {
 
         this.neighbors = newNeighbors;
         this.expectedConnections = Object.keys(newNeighbors).length;
-        this.updateStatus(`Connected (Rank ${this.rank})`);
+        this.updateStatus(`Joined session, rank is ${this.rank}`);
 
         // Initiate connections to higher-ranked neighbors
         for (const neighborRank of Object.values(newNeighbors)) {
@@ -134,7 +136,7 @@ class TorusNode {
             }]
         };
 
-        const pc = new RTCPeerConnection(config);
+        const pc = new wrtc.RTCPeerConnection(config);
         
         pc.oniceconnectionstatechange = () => {
             this.log(`ICE connection state: ${pc.iceConnectionState}`);
@@ -198,6 +200,7 @@ class TorusNode {
         channel.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
+                console.log(`Received message from ${peerRank}: ${data.type}`)
                 if (data.type === 'ping') {
                     this.log(`Received ping from ${peerRank}`);
                     channel.send(JSON.stringify({
@@ -245,7 +248,7 @@ class TorusNode {
             }
 
             if (data.type === 'offer') {
-                await pc.setRemoteDescription(new RTCSessionDescription({
+                await pc.setRemoteDescription(new wrtc.RTCSessionDescription({
                     type: 'offer',
                     sdp: data.sdp
                 }));
@@ -256,7 +259,7 @@ class TorusNode {
                     sdp: answer.sdp,
                 });
             } else if (data.type === 'answer') {
-                await pc.setRemoteDescription(new RTCSessionDescription({
+                await pc.setRemoteDescription(new wrtc.RTCSessionDescription({
                     type: 'answer',
                     sdp: data.sdp
                 }));
