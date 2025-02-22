@@ -106,6 +106,10 @@ class RTCCommUtils(CommunicationInterface):
         self.message_queue = Queue()  # For received messages (WebRTC -> Main)
         self.stop_workers = False
 
+        # communication cost
+        self.comm_cost_sent = 0
+        self.comm_cost_received = 0
+
     def setup_logger(self) -> logging.Logger:
         # Create logs directory if it doesn't exist
         os.makedirs("logs", exist_ok=True)
@@ -736,6 +740,9 @@ class RTCCommUtils(CommunicationInterface):
                 for layer_name, tensor in node_data['model'].items():
                     self.logger.info(f"Layer: {layer_name}, dtype: {tensor.dtype}, size: {tensor.size()}")
                     for chunk, num_chunks, original_shape in self.chunk_tensor(tensor, chunk_size):
+                        size_sent = chunk.numel() * chunk.element_size()
+                        self.comm_cost_sent += size_sent
+
                         serializable_chunk = serialize_message({'layer_name': layer_name, 'chunk': chunk, 'num_chunks': num_chunks, 'original_shape': original_shape})
                         response = {
                             "type": "weights_response",
@@ -767,7 +774,7 @@ class RTCCommUtils(CommunicationInterface):
                 if self.clear_peer_weights:
                     self.peer_weights = {}
                     self.clear_peer_weights = False
-                    
+
                 chunk_data = deserialize_message(data["weights"])
                 layer_name = chunk_data["layer_name"]
                 chunk = chunk_data["chunk"]
@@ -776,6 +783,9 @@ class RTCCommUtils(CommunicationInterface):
                 if layer_name not in self.peer_weights:
                     self.peer_weights[layer_name] = []  # Initialize as a list to collect chunks
                 self.peer_weights[layer_name].append(chunk)
+
+                size_received = chunk.numel() * chunk.element_size()
+                self.comm_cost_received += size_received
 
                 # Check if all chunks are received
                 if len(self.peer_weights[layer_name]) == num_chunks:
@@ -818,9 +828,7 @@ class RTCCommUtils(CommunicationInterface):
         self.logger.info("RTCCommUtils finalized")
 
     def get_comm_cost(self):
-        self.logger.info("get_comm_cost not yet implemented")
-        # return self.communication_cost_received, self.communication_cost_sent
-        return 0, 0
+        return self.comm_cost_received, self.comm_cost_sent
 
     def set_is_working(self, is_working: bool):
         self.is_working = is_working
