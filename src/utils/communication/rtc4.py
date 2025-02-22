@@ -42,7 +42,7 @@ class RTCCommUtils(CommunicationInterface):
         self.connected_peers: Set[int] = set()
         self.expected_connections = 0
         self.connection_timeout = 30
-        self.ice_gathering_timeout = 10
+        self.ice_gathering_timeout = 30
         self.logger = self.setup_logger()
         
         # Training attributes
@@ -53,9 +53,14 @@ class RTCCommUtils(CommunicationInterface):
         self.message_callbacks: Dict[str, Any] = {}
         self.rounds_match_events: Dict[int, threading.Event] = {}
 
+        # Queues for sending and receiving messages
+        self.send_queue = queue.Queue()
+        self.receive_queue = queue.Queue()
+
         # Event loop in a separate thread
         self.loop = asyncio.new_event_loop()
-        self.loop_thread = threading.Thread(target=self.loop.run_forever)
+        self.loop_thread = threading.Thread(target=self.start_event_loop)
+        # self.loop_thread = threading.Thread(target=self.loop.run_forever)
         self.loop_thread.start()
 
         self.stop_workers = False
@@ -105,11 +110,19 @@ class RTCCommUtils(CommunicationInterface):
 
         @channel.on("open")
         def on_open():
-            self.logger.info(f"Data channel opened with peer {peer_rank}")
+            self.logger.info(f"Data channel opened with peer {peer_rank}, channel: {channel}")
             self.on_peer_connected(peer_rank)
+
+            # Send a test message to confirm communication
+            test_message = json.dumps({"type": "test_message", "content": f"Hello from Node {self.rank}"})
+            channel.send(test_message)
+            # self.send_queue.put(test_message)
+            self.logger.info(f"Test message sent to peer {peer_rank}: {test_message}")
 
         @channel.on("message")
         def on_message(message):
+            self.logger.info(f"Received message from peer {peer_rank}")
+            # self.receive_queue.put(message)
             self.handle_data_channel_message(peer_rank, message)
 
         @channel.on("close")
@@ -235,7 +248,8 @@ class RTCCommUtils(CommunicationInterface):
                 if rank in self.data_channels:
                     channel = self.data_channels[rank]
                     if channel and channel.readyState != "closed":
-                        self.run_coro_sync(channel.close())
+                        # self.run_coro_sync(channel.close())
+                        channel.close()
                     del self.data_channels[rank]
 
                 for transceiver in pc.getTransceivers():
@@ -278,6 +292,7 @@ class RTCCommUtils(CommunicationInterface):
 
                 @pc.on("datachannel")
                 def on_datachannel(channel):
+                    self.logger.info(f"Data channel created by peer {sender_rank}")
                     self.setup_data_channel(channel, sender_rank)
 
                 @pc.on("icecandidate")
@@ -303,6 +318,18 @@ class RTCCommUtils(CommunicationInterface):
                     sdp=data["sdp"],
                     type="offer"
                 ))
+
+                # Attach ICE callback:
+                @pc.on("icecandidate")
+                async def on_icecandidate(candidate):
+                    if candidate:
+                        self.send_signaling(sender_rank, {
+                            "type": "candidate",
+                            "candidate": candidate.candidate,
+                            "sdpMid": candidate.sdpMid,
+                            "sdpMLineIndex": candidate.sdpMLineIndex,
+                        })
+
                 answer = await pc.createAnswer()
                 await pc.setLocalDescription(answer)
                 self.send_signaling(sender_rank, {
@@ -315,6 +342,18 @@ class RTCCommUtils(CommunicationInterface):
                     sdp=data["sdp"],
                     type="answer"
                 ))
+
+                # ALSO attach ICE callback if not already:
+                @pc.on("icecandidate")
+                async def on_icecandidate(candidate):
+                    if candidate:
+                        self.send_signaling(sender_rank, {
+                            "type": "candidate",
+                            "candidate": candidate.candidate,
+                            "sdpMid": candidate.sdpMid,
+                            "sdpMLineIndex": candidate.sdpMLineIndex,
+                        })
+
 
             elif data["type"] == "candidate" and pc.remoteDescription:
                 candidate = RTCIceCandidate(
@@ -498,6 +537,7 @@ class RTCCommUtils(CommunicationInterface):
             }))
 
     def handle_data_channel_message(self, peer_rank: int, message: str):
+        self.logger.info(f"Raw data channel message from peer {peer_rank}, message: {message}")
         try:
             data = json.loads(message)
             msg_type = data["type"]
@@ -520,6 +560,7 @@ class RTCCommUtils(CommunicationInterface):
                     self.logger.warning(f"Invalid 'round_update_response' from peer {peer_rank}: {message}")
 
             elif msg_type == "weights_request":
+                self.logger.info(f"Received weights request from peer {peer_rank}")
                 response = {
                     "type": "weights_response",
                     "weights": self.model_weights.tolist(),
@@ -529,10 +570,16 @@ class RTCCommUtils(CommunicationInterface):
                 self.send_to_peer(peer_rank, response)
 
             elif msg_type == "weights_response":
+                self.logger.info(f"Received weights response from peer {peer_rank}")
                 request_id = data["request_id"]
                 if request_id in self.message_callbacks:
                     callback = self.message_callbacks.pop(request_id)
                     callback(data)
+
+            # Handle test messages
+            elif msg_type == "test_message":
+                self.logger.info(f"Test message received from peer {peer_rank}: {data['content']}")
+                return
 
         except json.JSONDecodeError:
             self.logger.error(f"Failed to parse message from {peer_rank}: {message}")
@@ -555,6 +602,7 @@ class RTCCommUtils(CommunicationInterface):
         start_time = time.time()
         while time.time() - start_time < timeout:
             if self.peer_rounds.get(peer_rank, 0) >= self.current_round:
+                self.logger.info(f"Rounds match with peer {peer_rank}")
                 return  # Synchronization complete
 
             self.send_to_peer(peer_rank, {
@@ -568,16 +616,29 @@ class RTCCommUtils(CommunicationInterface):
 
     def receive(self, node_ids: List[int]) -> List[Any]:
         items = []
-        for peer_rank in node_ids:
+        # for peer_rank in node_ids: # TODO: change this back, small change for testing
+        peer_rank = self.neighbors['neighbor1']
+        if peer_rank is not None:
+            print("Peer rank sending from RTC server is ", peer_rank)
             self.wait_until_rounds_match(peer_rank)
             weights = self.get_peer_weights(peer_rank)
             items.append(weights)
         return items
 
     def get_peer_weights(self, peer_rank: int, max_retries: int = 3) -> Optional[np.ndarray]:
+        # TODO: remove later, only for testing
+        if peer_rank != 2:
+            # non blocking wait for 30 seconds
+            self.logger.info(f"Waiting for 30 seconds from {self.rank}")
+            start = time.time()
+            while time.time() - start < 30:
+                pass
+            self.logger.info(f"Done waiting for 30 seconds from {self.rank}")
+            return self.model_weights.tolist()
+        
         for attempt in range(max_retries):
             try:
-                request_id = f"weights_request_{time.time()}_{random.randint(0, 1000)}"
+                request_id = f"weights_request_{self.rank}_{time.time()}_{random.randint(0, 1000)}"
 
                 # Create an event for synchronization
                 response_event = threading.Event()
@@ -591,11 +652,12 @@ class RTCCommUtils(CommunicationInterface):
 
                 self.send_to_peer(peer_rank, {
                     "type": "weights_request",
-                    "request_id": request_id
+                    "request_id": request_id,
+                    "content": "Hi"
                 })
 
                 # Wait for response with timeout
-                if response_event.wait(timeout=5.0):
+                if response_event.wait(timeout=30.0):
                     return np.array(response_data[0]["weights"])
 
                 self.logger.warning(f"Timeout getting weights from peer {peer_rank}, attempt {attempt + 1}")
@@ -611,11 +673,17 @@ class RTCCommUtils(CommunicationInterface):
     def send_to_peer(self, peer_rank: int, data: dict):
         if peer_rank in self.data_channels:
             channel = self.data_channels[peer_rank]
-            if channel.readyState == "open":
-                message = json.dumps(data)
-                self.run_coro_sync(channel.send(message))
-            else:
-                self.logger.error(f"Channel to peer {peer_rank} not open")
+            self.logger.info(f"Channel state to peer {peer_rank}: state {channel.readyState}, sending {data}")
+            try:
+                if channel.readyState == "open":
+                    message = json.dumps(data)
+                    # self.run_coro_sync(channel.send(message))
+                    channel.send(message)
+                    self.logger.info(f"Sent message to peer {peer_rank}: {data}, data channel: {channel}")
+                else:
+                    self.logger.error(f"Channel to peer {peer_rank} not open")
+            except Exception as e:
+                self.logger.error(f"Error sending to peer {peer_rank}: {e}")
         else:
             self.logger.error(f"No channel to peer {peer_rank}")
 
@@ -676,3 +744,27 @@ class RTCCommUtils(CommunicationInterface):
     def set_is_working(self, is_working: bool):
         self.is_working = is_working
         print("RTCCommUtils set_is_working called")
+
+    def start_event_loop(self):
+        asyncio.set_event_loop(self.loop)
+        self.loop.run_forever()
+
+    async def send_message(self):
+        while True:
+            message = await asyncio.to_thread(self.send_queue.get)
+            for peer_rank, channel in self.data_channels.items():
+                if channel.readyState == "open":
+                    await channel.send(message)
+
+    def start(self):
+        asyncio.run_coroutine_threadsafe(self.send_message(), self.loop)
+
+    def stop(self):
+        self.loop.call_soon_threadsafe(self.loop.stop)
+        self.loop_thread.join()
+        self.stop_workers = True
+        if self.websocket:
+            self.websocket.close()
+        for rank in list(self.connections.keys()):
+            self.cleanup_connection(rank)
+        self.logger.info("RTCCommUtils finalized")

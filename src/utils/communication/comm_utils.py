@@ -1,7 +1,7 @@
 from enum import Enum
 from utils.communication.grpc.main import GRPCCommunication
 from typing import Any, Dict, List, TYPE_CHECKING
-from utils.communication.rtc_thread_2_5 import RTCCommUtils
+from utils.communication.rtc_async_ver import RTCCommUtils
 # from utils.communication.mpi import MPICommUtils
 import asyncio
 import threading
@@ -39,9 +39,9 @@ class CommunicationManager:
     def __init__(self, config: Dict[str, Any]):
         self.comm_type = CommunicationType[config["comm"]["type"]]
         self.comm = CommunicationFactory.create_communication(config, self.comm_type)
-        webrtc_thread = threading.Thread(target=self.comm.initialize)
-        webrtc_thread.start()
-        # self.comm.initialize()
+        # webrtc_thread = threading.Thread(target=self.comm.initialize)
+        # webrtc_thread.start()
+        self.comm.initialize()
         # self._ready = asyncio.Event()
     
     #################################################

@@ -192,7 +192,7 @@ fedstatic: ConfigType = {
     # Collaboration setup
     "algo": "fedstatic",
     "topology": {"name": "ring"}, # type: ignore
-    "rounds": 2,
+    "rounds": 10,
 
     # Model parameters
     "model": "resnet10",

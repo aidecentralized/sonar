@@ -918,6 +918,7 @@ class BaseFedAvgClient(BaseClient):
     def receive_and_aggregate(self, neighbors: List[int]) -> None:
         if self.is_working:
             # Receive the model updates from the neighbors
+            print("Receiving model updates from neighbors: ", neighbors)
             model_updates = self.comm_utils.receive(node_ids=neighbors)
             # Aggregate the representations
             self.aggregate(model_updates, keys_to_ignore=self.model_keys_to_ignore)

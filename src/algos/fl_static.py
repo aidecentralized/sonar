@@ -4,6 +4,7 @@ Module for FedStaticClient and FedStaticServer in Federated Learning.
 from typing import Any, Dict, OrderedDict, List
 from utils.communication.comm_utils import CommunicationManager
 import torch
+import time
 
 from algos.base_class import BaseFedAvgClient
 from algos.topologies.collections import select_topology
@@ -65,7 +66,7 @@ class FedStaticNode(BaseFedAvgClient):
         """
         Asynchronous version of run_protocol
         """
-        print(f"Client {self.node_id} ready to start training")
+        print(f"Client {self.node_id} ready to start training, asynchronous call")
         start_round = self.config.get("start_round", 0)
         if start_round != 0:
             raise NotImplementedError(
@@ -102,4 +103,11 @@ class FedStaticServer(BaseFedAvgClient):
         pass
 
     def run_protocol(self) -> None:
-        pass
+        # wait for forever seconds for the rest of the nodes
+        print("Server started waiting forever")
+        start_time = time.time()
+        # while time.time() - start_time < 180:
+            # time.sleep(1)  # Sleep for 1 second at a time
+        while True:
+            time.sleep(1)
+        print("Server done waiting for 180 seconds")

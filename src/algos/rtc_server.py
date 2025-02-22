@@ -176,7 +176,7 @@ class SignalingServer:
                     pass
                 elif data['type'] == "node_ready":
                     session.num_ready += 1
-                    print("Upating num_ready to ", session.num_ready)
+                    print("Updating num_ready to ", session.num_ready)
                     await self.check_session_ready(session)
 
 

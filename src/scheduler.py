@@ -65,7 +65,6 @@ def get_node(
 ) -> BaseNode:
     algo_name = config["algo"]
     node_class = algo_map[algo_name][rank > 0]
-    # node_class = algo_map[algo_name][rank >= 0]
     node = node_class(config, comm_utils) # type: ignore
     return node # type: ignore
 
