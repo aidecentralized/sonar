@@ -1,6 +1,7 @@
 const WebSocket = require('ws');
 const wrtc = require('wrtc');  // Import WebRTC for Node.js
 // TODO: this can be replaced by just the browser-side without wrtc once we use browser
+// TODO: I awaited the initiateConnection, but it was originally unecessary (and still might not be necessary), you only need a sufficient timeout
 
 function tensorToSerializable(obj) {
     // If it's a "tensor-like" object, convert it into a serializable structure.
@@ -66,8 +67,15 @@ function tensorToSerializable(obj) {
   }
   
   function deserializeMessage(jsonStr) {
-    const parsed = JSON.parse(jsonStr);
-    return serializableToTensor(parsed);
+    try {
+      const parsed = JSON.parse(jsonStr);
+      return serializableToTensor(parsed);
+    }
+    catch (error) {
+      console.error(`Error deserializing message: ${error} (input: ${
+        jsonStr.substring(0, 300)}...)`);
+      return null;
+    } 
   }
 
   /**
@@ -132,7 +140,7 @@ class WebRTCCommUtils {
         // Connection management
         this.connectionRetries = new Map();           // peerRank -> retryCount
         this.MAX_RETRIES = 3;
-        this.RETRY_DELAY = 2000;
+        this.RETRY_DELAY = 15000;
         this.ICE_GATHERING_TIMEOUT = 10000;
     
         // State
@@ -250,7 +258,7 @@ class WebRTCCommUtils {
    * handleTopology - Receives neighbors and attempts to connect or remove stale connections.
    */
     async handleTopology(data) {
-        this.log(`Handling topology... rank=${data.rank}, neighbors=${JSON.stringify(data.neighbors)}`);
+        this.log(`Handling topology... rank=${data.rank}, neighbors=${JSON.stringify(data.neighbors)} type ${typeof data.neighbors}`);
 
         this.rank = data.rank;
         const newNeighbors = data.neighbors;
@@ -277,13 +285,17 @@ class WebRTCCommUtils {
 
         // Initiate connections to higher-ranked neighbors
         for (const neighborRank of Object.values(newNeighbors)) {
-            if (neighborRank > this.rank && 
-                !this.connections.has(neighborRank) && 
-                !this.pendingConnections.has(neighborRank)) {
-                this.log(`Initiating connection to ${neighborRank}`);
-                this.pendingConnections.add(neighborRank);
-                this.initiateConnection(neighborRank);
-            }
+          // TODO: uncomment this condition later
+            // if (neighborRank > this.rank && 
+            //     !this.connections.has(neighborRank) && 
+            //     !this.pendingConnections.has(neighborRank)) {
+            //     this.log(`Initiating connection to ${neighborRank}`);
+            //     this.pendingConnections.add(neighborRank);
+            //     this.initiateConnection(neighborRank);
+            // }
+            this.log(`Initiating connection to ${neighborRank}`);
+            this.pendingConnections.add(neighborRank);
+            this.initiateConnection(neighborRank);
         }
     }
 
@@ -292,7 +304,7 @@ class WebRTCCommUtils {
   /**
    * createPeerConnection - Creates an RTCPeerConnection with the STUN servers.
    */
-    createPeerConnection() {
+    createPeerConnection(otherRank) {
         const config = {
             iceServers: [{
                 urls: [
@@ -305,7 +317,7 @@ class WebRTCCommUtils {
         const pc = new wrtc.RTCPeerConnection(config);
         
         pc.oniceconnectionstatechange = () => {
-            this.log(`ICE state change: ${pc.iceConnectionState}`);
+            this.log(`ICE state change for ${otherRank}: ${pc.iceConnectionState}`);
             if (pc.iceConnectionState === 'failed') {
               this.log('ICE failed. You may want to handle retries here.');
             }
@@ -326,7 +338,7 @@ class WebRTCCommUtils {
    */
     async initiateConnection(targetRank) {
         try {
-            const pc = this.createPeerConnection();
+            const pc = this.createPeerConnection(targetRank);
             this.connections.set(targetRank, pc);
 
             // Create data channel
@@ -338,23 +350,24 @@ class WebRTCCommUtils {
             await pc.setLocalDescription(offer);
 
             // Wait for ICE gathering
-            // await new Promise(resolve => {
-            //     const checkState = () => {
-            //         if (pc.iceGatheringState === 'complete') {
-            //             resolve();
-            //         } else {
-            //             setTimeout(checkState, 1000);
-            //         }
-            //     };
-            //     checkState();
-            // });
-            await this.waitForIceGathering(pc, this.ICE_GATHERING_TIMEOUT);
+            await new Promise(resolve => {
+                const checkState = () => {
+                    if (pc.iceGatheringState === 'complete') {
+                        resolve();
+                    } else {
+                        setTimeout(checkState, 10000);
+                    }
+                };
+                checkState();
+            });
+            // await this.waitForIceGathering(pc, this.ICE_GATHERING_TIMEOUT);
 
             // Send offer
             await this.sendSignalingMessage(targetRank, {
                 type: 'offer',
                 sdp: pc.localDescription.sdp
             });
+            this.log(`Sent offer to ${targetRank}`);
 
         } catch (error) {
             this.log(`Failed to initiate connection to ${targetRank}: ${error}`, 'error');
@@ -392,19 +405,40 @@ class WebRTCCommUtils {
     setupDataChannel(channel, peerRank) {
         this.dataChannels.set(peerRank, channel);
         this.peer_rounds.set(peerRank, 0);
+        this.log(`Setting up data channel: ${JSON.stringify([...this.dataChannels.entries()])}`);
 
         channel.onopen = () => {
             this.log(`Data channel opened with peer ${peerRank}`);
             this.onPeerConnected(peerRank);
         };
 
+        let messageBuffer = '';
+
         channel.onmessage = (event) => {
             try {
-                const data = JSON.parse(event.data);
-                console.log(`Received message from ${peerRank}: ${data.type}`)
+                // Append the incoming data to the buffer
+                messageBuffer += event.data;
+
+                // Try to parse the buffer as JSON
+                const data = JSON.parse(messageBuffer);
+
+                // If successful, handle the complete message
+                console.log(`Received message from ${peerRank}: ${data.type}`);
                 this.handleDataChannelMessage(peerRank, data);
+
+                // Clear the buffer after successful parsing
+                messageBuffer = '';
             } catch (error) {
-                this.log(`Failed to parse message from ${peerRank}: ${error}`, 'error');
+                // If parsing fails, log the error and keep the buffer for further data
+                if (error instanceof SyntaxError) {
+                    // This is expected if the message is incomplete
+                    console.log(`Waiting for more data to complete the message from ${peerRank}`);
+                } else {
+                    // Log other types of errors
+                    this.log(`Failed to parse message from ${peerRank}: ${error}, data: ${messageBuffer.substring(0, 100)} ... ${messageBuffer.substring(messageBuffer.length-30)}`, 'error');
+                    // Clear the buffer if it's a different error
+                    messageBuffer = '';
+                }
             }
         };
 
@@ -426,7 +460,8 @@ class WebRTCCommUtils {
              `Connected: ${this.connectedPeers.size}/${this.expectedConnections}`);
 
     // If we've reached the expected number, let the server know
-    if (this.connectedPeers.size === this.expectedConnections) {
+    // if (this.connectedPeers.size === this.expectedConnections) {
+    if (this.connectedPeers >= 2) {
       this.broadcastNodeReady();
     }
 
@@ -459,8 +494,8 @@ class WebRTCCommUtils {
           // TODO: delete later
           // send a model request to see if it works
         //   for (const neighbor of this.neighbors){
-            this.log(`Sending weights request for neighbor ${neighbor}`);
-            this.sendToPeer(this.neighbors, {
+            this.log(`Sending weights request for neighbor ${this.neighbors.neighbor1}`);
+            this.sendToPeer(this.neighbors.neighbor1, {
                 type: "weights_request",
                 request_id: 1
             })
@@ -480,7 +515,7 @@ class WebRTCCommUtils {
             for (const [layerName, tensor] of Object.entries(model)) {
                 console.log(`Layer: ${layerName}, dtype: ${tensor.dtype}, shape: [${tensor.shape.join(', ')}]`);
             
-                const chunks = chunkTensor(tensor, chunkSize);
+                const chunks = chunkTensor(tensor, chunk_size);
                 for (const { chunk, numChunks, originalShape } of chunks) {
                     const serializableChunk = serializeMessage({
                         layer_name: layerName,
@@ -503,7 +538,6 @@ class WebRTCCommUtils {
           break;
 
         case 'weights_response':
-          this.log(`Received chunk of weights_response from ${peerRank}`);
           // Reassemble chunk. Increase comm_cost_received, etc.
           if (this.clear_peer_weights){
             this.peer_weights = {}
@@ -551,7 +585,9 @@ class WebRTCCommUtils {
                 // Store it or use it:
                 this.peer_weights[layerName] = reassembledTensor;
                 
-                console.log(`Reassembled layer ${layerName}: shape [${originalShape.join(', ')}]`);
+                this.log(`Reassembled layer ${layerName}: shape [${originalShape.join(', ')}]`);
+            } else {
+              this.log(`Received ${this.peer_weights[layerName].length} / ${numChunks} chunks for ${layerName}`);
             }
 
           break;
@@ -586,12 +622,12 @@ class WebRTCCommUtils {
   sendToPeer(peerRank, obj) {
     const channel = this.dataChannels.get(peerRank);
     if (!channel || channel.readyState !== 'open') {
-      this.log(`Channel to peer ${peerRank} not open or not found.`);
+      this.log(`Channel to peer ${peerRank} not open or not found; dataChannels=${JSON.stringify([...this.dataChannels.entries()])}`);
       return;
     }
     const msgString = JSON.stringify(obj);
     channel.send(msgString);
-    // Update “communication cost sent” if relevant
+    // Update "communication cost sent" if relevant
     this.comm_cost_sent += msgString.length;
   }
 
@@ -604,11 +640,12 @@ class WebRTCCommUtils {
         const senderRank = message.senderRank;
         const data = message.data;
         let pc = this.connections.get(senderRank);
-
+        this.log(`Received signaling message from ${senderRank}: ${data.type}`);
         try {
             // If we don't have a PeerConnection yet, create one (the "answerer" side).
             if (!pc) {
-                pc = this.createPeerConnection();
+                this.log(`Creating new PeerConnection for ${senderRank}`);
+                pc = this.createPeerConnection(senderRank);
                 this.connections.set(senderRank, pc);
 
                 pc.ondatachannel = (event) => {
@@ -623,18 +660,19 @@ class WebRTCCommUtils {
                 }));
                 const answer = await pc.createAnswer();
                 await pc.setLocalDescription(answer);
-                // await this.sendSignaling(senderRank, {
-                //     type: 'answer',
-                //     sdp: answer.sdp,
-                // });
+                await this.sendSignalingMessage(senderRank, {
+                    type: 'answer',
+                    sdp: answer.sdp,
+                });
 
                 ///////////////////////////////////////////
-                await this.waitForIceGathering(pc, this.ICE_GATHERING_TIMEOUT);
+                // await this.waitForIceGathering(pc, this.ICE_GATHERING_TIMEOUT);
                 // Send answer back
-                this.sendSignalingMessage(senderRank, {
-                    type: 'answer',
-                    sdp: pc.localDescription.sdp,
-                });
+                // this.sendSignalingMessage(senderRank, {
+                //     type: 'answer',
+                //     // sdp: pc.localDescription.sdp,
+                //     sdp: answer.sdp
+                // });
                 ///////////////////////////////////////////
 
             } else if (data.type === 'answer') {
@@ -651,7 +689,7 @@ class WebRTCCommUtils {
                 });
             }
         } catch (error) {
-            this.log(`handleSignalingMessage error: ${err}`);
+            this.log(`handleSignalingMessage error: ${error}`);
         }
     }
 
@@ -669,7 +707,7 @@ class WebRTCCommUtils {
     }
 
     /**
-     * broadcastNodeReady - Notifies the signaling server that we’ve set up all channels.
+     * broadcastNodeReady - Notifies the signaling server that we've set up all channels.
      */
     broadcastNodeReady() {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
@@ -689,7 +727,7 @@ class WebRTCCommUtils {
         const retryCount = this.connectionRetries.get(targetRank) || 0;
         if (retryCount < this.MAX_RETRIES) {
             this.connectionRetries.set(targetRank, retryCount + 1);
-            this.log(`Retrying connection to ${targetRank}, attempt #${currentRetry + 1}`);
+            this.log(`Retrying connection to ${targetRank}, attempt #${retryCount + 1}`);
             await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY));
             if (!this.connectedPeers.has(targetRank)) {
                 await this.cleanupConnection(targetRank);

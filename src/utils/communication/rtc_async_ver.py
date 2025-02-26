@@ -161,12 +161,14 @@ class RTCCommUtils(CommunicationInterface):
         self.base_node = obj
 
     async def setup_data_channel(self, channel: RTCDataChannel, peer_rank: int):
+        self.logger.info(f"setup_data_channel() called for peer {peer_rank}")
         self.data_channels[peer_rank] = channel
         self.peer_rounds[peer_rank] = 0
 
         @channel.on("open")
         def on_open():
             self.logger.info(f"Data channel opened with peer {peer_rank}")
+            # Note: this is only called on the offerer side
             asyncio.create_task(self.on_peer_connected(peer_rank))
             # asyncio.create_task(self.ping_loop(peer_rank))
 
@@ -227,7 +229,7 @@ class RTCCommUtils(CommunicationInterface):
         self.connected_peers.add(peer_rank)
         self.pending_connections.discard(peer_rank)
         self.logger.info(f"Node {self.rank} connected to peer {peer_rank}. "
-                    f"Connected: {len(self.connected_peers)}/{self.expected_connections}")
+                    f"Connected: {len(self.connected_peers)}/{self.expected_connections + 1}")
         
         await self.websocket.send(json.dumps({
             "type": "connection_established",
@@ -235,9 +237,9 @@ class RTCCommUtils(CommunicationInterface):
             "sessionId": self.session_id,
         }))
 
-        if len(self.connected_peers) == self.expected_connections:
+        if len(self.connected_peers) == self.expected_connections + 1:
             self.logger.info(f"Node {self.rank} broadcasting node ready")
-            self.broadcast_node_ready()
+            await self.broadcast_node_ready()
 
     async def ping_loop(self, peer_rank: int):
         while self.state != NodeState.DISCONNECTING:
@@ -492,6 +494,8 @@ class RTCCommUtils(CommunicationInterface):
         max_clients = self.size
         session_id = self.session_id
 
+        network_ready_event = asyncio.Event()  # Create an event to wait for network readiness
+
         try:
             self.websocket = await websockets.connect(self.signaling_server)
             await self.change_state(NodeState.CONNECTING)
@@ -526,9 +530,14 @@ class RTCCommUtils(CommunicationInterface):
                         elif data['type'] == 'network_ready':
                             await self.change_state(NodeState.READY)
                             self.logger.info("All connections established!")
+                            network_ready_event.set()  # Set the event when network is ready
                             return
                 
                 await process_messages()
+                await network_ready_event.wait()  # Wait for the network to be ready
+                self.logger.info("finished network ready wait, waiting forever")
+                while True:
+                    await asyncio.sleep(1)
                 return True
                 
             except Exception as e:
@@ -542,9 +551,9 @@ class RTCCommUtils(CommunicationInterface):
         except Exception as e:
             self.logger.error(f"Connection error: {e}")
 
-    def broadcast_node_ready(self):
+    async def broadcast_node_ready(self):
         if self.websocket:
-            self.websocket.send(json.dumps({
+            await self.websocket.send(json.dumps({
                 "type": "node_ready",
                 "sessionId": self.session_id,
                 "rank": self.rank
@@ -566,7 +575,7 @@ class RTCCommUtils(CommunicationInterface):
 
         if self.expected_connections == 0:
             print(f"Node {self.rank} broadcasting node ready")
-            self.broadcast_node_ready()
+            await self.broadcast_node_ready()
 
         # Only initiate connections to higher-ranked neighbors
         connection_tasks = []
