@@ -145,6 +145,60 @@ class ResNet10 extends Model {
 					// 	addLog(`  Validation Loss: ${logs.val_loss.toFixed(4)}`)
 					// 	addLog(`  Validation Accuracy: ${(logs.val_acc * 100).toFixed(2)}%`)
 					// }
+
+					// TODO: should I add sending here?
+				}
+			}
+		}
+
+		try {
+			console.log(`Beginning training...`)
+			const history = await this.model.fit(images, labels, trainingConfig)
+			console.log(`Training completed`)
+
+			images.dispose()
+			labels.dispose()
+
+			return history
+		} catch (error) {
+			console.error('Error during training: ', error)
+
+			images.dispose()
+			labels.dispose()
+			throw error
+		}
+	}
+
+	async local_train_one(dataSet, config = {
+		epochs: 1,
+		batchSize: 16,
+		validationSplit: 0.2,
+		shuffle: true,
+		verbose: 1
+	}) {
+		// take raw array of values and turn to tensor
+		const images = tf.tensor2d(dataSet.images, [dataSet.images.length, 2352])
+		const labels = tf.oneHot(tf.tensor1d(dataSet.labels, 'int32'), 8)
+
+		// create config object
+		const trainingConfig = {
+			epochs: 1,
+			batchSize: config.batchSize,
+			validationSplit: config.validationSplit,
+			shuffle: config.shuffle,
+			verbose: config.verbose,
+			callbacks: {
+				// callback in between epochs
+				onEpochEnd: (epoch, logs) => {
+					console.log(`Epoch ${epoch + 1}`)
+					console.log(`Loss: ${logs.loss.toFixed(4)}`)
+					console.log(`Accuracy: ${(logs.acc * 100).toFixed(2)}%`)
+					// if (logs.val_loss) {
+					// 	addLog(`  Validation Loss: ${logs.val_loss.toFixed(4)}`)
+					// 	addLog(`  Validation Accuracy: ${(logs.val_acc * 100).toFixed(2)}%`)
+					// }
+
+					// TODO: should I add sending here?
 				}
 			}
 		}

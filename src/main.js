@@ -56,6 +56,7 @@ let config = {
 
 async function main() {
 	const model = new ResNet10();
+	const comms = new WebRTCCommUtils(config, model)
 	console.log('model initialized... loading dataset...');
 	// const dataset = await loadDataset('./datasets/imgs/bloodmnist/bloodmnist_test.json');
 
@@ -65,8 +66,17 @@ async function main() {
 	const dataset = processData(data);
 
 	console.log('dataset loaded... training model...');
-	await model.train(dataset);
-	console.log('finished training');
+
+	for (let i = 0; i < config.epochs; i++) {
+		await model.local_train_one(dataset)
+		console.log('finished training');
+		const peer_weights = comms.receive()
+		// todo: perform fed avg
+	}
+
+	// console.log('dataset loaded... training model...');
+	// await model.train(dataset);
+	// console.log('finished training');
 }
 
 // Call the main function

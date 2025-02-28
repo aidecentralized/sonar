@@ -4,8 +4,6 @@ const { ResNet10 } = require('./model.js');
 // TODO: this can be replaced by just the browser-side without wrtc once we use browser
 // TODO: I awaited the initiateConnection, but it was originally unecessary (and still might not be necessary), you only need a sufficient timeout
 
-const model = new ResNet10()
-
 function tensorToSerializable(obj) {
     // If it's a "tensor-like" object, convert it into a serializable structure.
     if (obj && obj.__isTensor) {
@@ -125,7 +123,8 @@ const NodeState = {
 };
 
 class WebRTCCommUtils {
-    constructor(config) {
+    constructor(config, model) {
+        this.model = model
         this.config = config || {};
         this.signalingServer = this.config.signaling_server || 'ws://localhost:8765';
     
@@ -156,6 +155,7 @@ class WebRTCCommUtils {
         this.peer_rounds = new Map();
         this.peer_weights = {};
         this.clear_peer_weights = false;
+        this.weights_finished = false
     
         // Communication cost counters
         this.comm_cost_sent = 0;
@@ -498,16 +498,6 @@ class WebRTCCommUtils {
         case 'weights_request':
           this.log(`Received weights request from peer ${peerRank}`);
 
-          // TODO: delete later
-          // send a model request to see if it works
-        //   for (const neighbor of this.neighbors){
-            this.log(`Sending weights request for neighbor ${this.neighbors.neighbor1}`);
-            this.sendToPeer(this.neighbors.neighbor1, {
-                type: "weights_request",
-                request_id: 1
-            })
-        //   }
-
           // TODO: figure out the rest of this part
         //   let currRound = model.round;
             let currRound = 1
@@ -516,7 +506,7 @@ class WebRTCCommUtils {
           const chunk_size = 2000 // around 15 kb / 4 bytes per float32
             // model is an object: { layerName: tensor, ... }
 
-            const weights = model.model.getWeights();
+            const weights = this.model.model.getWeights();
             this.log("Sending model weights. Keys:", Object.keys(weights));
 
             
@@ -613,6 +603,7 @@ class WebRTCCommUtils {
 
         case 'weights_finished':
           this.log(`Peer ${peerRank} finished sending weights.`);
+          this.weights_finished = true
           break;
 
         case 'round_update':
@@ -659,6 +650,28 @@ class WebRTCCommUtils {
     // Update "communication cost sent" if relevant
     this.comm_cost_sent += msgString.length;
   }
+
+  receive() {
+    this.log("Receive was called")
+    for (const neighborRank of Object.values(newNeighbors)) {
+      request_id = 1
+      this.log(`Sending weights request for neighbor ${neighborRank}}`);
+      this.sendToPeer(neighborRank, {
+          type: "weights_request",
+          request_id: 1
+      })
+    }
+
+    while (!this.weights_finished){
+      // IDK?
+    }
+
+    this.log(`Received peer weights, returning`)
+    this.weights_finished = false
+    return this.peer_weights
+  }
+
+
 
   // -------------------------- Signaling & ICE Handling --------------------------
 
