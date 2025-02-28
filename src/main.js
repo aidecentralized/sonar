@@ -55,24 +55,25 @@ let config = {
 }
 
 async function main() {
-	const model = new ResNet10();
-	const comms = new WebRTCCommUtils(config, model)
-	console.log('model initialized... loading dataset...');
-	// const dataset = await loadDataset('./datasets/imgs/bloodmnist/bloodmnist_test.json');
+	// const model = new ResNet10();
+	const comms = new WebRTCCommUtils(config)
+	// console.log('model initialized... loading dataset...');
+	// // const dataset = await loadDataset('./datasets/imgs/bloodmnist/bloodmnist_test.json');
 
-	const filePath = path.resolve(__dirname, './datasets/imgs/bloodmnist/bloodmnist_test.json');
-	const rawData = fs.readFileSync(filePath, 'utf8');
-	const data = JSON.parse(rawData);
-	const dataset = processData(data);
+	// const filePath = path.resolve(__dirname, './datasets/imgs/bloodmnist/bloodmnist_test.json');
+	// const rawData = fs.readFileSync(filePath, 'utf8');
+	// const data = JSON.parse(rawData);
+	// const dataset = processData(data);
 
-	console.log('dataset loaded... training model...');
+	// console.log('dataset loaded... training model...');
 
-	for (let i = 0; i < config.epochs; i++) {
-		await model.local_train_one(dataset)
-		console.log('finished training');
-		const peer_weights = comms.receive()
-		// todo: perform fed avg
-	}
+	// for (let i = 0; i < config.epochs; i++) {
+	// 	await model.local_train_one(dataset)
+	// 	console.log('finished training');
+	// 	const peer_weights = comms.receive()
+	// 	console.log('received weights from peer');
+	// 	// todo: perform fed avg
+	// }
 
 	// console.log('dataset loaded... training model...');
 	// await model.train(dataset);

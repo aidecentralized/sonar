@@ -1,8 +1,19 @@
 const WebSocket = require('ws');
 const wrtc = require('wrtc');  // Import WebRTC for Node.js
 const { ResNet10 } = require('./model.js');
+const path = require('path');
+const fs = require('fs');
 // TODO: this can be replaced by just the browser-side without wrtc once we use browser
 // TODO: I awaited the initiateConnection, but it was originally unecessary (and still might not be necessary), you only need a sufficient timeout
+function processData(jsonData) {
+	const images = jsonData.map(item => item.image)
+	const labels = jsonData.map(item => item.label)
+
+	return {
+		images: images,
+		labels: labels
+	}
+}
 
 function tensorToSerializable(obj) {
     // If it's a "tensor-like" object, convert it into a serializable structure.
@@ -123,8 +134,8 @@ const NodeState = {
 };
 
 class WebRTCCommUtils {
-    constructor(config, model) {
-        this.model = model
+    constructor(config) {
+        this.model = new ResNet10();
         this.config = config || {};
         this.signalingServer = this.config.signaling_server || 'ws://localhost:8765';
     
@@ -237,6 +248,7 @@ class WebRTCCommUtils {
               case 'network_ready':
                 this.log('Network ready. All peers connected!');
                 this.setState(NodeState.READY);
+                this.startTraining()
                 break;
     
               case 'connection_established':
@@ -470,7 +482,7 @@ class WebRTCCommUtils {
 
     // If we've reached the expected number, let the server know
     // if (this.connectedPeers.size === this.expectedConnections) {
-    if (this.connectedPeers >= 2) {
+    if (this.connectedPeers.size >= 2) {
       this.broadcastNodeReady();
     }
 
@@ -532,13 +544,13 @@ class WebRTCCommUtils {
                         request_id: data.request_id
                     };
                     // sendToPeer is your custom function to send data over the data channel
-                    this.log(`Sending chunk of size: ${JSON.stringify(response).length} bytes`);
+                    // this.log(`Sending chunk of size: ${JSON.stringify(response).length} bytes`);
                     this.sendToPeer(peerRank, response);
 
                 }
             }
 
-            finishedMessage = {
+            const finishedMessage = {
                 type: "weights_finished",
                 round: currRound,
                 request_id: data.request_id
@@ -630,7 +642,7 @@ class WebRTCCommUtils {
    * Send a dictionary or object to a specific peer via data channel.
    */
   sendToPeer(peerRank, obj) {
-    this.log(`Sending message to peer ${peerRank} (typeof ${typeof peerRank}): ${obj.type}`);
+    // this.log(`Sending message to peer ${peerRank} (typeof ${typeof peerRank}): ${obj.type}`);
     const channel = this.dataChannels.get(peerRank);
     if (!channel || channel.readyState !== 'open') {
       this.log(`Channel to peer ${peerRank} not open or not found; dataChannels=${JSON.stringify([...this.dataChannels.entries()])} (typeof ${typeof this.dataChannels.keys()})`, 'error');
@@ -653,8 +665,7 @@ class WebRTCCommUtils {
 
   receive() {
     this.log("Receive was called")
-    for (const neighborRank of Object.values(newNeighbors)) {
-      request_id = 1
+    for (const neighborRank of Object.values(this.neighbors)) {
       this.log(`Sending weights request for neighbor ${neighborRank}}`);
       this.sendToPeer(neighborRank, {
           type: "weights_request",
@@ -669,6 +680,26 @@ class WebRTCCommUtils {
     this.log(`Received peer weights, returning`)
     this.weights_finished = false
     return this.peer_weights
+  }
+
+  async startTraining() {
+    this.log('started training, loading dataset...');
+  
+    const filePath = path.resolve(__dirname, './datasets/imgs/bloodmnist/bloodmnist_test.json');
+    const rawData = fs.readFileSync(filePath, 'utf8');
+    const data = JSON.parse(rawData);
+    const dataset = processData(data);
+  
+    this.log(`dataset loaded... training model for ${this.config.epochs}  epochs...`);
+  
+    for (let i = 0; i < 10; i++) {
+      await this.model.local_train_one(dataset)
+      this.log(`finished round ${i} training`);
+      const peer_weights = this.receive()
+      // todo: perform fed avg
+    }
+
+    this.log("finished training")
   }
 
 
