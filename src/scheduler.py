@@ -107,8 +107,9 @@ class Scheduler:
         self.communication : CommunicationManager = CommunicationManager(self.config)
 
         if self.config["comm"]["type"] == "RTC":
-            print("Sleeping for 30 seconds...")
-            time.sleep(30)
+            print("Sleeping for 60 seconds...")
+            time.sleep(60)
+            # TODO: actually this should be done sleeping once network_ready is broadcasted by server
             print("Done sleeping.")
 
         # if self.config["comm"]["type"] == "RTC":

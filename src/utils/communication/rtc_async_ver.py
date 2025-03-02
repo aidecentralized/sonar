@@ -237,7 +237,7 @@ class RTCCommUtils(CommunicationInterface):
             "sessionId": self.session_id,
         }))
 
-        if len(self.connected_peers) == self.expected_connections + 1:
+        if len(self.connected_peers) == self.expected_connections:
             self.logger.info(f"Node {self.rank} broadcasting node ready")
             await self.broadcast_node_ready()
 
@@ -691,8 +691,8 @@ class RTCCommUtils(CommunicationInterface):
 
         # log the time it took to send in a nice format, and the keys of the peer_weights
         self.logger.info(f"Time to send: {time.strftime('%M:%S', time.gmtime(time.time() - timestamp))}")
-        for key in self.peer_weights:               
-            self.logger.info(f"Layer: {key}, dtype: {self.peer_weights[key].dtype}, size: {self.peer_weights[key].size()}")
+        # for key in self.peer_weights:               
+            # self.logger.info(f"Layer: {key}, dtype: {self.peer_weights[key].dtype}, size: {self.peer_weights[key].size()}")
         
         self.clear_peer_weights = True
         return [{'model': self.peer_weights}]
