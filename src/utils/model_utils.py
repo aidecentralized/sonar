@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.nn.parallel import DataParallel
+import os
 
 import resnet
 import resnet_in
@@ -479,6 +480,8 @@ class ModelUtils:
             model_ = model.module
         else:
             model_ = model
+        # Create parent directory if it doesn't exist
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         torch.save(model_.state_dict(), path)
 
     def move_to_device(
