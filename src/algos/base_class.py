@@ -1,5 +1,5 @@
 """Add docstring here"""
-
+import pickle
 from abc import ABC, abstractmethod
 import sys
 import torch
@@ -38,11 +38,14 @@ from utils.community_utils import (
 )
 from utils.types import ConfigType
 from utils.dropout_utils import NodeDropout
+from utils.gias import gia_main, LaplacianGossipMatrix, gia_from_disambiguate, compute_param_delta, ReconstructOptim, ParameterTracker 
 
 import torchvision.transforms as T  # type: ignore
 import os
 
 from yolo import YOLOLoss
+from collections import defaultdict
+from algos.topologies.collections import select_topology
 
 
 def set_seed(seed: int) -> None:
@@ -275,6 +278,8 @@ class BaseNode(ABC):
         """
         Share the model weights
         """
+        self.model.eval() # set model to eval
+
         message = {"sender": self.node_id, "round": self.round, "model": self.model.state_dict()}
 
         if "gia" in self.config and hasattr(self, 'images') and hasattr(self, 'labels'):
@@ -452,9 +457,18 @@ class BaseClient(BaseNode):
         """Add docstring here"""
         super().__init__(config, comm_utils)
         self.server_node = 0
-        self.set_parameters(config)
-        if "gia" in config: 
-            if int(self.node_id) in self.config["gia_attackers"]:
+        self.set_model_parameters(config)
+
+        if "mia" in config:
+            # self-attack on train and test labels 
+            from utils.mias import LOSSMIA, MIA
+            self.mia = True
+            self.mia_rounds = set(config["mia_rounds"])
+            self.mia_attacker = LOSSMIA(device=self.device)
+            self.mia_func = MIA
+
+        if "gia" in config and self.node_id in config["gia_attackers"]: 
+            if int(self.node_id) in config["gia_attackers"]:
                 self.gia_attacker = True
             self.params_s = dict()
             self.params_t = dict()
@@ -462,8 +476,139 @@ class BaseClient(BaseNode):
             self.neighbor_updates = defaultdict(list)
             # Track which neighbors we've already attacked
             self.attacked_neighbors = set()
-
             self.base_params = [key for key, _ in self.model.named_parameters()]
+            self.base_params_vals = [val for _, val in self.model.named_parameters()]
+            self.base_model = copy.deepcopy(OrderedDict(self.model.named_parameters()))
+            self.gia_disaggregate = False
+            self.n_iter = config["rounds"]
+
+            if "disaggregate" in config and self.node_id in config["gia_attackers"]:
+                self.gia_disaggregate = True # flag for launching the Mrini attack
+                self.recorded_params = {
+                    'initial_params': {},  # Store initial parameters for each node
+                    'params_by_round': {},  # Store parameters for each node by round
+                    'actual_images': {},  # Store initial images for each node
+                    'actual_labels': {},  # Store initial labels for each node
+                }
+                
+                # repeat code 
+                self.topology = select_topology(config, self.node_id)
+                self.topology.initialize()
+                self.G = self.topology.graph
+                self.N = self.G.number_of_nodes()
+                self.attackers = config["gia_attackers"] # a list of node IDs for attackers
+                self.W = LaplacianGossipMatrix(self.G)
+                self.Wt = torch.tensor(self.W)
+                self.R = ReconstructOptim(self.G, self.n_iter, self.attackers)
+                self.num_clients = config["num_users"]
+
+                # TODO client mapping here is implicit based on sorted order of nodes
+                # this might need to be changed to explicit mapping of node_id to index as we introduce more attackers
+                self.parameter_tracker = ParameterTracker(self.node_id, 
+                                                          self.Wt, 
+                                                          self.num_clients, 
+                                                          self.R.n_neighbors,
+                                                          config["gia_attackers"], 
+                                                          self.base_params,
+                                                          self.base_params_vals,
+                                                          self.n_iter)
+
+                # save network information
+                network_stats = self.topology.calculate_graph_metrics(self.node_id)
+                self.log_utils.log_network_stats(network_stats)
+
+    def reconstruct_disaggregated(self, x_hat: torch.Tensor) -> None:
+        """
+        Reconstructs the disaggregated model parameters and updates the model.
+        saves reconstructed image to reconstruction path and error rates to the log
+        TODO finish implementing 
+        """
+        for matrix_idx in range(self.N-1):
+            print(f"DEBUG: matrix_idx is {matrix_idx}, iter range is {self.N-1}")
+            # Convert matrix index back to original client ID
+            target_id = self.R.get_original_client_id(matrix_idx)
+
+            target_images, target_labels = self.log_utils.retrieve_base_image(target_id)
+
+            # Launch the attack
+
+            if result := gia_from_disambiguate(torch.from_numpy(x_hat[matrix_idx]), # indices rather than actual ID
+                                               self.base_params_vals,
+                                               self.model,
+                                               target_labels,
+                                               target_images,
+                                               target_id,
+                                               self.config["model_lr"],
+                                               self.device,
+                                               mean=self.dset_obj.mean,
+                                               std=self.dset_obj.std,
+                                               dataset=self.config["dset"]): 
+                output, test_mse, test_psnr, feat_mse = result
+                # log output and stats as image
+                stats_dict = {
+                    # "output": output,
+                    "test_mse": test_mse,
+                    "test_psnr": test_psnr,
+                    "feat_mse": feat_mse
+                }
+                assert stats_dict is not None, f"stats_dict is None"
+                self.log_utils.log_gia_image(target_images, target_labels, target_id, label=f"client_{target_id}_base_images") # log original image
+                self.log_utils.log_gia_image(output, target_labels, target_id, label=f"round_{round}_disambiguation_reconstruction")
+                self.log_utils.log_gia_stats(stats_dict, target_id)
+            else:
+                self.log_utils.log_summary(f"Client {self.node_id} failed to attack {target_id} in round {round}!")
+                self.log_utils.log_gia_stats(dict(), target_id)
+                print(f"Client {self.node_id} failed to attack {target_id}!")
+                continue
+
+    def receive_disambiguate_attack_and_aggregate(self, neighbors: List[int], current_round: int, total_rounds: int, num_neighbors: int) -> None:
+        if self.is_working:
+            assert neighbors == self.topology.get_all_neighbours(), f"Neighbors mismatch: {neighbors} vs {self.topology.get_all_neighbours()}"
+            
+            current_model = OrderedDict((key, value) for key, value in self.model.state_dict().items() if key in self.base_params)
+
+            if self.node_id not in self.recorded_params['initial_params']:
+                self.recorded_params['initial_params'][self.node_id] = copy.deepcopy(current_model)
+            self.recorded_params['params_by_round'].setdefault(self.node_id, {})[current_round] = copy.deepcopy(current_model)
+
+            model_updates = self.comm_utils.receive(node_ids=neighbors)
+            sorted_model_updates = sorted(model_updates, key=lambda x: x["sender"])
+            # with open(f"sorted_updates_{current_round}.pkl", 'wb') as f:
+            #     pickle.dump(sorted_model_updates, f)
+            
+            self.parameter_tracker.record_update(self.node_id - 1, current_model, current_round, is_attacker=True)
+            
+            for neighbor_info in sorted_model_updates:
+                neighbor_id = neighbor_info["sender"]
+                neighbor_index = neighbor_id - 1 # the key used to track parameters is 0-indexed
+                neighbor_model = OrderedDict((key, value) for key, value in neighbor_info["model"].items() if key in self.base_params)
+
+                # assert self.round == neighbor_round, f"Round mismatch: {self.round} vs {neighbor_round}"
+                # record neighbor updates
+                self.parameter_tracker.record_update(neighbor_index, neighbor_model, current_round)
+
+                if neighbor_id not in self.recorded_params['initial_params']:
+                    print(neighbor_id, " not in recorded_params")
+                    self.recorded_params['initial_params'][neighbor_id] = copy.deepcopy(neighbor_model)
+                else:
+                    print(f"neighbor id {neighbor_id} in recorded_params {self.recorded_params['initial_params'].keys()}")
+                self.recorded_params['params_by_round'].setdefault(neighbor_id, {})[current_round] = copy.deepcopy(neighbor_model)
+
+                if neighbor_id not in self.recorded_params['actual_images']:
+                    self.recorded_params['actual_images'][neighbor_id] = neighbor_info["images"]
+                    self.recorded_params['actual_labels'][neighbor_id] = neighbor_info["labels"]
+
+            # update params0
+            self.parameter_tracker.update_params0(round=current_round)
+
+            if current_round == (total_rounds - 1): # at the final round
+                sent_params, attackers_params = self.parameter_tracker.generate_param_tensors()
+
+                if sent_params is not None and attackers_params is not None:
+                    x_hat = self.R.reconstruct_LS_target_only(sent_params, attackers_params)
+                    self.reconstruct_disaggregated(x_hat)
+
+            self.aggregate(model_updates, keys_to_ignore=self.model_keys_to_ignore)
 
     def set_parameters(self, config: Dict[str, Any]) -> None:
         """
@@ -478,17 +623,7 @@ class BaseClient(BaseNode):
         self.set_model_parameters(config)
         self.set_shared_exp_parameters(config)
         self.set_data_parameters(config)
-
-        # after setting data loaders, save client dataset
-        # TODO verify this .data and .labels fields are correct
-        if "gia" in config:
-            # Extract data and labels
-            train_data = torch.stack([data[0] for data in self.train_dset])
-            train_labels = torch.tensor([data[1] for data in self.train_dset])
-
-            self.log_utils.log_gia_image(train_data, 
-                                         train_labels,
-                                         self.node_id)
+        assert self.dloader, f"Data loader not set in baseClient {self.node_id}"
 
     def set_data_parameters(self, config: ConfigType) -> None:
 
@@ -498,13 +633,14 @@ class BaseClient(BaseNode):
 
         # Handle GIA case first, before any other modifications
         if "gia" in config:
-            # Select 10 random labels and exactly one image per label for both train and test
+            self.num_labels = 5 if not config.get("disaggregate", False) else 1
+
             train_dset, test_dset, classes, train_indices = gia_client_dataset(
-                train_dset, test_dset, num_labels=10
+                train_dset, test_dset, num_labels=self.num_labels, node_id=self.node_id
             )
             
-            assert len(train_dset) == 10, "GIA should have exactly 10 samples in train set"
-            assert len(test_dset) == 10, "GIA should have exactly 10 samples in test set"
+            assert len(train_dset) == self.num_labels, f"GIA should have exactly {self.num_labels} samples in train set but has {len(train_dset)}"
+            assert len(test_dset) == self.num_labels, f"GIA should have exactly {self.num_labels} samples in test set but has {len(test_dset)}"
             
             # Store the images and labels in tensors, matching the format from your example
             self.images = []
@@ -524,10 +660,16 @@ class BaseClient(BaseNode):
             self.classes_of_interest = classes
             self.train_indices = train_indices
             self.train_dset = train_dset
-            self.dloader = DataLoader(train_dset, batch_size=len(train_dset), shuffle=False)
-            self._test_loader = DataLoader(test_dset, batch_size=len(test_dset), shuffle=False)
-            print("Using GIA data setup")
-            print(self.labels)
+            self.dloader = DataLoader(train_dset, batch_size=1, shuffle=False)
+            self._test_loader = DataLoader(test_dset, batch_size=1, shuffle=False)
+
+            # save to log folder:
+            train_data = torch.stack([data[0] for data in self.train_dset])
+            train_labels = torch.tensor([data[1] for data in self.train_dset])
+
+            self.log_utils.log_base_image(train_data,
+                                          train_labels,
+                                          self.node_id)
         else:
             if config.get("test_samples_per_class", None) is not None:
                 test_dset, _ = balanced_subset(test_dset, config["test_samples_per_class"])
@@ -705,12 +847,19 @@ class BaseClient(BaseNode):
         start_time = time.time()
 
         self.is_working = self.get_and_set_working(round)
-
         if self.is_working:
             avg_loss, avg_acc = 0, 0
             for _ in range(epochs):
                 tr_loss, tr_acc = self.model_utils.train(
-                    self.model, self.optim, self.dloader, self.loss_fn, self.device, malicious_type=self.config.get("malicious_type", "normal"), config=self.config, node_id=self.node_id, gia=self.config.get("gia", False)
+                    self.model, 
+                    self.optim, 
+                    self.dloader, 
+                    self.loss_fn, 
+                    self.device, 
+                    malicious_type=self.config.get("malicious_type", "normal"), 
+                    config=self.config, 
+                    node_id=self.node_id, 
+                    gia=self.config.get("gia", False)
                 )            
                 avg_loss += tr_loss
                 avg_acc += tr_acc
@@ -751,25 +900,11 @@ class BaseClient(BaseNode):
         """
         raise NotImplementedError
 
-    def receive_and_aggregate(self):
-        """
-        Receive the model weights from the server and aggregate them
-        """
-        if self.is_working:
-            repr = self.comm_utils.receive([self.server_node])[0]
-            if "round" in repr:
-                round = repr["round"]
-            if "sender" in repr:
-                sender = repr["sender"]
-            assert "model" in repr, "Model not found in the received message"
-            self.set_model_weights(repr["model"])
-
     def receive_attack_and_aggregate(self, neighbors: List[int], round: int, num_neighbors: int) -> None:
         """
         Receives updates, launches GIA attack when second update is seen from a neighbor
         """
         from utils.gias import gia_main
-        
         if self.is_working:
             # Receive the model updates from the neighbors
             model_updates = self.comm_utils.receive(node_ids=neighbors)
@@ -793,13 +928,29 @@ class BaseClient(BaseNode):
                     "labels": neighbor_labels
                 })
 
-                # Check if we have 2 updates from this neighbor and haven't attacked them yet
-                if len(self.neighbor_updates[neighbor_id]) == 2 and neighbor_id not in self.attacked_neighbors:
-                    print(f"Client {self.node_id} attacking {neighbor_id}!")
+                # Check if we are at the final round and haven't attacked this neighbor yet
+                if round == (self.n_iter - 1) and neighbor_id not in self.attacked_neighbors:
+                    print(f"Client {self.node_id} attacking {neighbor_id} in final round!")
                     
-                    # Get the two parameter sets for the attack
-                    p_s = self.neighbor_updates[neighbor_id][0]["model"]
-                    p_t = self.neighbor_updates[neighbor_id][1]["model"]
+                    # Get the first parameter set for the attack
+                    p_s = self.base_model
+                    
+                    # Find the first non-zero parameter difference after the first set
+                    p_t = None
+                    for idx in range(0, len(self.neighbor_updates[neighbor_id])):
+                        candidate_p_t = self.neighbor_updates[neighbor_id][idx]["model"]
+                        param_diff = compute_param_delta(p_s, candidate_p_t, self.base_params)
+                        # print(f"DEBUG: param_diff: {param_diff}")
+                        if any((diff != 0).any() for diff in param_diff):
+                            p_t = candidate_p_t
+                            p_t_index = idx
+                            break
+                    
+                    if p_t is None:
+                        # Handle attack failure case
+                        self.log_utils.log_summary(f"Client {self.node_id} failed to find a suitable p_t to attack {neighbor_id} in round {round}!")
+                        print(f"Client {self.node_id} failed to find a suitable p_t to attack {neighbor_id} in round {round}!")
+                        continue
                     
                     # Launch the attack
                     if result := gia_main(p_s, 
@@ -808,22 +959,30 @@ class BaseClient(BaseNode):
                                         self.model, 
                                         neighbor_labels, 
                                         neighbor_images, 
-                                        self.node_id):
-                        output, stats = result
-                        
-                        # log output and stats as image
+                                        self.node_id,
+                                        self.device,
+                                        mean=self.dset_obj.mean,
+                                        std=self.dset_obj.std):
+                        output, test_mse, test_psnr, feat_mse = result
+                        # Log output and stats as image
+                        self.log_utils.log_gia_image(neighbor_images, neighbor_labels, neighbor_id, label=f"client_{neighbor_id}_base_images") # log base
                         self.log_utils.log_gia_image(output, neighbor_labels, neighbor_id, label=f"round_{round}_reconstruction")
-                        self.log_utils.log_summary(f"round {round} gia targeting {neighbor_id} stats: {stats}")
+                        self.log_utils.log_summary(f"round {round} gia targeting {neighbor_id} stats: test_mse: {test_mse}, test_psnr: {test_psnr}, feat_mse: {feat_mse}")
+                        self.log_utils.log_gia_stats(f"GIA result- test_mse: {test_mse}, test_psnr: {test_psnr}, feat_mse: {feat_mse}", neighbor_id)
                     else:
                         self.log_utils.log_summary(f"Client {self.node_id} failed to attack {neighbor_id} in round {round}!")
-                        print(f"Client {self.node_id} failed to attack {neighbor_id}!")
+                        print(f"Client {self.node_id} failed to attack {neighbor_id} in round {round}!")
                         continue
                     
                     # Mark this neighbor as attacked
                     self.attacked_neighbors.add(neighbor_id)
                     
-                    # Optionally, clear the stored updates to save memory
+                    # clear the stored updates to save memory
                     del self.neighbor_updates[neighbor_id]
+                else:
+                    self.log_utils.log_summary(f"Client {self.node_id} failed to attack {neighbor_id} in round {round}!")
+                    print("(DEBUG): neighbor updates that I cannot recover: ", [len(self.neighbor_updates[client]) for client in self.neighbor_updates])
+                    print(f"Client {self.node_id} failed to attack {neighbor_id} in round {round}!")
 
             self.aggregate(model_updates, keys_to_ignore=self.model_keys_to_ignore)
 
@@ -913,8 +1072,8 @@ class BaseServer(BaseNode):
         if "gia" not in config:
             self._test_loader = DataLoader(test_dset, batch_size=batch_size)
         else:
-            _, test_data, labels, indices = gia_client_dataset(self.dset_obj.train_dset, test_dset)
-            self._test_loader = DataLoader(test_data, batch_size=10)
+            _, test_data, labels, indices = gia_client_dataset(self.dset_obj.train_dset, test_dset, num_labels=5) # only using five images
+            self._test_loader = DataLoader(test_data, batch_size=1)
     def aggregate(
         self, representation_list: List[OrderedDict[str, Any]], **kwargs: Any
     ) -> OrderedDict[str, Tensor]:
@@ -974,7 +1133,6 @@ class BaseFedAvgClient(BaseClient):
         ):  # By default include last layer
             keys = self.model_utils.get_last_layer_keys(self.get_model_weights())
             self.model_keys_to_ignore.extend(keys)
-
 
     def local_test(self, **kwargs: Any) -> Tuple[float, float]:
         """
@@ -1149,9 +1307,58 @@ class BaseFedAvgClient(BaseClient):
             # Update the model with the aggregated weights
             self.set_model_weights(agg_wts)
 
-    def receive_and_aggregate(self, neighbors: List[int]) -> None:
-        if hasattr(self, "gia_attacker"):
+    def receive_mia_and_aggregate(self, neighbors: List[int], current_round: int, num_neighbors: int) -> None:
+        """
+        performs MIA attack on the received models
+        """
+        if self.is_working:
+            # first perform self-attack and log the results
+            in_size = len(self.dloader.dataset)
+            out_size = len(self._test_loader.dataset)
+
+            print(f"In size: {in_size}, Out size: {out_size}")
+
+            # # Get metric values for all three metrics
+            # metric_values = self.mia_attacker.attack_dataset(
+            #     self.model,
+            #     self.dloader,
+            #     self._test_loader,
+            #     in_size,
+            #     out_size,
+            # )
+            attack_vals, metadata = self.mia_func(self.model, self.dloader, self._test_loader, device=self.device)
+            
+            # print(f"Client {self.node_id} MIA metric values:")
+            # # Calculate AUC scores for all metrics
+            # auc_scores = self.mia_attacker.calculate_roc_auc_score(metric_values)
+            
+            # print(f"Client {self.node_id} MIA AUC scores:")
+            # for metric, score in auc_scores.items():
+            #     print(f"{metric}: {score:.4f}")
+            for metric, score in attack_vals.items():
+                print(f"{metric}: {score:.4f}")
+            
+            # Log all metrics
+            # self.log_utils.log_mia_stats(auc_scores, current_round)
+            self.log_utils.log_mia_stats(attack_vals, current_round)
+            self.log_utils.log_mia_stats(metadata, current_round, metadata=True)
+            self.log_utils.log_tb_mia_stats(attack_vals, current_round, self.node_id)
+
+            # Receive the model updates from the neighbors
+            model_updates = self.comm_utils.receive(node_ids=neighbors)
+            # Aggregate the representations
+            self.aggregate(model_updates, keys_to_ignore=self.model_keys_to_ignore)
+
+
+    def receive_and_aggregate(self, neighbors: List[int], it:int=0) -> None:
+        if hasattr(self, "gia_attacker") and not self.gia_disaggregate:
             self.receive_attack_and_aggregate(neighbors, it, len(neighbors))
+        elif hasattr(self, "gia_attacker") and self.gia_disaggregate:
+            self.receive_disambiguate_attack_and_aggregate(neighbors, it, self.n_iter, len(neighbors))
+        elif hasattr(self, "mia"):
+            # if it in self.mia_rounds:
+            print(f"Client {self.node_id} performing MIA attack in round {it}")
+            self.receive_mia_and_aggregate(neighbors, it, len(neighbors))
         if self.streaming_aggregation:
             self.receive_and_aggregate_streaming(neighbors)
         else:

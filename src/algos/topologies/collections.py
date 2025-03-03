@@ -115,9 +115,15 @@ class ErdosRenyiTopology(BaseTopology):
         self.p = p
         self.seed = config["seed"]
 
-    def generate_graph(self) -> None:
-        self.graph = nx.erdos_renyi_graph(self.num_users, self.p, self.seed)
-
+    def generate_graph(self, full:bool=True) -> None:
+        """ if full is True, generate a fully connected graph """
+        if full:
+            while True:
+                self.graph = nx.erdos_renyi_graph(self.num_users, self.p, seed=self.seed)
+                if nx.is_connected(self.graph):
+                    break
+        else:
+            self.graph = nx.erdos_renyi_graph(self.num_users, self.p, seed=self.seed)
 
 class WattsStrogatzTopology(BaseTopology):
     def __init__(self, config: ConfigType, rank: int):
@@ -143,6 +149,17 @@ class RandomRegularTopology(BaseTopology):
     def generate_graph(self) -> None:
         self.graph = nx.random_regular_graph(self.d, self.num_users, self.seed) # type: ignore
 
+class LineTopology(BaseTopology):
+    """ test topology for debugging gradient disambiguation attack """
+    def __init__(self, config: ConfigType, rank: int):
+        super().__init__(config, rank)
+
+    def generate_graph(self) -> None:
+        self.graph = nx.Graph()
+        self.graph.add_node(0)
+        for i in range(1, self.num_users):
+            self.graph.add_node(i)
+            self.graph.add_edge(i-1, i)
 
 def select_topology(config: ConfigType, rank: int) -> BaseTopology:
     """
@@ -177,4 +194,6 @@ def select_topology(config: ConfigType, rank: int) -> BaseTopology:
         return RandomRegularTopology(config, rank)
     if topology_name == "barbell":
         return BarbellTopology(config, rank)
+    if topology_name == "line":
+        return LineTopology(config, rank)
     raise ValueError(f"Topology {topology_name} not implemented")

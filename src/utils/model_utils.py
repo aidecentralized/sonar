@@ -65,6 +65,8 @@ class ModelUtils:
             )
         elif model_name == "yolo":
             model = yolo.yolo(pretrained=False)
+        elif model_name == "convnet":
+            model = resnet.CNN(nb_classes=10) # dummy model for debugging gia
         else:
             raise ValueError(f"Model name {model_name} not supported")
         model = model.to(device)
@@ -200,6 +202,7 @@ class ModelUtils:
                 # Sum the loss and create gradient graph like in loss_steps
                 # Use modified loss_steps function that returns loss
                 model.eval()
+
                 param_updates = loss_steps(
                     model, 
                     data, 
@@ -208,7 +211,7 @@ class ModelUtils:
                     lr=3e-4,
                     local_steps=1,
                     use_updates=True,  # Must be True to get parameter differences
-                    batch_size=10
+                    batch_size=1 # TODO fix this
                 )
                 
                 # save parameter update for sanity check

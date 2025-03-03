@@ -1,7 +1,7 @@
 """
 Module for FedStaticClient and FedStaticServer in Federated Learning.
 """
-from typing import Any, Dict, OrderedDict, List
+from typing import Any, Dict, OrderedDict, List, Tuple
 from collections import OrderedDict, defaultdict
 
 from utils.communication.comm_utils import CommunicationManager
@@ -22,16 +22,19 @@ class FedStaticNode(BaseFedAvgClient):
         super().__init__(config, comm_utils)
         self.topology = select_topology(config, self.node_id)
         self.topology.initialize()
+        self.set_data_parameters(config) # TODO this should not need to be reset
+        assert hasattr(self, "dloader"), f"Data loader not set in {self.node_id}"
     
     def get_neighbors(self) -> List[int]:
         """
         Returns a list of neighbours for the client.
         """
-        neighbors = self.topology.sample_neighbours(self.num_collaborators)
+        neighbors = self.topology.get_all_neighbours()
         self.stats["neighbors"] = neighbors
 
         return neighbors
-
+    
+        
     def run_protocol(self) -> None:
         """
         Runs the federated learning protocol for the client.
@@ -57,12 +60,12 @@ class FedStaticNode(BaseFedAvgClient):
 
             neighbors = self.get_neighbors()
             # TODO: Log the neighbors
-            self.receive_and_aggregate(neighbors)
+            self.receive_and_aggregate(neighbors, it)
             # evaluate the model on the test data
             # Inside FedStaticNode.run_protocol()
             self.local_test()
-
             self.round_finalize()
+            # self.local_round_done()
 
 class FedStaticServer(BaseFedAvgClient):
     """

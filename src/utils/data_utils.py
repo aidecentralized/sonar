@@ -366,7 +366,7 @@ def non_iid_balanced(
     clnt_y = np.asarray(clnt_y)
     return clnt_y, clnt_idx, cls_priors
 
-def gia_client_dataset(train_dataset, test_dataset, num_labels=10, n=1):
+def gia_client_dataset(train_dataset, test_dataset, num_labels=10, n=1, node_id=None):
     """
     Select random labels and n random images per selected label from both train and test datasets.
     
@@ -375,6 +375,7 @@ def gia_client_dataset(train_dataset, test_dataset, num_labels=10, n=1):
         test_dataset: Test dataset object with __getitem__ returning (image, label) tuples
         num_labels (int): Number of unique labels to select
         n (int): Number of images to select per unique label (default is 1)
+        node_id (int, optional): If provided, only include the image at this index in the training set
         
     Returns:
         filtered_train_dataset: Subset of training dataset with n images per selected label
@@ -389,39 +390,85 @@ def gia_client_dataset(train_dataset, test_dataset, num_labels=10, n=1):
             label = dataset[idx][1]
             if label < num_labels:
                 label_to_indices[label].append(idx)
-        
+        # after making the label_to_indeces, don't shuffle and just return the index at node_id
+        return [label_to_indices[i][node_id] for i in range(num_labels)], [i for i in range(num_labels)]
+        '''
         ordered_indices = []
-        selected_labels = []
-        for label in range(num_labels):
-            # Shuffle indices for each label to randomize selection
-            np.random.seed(None)
-            np.random.shuffle(label_to_indices[label])
-            for i in range(n):
-                if i < len(label_to_indices[label]):
-                    random_idx = label_to_indices[label][i]
-                    ordered_indices.append(random_idx)
-                    selected_labels.append(label)
+        if selected_labels is None:
+            selected_labels = []
+            for label in range(num_labels):
+                if label in label_to_indices and label_to_indices[label]:
+                    # Shuffle indices for each label to randomize selection
+                    np.random.seed(None)
+                    np.random.shuffle(label_to_indices[label])
+                    for i in range(n):
+                        if i < len(label_to_indices[label]):
+                            random_idx = label_to_indices[label][i]
+                            ordered_indices.append(random_idx)
+                            selected_labels.append(label)
+        else:
+            for label in selected_labels:
+                if label in label_to_indices and label_to_indices[label]:
+                    # Shuffle indices for each label to randomize selection
+                    np.random.seed(None)
+                    np.random.shuffle(label_to_indices[label])
+                    for i in range(n):
+                        if i < len(label_to_indices[label]):
+                            random_idx = label_to_indices[label][i]
+                            ordered_indices.append(random_idx)
         
         return ordered_indices, selected_labels
+        
     
-    # Get ordered indices and selected labels for both datasets
+    if num_labels == 5:
+        if node_id is not None:
+            # Only include the image at node_id in the training set
+            final_train_indices = [node_id]
+            train_selected_labels = [train_dataset[node_id][1]]
+            # Ensure the test labels come from the same class as the training label
+            final_test_indices, test_selected_labels = get_ordered_indices(test_dataset, train_selected_labels)
+        else:
+            # Get ordered indices and selected labels for the training dataset
+            final_train_indices, train_selected_labels = get_ordered_indices(train_dataset)
+            # Get ordered indices and selected labels for the test dataset
+            final_test_indices, test_selected_labels = get_ordered_indices(test_dataset, train_selected_labels)
+    elif num_labels == 1:
+        if node_id is not None:
+            # Only include the image at node_id in the training set
+            final_train_indices = [node_id]
+            train_selected_labels = [train_dataset[node_id][1]]
+            # Ensure the test labels come from the same class as the training label
+            final_test_indices, test_selected_labels = get_ordered_indices(test_dataset, train_selected_labels)
+        else:
+            # Get ordered indices and selected labels for the training dataset
+            final_train_indices, train_selected_labels = get_ordered_indices(train_dataset)
+            # Get ordered indices and selected labels for the test dataset
+            final_test_indices, test_selected_labels = get_ordered_indices(test_dataset, train_selected_labels)
+    else:
+        raise ValueError("Unsupported number of labels. Please use 1 or 5.")
+    '''
     final_train_indices, train_selected_labels = get_ordered_indices(train_dataset)
-    final_test_indices, test_selected_labels = get_ordered_indices(test_dataset)
+    final_test_indices, test_selected_labels = get_ordered_indices(test_dataset)   
     
     # Create the subsets
     filtered_train_dataset = Subset(train_dataset, final_train_indices)
     filtered_test_dataset = Subset(test_dataset, final_test_indices)
     
-    # Create selected_labels in ascending order
-    selected_labels = sorted(set(train_selected_labels))
+    # # Create selected_labels in ascending order
+    # selected_labels = sorted(set(train_selected_labels))
     
     # Verify ordering
     for i in range(len(final_train_indices)):
         assert filtered_train_dataset[i][1] == train_selected_labels[i], f"Train label at position {i} is not {train_selected_labels[i]}"
     for i in range(len(final_test_indices)):
         assert filtered_test_dataset[i][1] == test_selected_labels[i], f"Test label at position {i} is not {test_selected_labels[i]}"
-    
-    return filtered_train_dataset, filtered_test_dataset, selected_labels, final_train_indices
+    # Ensure that the test label of a given node comes from the same class as the training label
+    if node_id is not None and n == 1:
+        assert train_selected_labels[0] == test_selected_labels[0], (
+            f"Test label {test_selected_labels[0]} does not match training label {train_selected_labels[0]} for node_id {node_id}"
+        )
+     
+    return filtered_train_dataset, filtered_test_dataset, train_selected_labels, final_train_indices
 
 def gia_server_testset(test_dataset, num_labels=10, num_images_per_label=4):
     """

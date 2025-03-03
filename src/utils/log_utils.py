@@ -18,7 +18,10 @@ import pandas as pd
 from utils.types import ConfigType
 import json
 import matplotlib.pyplot as plt
+import pickle 
+import re
 
+from typing import Tuple
 
 def deprocess(img: torch.Tensor) -> torch.Tensor:
     """
@@ -191,13 +194,44 @@ class LogUtils:
         save_image(grid_img, f"{self.log_dir}/{iteration}_{key}.png")
         self.writer.add_image(key, grid_img.numpy(), iteration)
 
+    def log_base_image(self, 
+                    data: torch.Tensor,
+                    labels: torch.Tensor,
+                    node_id: int):
+        """ helper function to log base images as tensors for comparing reconstruction accuracy of all nodes """
+        dump_data = {
+            "images": data.cpu(),  # Keep as tensor
+            "labels": labels.cpu()  # Keep as tensor
+        }
+        print(f"Dump path is {self.log_dir}/base_imgs_{node_id}.pkl")
+        with open(f"{self.log_dir}/base_imgs_{node_id}.pkl", "wb") as f:
+            pickle.dump(dump_data, f)
+
+    def retrieve_base_image(self, node_id: int) -> Tuple[torch.Tensor, torch.Tensor]:
+        img_path = f"{self.log_dir}/base_imgs_{node_id}.pkl"
+
+        # regex to find clinet node directory
+        match = re.search(r'_(\d+)\.pkl$', img_path)
+        new_file_path = ""
+
+        if match:
+            end_number = match.group(1)
+            # Replace the number in node_ with the extracted number
+            new_file_path = re.sub(r'node_\d+', f'node_{end_number}', img_path)
+
+        print(f"Retrieving base images from {new_file_path}")
+
+        with open(new_file_path, "rb") as f:
+            dump_data = pickle.load(f)
+        return dump_data["images"], dump_data["labels"]
+
     def log_gia_image(self, 
-                      data, 
-                      target, 
-                      node_id,
-                      dm=torch.as_tensor([0.4914, 0.4822, 0.4465])[:, None, None], 
-                      ds=torch.as_tensor([0.2023, 0.1994, 0.2010])[:, None, None],
-                      label=None):
+                    data: torch.Tensor, 
+                    target: torch.Tensor, 
+                    node_id: int,
+                    dm=torch.as_tensor([0.4914, 0.4822, 0.4465])[:, None, None], 
+                    ds=torch.as_tensor([0.2023, 0.1994, 0.2010])[:, None, None],
+                    label=None):
         """
         Plots a grid of images from `data` with corresponding labels from `target`, and saves the plot.
         
@@ -222,7 +256,7 @@ class LogUtils:
         cols = batch_size // rows if batch_size % rows == 0 else batch_size
 
         fig, axes = plt.subplots(rows, cols, figsize=(12, 6))
-        axes = axes.flatten()
+        axes = np.atleast_1d(axes).flatten()  # Ensure axes is always an array
 
         # Loop over each image and label in the batch
         for i in range(batch_size):
@@ -245,6 +279,61 @@ class LogUtils:
         grid_img = make_grid(data, normalize=True, scale_each=True)
         self.writer.add_image(f"gia_images_node_{node_id}_{log_lab}", grid_img.numpy(), node_id)
         self.writer.add_text(f"gia_labels_node_{node_id}_{log_lab}", str(target.tolist()), node_id)
+    
+    def log_gia_stats(self, stats: dict, target_node: int):
+        """Helper function to log GIA stats"""
+        stats_str = str(stats)  # Convert the dictionary to a string
+        self.writer.add_text(f"gia_stats_target_node_{target_node}", stats_str)
+        
+        # Define the path to the JSON file
+        json_file_path = os.path.join(self.log_dir, "gia_stat_summary.json")
+        
+        # Load existing data if the file exists, otherwise create an empty dictionary
+        if os.path.exists(json_file_path):
+            with open(json_file_path, "r") as f:
+                data = json.load(f)
+        else:
+            data = {}
+        
+        # Append the new entry
+        data[target_node] = stats
+        
+        # Write the updated data back to the JSON file
+        with open(json_file_path, "w") as f:
+            json.dump(data, f, indent=4)
+    
+    def log_mia_stats(self, roc_auc_stats: Dict[str, float], round: int, metadata: bool=False):
+        """Helper function to log MIA stats for each metric"""
+        # Log each metric to a separate file
+        filepath = "mia_stats_summary.json" if not metadata else "mia_stats_metadata.json"
+        for metric, auc_score in roc_auc_stats.items():
+            json_file_path = os.path.join(self.log_dir, f"{metric}_{filepath}")
+            # Load existing data if the file exists, otherwise create an empty dictionary
+            if os.path.exists(json_file_path):
+                with open(json_file_path, "r") as f:
+                    data = json.load(f)
+            else:
+                data = {}
+            
+            # Append the new entry
+            data[round] = auc_score
+            
+            # Write the updated data back to the JSON file
+            with open(json_file_path, "w") as f:
+                json.dump(data, f, indent=4)
+    def log_tb_mia_stats(self, round_stats:Dict[str, float], current_round:int, client_id:int):
+        """
+        Log mia statistics to TensorBoard.
+
+        Args:
+            round_stats (list): List of round statistics for each client.
+            stats_to_exclude (list): List of statistics keys to exclude from logging.
+            current_round (int): Current round number.
+        """
+        stats_key = round_stats.keys()
+        for key in stats_key:
+            print(f"Logging {key} for client {client_id}, value: {round_stats[key]}")
+            self.log_tb(key, float(round_stats[key]), current_round)
         
     def log_console(self, msg: str):
         """
@@ -265,6 +354,7 @@ class LogUtils:
             iteration (int): Current iteration number.
         """
         self.writer.add_scalar(key, value, iteration)  # type: ignore
+        self.writer.flush()
 
     def log_npy(self, key: str, value: np.ndarray):
         """
