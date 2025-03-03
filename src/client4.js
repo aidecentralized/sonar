@@ -3,6 +3,7 @@ const wrtc = require('wrtc');  // Import WebRTC for Node.js
 const { ResNet10 } = require('./model.js');
 const path = require('path');
 const fs = require('fs');
+const tf = require('@tensorflow/tfjs-node');
 // TODO: this can be replaced by just the browser-side without wrtc once we use browser
 // TODO: I awaited the initiateConnection, but it was originally unecessary (and still might not be necessary), you only need a sufficient timeout
 function processData(jsonData) {
@@ -13,6 +14,30 @@ function processData(jsonData) {
 		images: images,
 		labels: labels
 	}
+}
+
+/**
+ * Convert TensorFlow.js NHWC weights to TensorFlow (Python) NCHW format.
+ * @param {tf.Tensor} weightTensor - The weight tensor from TensorFlow.js.
+ * @returns {tf.Tensor} - Transposed tensor in NCHW format.
+ */
+function convertTfjsToTf(weightTensor) {
+    if (weightTensor.shape.length === 4) {
+        return tf.transpose(weightTensor, [3, 2, 0, 1]); // NHWC -> NCHW
+    }
+    return weightTensor; // Return as is if not 4D
+}
+
+/**
+* Convert TensorFlow (Python) NCHW weights back to TensorFlow.js NHWC format.
+* @param {tf.Tensor} weightTensor - The weight tensor from Python.
+* @returns {tf.Tensor} - Transposed tensor in NHWC format.
+*/
+function convertTfToTfjs(weightTensor) {
+    if (weightTensor.shape.length === 4) {
+        return tf.transpose(weightTensor, [2, 3, 1, 0]); // NCHW -> NHWC
+    }
+    return weightTensor; // Return as is if not 4D
 }
 
 function tensorToSerializable(obj) {
@@ -175,6 +200,8 @@ class WebRTCCommUtils {
         // Simple logging
         this.log(`[constructor] RTCCommUtilsJS created with config: ${JSON.stringify(config)}`);
         this.connect()
+
+        this.js2pythonMapping = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'js2python.json'), 'utf8'));
     }
 
     // ---------------------- Basic Logging & State Helpers ----------------------
@@ -510,52 +537,56 @@ class WebRTCCommUtils {
         case 'weights_request':
           this.log(`Received weights request from peer ${peerRank}`);
 
-          // TODO: figure out the rest of this part
-        //   let currRound = model.round;
-            let currRound = 1
-          // If you want to send your model, chunk it up here:
+          const currRound = 1;
+          const chunk_size = 10000;
+          const weights = this.model.model.getWeights();
+          const layers = this.model.model.layers;
 
-          const chunk_size = 2000 // around 15 kb / 4 bytes per float32
-            // model is an object: { layerName: tensor, ... }
+          for (let i = 0; i < layers.length; i++) {
+              const layer = layers[i];
+              const layerWeights = layer.getWeights();
 
-            const weights = this.model.model.getWeights();
-            this.log("Sending model weights. Keys:", Object.keys(weights));
+              for (let j = 0; j < layerWeights.length; j++) {
+                  let weightTensor = layerWeights[j];
 
-            
-            for (const [layerName, tensor] of Object.entries(weights)) {
-                this.log(`Layer: ${layerName}, dtype: ${tensor.dtype}, shape: [${tensor.shape.join(', ')}]`);
-            
-                const chunks = chunkTensor(tensor, chunk_size);
-                this.log(`numChunks = ${chunks.length} for layer: ${layerName}`);
+                  // Convert to TensorFlow (Python) format before sending
+                  weightTensor = convertTfjsToTf(weightTensor);
 
-                for (const { chunk, numChunks, originalShape } of chunks) {
-                    const serializableChunk = serializeMessage({
-                        layer_name: layerName,
-                        chunk: chunk,
-                        num_chunks: numChunks,
-                        original_shape: originalShape
-                    });
-                
-                    // Construct the message to send via WebRTC
-                    const response = {
-                        type: "weights_response",
-                        weights: serializableChunk,
-                        round: currRound,
-                        request_id: data.request_id
-                    };
-                    // sendToPeer is your custom function to send data over the data channel
-                    // this.log(`Sending chunk of size: ${JSON.stringify(response).length} bytes`);
-                    this.sendToPeer(peerRank, response);
+                  // Rename the layer and map to Python layer name
+                  const layerName = `${layer.name}_weight_${j}`;
+                  const pythonLayerName = this.js2pythonMapping[layerName];
 
-                }
-            }
+                  this.log(`Layer ${i}_${j}: ${pythonLayerName}, dtype: ${weightTensor.dtype}, shape: [${weightTensor.shape.join(', ')}]`);
 
-            const finishedMessage = {
-                type: "weights_finished",
-                round: currRound,
-                request_id: data.request_id
-            }
-            this.sendToPeer(peerRank, finishedMessage)
+                  const chunks = chunkTensor(weightTensor, chunk_size);
+                  this.log(`numChunks = ${chunks.length} for layer: ${pythonLayerName}`);
+
+                  for (const { chunk, numChunks, originalShape } of chunks) {
+                      const serializableChunk = serializeMessage({
+                          layer_name: pythonLayerName,
+                          chunk: chunk,
+                          num_chunks: numChunks,
+                          original_shape: originalShape
+                      });
+
+                      const response = {
+                          type: "weights_response",
+                          weights: serializableChunk,
+                          round: currRound,
+                          request_id: data.request_id
+                      };
+
+                      this.sendToPeer(peerRank, response);
+                  }
+              }
+          }
+
+          const finishedMessage = {
+              type: "weights_finished",
+              round: currRound,
+              request_id: data.request_id
+          };
+          this.sendToPeer(peerRank, finishedMessage);
           break;
 
         case 'weights_response':
@@ -568,15 +599,25 @@ class WebRTCCommUtils {
             // 1. Deserialize the chunk
             const chunkData = deserializeMessage(data.weights);
             
+            let chunk = chunkData.chunk; // this is still a "tensor-like" object
+
+            // Convert received chunk to TensorFlow.js format
+            chunk = convertTfToTfjs(chunk);
+            
             const layerName = chunkData.layer_name;
-            const chunk = chunkData.chunk; // this is still a "tensor-like" object
             const numChunks = chunkData.num_chunks;
             const originalShape = chunkData.original_shape;
             
+            if (!this.peer_weights) {
+              this.peer_weights = {};  // Initialize if undefined
+            }
+
             // 2. Store the chunk data
             if (!this.peer_weights[layerName]) {
                 this.peer_weights[layerName] = [];
+                this.log(`Received initial ${layerName}`);
             }
+
             this.peer_weights[layerName].push(chunk);
             
             // 3. Check if all chunks are received
@@ -608,7 +649,7 @@ class WebRTCCommUtils {
                 
                 this.log(`Reassembled layer ${layerName}: shape [${originalShape.join(', ')}]`);
             } else {
-              this.log(`Received ${this.peer_weights[layerName].length} / ${numChunks} chunks for ${layerName}`);
+              // this.log(`Received ${this.peer_weights[layerName].length} / ${numChunks} chunks for ${layerName}`);
             }
 
           break;
@@ -664,22 +705,22 @@ class WebRTCCommUtils {
   }
 
   receive() {
-    this.log("Receive was called")
+    this.log("Receive was called");
     for (const neighborRank of Object.values(this.neighbors)) {
-      this.log(`Sending weights request for neighbor ${neighborRank}}`);
-      this.sendToPeer(neighborRank, {
-          type: "weights_request",
-          request_id: 1
-      })
+        this.log(`Sending weights request for neighbor ${neighborRank}`);
+        this.sendToPeer(neighborRank, {
+            type: "weights_request",
+            request_id: 1
+        });
     }
 
-    while (!this.weights_finished){
-      // IDK?
+    while (!this.weights_finished) {
+        // await new Promise(resolve => setTimeout(resolve, 100)); // Async sleep for 100ms
     }
 
-    this.log(`Received peer weights, returning`)
-    this.weights_finished = false
-    return this.peer_weights
+    this.log(`Received peer weights, returning`);
+    this.weights_finished = false;
+    return this.peer_weights;
   }
 
   async startTraining() {
@@ -966,5 +1007,112 @@ let config = {
     session_id: SESSION_ID
 }
 const node = new WebRTCCommUtils(config)
+
+async function testSendWeights() {
+    // Initialize the ResNet10 model
+    const resNet10Model = new ResNet10();
+
+    // Load the js2python mapping
+    const js2pythonMapping = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'ind2python.json'), 'utf8'));
+
+    // Get the weights and layers from the model
+    const weights = resNet10Model.model.getWeights();
+    const layers = resNet10Model.model.layers;
+
+    const chunk_size = 16000; // Define a chunk size for testing
+    console.log(layers.length);
+
+    // Collect information to log
+    const logData = [];
+
+    for (const [layerInd, tensor] of Object.entries(weights)) {
+        // const layer = layers[layerInd];
+        // const layerName = `${layer.name}_weight_${layerInd}`;
+        const pythonLayerName = js2pythonMapping[layerInd];
+
+        console.log(`Layer: ${layerInd}, dtype: ${tensor.dtype}, shape: [${tensor.shape.join(', ')}]`);
+
+        // Collect data for logging
+        logData.push({
+            layerInd: layerInd,
+            layerName: pythonLayerName,
+            dtype: tensor.dtype,
+            shape: tensor.shape
+        });
+
+        const chunks = chunkTensor(tensor, chunk_size);
+        console.log(`numChunks = ${chunks.length} for layer: ${pythonLayerName}`);
+
+        for (const { chunk, numChunks, originalShape } of chunks) {
+            const serializableChunk = serializeMessage({
+                layer_name: pythonLayerName,
+                chunk: chunk,
+                num_chunks: numChunks,
+                original_shape: originalShape
+            });
+
+            const response = {
+                type: "weights_response",
+                weights: serializableChunk,
+                round: 1, // Example round number
+                request_id: 123 // Example request ID
+            };
+
+            // Log the response instead of sending it
+            // console.log(JSON.stringify(response, null, 2));
+        }
+    }
+
+    // Write the collected log data to a file
+    const logFilePath = path.resolve(__dirname, 'weights_seq_log.json');
+    fs.writeFileSync(logFilePath, JSON.stringify(logData, null, 2));
+    console.log(`Log data written to ${logFilePath}`);
+}
+
+// Run the test
+// testSendWeights();
+
+async function testSendWeights2() {
+    // Initialize the ResNet10 model
+    const resNet10Model = new ResNet10();
+
+    // Load the js2python mapping
+    const js2pythonMapping = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'js2python.json'), 'utf8'));
+
+    // Prepare the JSON structure to store the required information
+    const logData = [];
+
+    const layers = resNet10Model.model.layers;
+    console.log(`Model layers: ${layers.length}`);
+
+    for (let i = 0; i < layers.length; i++) {
+        const layer = layers[i];
+        const layerWeights = layer.getWeights();
+
+        for (let j = 0; j < layerWeights.length; j++) {
+            const weightTensor = layerWeights[j];
+
+            // Rename the layer and map to Python layer name
+            const layerName = `${layer.name}_weight_${j}`;
+            const pythonLayerName = js2pythonMapping[layerName]; // Fallback to original if not found
+
+            // Collect data for logging
+            logData.push({
+                layerInd: `${i}_${j}`,
+                layerName: pythonLayerName,
+                dtype: weightTensor.dtype,
+                shape: weightTensor.shape
+            });
+        }
+    }
+
+    // Write the collected log data to a file
+    const logFilePath = path.resolve(__dirname, 'weights_mapped_log.json');
+    fs.writeFileSync(logFilePath, JSON.stringify(logData, null, 2));
+    console.log(`Mapped weights data written to ${logFilePath}`);
+}
+
+// Run the test
+// testSendWeights2();
 
 module.exports = { WebRTCCommUtils };

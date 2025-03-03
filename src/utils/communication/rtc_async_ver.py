@@ -110,6 +110,11 @@ class RTCCommUtils(CommunicationInterface):
         self.comm_cost_sent = 0
         self.comm_cost_received = 0
 
+        # Add tracking for expected chunks
+        self.expected_chunks = {}  # {layer_name: expected_num_chunks}
+        self.received_chunks = {}  # {layer_name: current_num_chunks} 
+        self.all_chunks_received = False
+
     def setup_logger(self) -> logging.Logger:
         # Create logs directory if it doesn't exist
         os.makedirs("logs", exist_ok=True)
@@ -454,7 +459,7 @@ class RTCCommUtils(CommunicationInterface):
             response = await self.websocket.recv()
             data = json.loads(response)
             
-            if data['type'] == 'session_created':
+            if (data['type'] == 'session_created'):
                 self.session_id = data['sessionId']
                 self.rank = data['rank']
                 self.logger.info(f"Created session {self.session_id}")
@@ -606,7 +611,7 @@ class RTCCommUtils(CommunicationInterface):
             yield tensor.flatten()[i * chunk_size:(i + 1) * chunk_size].reshape(-1), num_chunks, original_shape
 
     # TODO: Here are all the functions that are not going to be on the listening thread
-    def get_peer_weights(self, peer_rank: int, max_retries: int = 3) -> Optional[np.ndarray]:
+    def get_peer_weights(self, peer_rank: int, max_retries: int = 1) -> Optional[np.ndarray]:
         requests = set()
         for attempt in range(max_retries):
             try:
@@ -661,6 +666,7 @@ class RTCCommUtils(CommunicationInterface):
         return None
 
     def receive(self, node_ids: List[int]) -> List[OrderedDict[str, Any]]:
+        finished = False
         items = []
         # for peer_rank in node_ids: # TODO: change this back, small change for testing
         for peer_rank in self.neighbors.values():
@@ -670,14 +676,18 @@ class RTCCommUtils(CommunicationInterface):
                 self.logger.info(f"get_peer_weights() returned {model_data.keys()}")
                 items.append(model_data)
 
-        # keep processing messages for 5 more seconds
+        # Process messages with timeout
         timestamp = time.time()
-        # self.logger.info(f"Processing messages for 60 more seconds")
-        finished = False
-        while not finished:
+        timeout = 3000  # seconds
+        
+        while not (self.all_chunks_received and finished):
+            if time.time() - timestamp > timeout:
+                self.logger.error("Timeout waiting for all chunks to arrive")
+                break
+            
             try:
                 message = self.message_queue.get(timeout=0.1)
-                if (message):
+                if message:
                     peer_rank = message[0]
                     data = message[1]
                     self.handle_data_channel_message(peer_rank, data)
@@ -686,17 +696,28 @@ class RTCCommUtils(CommunicationInterface):
                     # self.logger.info(f"[Main Thread] Popped from message queue type {data['type']} from peer {peer_rank}")
             except Empty:
                 pass
-
         # self.logger.info(f"Finished processing messages for 5 seconds")
 
         # log the time it took to send in a nice format, and the keys of the peer_weights
         self.logger.info(f"Time to send: {time.strftime('%M:%S', time.gmtime(time.time() - timestamp))}")
-        # for key in self.peer_weights:               
-            # self.logger.info(f"Layer: {key}, dtype: {self.peer_weights[key].dtype}, size: {self.peer_weights[key].size()}")
+        try:
+            for key in self.peer_weights:               
+                self.logger.info(f"Layer: {key}, dtype: {self.peer_weights[key].dtype}, size: {self.peer_weights[key].size()}")
+        except Exception as e:
+            self.logger.error(f"Error logging peer weights: {e}, keys: {self.peer_weights.keys()}, types: {type(self.peer_weights[key])}")
         
+
+        # Log any incomplete layers
+        incomplete_layers = [
+            layer_name for layer_name in self.expected_chunks
+            if self.received_chunks[layer_name] < self.expected_chunks[layer_name]
+        ]
+        if incomplete_layers:
+            self.logger.error(f"Incomplete layers after timeout: {incomplete_layers}")
+
         self.clear_peer_weights = True
         return [{'model': self.peer_weights}]
-    
+
     def send_to_peer(self, peer_rank: int, data: dict):
         # self.logger.info(f"[Main Thread] Putting message of type {data['type']} in send queue for peer {peer_rank}")
         self.send_queue.put([peer_rank, data])
@@ -769,19 +790,11 @@ class RTCCommUtils(CommunicationInterface):
                 self.send_to_peer(peer_rank, finished_message)
 
             elif msg_type == "weights_response":
-                # self.logger.info(f"Received weights response from peer {peer_rank} with keys {data.keys()}")
-                # received_weights = deserialize_message(data["weights"])
-                # self.peer_weights[peer_rank] = received_weights
-                # return OrderedDict(data["weights"])
-                # if request_id in self.message_callbacks:
-                #     callback = self.message_callbacks.pop(request_id)
-                #     callback(data)
-
-                # Deserialize model weights
-                # reconstructed_weights = OrderedDict({k: torch.tensor(v) if isinstance(v, list) else v for k, v in received_weights.items()})
-                # Use reconstructed_weights as needed
                 if self.clear_peer_weights:
                     self.peer_weights = {}
+                    self.expected_chunks = {}  # Reset tracking
+                    self.received_chunks = {}
+                    self.all_chunks_received = False
                     self.clear_peer_weights = False
 
                 chunk_data = deserialize_message(data["weights"])
@@ -789,24 +802,52 @@ class RTCCommUtils(CommunicationInterface):
                 chunk = chunk_data["chunk"]
                 num_chunks = chunk_data["num_chunks"]
                 original_shape = chunk_data["original_shape"]
+
+                # Track expected chunks for this layer
+                if layer_name not in self.expected_chunks:
+                    self.expected_chunks[layer_name] = num_chunks
+                    self.received_chunks[layer_name] = 0
+
                 if layer_name not in self.peer_weights:
-                    self.peer_weights[layer_name] = []  # Initialize as a list to collect chunks
+                    self.peer_weights[layer_name] = []
+                    self.logger.info(f"Received initial {layer_name}")
+
                 self.peer_weights[layer_name].append(chunk)
+                self.received_chunks[layer_name] += 1
 
                 size_received = chunk.numel() * chunk.element_size()
                 self.comm_cost_received += size_received
 
-                # Check if all chunks are received
-                if len(self.peer_weights[layer_name]) == num_chunks:
+                # Check if all chunks are received for this layer
+                if self.received_chunks[layer_name] == self.expected_chunks[layer_name]:
                     full_tensor = torch.cat(self.peer_weights[layer_name])
                     self.peer_weights[layer_name] = full_tensor.reshape(original_shape)
                     self.logger.info(f"Reconstructed full tensor for {layer_name}")
-                else:
-                    self.logger.info(f"Received {len(self.peer_weights[layer_name])} / {num_chunks} chunks for {layer_name}")
+                # else:
+                #     self.logger.info(f"Received {len(self.peer_weights[layer_name])} / {num_chunks} chunks for {layer_name}")
+
+                # Check if all layers are complete
+                self.all_chunks_received = all(
+                    self.received_chunks.get(layer, 0) == self.expected_chunks.get(layer)
+                    for layer in self.expected_chunks.keys()
+                )
 
             elif msg_type == "weights_finished":
                 self.logger.info(f"Received finished message for weights from peer {peer_rank}")
-                # Trigger any post-processing or confirmation logic here
+                
+                # Wait for a short time to allow any in-flight chunks to arrive
+                # if not self.all_chunks_received:
+                #     self.logger.warning("Received finished message but not all chunks have arrived yet")
+                #     # Optional: Add a small delay here if needed
+                #     await asyncio.sleep(2)
+                
+                # Log incomplete layers
+                # for layer_name in self.expected_chunks:
+                #     if self.received_chunks[layer_name] < self.expected_chunks[layer_name]:
+                #         self.logger.warning(
+                #             f"Layer {layer_name} is incomplete: "
+                #             f"received {self.received_chunks[layer_name]} / {self.expected_chunks[layer_name]} chunks"
+                #         )
 
         except json.JSONDecodeError:
             self.logger.error(f"Failed to parse message from {peer_rank}: {message.keys()}")

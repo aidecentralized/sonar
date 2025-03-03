@@ -892,7 +892,11 @@ class BaseFedAvgClient(BaseClient):
             for key in self.model.state_dict().keys():
                 if key in keys_to_ignore:
                     continue
-                if not is_init:
+                # Check if the key is in the form of <some layer>.num_batches_tracked
+                # and if it is not in the incoming model, skip it
+                if key.endswith('.num_batches_tracked') and key not in model:
+                    continue
+                elif not is_init:
                     agg_wts[key] = coeff * model[key].to(self.device)
                 else:
                     agg_wts[key] += coeff * model[key].to(self.device)
