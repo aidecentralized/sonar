@@ -81,10 +81,10 @@ def get_algo_configs(
 CIFAR10_DSET = "cifar10"
 CIAR10_DPATH = "./datasets/imgs/cifar10/"
 
-DUMP_DIR = "/tmp/"
+DUMP_DIR = "/mas/camera/Experiments/SONAR/jyuan/_tmp/"
 
-NUM_COLLABORATORS = 1
-num_users = 4
+NUM_COLLABORATORS = 36
+num_users = 36
 
 dropout_dict = {
     "distribution_dict": { # leave dict empty to disable dropout
@@ -101,11 +101,15 @@ for i in range(1, num_users + 1):
 
 gpu_ids = [2, 3, 5, 6]
 
+topo = "torus"
+algo_name = "no_malicious"
+num_collaborators = NUM_COLLABORATORS
+
 grpc_system_config: ConfigType = {
-    "exp_id": "static",
+    "exp_id": f"topo_{topo}x{algo_name}_{0}_malicious_{num_collaborators}_colab_3_4",
     "num_users": num_users,
     "num_collaborators": NUM_COLLABORATORS,
-    "comm": {"type": "GRPC", "synchronous": True, "peer_ids": ["localhost:50048"]},  # The super-node
+    "comm": {"type": "GRPC", "synchronous": True, "peer_ids": ["matlaber1.media.mit.edu:1112"]},  # The super-node
     "dset": CIFAR10_DSET,
     "dump_dir": DUMP_DIR,
     "dpath": CIAR10_DPATH,
@@ -113,8 +117,7 @@ grpc_system_config: ConfigType = {
     "device_ids": get_device_ids(num_users, gpu_ids),
     # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
     "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
-    # "samples_per_user": 50000 // num_users,  # distributed equally
-    "samples_per_user": 100,
+    "samples_per_user": 50000 // num_users,  # distributed equally
     "train_label_distribution": "non_iid",
     "test_label_distribution": "iid",
     "alpha_data": 1.0,
@@ -122,13 +125,12 @@ grpc_system_config: ConfigType = {
     "dropout_dicts": dropout_dicts,
     "test_samples_per_user": 200,
     "log_memory": True,
-    # "streaming_aggregation": True, # Make it true for fedstatic
+    "streaming_aggregation": True, # Make it true for fedstatic
     "assign_based_on_host": True,
     "hostname_to_device_ids": {
-        "matlaber1": [2, 3, 4, 5, 6, 7],
-        "matlaber12": [0, 1, 2, 3],
-        "matlaber3": [0, 1, 2, 3],
-        "matlaber4": [0, 2, 3, 4, 5, 6, 7],
+        "matlaber1": [2, 3, 4, 6, 7],
+        "matlaber5": [1, 2],
+        "matlaber12": [2, 3],
     }
 }
 current_config = grpc_system_config

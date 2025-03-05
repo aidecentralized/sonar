@@ -3,12 +3,14 @@ from utils.types import ConfigType
 fedstatic: ConfigType = {
     # Collaboration setup
     "algo": "fedstatic",
-    "topology": {"name": "watts_strogatz", "k": 3, "p": 0.2}, # type: ignore
-    "rounds": 1,
+    # "topology": {"name": "watts_strogatz", "k": 3, "p": 0.2}, # type: ignore
+    "topology": {"name": "ring"},
+    "rounds": 200,
 
     # Model parameters
+    "optimizer": "sgd",
     "model": "resnet10",
-    "model_lr": 3e-4,
+    "model_lr": 0.1,
     "batch_size": 256,
 }
 

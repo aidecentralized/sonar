@@ -122,7 +122,7 @@ class MetaL2CClient(BaseFedAvgClient):
     ) -> None:
         super().__init__(config, comm_utils)
 
-        self.encoder = ModelEncoder(self.get_model_weights())
+        self.encoder = ModelEncoder(self.get_model_weights(get_external_repr=False))
         self.encoder_optim = optim.SGD(
             self.encoder.parameters(), lr=self.config["alpha_lr"]
         )
