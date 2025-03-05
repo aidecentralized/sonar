@@ -27,7 +27,7 @@ class CommunicationInterface(ABC):
         pass
 
     @abstractmethod
-    def all_gather(self) -> Any:
+    def all_gather(self, ignore_super_node: bool) -> Any:
         pass
 
     @abstractmethod

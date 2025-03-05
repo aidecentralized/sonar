@@ -54,7 +54,7 @@ def check_and_create_path(path: str):
         print(f"Please do: rm -rf {path} to delete the folder.{reset_code}")
         sys.exit()
     else:
-        os.makedirs(path)
+        os.makedirs(path, exist_ok=True)
 
 
 def copy_source_code(config: ConfigType) -> None:

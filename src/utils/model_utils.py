@@ -522,6 +522,16 @@ class ModelUtils:
         acc = correct / len(dloader.dataset)
         return test_loss, acc
 
+    def forward_pass(self, model: nn.Module, dloader: DataLoader[Any], device: torch.device):
+        model.eval()
+        with torch.no_grad():
+            outputs: torch.Tensor = torch.tensor([]).to(device)
+            for data, target in dloader:
+                data, target = data.to(device), target.to(device)
+                output = model(data)
+                outputs = torch.cat((outputs, output), 0)
+        return outputs
+
     def save_model(self, model: nn.Module, path: str) -> None:
         if isinstance(model, DataParallel):
             model_ = model.module
@@ -571,3 +581,11 @@ class ModelUtils:
         Get the memory usage
         """
         return torch.cuda.memory_allocated(self.device)
+
+    def get_split_model(self, model: nn.Module, split: int) -> Tuple[nn.Module, nn.Module]:
+        """
+        Split the model into two parts
+        """
+        model1 = nn.Sequential(*nn.ModuleList(list(model.children()))[:split])
+        model2 = nn.Sequential(*nn.ModuleList(list(model.children()))[split:])
+        return model1, model2
