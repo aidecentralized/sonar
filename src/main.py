@@ -12,8 +12,8 @@ logging.getLogger("PIL").setLevel(logging.INFO)
 logging.basicConfig(level=logging.DEBUG)  # Enable detailed logging
 
 # Default config file paths
-B_DEFAULT: str = "./configs/algo_config.py"
-S_DEFAULT: str = "./configs/sys_config.py"
+B_DEFAULT: str = "./configs/algo_config_test.py"
+S_DEFAULT: str = "./configs/sys_config_test.py"
 
 # Parse args
 parser : argparse.ArgumentParser = argparse.ArgumentParser(description="Run collaborative learning experiments")

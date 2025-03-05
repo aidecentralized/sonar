@@ -350,7 +350,7 @@ grpc_system_config: ConfigType = {
     "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
     "samples_per_user": 50000 // num_users,  # distributed equally
     "train_label_distribution": "non_iid",
-    "test_label_distribution": "non_iid",
+    "test_label_distribution": "iid",
     "alpha_data": 1.0,
     "exp_keys": [],
     "dropout_dicts": dropout_dicts,

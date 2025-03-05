@@ -208,7 +208,7 @@ fedstatic: ConfigType = {
     # Model parameters
     "optimizer": "sgd", # TODO comment out for real training
     "model": "resnet10",
-    "model_lr": 3e-4,
+    "model_lr": 0.1, # 3e-4,
     "batch_size": 256,
 }
 
