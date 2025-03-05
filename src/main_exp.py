@@ -163,7 +163,7 @@ parser.add_argument(
     help="host address of the nodes",
 )
 
-args = parser.parse_args()
+args: argparse.Namespace = parser.parse_args()
 
 print("\n", "*"*20, "Running the following experiments in this order:", "*"*20, "\n")
 print(exp_dict.keys())

@@ -7,7 +7,8 @@ import argparse
 import subprocess
 from typing import List
 
-parser = argparse.ArgumentParser(description="Number of nodes to run on this machine")
+# Parse args
+parser : argparse.ArgumentParser = argparse.ArgumentParser(description="Number of nodes to run on this machine")
 parser.add_argument(
     "-n",
     nargs="?",
@@ -22,11 +23,21 @@ parser.add_argument(
     help=f"host address of the nodes",
 )
 
-args = parser.parse_args()
+parser.add_argument(
+    "-dev",
+    nargs="?",
+    type=bool,
+    help=f"whether or not development testing",
+)
 
+args : argparse.Namespace = parser.parse_args()
+
+# Command for opening each process
 command_list: List[str] = ["python", "main.py", "-host", args.host]
-# if the super-node is to be started on this machine
+if args.dev == True:
+    command_list: List[str] = ["python", "main.py", "-b", "./configs/algo_config_test.py", "-s", "./configs/sys_config_test.py", "-host", args.host]
 
+# Start process for each user
 for i in range(args.n):
     print(f"Starting process for user {i}")
     # start a Popen process

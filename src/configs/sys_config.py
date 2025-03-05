@@ -29,12 +29,12 @@ sliding_window_8c_4cpc_support = {
 }
 
 
-def get_device_ids(num_users: int, gpus_available: List[int]) -> Dict[str, List[int]]:
+def get_device_ids(num_users: int, gpus_available: List[int | Literal["cpu"]]) -> Dict[str, List[int | Literal["cpu"]]]:
     """
     Get the GPU device IDs for the users.
     """
     # TODO: Make it multi-host
-    device_ids: Dict[str, List[int]] = {}
+    device_ids: Dict[str, List[int | Literal["cpu"]]] = {}
     for i in range(num_users + 1):  # +1 for the super-node
         index = i % len(gpus_available)
         gpu_id = gpus_available[index]
@@ -160,11 +160,13 @@ CIFAR10_DSET = "cifar10"
 CIAR10_DPATH = "./datasets/imgs/cifar10/"
 
 NUM_COLLABORATORS = 1
-DUMP_DIR = "/mas/camera/Experiments/SONAR/abhi/"
+DUMP_DIR = "/tmp/"
 
+num_users = 3
 mpi_system_config: ConfigType = {
     "exp_id": "",
     "comm": {"type": "MPI"},
+    "num_users": num_users,
     "num_collaborators": NUM_COLLABORATORS,
     "dset": CIFAR10_DSET,
     "dump_dir": DUMP_DIR,
@@ -179,11 +181,9 @@ mpi_system_config: ConfigType = {
     # "algo": get_algo_configs(num_users=3, algo_configs=algo_configs_list),
     "algos": get_algo_configs(
         num_users=3,
-        algo_configs=malicious_algo_config_list,
-        assignment_method="distribution",
-        distribution={0: 1, 1: 1, 2: 1},
+        algo_configs=default_config_list
     ),  # type: ignore
-    "samples_per_user": 1000,  # TODO: To model scenarios where different users have different number of samples
+    "samples_per_user": 5555,  # TODO: To model scenarios where different users have different number of samples
     # we need to make this a dictionary with user_id as key and number of samples as value
     "train_label_distribution": "iid",  # Either "iid", "non_iid" "support"
     "test_label_distribution": "iid",  # Either "iid", "non_iid" "support"
@@ -350,11 +350,32 @@ grpc_system_config: ConfigType = {
     "algos": get_algo_configs(num_users=num_users, algo_configs=[fed_dynamic_loss]),  # type: ignore
     "samples_per_user": 10000 // num_users,  # distributed equally
     "train_label_distribution": "non_iid",
-    "alpha": 0.1,
+    "alpha_data": 0.1,
     "test_label_distribution": "iid",
     "exp_keys": [],
     "dropout_dicts": dropout_dicts,
     "log_memory": False,
+}
+
+grpc_system_config_gia: ConfigType = {
+    "exp_id": "static",
+    "num_users": num_users,
+    "num_collaborators": NUM_COLLABORATORS,
+    "comm": {"type": "GRPC", "synchronous": True, "peer_ids": ["localhost:50048"]},  # The super-node
+    "dset": CIFAR10_DSET,
+    "dump_dir": DUMP_DIR,
+    "dpath": CIAR10_DPATH,
+    "seed": 2,
+    "device_ids": get_device_ids(num_users, gpu_ids),
+    # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
+    "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
+    "samples_per_user": 50000 // num_users,  # distributed equally
+    "train_label_distribution": "iid",
+    "test_label_distribution": "iid",
+    "exp_keys": [],
+    "dropout_dicts": dropout_dicts,
+    "gia":True,
+    "gia_attackers":[1]
 }
 
 current_config = grpc_system_config

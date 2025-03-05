@@ -13,7 +13,6 @@ import resnet_in
 import yolo
 from utils.types import ConfigType
 
-
 class ModelUtils:
     def __init__(self, device: torch.device, config: ConfigType) -> None:
         self.device = device
@@ -32,7 +31,6 @@ class ModelUtils:
         model_name: str,
         dset: str,
         device: torch.device,
-        device_ids: List[int],
         pretrained: bool = False,
         **kwargs: Any,
     ):
@@ -181,6 +179,7 @@ class ModelUtils:
         test_loader: DataLoader[Any] | None = None,
         **kwargs: Any,
     ) -> Tuple[float, float]:
+        model.train()
         correct = 0
         train_loss = 0
         for batch_idx, (data, target) in enumerate(dloader):
@@ -193,24 +192,73 @@ class ModelUtils:
             output = model(data, position=position)
 
             if kwargs.get("apply_softmax", False):
+                print("here, applying softmax")
                 output = nn.functional.log_softmax(output, dim=1)  # type: ignore
+            if kwargs.get("gia", False):
+                from inversefed.reconstruction_algorithms import loss_steps
+                
+                # Sum the loss and create gradient graph like in loss_steps
+                # Use modified loss_steps function that returns loss
+                model.eval()
+                param_updates = loss_steps(
+                    model, 
+                    data, 
+                    target, 
+                    loss_fn=loss_fn,
+                    lr=3e-4,
+                    local_steps=1,
+                    use_updates=True,  # Must be True to get parameter differences
+                    batch_size=10
+                )
+                
+                # save parameter update for sanity check
+                # with open(f"param_updates_{node_id}.pkl", "wb") as f:
+                #     pickle.dump(param_updates, f)
+                model.train()
 
-            loss = loss_fn(output, target)
-            loss.backward()
-            optim.step()
-            train_loss += loss.item()
-            pred = output.argmax(dim=1, keepdim=True)
-            # view_as() is used to make sure the shape of pred and target are
-            # the same
-            if len(target.size()) > 1:
-                target = target.argmax(dim=1, keepdim=True)
-            correct += pred.eq(target.view_as(pred)).sum().item()
+                # Apply the updates to the model parameters
+                with torch.no_grad():
+                    for param, update in zip(model.parameters(), param_updates):
+                        param.data.add_(update)  # Directly add the update differences
+                
+                # Compute loss for tracking (without gradients since we've already updated)
+                with torch.no_grad():
+                    position = kwargs.get("position", 0)
+                    output = model(data, position=position)
+                    if kwargs.get("apply_softmax", False):
+                        output = nn.functional.log_softmax(output, dim=1)
+                    loss = loss_fn(output, target)
+                    train_loss += loss.item()
+ 
+            else:
+                # Standard training procedure
+                optim.zero_grad()
+                position = kwargs.get("position", 0)
+                output = model(data, position=position)
+                
+                if kwargs.get("apply_softmax", False):
+                    output = nn.functional.log_softmax(output, dim=1)
+                
+                loss = loss_fn(output, target)
+                loss.backward()
+                optim.step()
+                train_loss += loss.item()
+
+            # Compute accuracy
+            with torch.no_grad():
+                output = model(data, position=position)
+                pred = output.argmax(dim=1, keepdim=True)
+                if len(target.size()) > 1:
+                    target = target.argmax(dim=1, keepdim=True)
+                correct += pred.eq(target.view_as(pred)).sum().item()
 
             if test_loader is not None:
-                # TODO: implement test loader for pascal
                 test_loss, test_acc = self.test(model, test_loader, loss_fn, device)
                 print(
-                    f"Train Loss: {train_loss/(batch_idx+1):.6f} | Train Acc: {correct/((batch_idx+1)*len(data)):.6f} | Test Loss: {test_loss:.6f} | Test Acc: {test_acc:.6f}"
+                    f"Train Loss: {train_loss/(batch_idx+1):.6f} | "
+                    f"Train Acc: {correct/((batch_idx+1)*len(data)):.6f} | "
+                    f"Test Loss: {test_loss:.6f} | "
+                    f"Test Acc: {test_acc:.6f}"
                 )
 
         acc = correct / len(dloader.dataset)
@@ -258,6 +306,16 @@ class ModelUtils:
 
                 # Perform backpropagation with modified loss
                 loss.backward()
+            elif self.malicious_type == "label_flip":
+                # permutation = torch.tensor(self.config.get("permutation", [i for i in range(10)]))
+                permute_labels = self.config.get("permute_labels", 10)
+                permutation = torch.randperm(permute_labels)
+                permutation = permutation.to(target.device)
+
+                target = permutation[target] # flipped targets
+                loss = loss_fn(output, target)
+                loss.backward()
+
             else:
                 loss = loss_fn(output, target)
                 loss.backward()

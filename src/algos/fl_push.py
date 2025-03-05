@@ -18,28 +18,23 @@ class FedAvgPushClient(FedAvgClient):
         super().__init__(config, comm_utils)
 
     def run_protocol(self):
-        stats: Dict[str, Any] = {}
         print(f"Client {self.node_id} ready to start training")
 
         start_rounds = self.config.get("start_rounds", 0)
         total_rounds = self.config["rounds"]
 
         for round in range(start_rounds, total_rounds):
+            self.round_init()
+
             # Fetch model from the server
             self.receive_pushed_and_aggregate()
-
-            stats["train_loss"], stats["train_acc"], stats["train_time"] = self.local_train(round)
-            stats["test_loss"], stats["test_acc"], stats["test_time"] = self.local_test()
-
+            self.local_train(round)
+            self.local_test()
             # Send the model to the server
             self.push(self.server_node)
-
-            stats["bytes_received"], stats["bytes_sent"] = self.comm_utils.get_comm_cost()
-            stats.update(self.get_memory_metrics())
-            
-            self.log_metrics(stats=stats, iteration=round)
-
             self.local_round_done()
+
+            self.round_finalize()
 
 
 class FedAvgPushServer(FedAvgServer):
@@ -61,14 +56,14 @@ class FedAvgPushServer(FedAvgServer):
         self.set_representation(avg_wts)
 
     def run_protocol(self):
-        stats: Dict[str, Any] = {}
         print(f"Client {self.node_id} ready to start training")
         start_rounds = self.config.get("start_rounds", 0)
         total_rounds = self.config["rounds"]
         for round in range(start_rounds, total_rounds):
+            self.round_init()
+
             self.single_round()
-            stats["bytes_received"], stats["bytes_sent"] = self.comm_utils.get_comm_cost()
-            stats["test_loss"], stats["test_acc"], stats["test_time"] = self.test()
-            stats.update(self.get_memory_metrics())
-            self.log_metrics(stats=stats, iteration=round)
+            self.test()
             self.local_round_done()
+
+            self.round_finalize()

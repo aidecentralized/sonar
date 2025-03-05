@@ -24,6 +24,7 @@ from utils.data_utils import (
     get_dataset,
     non_iid_balanced,
     balanced_subset,
+    gia_client_dataset,
     CacheDataset,
     TransformDataset,
     CorruptDataset,
@@ -120,7 +121,14 @@ class BaseNode(ABC):
         dropout_rng = random.Random(dropout_seed)
         self.dropout = NodeDropout(self.node_id, config["dropout_dicts"], dropout_rng)
 
+        if "gia" in config and self.node_id in config["gia_attackers"]:
+            self.gia_attacker = True
+        
         self.log_memory = config.get("log_memory", False)
+
+        self.stats : Dict[str, int | float | List[int]] = {}
+
+        self.streaming_aggregation = config.get("streaming_aggregation", False)
 
     def set_constants(self) -> None:
         """Add docstring here"""
@@ -162,17 +170,29 @@ class BaseNode(ABC):
     def setup_cuda(self, config: ConfigType) -> None:
         """add docstring here"""
         # Need a mapping from rank to device id
-        device_ids_map = config["device_ids"]
-        node_name = f"node_{self.node_id}"
-        self.device_ids: List[int] = device_ids_map[node_name] # type: ignore
+        if (config.get("assign_based_on_host", False)):
+            device_ids_map = config["device_ids"]
+            node_name = f"node_{self.node_id}"
+            self.device_ids = device_ids_map[node_name]
+        else:
+            hostname_to_device_ids = config["hostname_to_device_ids"]
+            hostname = os.uname().nodename
+            # choose a random one of the available devices
+            ind = self.node_id % len(hostname_to_device_ids[hostname])
+            self.device_ids = [hostname_to_device_ids[hostname][ind]]
         gpu_id = self.device_ids[0]
 
-        if torch.cuda.is_available():
+        if isinstance(gpu_id, int) and torch.cuda.is_available():
             self.device = torch.device(f"cuda:{gpu_id}")
             print(f"Using GPU: cuda:{gpu_id}")
-        else:
+        elif gpu_id == "cpu":
             self.device = torch.device("cpu")
             print("Using CPU")
+        else:
+            # Fallback in case of no GPU availability
+            self.device = torch.device("cpu")
+            print("Using CPU (Fallback)")
+
 
     def set_model_parameters(self, config: Dict[str, Any]) -> None:
         # Model related parameters
@@ -184,13 +204,15 @@ class BaseNode(ABC):
             optim = torch.optim.SGD
         else:
             raise ValueError(f"Unknown optimizer: {optim_name}.")
+        # if "gia" in config:
+            # print("setting optim to gia")
+            # optim = torch.optim.SGD
         num_classes = self.dset_obj.num_cls
         num_channels = self.dset_obj.num_channels
         self.model = self.model_utils.get_model(
-            config["model"],
-            self.dset,
-            self.device,
-            self.device_ids,
+            model_name=config["model"],
+            dset=self.dset,
+            device=self.device,
             num_classes=num_classes,
             num_channels=num_channels,
             pretrained=config.get("pretrained", False),
@@ -238,8 +260,8 @@ class BaseNode(ABC):
                 )
             else:
                 raise ValueError(f"Unknown community type: {community_type}.")
-        if self.node_id == 0:
-            self.log_utils.log_console(f"Communities: {self.communities}")
+        # if self.node_id == 0:
+        #     self.log_utils.log_console(f"Communities: {self.communities}")
 
     def local_round_done(self) -> None:
         self.round += 1
@@ -257,6 +279,11 @@ class BaseNode(ABC):
             model = self.model.state_dict()
         message: Dict[str, int|Dict[str, Any]] = {"sender": self.node_id, "round": self.round, "model": model}
 
+        if "gia" in self.config and hasattr(self, 'images') and hasattr(self, 'labels'):
+            # also stream image and labels
+            message["images"] = self.images
+            message["labels"] = self.labels
+
         # Move to CPU before sending
         if isinstance(message["model"], dict):
             for key in message["model"].keys():
@@ -271,6 +298,28 @@ class BaseNode(ABC):
     def run_protocol(self) -> None:
         """Add docstring here"""
         raise NotImplementedError
+
+    def round_init(self) -> None:
+        """
+        Things to do at the start of each round.
+        """
+        self.round_start_time = time.time()
+    
+    def round_finalize(self) -> None:
+        """
+        Things to do at the end of each round.
+        """
+        self.round_end_time = time.time()
+        self.round_duration = self.round_end_time - self.round_start_time
+
+        self.stats["time_elapsed"] = self.stats.get("time_elapsed", 0) + self.round_duration # type: ignore
+        
+        self.stats["bytes_received"], self.stats["bytes_sent"] = self.comm_utils.get_comm_cost()
+
+        self.stats["peak_dram"], self.stats["peak_gpu"] = self.get_memory_metrics()
+
+        self.log_metrics(stats=self.stats, iteration=self.round)
+
 
     def log_metrics(self, stats: Dict[str, Any], iteration: int) -> None:
         """
@@ -364,32 +413,36 @@ class BaseNode(ABC):
 
         self.model.load_state_dict(model_wts, strict=len(keys_to_ignore) == 0)
 
-    def push(self, neighbors: List[int]) -> None:
+    def push(self, neighbors: int | List[int]) -> None:
         """
         Pushes the model to the neighbors.
         """
         
         data_to_send = self.get_model_weights()
-        
-        self.comm_utils.send(neighbors, data_to_send)
+
+        # if it is a list, send to all neighbors
+        if isinstance(neighbors, list):
+            for neighbor in neighbors:
+                self.comm_utils.send(neighbor, data_to_send)
+        else:
+            self.comm_utils.send(neighbors, data_to_send)
 
     def calculate_cpu_tensor_memory(self) -> int:
         total_memory = 0
         for obj in gc.get_objects():
-            if torch.is_tensor(obj) and obj.device.type == 'cpu':
+            if torch.is_tensor(obj) and obj.device.type == 'cpu': # type: ignore
                 total_memory += obj.element_size() * obj.nelement()
         return total_memory
 
-    def get_memory_metrics(self) -> Dict[str, Any]:
+    def get_memory_metrics(self) -> Tuple[float | int, float | int]:
         """
         Get memory metrics
         """
+        peak_dram, peak_gpu = 0, 0
         if self.log_memory:
-            return {
-                "peak_dram": self.calculate_cpu_tensor_memory(),
-                "peak_gpu": torch.cuda.max_memory_allocated(),
-            }
-        return {}
+            peak_dram = self.calculate_cpu_tensor_memory()
+            peak_gpu = int(torch.cuda.max_memory_allocated()) # type: ignore
+        return peak_dram, peak_gpu
 
 class BaseClient(BaseNode):
     """
@@ -403,6 +456,17 @@ class BaseClient(BaseNode):
         super().__init__(config, comm_utils)
         self.server_node = 0
         self.set_parameters(config)
+        if "gia" in config: 
+            if int(self.node_id) in self.config["gia_attackers"]:
+                self.gia_attacker = True
+            self.params_s = dict()
+            self.params_t = dict()
+            # Track neighbor updates with a dictionary mapping neighbor_id to their updates
+            self.neighbor_updates = defaultdict(list)
+            # Track which neighbors we've already attacked
+            self.attacked_neighbors = set()
+
+            self.base_params = [key for key, _ in self.model.named_parameters()]
 
     def set_parameters(self, config: Dict[str, Any]) -> None:
         """
@@ -418,166 +482,224 @@ class BaseClient(BaseNode):
         self.set_shared_exp_parameters(config)
         self.set_data_parameters(config)
 
+        # after setting data loaders, save client dataset
+        # TODO verify this .data and .labels fields are correct
+        if "gia" in config:
+            # Extract data and labels
+            train_data = torch.stack([data[0] for data in self.train_dset])
+            train_labels = torch.tensor([data[1] for data in self.train_dset])
+
+            self.log_utils.log_gia_image(train_data, 
+                                         train_labels,
+                                         self.node_id)
+
     def set_data_parameters(self, config: ConfigType) -> None:
 
         # Train set and test set from original dataset
         train_dset = self.dset_obj.train_dset
         test_dset = self.dset_obj.test_dset
 
-        # print("num train", len(train_dset))
-        # print("num test", len(test_dset))
-
-        if config.get("test_samples_per_class", None) is not None:
-            test_dset, _ = balanced_subset(test_dset, config["test_samples_per_class"])
-
-        samples_per_user = config["samples_per_user"]
-        batch_size: int = config["batch_size"] # type: ignore
-        print(f"samples per user: {samples_per_user}, batch size: {batch_size}")
-
-        # Support user specific dataset
-        if isinstance(config["dset"], dict):
-
-            def is_same_dest(dset):
-                # Consider all variations of cifar10 as the same dataset
-                # To avoid having exactly same original dataset (without
-                # considering transformation) on multiple users
-                if self.dset == "cifar10" or self.dset.startswith("cifar10_"):
-                    return dset == "cifar10" or dset.startswith("cifar10_")
-                else:
-                    return dset == self.dset
-
-            users_with_same_dset = sorted(
-                [int(k) for k, v in config["dset"].items() if is_same_dest(v)]
+        # Handle GIA case first, before any other modifications
+        if "gia" in config:
+            # Select 10 random labels and exactly one image per label for both train and test
+            train_dset, test_dset, classes, train_indices = gia_client_dataset(
+                train_dset, test_dset, num_labels=10
             )
+            
+            assert len(train_dset) == 10, "GIA should have exactly 10 samples in train set"
+            assert len(test_dset) == 10, "GIA should have exactly 10 samples in test set"
+            
+            # Store the images and labels in tensors, matching the format from your example
+            self.images = []
+            self.labels = []
+            
+            # Collect images and labels in order
+            for idx in range(len(train_dset)):
+                img, label = train_dset[idx]
+                self.images.append(img)
+                self.labels.append(torch.tensor([label]))
+                
+            # Stack/concatenate into final tensors
+            self.images = torch.stack(self.images)  # Shape: [10, C, H, W]
+            self.labels = torch.cat(self.labels)    # Shape: [10]
+            
+            # Set up the dataloaders with batch_size equal to dataset size for single-pass training
+            self.classes_of_interest = classes
+            self.train_indices = train_indices
+            self.train_dset = train_dset
+            self.dloader = DataLoader(train_dset, batch_size=len(train_dset), shuffle=False)
+            self._test_loader = DataLoader(test_dset, batch_size=len(test_dset), shuffle=False)
+            print("Using GIA data setup")
+            print(self.labels)
         else:
-            users_with_same_dset = list(range(1, config["num_users"] + 1))
-        user_idx = users_with_same_dset.index(self.node_id)
+            if config.get("test_samples_per_class", None) is not None:
+                test_dset, _ = balanced_subset(test_dset, config["test_samples_per_class"])
 
-        cls_prior = None
-        # If iid, each user has random samples from the whole dataset (no
-        # overlap between users)
-        if config["train_label_distribution"] == "iid":
-            indices = np.random.permutation(len(train_dset))
-            train_indices = indices[
-                user_idx * samples_per_user : (user_idx + 1) * samples_per_user
-            ]
-            train_dset = Subset(train_dset, train_indices)
-            classes = list(set([train_dset[i][1] for i in range(len(train_dset))]))
-        # If non_iid, each user get random samples from its support classes
-        # (mulitple users might have same images)
-        elif config["train_label_distribution"] == "support":
-            classes = config["support"][str(self.node_id)]
-            support_classes_dataset, indices = filter_by_class(train_dset, classes)
-            train_dset, sel_indices = random_samples(
-                support_classes_dataset, samples_per_user
-            )
-            train_indices = [indices[i] for i in sel_indices]
-        elif config["train_label_distribution"].endswith("non_iid"):
-            alpha = config.get("alpha_data", 0.4)
-            if config["train_label_distribution"] == "inter_domain_non_iid":
-                # Hack to get the same class prior for all users with the same dataset
-                # While keeping the same random state for all users
-                if isinstance(config["dset"], dict) and isinstance(
-                    config["dset"], dict
-                ):
-                    cls_priors = []
-                    dsets = list(config["dset"].values())
-                    for _ in dsets:
-                        n_cls = self.dset_obj.num_cls
-                        cls_priors.append(
-                            np.random.dirichlet(
-                                alpha=[alpha] * n_cls, size=len(users_with_same_dset)
-                            )
-                        )
-                    cls_prior = cls_priors[dsets.index(self.dset)]
-            train_y, train_idx_split, cls_prior = non_iid_balanced(
-                self.dset_obj,
-                len(users_with_same_dset),
-                samples_per_user,
-                alpha,
-                cls_priors=cls_prior,
-                is_train=True,
-            )
-            train_indices = train_idx_split[self.node_id - 1]
-            train_dset = Subset(train_dset, train_indices)
-            classes = np.unique(train_y[user_idx]).tolist()
-        elif config["train_label_distribution"] == "shard":
-            raise NotImplementedError
-        else:
-            raise ValueError(
-                "Unknown train label distribution: {}.".format(
-                    config["train_label_distribution"]
+            samples_per_user = config["samples_per_user"]
+            batch_size: int = config["batch_size"] # type: ignore
+            print(f"samples per user: {samples_per_user}, batch size: {batch_size}")
+
+            # Support user specific dataset
+            if isinstance(config["dset"], dict):
+
+                def is_same_dest(dset):
+                    # Consider all variations of cifar10 as the same dataset
+                    # To avoid having exactly same original dataset (without
+                    # considering transformation) on multiple users
+                    if self.dset == "cifar10" or self.dset.startswith("cifar10_"):
+                        return dset == "cifar10" or dset.startswith("cifar10_")
+                    else:
+                        return dset == self.dset
+
+                users_with_same_dset = sorted(
+                    [int(k) for k, v in config["dset"].items() if is_same_dest(v)]
                 )
-            )
+            else:
+                users_with_same_dset = list(range(1, config["num_users"] + 1))
+            user_idx = users_with_same_dset.index(self.node_id)
 
-        if self.dset.startswith("domainnet"):
-            train_transform = T.Compose(
-                [
-                    T.RandomResizedCrop(32, scale=(0.75, 1)),
-                    T.RandomHorizontalFlip(),
-                    # T.ToTensor()
+            cls_prior = None
+            # If iid, each user has random samples from the whole dataset (no
+            # overlap between users)
+            if config["train_label_distribution"] == "iid":
+                indices = np.random.permutation(len(train_dset))
+                train_indices = indices[
+                    user_idx * samples_per_user : (user_idx + 1) * samples_per_user
                 ]
-            )
-
-            # Cache before transform to preserve transform randomness
-            train_dset = TransformDataset(CacheDataset(train_dset), train_transform)
-
-        if config.get("malicious_type", None) == "corrupt_data":
-            corruption_fn_name = config.get("corruption_fn", "gaussian_noise")
-            severity = config.get("corrupt_severity", 1)
-            train_dset = CorruptDataset(CacheDataset(train_dset), corruption_fn_name, severity)
-            print("created train dataset with corruption function: ", corruption_fn_name)
-
-        self.classes_of_interest = classes
-
-        val_prop = config.get("validation_prop", 0)
-        val_dset = None
-        if val_prop > 0:
-            val_size = int(val_prop * len(train_dset))
-            train_size = len(train_dset) - val_size
-            train_dset, val_dset = torch.utils.data.random_split(
-                train_dset, [train_size, val_size]
-            )
-            # self.val_dloader = DataLoader(val_dset, batch_size=batch_size*len(self.device_ids),
-            # shuffle=True)
-            self.val_dloader = DataLoader(val_dset, batch_size=batch_size, shuffle=True)
-
-        assert isinstance(train_dset, torch.utils.data.Dataset), "train_dset must be a Dataset"
-        self.train_indices = train_indices
-        self.train_dset = train_dset
-        self.dloader = DataLoader(train_dset, batch_size=batch_size, shuffle=True) # type: ignore
-
-        if config["test_label_distribution"] == "iid":
-            pass
-        # If non_iid, each users ge the whole test set for each of its
-        # support classes
-        elif config["test_label_distribution"] == "support":
-            classes = config["support"][str(self.node_id)]
-            test_dset, _ = filter_by_class(test_dset, classes)
-        elif config["test_label_distribution"] == "non_iid":
-
-            test_y, test_idx_split, _ = non_iid_balanced(
-                self.dset_obj,
-                len(users_with_same_dset),
-                config["test_samples_per_user"],
-                is_train=False,
-            )
-
-            train_indices = test_idx_split[self.node_id - 1]
-            test_dset = Subset(test_dset, train_indices)
-        else:
-            raise ValueError(
-                "Unknown test label distribution: {}.".format(
-                    config["test_label_distribution"]
+                train_dset = Subset(train_dset, train_indices)
+                classes = list(set([train_dset[i][1] for i in range(len(train_dset))]))
+            # If non_iid, each user get random samples from its support classes
+            # (mulitple users might have same images)
+            elif config["train_label_distribution"] == "support":
+                classes = config["support"][str(self.node_id)]
+                support_classes_dataset, indices = filter_by_class(train_dset, classes)
+                train_dset, sel_indices = random_samples(
+                    support_classes_dataset, samples_per_user
                 )
-            )
+                train_indices = [indices[i] for i in sel_indices]
+            elif config["train_label_distribution"].endswith("non_iid"):
+                alpha = config.get("alpha_data", 0.4)
+                if config["train_label_distribution"] == "inter_domain_non_iid":
+                    # Hack to get the same class prior for all users with the same dataset
+                    # While keeping the same random state for all users
+                    if isinstance(config["dset"], dict) and isinstance(
+                        config["dset"], dict
+                    ):
+                        cls_priors = []
+                        dsets = list(config["dset"].values())
+                        for _ in dsets:
+                            n_cls = self.dset_obj.num_cls
+                            cls_priors.append(
+                                np.random.dirichlet(
+                                    alpha=[alpha] * n_cls, size=len(users_with_same_dset)
+                                )
+                            )
+                        cls_prior = cls_priors[dsets.index(self.dset)]
+                train_y, train_idx_split, cls_prior = non_iid_balanced(
+                    self.dset_obj,
+                    len(users_with_same_dset),
+                    samples_per_user,
+                    alpha,
+                    cls_priors=cls_prior,
+                    is_train=True,
+                )
+                train_indices = train_idx_split[self.node_id - 1]
+                train_dset = Subset(train_dset, train_indices)
+                classes = np.unique(train_y[user_idx]).tolist()
+                # One plot per dataset
+                # if user_idx == 0:
+                #     print("using non_iid_balanced", alpha)
+                #     self.plot_utils.plot_training_distribution(train_y,
+                # self.dset, users_with_same_dset)
+            elif config["train_label_distribution"] == "shard":
+                raise NotImplementedError
+                # classes_per_user = config["shards"]["classes_per_user"]
+                # samples_per_shard = samples_per_user // classes_per_user
+                # train_dset = build_shards_dataset(train_dset, samples_per_shard,
+                # classes_per_user, self.node_id)
+            else:
+                raise ValueError(
+                    "Unknown train label distribution: {}.".format(
+                        config["train_label_distribution"]
+                    )
+                )
 
-        if self.dset.startswith("domainnet"):
-            test_dset = CacheDataset(test_dset)
+            if self.dset.startswith("domainnet"):
+                train_transform = T.Compose(
+                    [
+                        T.RandomResizedCrop(32, scale=(0.75, 1)),
+                        T.RandomHorizontalFlip(),
+                        # T.ToTensor()
+                    ]
+                )
 
-        self._test_loader = DataLoader(test_dset, batch_size=batch_size)
-        # TODO: fix print_data_summary
-        # self.print_data_summary(train_dset, test_dset, val_dset=val_dset)
+                # Cache before transform to preserve transform randomness
+                train_dset = TransformDataset(CacheDataset(train_dset), train_transform)
+
+            if config.get("malicious_type", None) == "corrupt_data":
+                corruption_fn_name = config.get("corruption_fn", "gaussian_noise")
+                severity = config.get("corrupt_severity", 1)
+                train_dset = CorruptDataset(CacheDataset(train_dset), corruption_fn_name, severity)
+                print("created train dataset with corruption function: ", corruption_fn_name)
+
+            self.classes_of_interest = classes
+
+            val_prop = config.get("validation_prop", 0)
+            val_dset = None
+            if val_prop > 0:
+                val_size = int(val_prop * len(train_dset))
+                train_size = len(train_dset) - val_size
+                train_dset, val_dset = torch.utils.data.random_split(
+                    train_dset, [train_size, val_size]
+                )
+                # self.val_dloader = DataLoader(val_dset, batch_size=batch_size*len(self.device_ids),
+                # shuffle=True)
+                self.val_dloader = DataLoader(val_dset, batch_size=batch_size, shuffle=True)
+
+            assert isinstance(train_dset, torch.utils.data.Dataset), "train_dset must be a Dataset"
+            self.train_indices = train_indices
+            self.train_dset = train_dset
+            self.dloader = DataLoader(train_dset, batch_size=batch_size, shuffle=True) # type: ignore
+
+            if config["test_label_distribution"] == "iid":
+                pass
+            # If non_iid, each users ge the whole test set for each of its
+            # support classes
+            elif config["test_label_distribution"] == "support":
+                classes = config["support"][str(self.node_id)]
+                test_dset, _ = filter_by_class(test_dset, classes)
+            elif config["test_label_distribution"] == "non_iid":
+
+                test_y, test_idx_split, _ = non_iid_balanced(
+                    self.dset_obj,
+                    len(users_with_same_dset),
+                    config["test_samples_per_user"],
+                    is_train=False,
+                )
+
+                train_indices = test_idx_split[self.node_id - 1]
+                test_dset = Subset(test_dset, train_indices)
+            else:
+                raise ValueError(
+                    "Unknown test label distribution: {}.".format(
+                        config["test_label_distribution"]
+                    )
+                )
+
+            if self.dset.startswith("domainnet"):
+                test_dset = CacheDataset(test_dset)
+
+            # reduce test_dset size
+            if config.get("test_samples_per_user", 0) != 0:
+                print(f"Reducing test size to {config.get('test_samples_per_user', 0)}")
+                reduced_test_size = config.get("test_samples_per_user", 0)
+                indices = np.random.choice(len(test_dset), reduced_test_size, replace=False)
+                test_dset = Subset(test_dset, indices)
+            print(f"test_dset size: {len(test_dset)}")
+
+            self._test_loader = DataLoader(test_dset, batch_size=batch_size)
+            # TODO: fix print_data_summary
+            # self.print_data_summary(train_dset, test_dset, val_dset=val_dset)
 
     def local_train(self, round: int, epochs: int = 1, **kwargs: Any) -> Tuple[float, float, float]:
         """
@@ -591,7 +713,7 @@ class BaseClient(BaseNode):
             avg_loss, avg_acc = 0, 0
             for _ in range(epochs):
                 tr_loss, tr_acc = self.model_utils.train(
-                    self.model, self.optim, self.dloader, self.loss_fn, self.device, malicious_type=self.config.get("malicious_type", "normal"), config=self.config,
+                    self.model, self.optim, self.dloader, self.loss_fn, self.device, malicious_type=self.config.get("malicious_type", "normal"), config=self.config, node_id=self.node_id, gia=self.config.get("gia", False)
                 )            
                 avg_loss += tr_loss
                 avg_acc += tr_acc
@@ -621,10 +743,12 @@ class BaseClient(BaseNode):
         self.log_utils.log_tb(
             f"train_accuracy/client{self.node_id}", avg_acc, round
         )
+ 
+        self.stats["train_loss"], self.stats["train_acc"], self.stats["train_time"] = avg_loss, avg_acc, time_taken
 
         return avg_loss, avg_acc, time_taken
 
-    def local_test(self, **kwargs: Any) -> float | Tuple[float, float] | None:
+    def local_test(self, **kwargs: Any) -> float | Tuple[float, float] | Tuple[float, float, float] | None:
         """
         Test the model locally
         """
@@ -642,6 +766,69 @@ class BaseClient(BaseNode):
                 sender = repr["sender"]
             assert "model" in repr, "Model not found in the received message"
             self.set_model_weights(repr["model"])
+
+    def receive_attack_and_aggregate(self, neighbors: List[int], round: int, num_neighbors: int) -> None:
+        """
+        Receives updates, launches GIA attack when second update is seen from a neighbor
+        """
+        from utils.gias import gia_main
+        
+        if self.is_working:
+            # Receive the model updates from the neighbors
+            model_updates = self.comm_utils.receive(node_ids=neighbors)
+            assert len(model_updates) == num_neighbors
+
+            for neighbor_info in model_updates:
+                neighbor_id = neighbor_info["sender"]
+                neighbor_model = neighbor_info["model"]
+                neighbor_model = OrderedDict(
+                    (key, value) for key, value in neighbor_model.items()
+                    if key in self.base_params
+                )
+
+                neighbor_images = neighbor_info["images"]
+                neighbor_labels = neighbor_info["labels"]
+
+                # Store this update
+                self.neighbor_updates[neighbor_id].append({
+                    "model": neighbor_model,
+                    "images": neighbor_images,
+                    "labels": neighbor_labels
+                })
+
+                # Check if we have 2 updates from this neighbor and haven't attacked them yet
+                if len(self.neighbor_updates[neighbor_id]) == 2 and neighbor_id not in self.attacked_neighbors:
+                    print(f"Client {self.node_id} attacking {neighbor_id}!")
+                    
+                    # Get the two parameter sets for the attack
+                    p_s = self.neighbor_updates[neighbor_id][0]["model"]
+                    p_t = self.neighbor_updates[neighbor_id][1]["model"]
+                    
+                    # Launch the attack
+                    if result := gia_main(p_s, 
+                                        p_t, 
+                                        self.base_params, 
+                                        self.model, 
+                                        neighbor_labels, 
+                                        neighbor_images, 
+                                        self.node_id):
+                        output, stats = result
+                        
+                        # log output and stats as image
+                        self.log_utils.log_gia_image(output, neighbor_labels, neighbor_id, label=f"round_{round}_reconstruction")
+                        self.log_utils.log_summary(f"round {round} gia targeting {neighbor_id} stats: {stats}")
+                    else:
+                        self.log_utils.log_summary(f"Client {self.node_id} failed to attack {neighbor_id} in round {round}!")
+                        print(f"Client {self.node_id} failed to attack {neighbor_id}!")
+                        continue
+                    
+                    # Mark this neighbor as attacked
+                    self.attacked_neighbors.add(neighbor_id)
+                    
+                    # Optionally, clear the stored updates to save memory
+                    del self.neighbor_updates[neighbor_id]
+
+            self.aggregate(model_updates, keys_to_ignore=self.model_keys_to_ignore)
 
     def receive_pushed_and_aggregate(self, remove_multi = True) -> None:
         model_updates = self.comm_utils.receive_pushed()
@@ -662,6 +849,7 @@ class BaseClient(BaseNode):
                 self.set_model_weights(repr["model"])
         else:
             print("No one pushed model updates for this round.")
+
 
     def run_protocol(self) -> None:
         raise NotImplementedError
@@ -725,8 +913,11 @@ class BaseServer(BaseNode):
         """Add docstring here"""
         test_dset = self.dset_obj.test_dset
         batch_size = config["batch_size"]
-        self._test_loader = DataLoader(test_dset, batch_size=batch_size)
-
+        if "gia" not in config:
+            self._test_loader = DataLoader(test_dset, batch_size=batch_size)
+        else:
+            _, test_data, labels, indices = gia_client_dataset(self.dset_obj.train_dset, test_dset)
+            self._test_loader = DataLoader(test_data, batch_size=10)
     def aggregate(
         self, representation_list: List[OrderedDict[str, Any]], **kwargs: Any
     ) -> OrderedDict[str, Tensor]:
@@ -735,7 +926,7 @@ class BaseServer(BaseNode):
         """
         raise NotImplementedError
 
-    def test(self, **kwargs: Any) -> List[float]:
+    def test(self, **kwargs: Any) -> Any:
         """
         Test the model on the server
         """
@@ -749,7 +940,6 @@ class BaseServer(BaseNode):
 
     def run_protocol(self) -> None:
         raise NotImplementedError
-
 
 class CommProtocol(object):
     """
@@ -788,16 +978,23 @@ class BaseFedAvgClient(BaseClient):
             keys = self.model_utils.get_last_layer_keys(self.get_model_weights())
             self.model_keys_to_ignore.extend(keys)
 
+
     def local_test(self, **kwargs: Any) -> Tuple[float, float]:
         """
         Test the model locally, not to be used in the traditional FedAvg
         """
+        start_time = time.time()
         test_loss, acc = self.model_utils.test(
             self.model, self._test_loader, self.loss_fn, self.device
         )
+        end_time = time.time()
+        time_taken = end_time - start_time
         if acc > self.best_acc:
             self.best_acc = acc
             self.model_utils.save_model(self.model, self.model_save_path)
+        
+        self.stats["test_loss"], self.stats["test_acc"], self.stats["test_time"] = test_loss, acc, time_taken
+
         return test_loss, acc
 
     def aggregate(
@@ -852,6 +1049,39 @@ class BaseFedAvgClient(BaseClient):
         self.set_model_weights(agg_wts)
         return None
 
+    def aggregate_streaming(
+            self,
+            agg_wts: OrderedDict[str, Tensor],
+            model_wts: OrderedDict[str, Tensor],
+            coeff: float,
+            is_initialized: bool,
+            keys_to_ignore: List[str],
+        ) -> None:
+        """
+        Incrementally aggregates the model weights into the aggregation state.
+
+        Args:
+            agg_wts (OrderedDict[str, Tensor]): Aggregated weights (to be updated in place).
+            model_wts (OrderedDict[str, Tensor]): Weights of the current model to aggregate.
+            coeff (float): Collaboration weight for the current model.
+            is_initialized (bool): Whether the aggregation state is initialized.
+            keys_to_ignore (List[str]): Keys to ignore during aggregation.
+
+        Returns:
+            None
+        """
+        for key in self.model.state_dict().keys():
+            if key in keys_to_ignore:
+                continue
+            if not is_initialized:
+                # Initialize the aggregation state
+                agg_wts[key] = coeff * model_wts[key].to(self.device)
+            else:
+                # Incrementally update the aggregation state
+                agg_wts[key] += coeff * model_wts[key].to(self.device)
+
+        return None
+
     def receive_pushed_and_aggregate(self, remove_multi = True) -> None:
         model_updates = self.comm_utils.receive_pushed()
         if self.is_working:
@@ -866,13 +1096,73 @@ class BaseFedAvgClient(BaseClient):
             # Aggregate the representations
             self.aggregate(model_updates, keys_to_ignore=self.model_keys_to_ignore)
 
-    def receive_and_aggregate(self, neighbors: List[int]) -> None:
+    def receive_and_aggregate_streaming(self, neighbors: List[int]) -> None:
         if self.is_working:
-            # Receive the model updates from the neighbors
-            model_updates = self.comm_utils.receive(node_ids=neighbors)
-            # Aggregate the representations
-            self.aggregate(model_updates, keys_to_ignore=self.model_keys_to_ignore)
+            # Initialize the aggregation state
+            agg_wts: OrderedDict[str, Tensor] = OrderedDict()
+            is_initialized = False
+            total_weight = 0.0  # To re-normalize weights after handling dropouts
 
+            # Include the current node's model in the aggregation
+            current_model_wts = self.get_model_weights()
+            assert "model" in current_model_wts, "Model not found in the current model."
+            current_model_wts = current_model_wts["model"]
+            current_weight = 1.0 / (len(neighbors) + 1)  # Weight for the current node
+            self.aggregate_streaming(
+                agg_wts,
+                current_model_wts,
+                coeff=current_weight,
+                is_initialized=is_initialized,
+                keys_to_ignore=self.model_keys_to_ignore,
+            )
+            is_initialized = True
+            total_weight += current_weight
+
+            # Process models from neighbors one at a time
+            for neighbor in neighbors:
+                # Receive the model update from the current neighbor
+                model_update = self.comm_utils.receive(node_ids=[neighbor])
+                model_update, _ = self.strip_empty_models(model_update)
+                if len(model_update) == 0:
+                    # Skip empty models (dropouts)
+                    continue
+                
+                model_update = model_update[0]
+                assert "model" in model_update, "Model not found in the received message"
+                model_wts = model_update["model"]
+
+                # Get the collaboration weight for the current neighbor
+                coeff = current_weight # Default weight
+
+                # Perform streaming aggregation for the current model
+                self.aggregate_streaming(
+                    agg_wts,
+                    model_wts,
+                    coeff=coeff,
+                    is_initialized=is_initialized,
+                    keys_to_ignore=self.model_keys_to_ignore,
+                )
+                total_weight += coeff
+
+            # Re-normalize the aggregated weights if there were dropouts
+            if total_weight > 0:
+                for key in agg_wts.keys():
+                    agg_wts[key] /= total_weight
+
+            # Update the model with the aggregated weights
+            self.set_model_weights(agg_wts)
+
+    def receive_and_aggregate(self, neighbors: List[int]) -> None:
+        if hasattr(self, "gia_attacker"):
+            self.receive_attack_and_aggregate(neighbors, it, len(neighbors))
+        if self.streaming_aggregation:
+            self.receive_and_aggregate_streaming(neighbors)
+        else:
+            if self.is_working:
+                # Receive the model updates from the neighbors
+                model_updates = self.comm_utils.receive(node_ids=neighbors)
+                # Aggregate the representations
+                self.aggregate(model_updates, keys_to_ignore=self.model_keys_to_ignore)
 
     def get_collaborator_weights(
         self, reprs_dict: Dict[int, OrderedDict[int, Tensor]]

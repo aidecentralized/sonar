@@ -1,11 +1,13 @@
 from enum import Enum
 from utils.communication.grpc.main import GRPCCommunication
-from typing import Any, Dict, List, TYPE_CHECKING
+from typing import Any, Dict, List, Tuple, TYPE_CHECKING
 # from utils.communication.mpi import MPICommUtils
+# from mpi4py import MPI
 
 if TYPE_CHECKING:
     from algos.base_class import BaseNode
 
+import numpy as np
 
 class CommunicationType(Enum):
     MPI = 1
@@ -20,7 +22,7 @@ class CommunicationFactory:
     ):
         comm_type = comm_type
         if comm_type == CommunicationType.MPI:
-            raise NotImplementedError("MPI's new version not yet implemented. Please use GRPC. See https://github.com/aidecentralized/sonar/issues/96 for more details.")
+            return MPICommUtils(config)
         elif comm_type == CommunicationType.GRPC:
             return GRPCCommunication(config)
         elif comm_type == CommunicationType.HTTP:
@@ -59,7 +61,7 @@ class CommunicationManager:
         else:
             print(f"Sending data to {dest}")
             self.comm.send(dest=int(dest), data=data)
-
+    
     def receive(self, node_ids: List[int]) -> Any:
         """
         Receive data from the specified node
@@ -72,6 +74,9 @@ class CommunicationManager:
 
     def all_gather(self, tag: int = 0, ignore_super_node: bool = False):
         return self.comm.all_gather(ignore_super_node=ignore_super_node)
+
+    def send_quorum(self):
+        self.comm.send_quorum()
 
     def finalize(self):
         self.comm.finalize()
