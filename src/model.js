@@ -53,7 +53,11 @@ class ResNet10 extends Model {
 		x = tf.layers.globalAveragePooling2d({ dataFormat: 'channelsLast' }).apply(x);
 
 		// Fully Connected Layer
-		x = tf.layers.dense({ units: 8, activation: 'softmax' }).apply(x);
+		// BLOODMNIST
+		// x = tf.layers.dense({ units: 8, activation: 'softmax' }).apply(x);
+		
+		// MNIST
+		x = tf.layers.dense({ units: 10, activation: 'softmax' }).apply(x);
 
 		const model = tf.model({ inputs, outputs: x });
 

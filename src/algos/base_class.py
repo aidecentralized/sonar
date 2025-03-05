@@ -894,12 +894,19 @@ class BaseFedAvgClient(BaseClient):
                     continue
                 # Check if the key is in the form of <some layer>.num_batches_tracked
                 # and if it is not in the incoming model, skip it
-                if key.endswith('.num_batches_tracked') and key not in model:
+                print(f"Processing key: {repr(key)}, found in model: {key in model}")
+                try: 
+                    if key.endswith('.num_batches_tracked') and key not in model:
+                        print("num batches tracked found")
+                        continue
+                    elif not is_init:
+                        agg_wts[key] = coeff * model[key].to(self.device)
+                    else:
+                        agg_wts[key] += coeff * model[key].to(self.device)
+                except KeyError as e:
+                    print(f"KeyError: {e} | Key: {key} | Model keys: {list(model.keys())} | Ends with '.num_batches_tracked': {key.endswith('.num_batches_tracked')} | In model: {key in model}")
                     continue
-                elif not is_init:
-                    agg_wts[key] = coeff * model[key].to(self.device)
-                else:
-                    agg_wts[key] += coeff * model[key].to(self.device)
+                    
             is_init = True
         
         self.set_model_weights(agg_wts)

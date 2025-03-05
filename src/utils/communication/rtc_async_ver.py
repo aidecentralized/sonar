@@ -132,14 +132,14 @@ class RTCCommUtils(CommunicationInterface):
     def setup_file_logging(self):
         if self.rank is not None:
             # Create file handler
-            fh = logging.FileHandler(f"logs/client_{self.rank}_new.log")
+            fh = logging.FileHandler(f"logs/client_{self.rank}_new.log", mode='w')
             fh.setLevel(logging.INFO)
             
             # Create formatter
-            formatter = logging.Formatter(
-                '%(asctime)s - %(levelname)s - %(message)s'
-            )
-            fh.setFormatter(formatter)
+            # formatter = logging.Formatter(
+            #     '%(asctime)s - %(levelname)s - %(message)s'
+            # )
+            # fh.setFormatter(formatter)
             
             # Add rank to logger name
             self.logger = logging.getLogger(f"Node-{self.rank}")
@@ -148,10 +148,11 @@ class RTCCommUtils(CommunicationInterface):
             self.logger.handlers.clear()  # Remove any existing handlers
             self.logger.addHandler(fh)
             
-            # Add console handler as well
-            ch = logging.StreamHandler()
-            ch.setFormatter(formatter)
-            self.logger.addHandler(ch)
+            # Add console handler only if not already added
+            if not any(isinstance(handler, logging.StreamHandler) for handler in self.logger.handlers):
+                ch = logging.StreamHandler()
+                # ch.setFormatter(formatter)
+                self.logger.addHandler(ch)
 
     async def change_state(self, new_state: NodeState):
         async with self.state_lock:
@@ -611,7 +612,7 @@ class RTCCommUtils(CommunicationInterface):
             yield tensor.flatten()[i * chunk_size:(i + 1) * chunk_size].reshape(-1), num_chunks, original_shape
 
     # TODO: Here are all the functions that are not going to be on the listening thread
-    def get_peer_weights(self, peer_rank: int, max_retries: int = 1) -> Optional[np.ndarray]:
+    def get_peer_weights(self, peer_rank: int, max_retries: int = 3) -> Optional[np.ndarray]:
         requests = set()
         for attempt in range(max_retries):
             try:
@@ -678,7 +679,7 @@ class RTCCommUtils(CommunicationInterface):
 
         # Process messages with timeout
         timestamp = time.time()
-        timeout = 3000  # seconds
+        timeout = 300
         
         while not (self.all_chunks_received and finished):
             if time.time() - timestamp > timeout:
@@ -707,7 +708,6 @@ class RTCCommUtils(CommunicationInterface):
             self.logger.error(f"Error logging peer weights: {e}, keys: {self.peer_weights.keys()}, types: {type(self.peer_weights[key])}")
         
 
-        # Log any incomplete layers
         incomplete_layers = [
             layer_name for layer_name in self.expected_chunks
             if self.received_chunks[layer_name] < self.expected_chunks[layer_name]

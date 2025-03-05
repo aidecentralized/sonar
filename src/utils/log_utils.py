@@ -82,6 +82,7 @@ def copy_source_code(config: ConfigType) -> None:
         "./toy_exp_ml/",
         "./toy_exp.py",
         "./toy_exp_ml.py",
+        "./node_modules/",
         "/".join(path.split("/")[:-1]) + "/",
     ]
     folders = glob(r"./*/")
@@ -93,7 +94,10 @@ def copy_source_code(config: ConfigType) -> None:
         copy2(file_, path)
     for folder in folders:
         if folder not in denylist:
-            copytree(folder, path + folder[1:])
+            try:
+                copytree(folder, path + folder[1:])
+            except FileExistsError:
+                print(f"Folder {folder} already exists in {path}")
     os.mkdir(config["saved_models"])
     os.makedirs(config["log_path"], exist_ok=True)
     print("source code copied to exp_dump")

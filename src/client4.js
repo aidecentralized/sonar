@@ -18,27 +18,34 @@ function processData(jsonData) {
 
 /**
  * Convert TensorFlow.js NHWC weights to TensorFlow (Python) NCHW format.
+ * Also handles linear (dense) layers by transposing weight matrices.
  * @param {tf.Tensor} weightTensor - The weight tensor from TensorFlow.js.
- * @returns {tf.Tensor} - Transposed tensor in NCHW format.
+ * @returns {tf.Tensor} - Transposed tensor in NCHW or correct format for linear layers.
  */
 function convertTfjsToTf(weightTensor) {
-    if (weightTensor.shape.length === 4) {
-        return tf.transpose(weightTensor, [3, 2, 0, 1]); // NHWC -> NCHW
-    }
-    return weightTensor; // Return as is if not 4D
+  if (weightTensor.shape.length === 4) {
+      return tf.transpose(weightTensor, [3, 2, 0, 1]); // NHWC -> NCHW
+  } else if (weightTensor.shape.length === 2) {
+      return tf.transpose(weightTensor, [1, 0]); // Transpose linear layer weights
+  }
+  return weightTensor; // Return as is if not 2D or 4D
 }
 
 /**
 * Convert TensorFlow (Python) NCHW weights back to TensorFlow.js NHWC format.
+* Also handles linear (dense) layers by transposing weight matrices.
 * @param {tf.Tensor} weightTensor - The weight tensor from Python.
-* @returns {tf.Tensor} - Transposed tensor in NHWC format.
+* @returns {tf.Tensor} - Transposed tensor in NHWC or correct format for linear layers.
 */
 function convertTfToTfjs(weightTensor) {
-    if (weightTensor.shape.length === 4) {
-        return tf.transpose(weightTensor, [2, 3, 1, 0]); // NCHW -> NHWC
-    }
-    return weightTensor; // Return as is if not 4D
+  if (weightTensor.shape.length === 4) {
+      return tf.transpose(weightTensor, [2, 3, 1, 0]); // NCHW -> NHWC
+  } else if (weightTensor.shape.length === 2) {
+      return tf.transpose(weightTensor, [1, 0]); // Transpose linear layer weights
+  }
+  return weightTensor; // Return as is if not 2D or 4D
 }
+
 
 function tensorToSerializable(obj) {
     // If it's a "tensor-like" object, convert it into a serializable structure.
@@ -207,7 +214,9 @@ class WebRTCCommUtils {
     // ---------------------- Basic Logging & State Helpers ----------------------
 
     log(msg) {
-        console.log(`[RTCCommUtilsJS] ${msg}`);
+        console.log(`${msg}`);
+        // Append to log file
+        fs.appendFileSync('logs/js_client.log', msg + '\n');
     }
 
     setState(newState) {
@@ -538,7 +547,7 @@ class WebRTCCommUtils {
           this.log(`Received weights request from peer ${peerRank}`);
 
           const currRound = 1;
-          const chunk_size = 10000;
+          const chunk_size = 2000;
           const weights = this.model.model.getWeights();
           const layers = this.model.model.layers;
 
@@ -556,10 +565,11 @@ class WebRTCCommUtils {
                   const layerName = `${layer.name}_weight_${j}`;
                   const pythonLayerName = this.js2pythonMapping[layerName];
 
-                  this.log(`Layer ${i}_${j}: ${pythonLayerName}, dtype: ${weightTensor.dtype}, shape: [${weightTensor.shape.join(', ')}]`);
 
                   const chunks = chunkTensor(weightTensor, chunk_size);
-                  this.log(`numChunks = ${chunks.length} for layer: ${pythonLayerName}`);
+                  this.log(`Layer ${i}_${j}: ${pythonLayerName}, dtype: ${weightTensor.dtype}, shape: [${weightTensor.shape.join(', ')}], numChunks: ${chunks.length}`);
+
+                  // this.log(`numChunks = ${chunks.length} for layer: ${pythonLayerName}`);
 
                   for (const { chunk, numChunks, originalShape } of chunks) {
                       const serializableChunk = serializeMessage({
@@ -734,7 +744,10 @@ class WebRTCCommUtils {
     this.log(`dataset loaded... training model for ${this.config.epochs}  epochs...`);
   
     for (let i = 0; i < 10; i++) {
-      await this.model.local_train_one(dataset)
+      // await this.model.local_train_one(dataset)
+      // simulate training this a sleep
+      await new Promise(res => setTimeout(res, 180000)), this.log("finished simulated training for 60 seconds");
+
       this.log(`finished round ${i} training`);
       const peer_weights = this.receive()
       // todo: perform fed avg
