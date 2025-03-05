@@ -1,9 +1,8 @@
 """
 Module for FedStaticClient and FedStaticServer in Federated Learning.
 """
-from typing import Any, Dict
+from typing import Any, Dict, List
 from utils.communication.comm_utils import CommunicationManager
-import torch
 
 from algos.base_class import BaseFedAvgClient
 from algos.topologies.collections import select_topology
@@ -21,11 +20,20 @@ class FedStaticNode(BaseFedAvgClient):
         self.topology = select_topology(config, self.node_id)
         self.topology.initialize()
 
-    def get_representation(self, **kwargs: Any) -> Dict[str, torch.Tensor]:
+    def get_representation(self, **kwargs: Any) -> Dict[str, int|Dict[str, Any]]:
         """
         Returns the model weights as representation.
         """
         return self.get_model_weights()
+    
+    def get_neighbors(self) -> List[int]:
+        """
+        Returns a list of neighbours for the clients
+        """
+        neighbors = self.topology.sample_neighbours(self.num_collaborators)
+        self.stats["neighbors"] = neighbors # type: ignore, where the hell self.stats is coming from
+
+        return neighbors
 
     def run_protocol(self) -> None:
         """

@@ -49,7 +49,7 @@ def compute_per_user_metrics(node_id: str, logs_dir: str) -> Dict[str, float]:
 
     return metrics
 
-def aggregate_metrics_across_users(logs_dir: str, output_dir: Optional[str] = None) -> Tuple[pd.Series, pd.Series, pd.DataFrame]: # type: ignore
+def aggregate_metrics_across_users(logs_dir: str, output_dir: Optional[str] = None) -> Tuple[pd.Series, pd.Series, pd.DataFrame]:
     """Aggregate metrics across all users and save the results to CSV files."""
     nodes = get_all_nodes(logs_dir)
     all_metrics: List[Dict[str, float]] = []
