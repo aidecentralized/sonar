@@ -204,6 +204,7 @@ fedstatic: ConfigType = {
     # Collaboration setup
     "algo": "fedstatic",
     "topology": {"name": "watts_strogatz", "k": 3, "p": 0.2}, # type: ignore
+    # "topology": {"name": "base_graph", "max_degree": 2}, # type: ignore
     "rounds": 3,
     # Model parameters
     "optimizer": "sgd", # TODO comment out for real training
