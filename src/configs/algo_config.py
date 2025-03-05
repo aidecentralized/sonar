@@ -224,6 +224,32 @@ swift: ConfigType = {
     "batch_size": 256,
 }
 
+fed_dynamic_weights: ConfigType = {
+    # Collaboration setup
+    "algo": "feddynamic",
+    # comparison describes the metric or algorithm used to compare the weights of the models
+    # sampling describes the method used to sample the neighbors after the comparison
+    "topology": {"comparison": "weights_l2", "sampling": "closest"}, # type: ignore
+    "rounds": 20,
+
+    # Model parameters
+    "model": "resnet10",
+    "model_lr": 3e-4,
+    "batch_size": 256,
+}
+
+fed_dynamic_loss: ConfigType = {
+    # Collaboration setup
+    "algo": "feddynamic",
+    "topology": {"comparison": "loss", "sampling": "closest"}, # type: ignore
+    "rounds": 20,
+
+    # Model parameters
+    "model": "resnet6",
+    "model_lr": 3e-4,
+    "batch_size": 256,
+}
+
 fedavgpush: ConfigType = {
     # Collaboration setup
     "algo": "fedavgpush",
@@ -258,63 +284,6 @@ metaL2C_cifar10: ConfigType = {
     "inp_shape": [128, 3, 32, 32],
 }
 
-
-feddatarepr: ConfigType = {
-    "algo": "feddatarepr",
-    "num_rep": 1,
-    "load_existing": False,
-    # Similarity params
-    "representation": "train_data",  # "test_data", "train_data", "dreams"
-    "num_repr_samples": 16,
-    # "CTLR_KL" Collaborator is Teacher using Learner Representation
-    # "CTCR_KL" Collaborator is Teacher using Collaborator Representation - Default row
-    # "LTLR_KL" Collaborator is Learner using Learner Representation - Default column
-    # "CTAR_KL" Collaborator is Teacher using ALL Representations (from every other client)
-    # "train_loss_inv" : 1-loss/total
-    # "train_loss_sm": 1-softmax(losses)
-    "similarity_metric": "train_loss_inv",
-    # Memory params
-    "sim_running_average": 10,
-    "sim_exclude_first": (5, 5),  # (first rounds, first rounds after T0)
-    # Clients selection
-    "target_users_before_T_0": 0,  # feddatarepr_users-1,
-    "target_users_after_T_0": 1,
-    "T_0": 10,  # round after wich only target_users_after_T_0 peers are kept
-    # highest, lowest, [lower_exp]_sim_sampling, top_x, xth, uniform_rdm
-    "selection_strategy": "uniform_rdm",  # "uniform_rdm",
-    # "eps_greedy": 0.1,
-    # "num_users_top_x" : 1, # Ideally: size community-1
-    # "selection_temperature": 0.5, # For all strategy with temperature
-    # Consensus params
-    # "sim_averaging", "sim_of_sim", "vote_1hop", "affinity_propagation_clustering", "mean_shift_clustering", "club"
-    "consensus": "mean_shift_clustering",  # "affinity_propagation_clustering",
-    # "affinity_precomputed": False, # If False similarity row are treated as data points and not as similarity values
-    # "club_weak_link_strategy": "own_cluster_and_pointing_to", #"own_cluster_and_pointing_to", pointing_to, own_cluster
-    # "vote_consensus": (2,2), #( num_voter, num_vote_per_voter)
-    # "sim_consensus_top_a": 3,
-    # "community_type": "dataset",
-    # "num_communities": len(domainnet_classes),
-    # Learning setup
-    "warmup_epochs": 5,
-    "epochs_per_round": 5,
-    "rounds_per_selection": 1,  # Number of rounds before selecting new collaborator(s)
-    "rounds": 10,
-    "model": "resnet10",
-    "average_last_layer": True,
-    "mask_finetune_last_layer": False,
-    "model_lr": 1e-4,
-    "batch_size": 16,
-    # Dreams params
-    # "reprs_position": 0,
-    # "inp_shape": [3, 32, 32] ,
-    # "inv_lr": 1e-1,
-    # "inv_epochs": 500,
-    # "alpha_preds": 0.1,
-    # "alpha_tv": 2.5e-3,
-    # "alpha_l2": 1e-7,
-    # "alpha_f": 10.0,
-    # "dreams_keep_best": False, # Use reprs with lowest loss
-}
 
 # Malicious Algorithm Configuration
 malicious_traditional_model_update_attack: ConfigType = {
@@ -351,7 +320,6 @@ algo_config_list: List[ConfigType] = [
     swarm,
     fedstatic,
     metaL2C_cifar10,
-    feddatarepr,
 ]
 
 # Malicious List of algorithm configurations

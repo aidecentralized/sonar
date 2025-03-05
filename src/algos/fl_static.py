@@ -5,7 +5,6 @@ from typing import Any, Dict, OrderedDict, List
 from collections import OrderedDict, defaultdict
 
 from utils.communication.comm_utils import CommunicationManager
-import torch
 
 from algos.base_class import BaseFedAvgClient
 from algos.topologies.collections import select_topology
@@ -22,13 +21,21 @@ class FedStaticNode(BaseFedAvgClient):
         super().__init__(config, comm_utils)
         self.topology = select_topology(config, self.node_id)
         self.topology.initialize()
-    
-    def get_neighbors(self) -> List[int]:
+
+
+    def get_representation(self, **kwargs: Any) -> Dict[str, int|Dict[str, Any]]:
         """
         Returns a list of neighbours for the client.
         """
-        neighbors = self.topology.sample_neighbours(self.num_collaborators)
-        self.stats["neighbors"] = neighbors
+        return self.get_model_weights()
+
+
+    def get_neighbors(self) -> List[int]:
+        """
+        Returns a list of neighbours for the clients
+        """
+        neighbors = self.topology.sample_neighbours(self.num_collaborators, mode="pull")
+        self.stats["neighbors"] = neighbors  # type: ignore, where the hell self.stats is coming from
 
         return neighbors
 

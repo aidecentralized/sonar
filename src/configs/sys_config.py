@@ -1,7 +1,7 @@
 # System Configuration
 # TODO: Set up multiple non-iid configurations here. The goal of a separate system config
 # is to simulate different real-world scenarios without changing the algorithm configuration.
-from typing import Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 import random
 from utils.types import ConfigType
 
@@ -9,10 +9,12 @@ from utils.types import ConfigType
 from .algo_config import (
     malicious_algo_config_list,
     default_config_list,
-    fedstatic,
-    traditional_fl,
-    swift,
-    fedavgpush
+    fedstatic,  # type: ignore
+    traditional_fl, # type: ignore
+    swift, # type: ignore
+    fedavgpush, # type: ignore
+    fed_dynamic_weights, # type: ignore
+    fed_dynamic_loss, # type: ignore
 )
 
 sliding_window_8c_4cpc_support = {
@@ -318,7 +320,7 @@ object_detect_system_config: ConfigType = {
 
 num_users = 4
 
-dropout_dict = {
+dropout_dict: Any = {
     "distribution_dict": { # leave dict empty to disable dropout
         "method": "uniform",  # "uniform", "normal"
         "parameters": {} # "mean": 0.5, "std": 0.1 in case of normal distribution
@@ -328,19 +330,18 @@ dropout_dict = {
 }
 
 dropout_dict = {} #empty dict to disable dropout
-dropout_dicts = {"node_0": {}}
+dropout_dicts: Any = {"node_0": {}}
 for i in range(1, num_users + 1):
     dropout_dicts[f"node_{i}"] = dropout_dict
 
 # for swift or fedavgpush, just modify the algo_configs list
 # for swift, synchronous should preferable be False
-gpu_ids = [2, 3, 5, 6]
-
+gpu_ids = [0, 1, 2, 3]
 grpc_system_config: ConfigType = {
-    "exp_id": "static",
+    "exp_id": "dynamic_test",
     "num_users": num_users,
     "num_collaborators": NUM_COLLABORATORS,
-    "comm": {"type": "GRPC", "synchronous": True, "peer_ids": ["localhost:50048"]},  # The super-node
+    "comm": {"type": "GRPC", "synchronous": True, "peer_ids": ["localhost:32048"]},  # The super-node
     "dset": CIFAR10_DSET,
     "dump_dir": DUMP_DIR,
     "dpath": CIAR10_DPATH,
@@ -350,8 +351,8 @@ grpc_system_config: ConfigType = {
     "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
     "samples_per_user": 50000 // num_users,  # distributed equally
     "train_label_distribution": "non_iid",
+    "alpha_data": 0.1,
     "test_label_distribution": "iid",
-    "alpha_data": 1.0,
     "exp_keys": [],
     "dropout_dicts": dropout_dicts,
     "test_samples_per_user": 200,

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import Any, List
 
 import numpy as np
 import networkx as nx
@@ -15,7 +15,7 @@ class BaseTopology(ABC):
         self.config = config
         self.rank = rank
         self.num_users: int = self.config["num_users"] # type: ignore
-        self.graph: nx.Graph | None = None
+        self.graph: nx.Graph | List[nx.DiGraph] | None = None
         self.neighbor_sample_generator = np.random.default_rng(seed=int(self.config["seed"])*10000 + self.rank ) # type: ignore
 
     @abstractmethod
@@ -53,15 +53,46 @@ class BaseTopology(ABC):
         if self.graph is None:
             raise ValueError("Graph not initialized")
         return list(self.graph.neighbors(self.rank)) # type: ignore
+    
+    def get_in_neighbors(self) -> List[int]:
+        """
+        Returns the list of in neighbours of the current node
+        """
+        return self.get_all_neighbours()
+    
+    def get_out_neighbors(self) -> List[int]:
+        """
+        Returns the list of out neighbours of the current node
+        """
+        return self.get_all_neighbours()
 
-    def sample_neighbours(self, k: int) -> List[int]:
+    def sample_neighbours(self, k: int, mode = None) -> List[int]:
         """
         Returns a random sample of k neighbours of the current node
         If the number of neighbours is less than k, return all neighbours
+
+        Parameters
+        ----------
+        k : int
+            Number of neighbours to sample
+        mode : str
+            Mode of sampling - "pull" or "push"
+            "pull" - Sample neighbours from the incoming edges
+            "push" - Sample neighbours from the outgoing edges
+
         """
+
         if self.graph is None:
             raise ValueError("Graph not initialized")
-        neighbours = self.get_all_neighbours()
+        
+        if mode == "push":
+            neighbours = self.get_out_neighbors()
+        elif mode == "pull":
+            neighbours = self.get_in_neighbors()
+        else:
+            neighbours = self.get_all_neighbours()
+
+
         if len(neighbours) <= k:
             return neighbours
         return self.neighbor_sample_generator.choice(neighbours, size=k, replace=False).tolist()
