@@ -527,8 +527,8 @@ class BaseClient(BaseNode):
             self.classes_of_interest = classes
             self.train_indices = train_indices
             self.train_dset = train_dset
-            self.dloader = DataLoader(train_dset, batch_size=len(train_dset), shuffle=False)
-            self._test_loader = DataLoader(test_dset, batch_size=len(test_dset), shuffle=False)
+            self.dloader: DataLoader[Any] = DataLoader(train_dset, batch_size=len(train_dset), shuffle=False)
+            self._test_loader: DataLoader[Any] = DataLoader(test_dset, batch_size=len(test_dset), shuffle=False)
             print("Using GIA data setup")
             print(self.labels)
         else:
