@@ -159,10 +159,10 @@ digit_five_dpath = {
 CIFAR10_DSET = "cifar10"
 CIAR10_DPATH = "./datasets/imgs/cifar10/"
 
-NUM_COLLABORATORS = 1
-DUMP_DIR = "/tmp/"
+NUM_COLLABORATORS = 3
+DUMP_DIR = "/tmp/new_sonar/"
 
-num_users = 3
+num_users = 9
 mpi_system_config: ConfigType = {
     "exp_id": "",
     "comm": {"type": "MPI"},
@@ -318,8 +318,6 @@ object_detect_system_config: ConfigType = {
     "exp_keys": [],
 }
 
-num_users = 4
-
 dropout_dict: Any = {
     "distribution_dict": { # leave dict empty to disable dropout
         "method": "uniform",  # "uniform", "normal"
@@ -346,9 +344,10 @@ grpc_system_config: ConfigType = {
     "dpath": CIAR10_DPATH,
     "seed": 2,
     "device_ids": get_device_ids(num_users, gpu_ids),
+    "assign_based_on_host": True,
     # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
-    "algos": get_algo_configs(num_users=num_users, algo_configs=[fed_dynamic_loss]),  # type: ignore
-    "samples_per_user": 10000 // num_users,  # distributed equally
+    "algos": get_algo_configs(num_users=num_users, algo_configs=[fed_dynamic_weights]),  # type: ignore
+    "samples_per_user": 500,  # distributed equally
     "train_label_distribution": "non_iid",
     "alpha_data": 0.1,
     "test_label_distribution": "iid",
