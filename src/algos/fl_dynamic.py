@@ -74,7 +74,7 @@ class DynamicTopology(FullyConnectedTopology):
         from all the neighbors because that's how
         most dynamic topologies work.
         """
-        neighbor_models = self.comm_utils.all_gather(ignore_super_node=True)
+        neighbor_models: List[Dict[str, TorchModelType]] = self.comm_utils.all_gather(ignore_super_node=True)
         return neighbor_models
 
     def get_neighbor_similarity(self, others_wts: List[Dict[str, TorchModelType]]) -> List[float]:
@@ -95,11 +95,12 @@ class DynamicTopology(FullyConnectedTopology):
                     raise ValueError("Similarity metric {} not implemented".format(self.similarity))
         return similarity_wts
 
-    def sample_neighbours(self, k: int) -> List[int]:
+    def sample_neighbours(self, k: int, mode: str|None = None) -> List[int]:
         """
         We perform neighbor sampling after
         we have the similarity weights of all the neighbors.
         """
+        assert mode is None or mode == "pull", "Only pull mode is supported for dynamic topology"
         if self.sampling == "closest":
             return select_smallest_k(self.similarity_wts, k)
         else:
@@ -154,7 +155,7 @@ class FedDynamicNode(BaseFedAvgClient):
         self.topology = DynamicTopology(config, comm_utils, self)
         self.topology.initialize()
 
-    def get_representation(self, **kwargs: Any) -> TorchModelType:
+    def get_representation(self, **kwargs: Any) -> Dict[str, int|Dict[str, Any]]:
         """
         Returns the model weights as representation.
         """
@@ -172,6 +173,8 @@ class FedDynamicNode(BaseFedAvgClient):
         epochs_per_round = self.config.get("epochs_per_round", 1)
 
         for it in range(start_round, total_rounds):
+            self.round_init()
+
             # Train locally and send the representation to the server
             stats["train_loss"], stats["train_acc"], stats["train_time"] = self.local_train(
                     it, epochs_per_round
@@ -179,17 +182,11 @@ class FedDynamicNode(BaseFedAvgClient):
             self.local_round_done()
 
             # Collect the representations from all other nodes from the server
-            neighbors = self.topology.recv_and_agg(self.num_collaborators)
-            # TODO: Log the neighbors
-            stats["neighbors"] = neighbors
+            collabs = self.topology.recv_and_agg(self.num_collaborators)
 
-            stats["bytes_received"], stats["bytes_sent"] = self.comm_utils.get_comm_cost()
-
-            # evaluate the model on the test data
-            # Inside FedStaticNode.run_protocol()
-            stats["test_loss"], stats["test_acc"] = self.local_test()
-            stats.update(self.get_memory_metrics())
-            self.log_metrics(stats=stats, iteration=it)
+            self.stats["neighbors"] = collabs
+            self.local_test()
+            self.round_finalize()
 
 
 

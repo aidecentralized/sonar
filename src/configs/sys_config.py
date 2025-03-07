@@ -162,7 +162,7 @@ CIAR10_DPATH = "./datasets/imgs/cifar10/"
 NUM_COLLABORATORS = 1
 DUMP_DIR = "/mas/camera/Experiments/SONAR/jyuan/_tmp/"
 
-num_users = 3
+num_users = 9
 mpi_system_config: ConfigType = {
     "exp_id": "",
     "comm": {"type": "MPI"},
@@ -318,8 +318,6 @@ object_detect_system_config: ConfigType = {
     "exp_keys": [],
 }
 
-num_users = 4
-
 dropout_dict: Any = {
     "distribution_dict": { # leave dict empty to disable dropout
         "method": "uniform",  # "uniform", "normal"
@@ -347,6 +345,7 @@ grpc_system_config: ConfigType = {
     "dpath": CIAR10_DPATH,
     "seed": 2,
     "device_ids": get_device_ids(num_users, gpu_ids),
+    "assign_based_on_host": True,
     # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
     "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
     "samples_per_user": 50000 // num_users,  # distributed equally

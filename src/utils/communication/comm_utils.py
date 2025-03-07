@@ -72,7 +72,7 @@ class CommunicationManager:
     def broadcast(self, data: Any, tag: int = 0):
         self.comm.broadcast(data)
 
-    def all_gather(self, tag: int = 0, ignore_super_node: bool = False):
+    def all_gather(self, tag: int = 0, ignore_super_node: bool = False) -> List[Dict[str, Any]]:
         return self.comm.all_gather(ignore_super_node=ignore_super_node)
 
     def send_quorum(self):
