@@ -155,6 +155,8 @@ class BaseNode(ABC):
         """
         try:
             config["log_path"] = f"{config['log_path']}/node_{self.node_id}" # type: ignore
+            # print(f"Log path: {config['log_path']}")
+            # raise
             os.makedirs(config["log_path"])
         except FileExistsError:
             color_code = "\033[91m"  # Red color
@@ -463,7 +465,7 @@ class BaseClient(BaseNode):
             # self-attack on train and test labels 
             from utils.mias import LOSSMIA, MIA
             self.mia = True
-            self.mia_rounds = set(config["mia_rounds"])
+            # self.mia_rounds = set(config["mia_rounds"]) # we are just attacking after every aggregation round
             self.mia_attacker = LOSSMIA(device=self.device)
             self.mia_func = MIA
 
@@ -892,6 +894,9 @@ class BaseClient(BaseNode):
  
         self.stats["train_loss"], self.stats["train_acc"], self.stats["train_time"] = avg_loss, avg_acc, time_taken
 
+        if avg_loss == float('nan'):
+            print(f"Client {self.node_id} has NaN loss in round {round}")
+            raise ValueError("Loss is NaN")
         return avg_loss, avg_acc, time_taken
 
     def local_test(self, **kwargs: Any) -> float | Tuple[float, float] | Tuple[float, float, float] | None:

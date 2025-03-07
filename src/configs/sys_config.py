@@ -322,6 +322,7 @@ object_detect_system_config: ConfigType = {
 
 # num_users = 36
 num_users = 9
+# num_users=4
 
 dropout_dict = {
     "distribution_dict": { # leave dict empty to disable dropout
@@ -340,15 +341,15 @@ for i in range(1, num_users + 1):
 # for swift or fedavgpush, just modify the algo_configs list
 # for swift, synchronous should preferable be False
 # gpu_ids = [2, 3, 5, 6]
-gpu_ids = [0, 1, 2, 3]
-
+# gpu_ids = [0, 1, 2, 3]
+gpu_ids = [0,1]
 grpc_system_config: ConfigType = {
     "exp_id": "static",
     "num_users": num_users,
     "num_collaborators": NUM_COLLABORATORS,
-    "comm": {"type": "GRPC", "synchronous": True, "peer_ids": ["localhost:50048"]},  # The super-node
+    "comm": {"type": "GRPC", "synchronous": True, "peer_ids": ["localhost:1112"]},  # The super-node
     "dset": CIFAR10_DSET,
-    "dump_dir": DUMP_DIR,
+    "dump_dir": f"{DUMP_DIR}test/ring_",
     "dpath": CIAR10_DPATH,
     "seed": 2,
     "device_ids": get_device_ids(num_users, gpu_ids),
@@ -363,7 +364,7 @@ grpc_system_config: ConfigType = {
     "dropout_dicts": dropout_dicts,
     "test_samples_per_user": 200,
     "log_memory": True,
-    # "streaming_aggregation": True, # Make it true for fedstatic
+    "streaming_aggregation": True, # Make it true for fedstatic
     "assign_based_on_host": True,
     "hostname_to_device_ids": {
         "matlaber1": [2, 3, 4, 5, 6, 7],
@@ -411,7 +412,8 @@ grpc_system_config_mia: ConfigType = {
     "comm": {"type": "GRPC", "synchronous": True, "peer_ids": ["localhost:50048"]},  # The super-node
     # "dset": CIFAR10_DSET,
     "dset": CIFAR10_DSET,
-    "dump_dir": f"{DUMP_DIR}mia/ring_100_",
+    "dump_dir": f"{DUMP_DIR}mia/SGD/1.0/er_",
+    # "dump_dir": f"{DUMP_DIR}mia/test/",
     # "dpath": CIAR10_DPATH,
     "dpath": CIFAR10_DSET,
     "seed": 2,
@@ -419,11 +421,12 @@ grpc_system_config_mia: ConfigType = {
     # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
     "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
     "samples_per_user": 50000 // num_users,  # distributed equally
+    # "samples_per_user": 500,
     # "train_label_distribution": "iid",
     # "test_label_distribution": "iid",
     "train_label_distribution": "non_iid",
     "test_label_distribution": "iid",
-    "alpha_data": 100,
+    "alpha_data": 1.0,
     "test_samples_per_user": 500,
     "exp_keys": [],
     "assign_based_on_host": True,
@@ -432,6 +435,9 @@ grpc_system_config_mia: ConfigType = {
         "matlaber12": [0, 1, 2, 3],
         "matlaber3": [0, 1, 2, 3],
         "matlaber4": [0, 2, 3, 4, 5, 6, 7],
+        "matlaberp4": [0,1],
+        "matlaberp1": [0,1]
+
     },
     "dropout_dicts": dropout_dicts,
     "mia":True,
@@ -440,7 +446,7 @@ grpc_system_config_mia: ConfigType = {
 }
 
 
-current_config = grpc_system_config
+# current_config = grpc_system_config
 # current_config = mpi_system_config
 # current_config = grpc_system_config_gia
-# current_config = grpc_system_config_mia
+current_config = grpc_system_config_mia

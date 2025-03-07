@@ -12,6 +12,7 @@ import resnet_in
 
 import yolo
 from utils.types import ConfigType
+import numpy as np
 
 class ModelUtils:
     def __init__(self, device: torch.device, config: ConfigType) -> None:
@@ -194,7 +195,6 @@ class ModelUtils:
             output = model(data, position=position)
 
             if kwargs.get("apply_softmax", False):
-                print("here, applying softmax")
                 output = nn.functional.log_softmax(output, dim=1)  # type: ignore
             if kwargs.get("gia", False):
                 from inversefed.reconstruction_algorithms import loss_steps
@@ -235,14 +235,24 @@ class ModelUtils:
  
             else:
                 # Standard training procedure
+
+                # validate that no inputs is nan
+                if torch.isnan(data).any() or torch.isinf(data).any():
+                    raise ValueError("Input is nan or inf")
+                
+                model.train()
                 optim.zero_grad()
                 position = kwargs.get("position", 0)
                 output = model(data, position=position)
                 
                 if kwargs.get("apply_softmax", False):
+                    print(f"Applying softmax")
                     output = nn.functional.log_softmax(output, dim=1)
                 
                 loss = loss_fn(output, target)
+                if loss.item() == float("inf") or loss.item() == float("nan"):
+                    print(f"Loss is {loss.item()}")
+                    raise ValueError("Loss is inf or nan")
                 loss.backward()
                 optim.step()
                 train_loss += loss.item()
@@ -457,6 +467,9 @@ class ModelUtils:
             test_loss, acc = self.test_classification(
                 model, dloader, loss_fn, device, **kwargs
             )
+        if np.isnan(test_loss):
+            print("nan loss")
+            raise ValueError("nan losss")
         return test_loss, acc
 
     def test_object_detect(

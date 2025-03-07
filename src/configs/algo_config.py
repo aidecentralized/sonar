@@ -31,8 +31,7 @@ iid_dispfl_clients_new: ConfigType = {
 traditional_fl: ConfigType = {
     # Collaboration setup
     "algo": "fedavg",
-    "rounds": 2,
-
+    "rounds": 5,
     # Model parameters
     "model": "resnet10",
     "model_lr": 3e-4,
@@ -197,25 +196,25 @@ swarm: ConfigType = {
     "average_last_layer": True,
     "mask_finetune_last_layer": False,
     # params for model
-    "position": 0,
+   "position": 0,
 }
 
 fedstatic: ConfigType = {
     # Collaboration setup
     "algo": "fedstatic",
     # "topology": {"name": "watts_strogatz", "k": 3, "p": 0.2}, # type: ignore
-    "topology": {"name": "ring"},  # type: ignore
+    # "topology": {"name": "ring"},  # type: ignore
     # "topology": {"name": "torus", "m": 3, "n": 3}, 
     # "topology": {"name": "grid"},
     # "topology": {"name": "fully_connected"},
     # "topology": {"name": "tree"},
     # "topology": {"name": "line"},
-    # "topology": {"name": "erdos_renyi", "p": 0.5},  # type: ignore
+    "topology": {"name": "erdos_renyi", "p": 0.13},  # type: ignore
     "rounds": 200,
     # Model parameters
-    # "optimizer": "sgd", # TODO comment out for real training
+    "optimizer": "sgd",
     "model": "resnet10",
-    # "model_lr": 3e-4, # lr for adam
+    # "model_lr": 1e-4, # lr for adam
     "model_lr": 0.1,  # lr for sgd
     "batch_size": 256,
 }

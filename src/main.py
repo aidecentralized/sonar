@@ -45,10 +45,10 @@ parser.add_argument(
 )
 
 args: argparse.Namespace = parser.parse_args()
-
 scheduler: Scheduler = Scheduler()
-
 # Assign the configuration from the file paths provided via arguments
+print(f"arg s {args.s}")
+print(f"all args {args}")
 scheduler.assign_config_by_path(args.s, args.b, args.super, args.host)
 print("Config loaded")
 
