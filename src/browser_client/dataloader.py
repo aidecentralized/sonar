@@ -1,4 +1,6 @@
 import medmnist
+import torchvision
+import torchvision.transforms as transforms
 import numpy as np
 import json
 import os
@@ -67,6 +69,66 @@ def convert_medmnist_to_json(data_flag: str, output_dir: str):
 
     print("Conversion completed successfully.")
 
+
+def convert_cifar10_to_json(output_dir: str):
+    """
+    Converts CIFAR-10 dataset to JSON files with flattened 32x32x3 image arrays.
+
+    Parameters:
+    - output_dir (str): Directory to save JSON files.
+
+    Outputs:
+    - Saves 'cifar10_train.json' and 'cifar10_test.json'.
+    """
+    try:
+        os.makedirs(output_dir, exist_ok=True)
+
+        # Define transformation to normalize the images and convert to tensors
+        transform = transforms.Compose([
+            transforms.ToTensor()  # Converts to [0, 1] float tensors
+        ])
+
+        # Download CIFAR-10 dataset
+        train_dataset = torchvision.datasets.CIFAR10(root='./rawdata', train=True, download=True, transform=transform)
+        test_dataset = torchvision.datasets.CIFAR10(root='./rawdata', train=False, download=True, transform=transform)
+
+        def process_and_save(dataset, split):
+            samples = []
+            print(f"Processing {split} data... Total samples: {len(dataset)}")
+
+            for idx in tqdm(range(len(dataset)), desc=f"Processing {split} samples"):
+                image, label = dataset[idx]
+                
+                # Convert tensor to numpy array
+                img_array = image.permute(1, 2, 0).numpy()  # Shape [32, 32, 3]
+                flattened = img_array.flatten().tolist()  # Flatten to [3072]
+
+                # Append to samples list
+                samples.append({
+                    'image': flattened,
+                    'label': int(label)
+                })
+
+                # Verification on the first sample
+                if idx == 0:
+                    print(f"Original shape: {img_array.shape}, Flattened length: {len(flattened)}")
+                    print(f"Label: {label}, Min/Max Pixel Values: {np.min(img_array)}, {np.max(img_array)}")
+
+            # Save JSON file
+            output_file = os.path.join(output_dir, f"cifar10_{split}.json")
+            with open(output_file, 'w') as f:
+                json.dump(samples, f)
+            print(f"Saved {split} data to {output_file}")
+
+        # Process train and test splits
+        process_and_save(train_dataset, 'train')
+        process_and_save(test_dataset, 'test')
+
+        print("Conversion completed successfully.")
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
 if __name__ == "__main__":
 #     import argparse
 
@@ -75,4 +137,6 @@ if __name__ == "__main__":
 #     parser.add_argument('--output_dir', type=str, default='data', help="Directory to save JSON files.")
     
 #     args = parser.parse_args()
-    convert_medmnist_to_json("bloodmnist", "./public/datasets/imgs/bloodmnist/")
+    # convert_medmnist_to_json("bloodmnist", "./public/datasets/imgs/bloodmnist/")
+    convert_cifar10_to_json("./public/datasets/imgs/cifar10/")
+

@@ -1,5 +1,15 @@
-// const tf = require('@tensorflow/tfjs');
 import * as tf from '@tensorflow/tfjs'
+
+// BLOODMNIST
+// const imageShape = [28, 28, 3];
+// const imageFlattenSize = 2352;
+// const imageClasses = 8;
+
+// CIFAR10
+const imageShape = [32, 32, 3];
+const imageFlattenSize = 3072;
+const imageClasses = 10;
+
 
 class Model {
 	constructor() {
@@ -27,9 +37,10 @@ export class ResNet10 extends Model {
 
 	// Build the model
 	buildModel() {
-		const inputs = tf.input({ shape: [2352] });
 
-		let x = tf.layers.reshape({ targetShape: [28, 28, 3] }).apply(inputs);
+		const inputs = tf.input({ shape: [imageFlattenSize] });
+
+		let x = tf.layers.reshape({ targetShape: imageShape }).apply(inputs);
 
 		// Initial Conv Layer
 		x = tf.layers.conv2d({
@@ -52,8 +63,7 @@ export class ResNet10 extends Model {
 		// Global Average Pooling
 		x = tf.layers.globalAveragePooling2d({ dataFormat: 'channelsLast' }).apply(x);
 
-		// Fully Connected Layer
-		x = tf.layers.dense({ units: 8, activation: 'softmax' }).apply(x);
+		x = tf.layers.dense({ units: imageClasses, activation: 'softmax' }).apply(x);
 
 		const model = tf.model({ inputs, outputs: x });
 
@@ -113,7 +123,7 @@ export class ResNet10 extends Model {
 	}
 
 	forward(x) {
-		return super.forward(x, [1, 2352])
+		return super.forward(x, [1, imageShape])
 	}
 
 	async train(dataSet, config = {
@@ -124,9 +134,9 @@ export class ResNet10 extends Model {
 		verbose: 1
 	}) {
 		// take raw array of values and turn to tensor
-		const images = tf.tensor2d(dataSet.images, [dataSet.images.length, 2352])
+		const images = tf.tensor2d(dataSet.images, [dataSet.images.length, imageFlattenSize])
 
-		const labels = tf.oneHot(tf.tensor1d(dataSet.labels, 'int32'), 8)
+		const labels = tf.oneHot(tf.tensor1d(dataSet.labels, 'int32'), imageClasses)
 
 		// create config object
 		const trainingConfig = {
@@ -177,8 +187,8 @@ export class ResNet10 extends Model {
 		verbose: 1
 	}) {
 		// take raw array of values and turn to tensor
-		const images = tf.tensor2d(dataSet.images, [dataSet.images.length, 2352])
-		const labels = tf.oneHot(tf.tensor1d(dataSet.labels, 'int32'), 8)
+		const images = tf.tensor2d(dataSet.images, [dataSet.images.length, imageFlattenSize])
+		const labels = tf.oneHot(tf.tensor1d(dataSet.labels, 'int32'), imageClasses)
 
 		// create config object
 		const trainingConfig = {

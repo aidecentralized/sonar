@@ -689,7 +689,7 @@ export class WebRTCCommUtils {
   async startTraining() {
     this.log('started training, loading dataset...');
   
-    const filePath = '/datasets/imgs/bloodmnist/bloodmnist_test.json';
+    const filePath = '/datasets/imgs/cifar10/cifar10_test.json';
     const rawData = await fetch(filePath);
     const data = await rawData.json();
     const dataset = processData(data);
