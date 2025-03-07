@@ -172,7 +172,7 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
         with self.lock:
             # FIXME: This is a security vulnerability because
             # any node can update the ip and port of any other node
-            self.peer_ids[request.rank.rank]["ip"] = request.ip  # type: ignore
+            # self.peer_ids[request.rank.rank]["ip"] = request.ip  # type: ignore
             self.peer_ids[request.rank.rank]["port"] = request.port.port  # type: ignore
             return comm_pb2.Empty()  # type: ignore
 
@@ -287,7 +287,7 @@ class GRPCCommunication(CommunicationInterface):
             ],
         )
         comm_pb2_grpc.add_CommunicationServerServicer_to_server(self.servicer, self.listener)  # type: ignore
-        address = f"{self.host}:{self.port}"
+        address = f"*:{self.port}"
         self.listener.add_insecure_port(address)
         self.listener.start()
         print(f"Started listener on {address}")
