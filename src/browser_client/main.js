@@ -1,4 +1,7 @@
 import { ResNet10 } from './model.js'
+import * as tf from '@tensorflow/tfjs'
+import js2python from './js2python.json'
+// import ind2python from './ind2python.json'
 
 
 // TODO: this can be replaced by just the browser-side without wrtc once we use browser
@@ -12,6 +15,37 @@ function processData(jsonData) {
 		labels: labels
 	}
 }
+
+/**
+ * Convert TensorFlow.js NHWC weights to TensorFlow (Python) NCHW format.
+ * Also handles linear (dense) layers by transposing weight matrices.
+ * @param {tf.Tensor} weightTensor - The weight tensor from TensorFlow.js.
+ * @returns {tf.Tensor} - Transposed tensor in NCHW or correct format for linear layers.
+ */
+function convertTfjsToTf(weightTensor) {
+  if (weightTensor.shape.length === 4) {
+      return tf.transpose(weightTensor, [3, 2, 0, 1]); // NHWC -> NCHW
+  } else if (weightTensor.shape.length === 2) {
+      return tf.transpose(weightTensor, [1, 0]); // Transpose linear layer weights
+  }
+  return weightTensor; // Return as is if not 2D or 4D
+}
+
+/**
+* Convert TensorFlow (Python) NCHW weights back to TensorFlow.js NHWC format.
+* Also handles linear (dense) layers by transposing weight matrices.
+* @param {tf.Tensor} weightTensor - The weight tensor from Python.
+* @returns {tf.Tensor} - Transposed tensor in NHWC or correct format for linear layers.
+*/
+function convertTfToTfjs(weightTensor) {
+  if (weightTensor.shape.length === 4) {
+      return tf.transpose(weightTensor, [2, 3, 1, 0]); // NCHW -> NHWC
+  } else if (weightTensor.shape.length === 2) {
+      return tf.transpose(weightTensor, [1, 0]); // Transpose linear layer weights
+  }
+  return weightTensor; // Return as is if not 2D or 4D
+}
+
 
 function tensorToSerializable(obj) {
     // If it's a "tensor-like" object, convert it into a serializable structure.
@@ -505,142 +539,157 @@ export class WebRTCCommUtils {
    *   - Parse the message
    *   - Handle logic for pings, receiving weights, etc.
    */
-  handleDataChannelMessage(peerRank, data) {
-    try {
-      // this.log(`Received message from peer ${peerRank}: ${data.type}`);
-
-      switch (data.type) {
-
-        case 'weights_request':
-          this.log(`Received weights request from peer ${peerRank}`);
-
-          // TODO: figure out the rest of this part
-        //   let currRound = model.round;
-            let currRound = 1
-          // If you want to send your model, chunk it up here:
-
-          const chunk_size = 2000 // around 15 kb / 4 bytes per float32
-            // model is an object: { layerName: tensor, ... }
-
+    handleDataChannelMessage(peerRank, data) {
+      try {
+        // this.log(`Received message from peer ${peerRank}: ${data.type}`);
+  
+        switch (data.type) {
+  
+          case 'weights_request':
+            this.log(`Received weights request from peer ${peerRank}`);
+  
+            const currRound = 1;
+            const chunk_size = 2000;
             const weights = this.model.model.getWeights();
-            this.log("Sending model weights. Keys:", Object.keys(weights));
-
-            
-            for (const [layerName, tensor] of Object.entries(weights)) {
-                this.log(`Layer: ${layerName}, dtype: ${tensor.dtype}, shape: [${tensor.shape.join(', ')}]`);
-            
-                const chunks = chunkTensor(tensor, chunk_size);
-                this.log(`numChunks = ${chunks.length} for layer: ${layerName}`);
-
-                for (const { chunk, numChunks, originalShape } of chunks) {
-                    const serializableChunk = serializeMessage({
-                        layer_name: layerName,
-                        chunk: chunk,
-                        num_chunks: numChunks,
-                        original_shape: originalShape
-                    });
-                
-                    // Construct the message to send via WebRTC
-                    const response = {
-                        type: "weights_response",
-                        weights: serializableChunk,
-                        round: currRound,
-                        request_id: data.request_id
-                    };
-                    // sendToPeer is your custom function to send data over the data channel
-                    // this.log(`Sending chunk of size: ${JSON.stringify(response).length} bytes`);
-                    this.sendToPeer(peerRank, response);
-
+            const layers = this.model.model.layers;
+  
+            for (let i = 0; i < layers.length; i++) {
+                const layer = layers[i];
+                const layerWeights = layer.getWeights();
+  
+                for (let j = 0; j < layerWeights.length; j++) {
+                    let weightTensor = layerWeights[j];
+  
+                    // Convert to TensorFlow (Python) format before sending
+                    weightTensor = convertTfjsToTf(weightTensor);
+  
+                    // Rename the layer and map to Python layer name
+                    const layerName = `${layer.name}_weight_${j}`;
+                    const pythonLayerName = js2python[layerName];
+  
+  
+                    const chunks = chunkTensor(weightTensor, chunk_size);
+                    this.log(`Layer ${i}_${j}: ${pythonLayerName}, dtype: ${weightTensor.dtype}, shape: [${weightTensor.shape.join(', ')}], numChunks: ${chunks.length}`);
+  
+                    // this.log(`numChunks = ${chunks.length} for layer: ${pythonLayerName}`);
+  
+                    for (const { chunk, numChunks, originalShape } of chunks) {
+                        const serializableChunk = serializeMessage({
+                            layer_name: pythonLayerName,
+                            chunk: chunk,
+                            num_chunks: numChunks,
+                            original_shape: originalShape
+                        });
+  
+                        const response = {
+                            type: "weights_response",
+                            weights: serializableChunk,
+                            round: currRound,
+                            request_id: data.request_id
+                        };
+  
+                        this.sendToPeer(peerRank, response);
+                    }
                 }
             }
-
+  
             const finishedMessage = {
                 type: "weights_finished",
                 round: currRound,
                 request_id: data.request_id
-            }
-            this.sendToPeer(peerRank, finishedMessage)
-          break;
-
-        case 'weights_response':
-          // Reassemble chunk. Increase comm_cost_received, etc.
-          if (this.clear_peer_weights){
-            this.peer_weights = {}
-            this.clear_peer_weights = false
-          }
-
-            // 1. Deserialize the chunk
-            const chunkData = deserializeMessage(data.weights);
-            
-            const layerName = chunkData.layer_name;
-            const chunk = chunkData.chunk; // this is still a "tensor-like" object
-            const numChunks = chunkData.num_chunks;
-            const originalShape = chunkData.original_shape;
-            
-            // 2. Store the chunk data
-            if (!this.peer_weights[layerName]) {
-                this.peer_weights[layerName] = [];
-            }
-            this.peer_weights[layerName].push(chunk);
-            
-            // 3. Check if all chunks are received
-            if (this.peer_weights[layerName].length === numChunks) {
-                // Concatenate all chunk data
-                let fullArray = [];
-                for (let partialTensor of this.peer_weights[layerName]) {
-                // partialTensor.data might be a typed array, so convert to normal array or push directly
-                fullArray.push(...partialTensor.data);
-                }
-                // or if these are typed arrays, you could do something like:
-                //   const totalLength = peerWeights[layerName].reduce((acc, t) => acc + t.data.length, 0);
-                //   let fullTypedArray = new Float32Array(totalLength);
-                //   // copy chunk by chunk ...
-            
-                // If you want a typed array again:
-                const fullTypedArray = new Float32Array(fullArray);
-            
-                // This is your final reassembled tensor
-                const reassembledTensor = {
-                    __isTensor: true,
-                    data: fullTypedArray,
-                    dtype: chunk.dtype,
-                    shape: originalShape
-                };
-            
-                // Store it or use it:
-                this.peer_weights[layerName] = reassembledTensor;
-                
-                this.log(`Reassembled layer ${layerName}: shape [${originalShape.join(', ')}]`);
-            } else {
-              this.log(`Received ${this.peer_weights[layerName].length} / ${numChunks} chunks for ${layerName}`);
-            }
-
-          break;
-
-        case 'weights_finished':
-          this.log(`Peer ${peerRank} finished sending weights.`);
-          this.weights_finished = true
-          break;
-
-        case 'round_update':
-            this.log(`Received round update from peer ${peerRank}`);
-            this.sendToPeer(peerRank, {
-                type: "round_update_response",
-                round: this.currentRound
-            })
+            };
+            this.sendToPeer(peerRank, finishedMessage);
             break;
-        
-        case 'round_update_response':
-            this.log(`Received round update response from peer ${peerRank}`);
-            this.peer_rounds.set(peerRank, data.round)
+  
+          case 'weights_response':
+            // Reassemble chunk. Increase comm_cost_received, etc.
+            if (this.clear_peer_weights){
+              this.peer_weights = {}
+              this.clear_peer_weights = false
+            }
+  
+              // 1. Deserialize the chunk
+              const chunkData = deserializeMessage(data.weights);
+              
+              let chunk = chunkData.chunk; // this is still a "tensor-like" object
+  
+              // Convert received chunk to TensorFlow.js format
+              chunk = convertTfToTfjs(chunk);
+              
+              const layerName = chunkData.layer_name;
+              const numChunks = chunkData.num_chunks;
+              const originalShape = chunkData.original_shape;
+              
+              if (!this.peer_weights) {
+                this.peer_weights = {};  // Initialize if undefined
+              }
+  
+              // 2. Store the chunk data
+              if (!this.peer_weights[layerName]) {
+                  this.peer_weights[layerName] = [];
+                  this.log(`Received initial ${layerName}`);
+              }
+  
+              this.peer_weights[layerName].push(chunk);
+              
+              // 3. Check if all chunks are received
+              if (this.peer_weights[layerName].length === numChunks) {
+                  // Concatenate all chunk data
+                  let fullArray = [];
+                  for (let partialTensor of this.peer_weights[layerName]) {
+                  // partialTensor.data might be a typed array, so convert to normal array or push directly
+                  fullArray.push(...partialTensor.data);
+                  }
+                  // or if these are typed arrays, you could do something like:
+                  //   const totalLength = peerWeights[layerName].reduce((acc, t) => acc + t.data.length, 0);
+                  //   let fullTypedArray = new Float32Array(totalLength);
+                  //   // copy chunk by chunk ...
+              
+                  // If you want a typed array again:
+                  const fullTypedArray = new Float32Array(fullArray);
+              
+                  // This is your final reassembled tensor
+                  const reassembledTensor = {
+                      __isTensor: true,
+                      data: fullTypedArray,
+                      dtype: chunk.dtype,
+                      shape: originalShape
+                  };
+              
+                  // Store it or use it:
+                  this.peer_weights[layerName] = reassembledTensor;
+                  
+                  this.log(`Reassembled layer ${layerName}: shape [${originalShape.join(', ')}]`);
+              } else {
+                // this.log(`Received ${this.peer_weights[layerName].length} / ${numChunks} chunks for ${layerName}`);
+              }
+  
             break;
-
-        // Add other message types (round_update, etc.) similarly
+  
+          case 'weights_finished':
+            this.log(`Peer ${peerRank} finished sending weights.`);
+            this.weights_finished = true
+            break;
+  
+          case 'round_update':
+              this.log(`Received round update from peer ${peerRank}`);
+              this.sendToPeer(peerRank, {
+                  type: "round_update_response",
+                  round: this.currentRound
+              })
+              break;
+          
+          case 'round_update_response':
+              this.log(`Received round update response from peer ${peerRank}`);
+              this.peer_rounds.set(peerRank, data.round)
+              break;
+  
+          // Add other message types (round_update, etc.) similarly
+        }
+      } catch (err) {
+        this.log(`handleDataChannelMessage() parse error: ${err}`);
       }
-    } catch (err) {
-      this.log(`handleDataChannelMessage() parse error: ${err}`);
     }
-  }
 
   /**
    * Send a dictionary or object to a specific peer via data channel.
@@ -678,7 +727,7 @@ export class WebRTCCommUtils {
     }
 
     while (!this.weights_finished){
-      // IDK?
+        // await new Promise(resolve => setTimeout(resolve, 100)); // Async sleep for 100ms
     }
 
     this.log(`Received peer weights, returning`)
