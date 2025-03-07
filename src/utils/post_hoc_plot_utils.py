@@ -634,7 +634,7 @@ def aggregate_neighbors_across_users(logs_dir: str) -> np.ndarray:
 # Use if you a specific experiment folder
 if __name__ == "__main__":
     # Define the path where your experiment logs are saved
-    logs_dir = '/mas/camera/Experiments/SONAR/jyuan/6_many_colab/cifar10_36users_1388_topo_ringxlabel_flip_1_malicious_3_seed2/logs/'
+    logs_dir = '/mas/camera/Experiments/SONAR/jyuan/8_many_colab/cifar10_36users_1388_topo_ringxbad_weights_0_malicious_1_colab_3_5_seed2/logs/'
     avg_metrics, std_metrics, df_metrics = aggregate_metrics_across_users(logs_dir)
     print("hello world")
     plot_all_metrics(logs_dir, per_round=True, per_time=True, plot_avg_only=True)
@@ -643,7 +643,7 @@ if __name__ == "__main__":
 # Use if you want to compute for multiple experiment folders
 # if __name__ == "__main__":
 #     # Define the base directory where your experiment logs are saved
-#     base_logs_dir = '/mas/camera/Experiments/SONAR/jyuan/6_many_colab/'
+#     base_logs_dir = '/mas/camera/Experiments/SONAR/jyuan/8_many_colab/'
 
 #     # Iterate over each subdirectory in the base directory
 #     for experiment_folder in os.listdir(base_logs_dir):

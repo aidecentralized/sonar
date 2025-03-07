@@ -309,7 +309,7 @@ class BaseNode(ABC):
         if self.malicious_type == "sign_flip":
             return SignFlipAttack(self.config, self.model.state_dict()).get_representation()
         elif self.malicious_type == "bad_weights":
-            print("bad weights attack")
+            # print("bad weights attack")
             return BadWeightsAttack(self.config, self.model.state_dict()).get_representation()
         elif self.malicious_type == "add_noise":
             return AddNoiseAttack(self.config, self.model.state_dict()).get_representation()

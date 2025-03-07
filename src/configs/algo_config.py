@@ -230,11 +230,12 @@ fed_dynamic_weights: ConfigType = {
     # comparison describes the metric or algorithm used to compare the weights of the models
     # sampling describes the method used to sample the neighbors after the comparison
     "topology": {"comparison": "weights_l2", "sampling": "closest"}, # type: ignore
-    "rounds": 20,
+    "rounds": 200,
 
     # Model parameters
+    "optimizer": "sgd",
     "model": "resnet10",
-    "model_lr": 3e-4,
+    "model_lr": 0.1,
     "batch_size": 256,
 }
 
