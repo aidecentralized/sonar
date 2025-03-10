@@ -697,15 +697,15 @@ class RTCCommUtils(CommunicationInterface):
                     # self.logger.info(f"[Main Thread] Popped from message queue type {data['type']} from peer {peer_rank}")
             except Empty:
                 pass
-        # self.logger.info(f"Finished processing messages for 5 seconds")
+        self.logger.info(f"ALL CHUNKS RECEIVED")
 
         # log the time it took to send in a nice format, and the keys of the peer_weights
-        self.logger.info(f"Time to send: {time.strftime('%M:%S', time.gmtime(time.time() - timestamp))}")
-        try:
-            for key in self.peer_weights:               
-                self.logger.info(f"Layer: {key}, dtype: {self.peer_weights[key].dtype}, size: {self.peer_weights[key].size()}")
-        except Exception as e:
-            self.logger.error(f"Error logging peer weights: {e}, keys: {self.peer_weights.keys()}, types: {type(self.peer_weights[key])}")
+        self.logger.info(f"Time to receive: {time.strftime('%M:%S', time.gmtime(time.time() - timestamp))}")
+        # try:
+            # for key in self.peer_weights:               
+                # self.logger.info(f"Layer: {key}, dtype: {self.peer_weights[key].dtype}, size: {self.peer_weights[key].size()}")
+        # except Exception as e:
+            # self.logger.error(f"Error logging peer weights: {e}, keys: {self.peer_weights.keys()}, types: {type(self.peer_weights[key])}")
         
 
         incomplete_layers = [
@@ -766,9 +766,9 @@ class RTCCommUtils(CommunicationInterface):
                 # serializable_weights = serialize_message(dummy_weights)
 
                 chunk_size = 15000 # supposedly 16kb is limit
-                self.logger.info(f"Sending model weights. Keys: {node_data['model'].keys()}")
+                # self.logger.info(f"Sending model weights. Keys: {node_data['model'].keys()}")
                 for layer_name, tensor in node_data['model'].items():
-                    self.logger.info(f"Layer: {layer_name}, dtype: {tensor.dtype}, size: {tensor.size()}")
+                    # self.logger.info(f"Layer: {layer_name}, dtype: {tensor.dtype}, size: {tensor.size()}")
                     for chunk, num_chunks, original_shape in self.chunk_tensor(tensor, chunk_size):
                         size_sent = chunk.numel() * chunk.element_size()
                         self.comm_cost_sent += size_sent
@@ -810,7 +810,7 @@ class RTCCommUtils(CommunicationInterface):
 
                 if layer_name not in self.peer_weights:
                     self.peer_weights[layer_name] = []
-                    self.logger.info(f"Received initial {layer_name}")
+                    # self.logger.info(f"Received initial {layer_name}")
 
                 self.peer_weights[layer_name].append(chunk)
                 self.received_chunks[layer_name] += 1
@@ -822,7 +822,7 @@ class RTCCommUtils(CommunicationInterface):
                 if self.received_chunks[layer_name] == self.expected_chunks[layer_name]:
                     full_tensor = torch.cat(self.peer_weights[layer_name])
                     self.peer_weights[layer_name] = full_tensor.reshape(original_shape)
-                    self.logger.info(f"Reconstructed full tensor for {layer_name}")
+                    # self.logger.info(f"Reconstructed full tensor for {layer_name}")
                 # else:
                 #     self.logger.info(f"Received {len(self.peer_weights[layer_name])} / {num_chunks} chunks for {layer_name}")
 

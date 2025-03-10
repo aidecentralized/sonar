@@ -894,7 +894,6 @@ class BaseFedAvgClient(BaseClient):
                     continue
                 # Check if the key is in the form of <some layer>.num_batches_tracked
                 # and if it is not in the incoming model, skip it
-                print(f"Processing key: {repr(key)}, found in model: {key in model}")
                 try: 
                     if key.endswith('.num_batches_tracked') and key not in model:
                         print("num batches tracked found")
