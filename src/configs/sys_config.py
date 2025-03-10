@@ -316,7 +316,7 @@ object_detect_system_config: ConfigType = {
     "exp_keys": [],
 }
 
-num_users = 4
+num_users = 9
 
 dropout_dict = {
     "distribution_dict": { # leave dict empty to disable dropout

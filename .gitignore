@@ -8,6 +8,7 @@ data/
 !src/inversefed/data/
 notes.txt
 removeme*.png
+sonar-env
 
 # Byte-compiled / optimized / DLL files
 **/__pycache__/
