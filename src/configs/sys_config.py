@@ -121,7 +121,7 @@ def get_domainnet_support(num_users: int, domains: List[str] = DOMAINNET_DMN):
     return get_domain_support(num_users, "domainnet", domains)
 
 
-domainnet_base_dir = "/u/abhi24/matlaberp2/p2p/imgs/domainnet/"
+domainnet_base_dir = "./datasets/imgs/domainnet/"
 domainnet_dpath = {
     "domainnet_real": domainnet_base_dir,
     "domainnet_sketch": domainnet_base_dir,
