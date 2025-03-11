@@ -56,10 +56,19 @@ def compute_per_user_metrics(node_id: str, logs_dir: str) -> Dict[str, float]:
         'best_train_acc': best_accuracy(train_acc, 'train_acc'),
         'best_test_acc': best_accuracy(test_acc, 'test_acc'),
         'best_train_loss': best_loss(train_loss, 'train_loss'),
-        'best_test_loss': best_loss(test_loss, 'test_loss')
+        'best_test_loss': best_loss(test_loss, 'test_loss'),
     }
 
+    # check if bytes_received exists
+    try:
+        bytes_received = load_logs(node_id, 'bytes_received', logs_dir)
+        metrics['avg_bytes_received'] = bytes_received['bytes_received'].mean()
+        metrics['std_bytes_received'] = bytes_received['bytes_received'].std()
+    except:
+        pass
+
     return metrics
+
 
 def aggregate_metrics_across_users(logs_dir: str, output_dir: Optional[str] = None) -> Tuple[pd.Series, pd.Series, pd.DataFrame]:
     """Aggregate metrics across all users, categorize nodes, and save the results to CSV files."""
@@ -623,28 +632,29 @@ def aggregate_neighbors_across_users(logs_dir: str) -> np.ndarray:
     return np.array(all_users_neighbors).T
 
 # Use if you a specific experiment folder
-# if __name__ == "__main__":
-#     # Define the path where your experiment logs are saved
-#     logs_dir = '/mas/camera/Experiments/SONAR/jyuan/experiment/logs_sample_time_elapsed/'
-#     avg_metrics, std_metrics, df_metrics = aggregate_metrics_across_users(logs_dir)
-#     plot_all_metrics(logs_dir, per_round=True, per_time=True, plot_avg_only=True)
+if __name__ == "__main__":
+    # Define the path where your experiment logs are saved
+    logs_dir = '/mas/camera/Experiments/SONAR/jyuan/8_many_colab/cifar10_36users_1388_topo_ringxbad_weights_0_malicious_1_colab_3_5_seed2/logs/'
+    avg_metrics, std_metrics, df_metrics = aggregate_metrics_across_users(logs_dir)
+    print("hello world")
+    plot_all_metrics(logs_dir, per_round=True, per_time=True, plot_avg_only=True)
 
 
 # Use if you want to compute for multiple experiment folders
-if __name__ == "__main__":
-    # Define the base directory where your experiment logs are saved
-    base_logs_dir = '/mas/camera/Experiments/SONAR/abhi/'
+# if __name__ == "__main__":
+#     # Define the base directory where your experiment logs are saved
+#     base_logs_dir = '/mas/camera/Experiments/SONAR/jyuan/8_many_colab/'
 
-    # Iterate over each subdirectory in the base directory
-    for experiment_folder in os.listdir(base_logs_dir):
-        experiment_path = os.path.join(base_logs_dir, experiment_folder)
-        logs_dir = os.path.join(experiment_path, 'logs')
+#     # Iterate over each subdirectory in the base directory
+#     for experiment_folder in os.listdir(base_logs_dir):
+#         experiment_path = os.path.join(base_logs_dir, experiment_folder)
+#         logs_dir = os.path.join(experiment_path, 'logs')
 
-        if os.path.isdir(logs_dir):
-            try:
-                print(f"Processing logs in: {logs_dir}")
-                avg_metrics, std_metrics, df_metrics = aggregate_metrics_across_users(logs_dir)
-                plot_all_metrics(logs_dir, per_round=True, per_time=True, plot_avg_only=True)
-            except Exception as e:
-                print(f"Error processing {logs_dir}: {e}")
-                continue
+#         if os.path.isdir(logs_dir):
+#             try:
+#                 print(f"Processing logs in: {logs_dir}")
+#                 avg_metrics, std_metrics, df_metrics = aggregate_metrics_across_users(logs_dir)
+#                 plot_all_metrics(logs_dir, per_round=True, per_time=True, plot_avg_only=True)
+#             except Exception as e:
+#                 print(f"Error processing {logs_dir}: {e}")
+#                 continue

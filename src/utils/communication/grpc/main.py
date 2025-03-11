@@ -242,7 +242,7 @@ class GRPCCommunication(CommunicationInterface):
         ('grpc.max_receive_message_length', MAX_MESSAGE_LENGTH),
     ]) as channel:
             stub = comm_pb2_grpc.CommunicationServerStub(channel)
-            max_tries = 10
+            max_tries = 1000000
             while max_tries > 0:
                 try:
                     result = callback(stub)
@@ -365,7 +365,7 @@ class GRPCCommunication(CommunicationInterface):
     def send_with_retries(self, dest_host: str, buffer: Any) -> Any:
         with grpc.insecure_channel(dest_host) as channel:  # type: ignore
             stub = comm_pb2_grpc.CommunicationServerStub(channel)  # type: ignore
-            max_tries = 10
+            max_tries = 1000000
             while max_tries > 0:
                 try:
                     model = comm_pb2.Model(buffer=buffer)  # type: ignore

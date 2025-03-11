@@ -159,8 +159,8 @@ digit_five_dpath = {
 CIFAR10_DSET = "cifar10"
 CIAR10_DPATH = "./datasets/imgs/cifar10/"
 
-NUM_COLLABORATORS = 3
-DUMP_DIR = "/tmp/new_sonar/"
+NUM_COLLABORATORS = 1
+DUMP_DIR = "/mas/camera/Experiments/SONAR/jyuan/_tmp/"
 
 num_users = 9
 mpi_system_config: ConfigType = {
@@ -327,6 +327,7 @@ dropout_dict: Any = {
     "dropout_correlation": 0.0, # correlation between dropouts of successive rounds: [0,1]
 }
 
+dropout_dict = {} #empty dict to disable dropout
 dropout_dicts: Any = {"node_0": {}}
 for i in range(1, num_users + 1):
     dropout_dicts[f"node_{i}"] = dropout_dict
@@ -346,14 +347,23 @@ grpc_system_config: ConfigType = {
     "device_ids": get_device_ids(num_users, gpu_ids),
     "assign_based_on_host": True,
     # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
-    "algos": get_algo_configs(num_users=num_users, algo_configs=[fed_dynamic_weights]),  # type: ignore
-    "samples_per_user": 500,  # distributed equally
+    "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
+    "samples_per_user": 50000 // num_users,  # distributed equally
     "train_label_distribution": "non_iid",
     "alpha_data": 0.1,
     "test_label_distribution": "iid",
     "exp_keys": [],
     "dropout_dicts": dropout_dicts,
-    "log_memory": False,
+    "test_samples_per_user": 200,
+    "log_memory": True,
+    "streaming_aggregation": True, # Make it true for fedstatic
+    # "assign_based_on_host": True,
+    # "hostname_to_device_ids": {
+    #     "matlaber1": [2, 3, 4, 5, 6, 7],
+    #     "matlaber12": [0, 1, 2, 3],
+    #     "matlaber3": [0, 1, 2, 3],
+    #     "matlaber4": [0, 2, 3, 4, 5, 6, 7],
+    # }
 }
 
 grpc_system_config_gia: ConfigType = {
