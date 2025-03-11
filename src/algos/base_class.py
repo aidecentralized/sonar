@@ -628,12 +628,9 @@ class BaseClient(BaseNode):
         assert self.dloader, f"Data loader not set in baseClient {self.node_id}"
 
     def set_data_parameters(self, config: ConfigType) -> None:
-        print("1!")
-
         # Train set and test set from original dataset
         train_dset = self.dset_obj.train_dset
         test_dset = self.dset_obj.test_dset
-        print("2!")
 
         # Handle GIA case first, before any other modifications
         if "gia" in config:
@@ -675,7 +672,6 @@ class BaseClient(BaseNode):
                                           train_labels,
                                           self.node_id)
         else:
-            print("3!")
             if config.get("test_samples_per_class", None) is not None:
                 test_dset, _ = balanced_subset(test_dset, config["test_samples_per_class"])
 
@@ -685,7 +681,6 @@ class BaseClient(BaseNode):
 
             # Support user specific dataset
             if isinstance(config["dset"], dict):
-                print("4!")
                 def is_same_dest(dset):
                     # Consider all variations of cifar10 as the same dataset
                     # To avoid having exactly same original dataset (without
@@ -699,7 +694,6 @@ class BaseClient(BaseNode):
                     [int(k) for k, v in config["dset"].items() if is_same_dest(v)]
                 )
             else:
-                print("5!")
                 users_with_same_dset = list(range(1, config["num_users"] + 1))
             user_idx = users_with_same_dset.index(self.node_id)
 
@@ -707,7 +701,6 @@ class BaseClient(BaseNode):
             # If iid, each user has random samples from the whole dataset (no
             # overlap between users)
             if config["train_label_distribution"] == "iid":
-                print("6!")
                 indices = np.random.permutation(len(train_dset))
                 train_indices = indices[
                     user_idx * samples_per_user : (user_idx + 1) * samples_per_user
@@ -724,7 +717,6 @@ class BaseClient(BaseNode):
                 )
                 train_indices = [indices[i] for i in sel_indices]
             elif config["train_label_distribution"].endswith("non_iid"):
-                print("7!")
                 alpha = config.get("alpha_data", 0.4)
                 if config["train_label_distribution"] == "inter_domain_non_iid":
                     # Hack to get the same class prior for all users with the same dataset
@@ -742,7 +734,6 @@ class BaseClient(BaseNode):
                                 )
                             )
                         cls_prior = cls_priors[dsets.index(self.dset)]
-                print("8!")
                 train_y, train_idx_split, cls_prior = non_iid_balanced(
                     self.dset_obj,
                     len(users_with_same_dset),
@@ -751,7 +742,6 @@ class BaseClient(BaseNode):
                     cls_priors=cls_prior,
                     is_train=True,
                 )
-                print("9!")
                 train_indices = train_idx_split[self.node_id - 1]
                 train_dset = Subset(train_dset, train_indices)
                 classes = np.unique(train_y[user_idx]).tolist()
@@ -1329,37 +1319,17 @@ class BaseFedAvgClient(BaseClient):
             in_size = len(self.dloader.dataset)
             out_size = len(self._test_loader.dataset)
 
-            print(f"In size: {in_size}, Out size: {out_size}")
-
-            # # Get metric values for all three metrics
-            # metric_values = self.mia_attacker.attack_dataset(
-            #     self.model,
-            #     self.dloader,
-            #     self._test_loader,
-            #     in_size,
-            #     out_size,
-            # )
             attack_vals, metadata = self.mia_func(self.model, self.dloader, self._test_loader, device=self.device)
             
-            # print(f"Client {self.node_id} MIA metric values:")
-            # # Calculate AUC scores for all metrics
-            # auc_scores = self.mia_attacker.calculate_roc_auc_score(metric_values)
-            
-            # print(f"Client {self.node_id} MIA AUC scores:")
-            # for metric, score in auc_scores.items():
-            #     print(f"{metric}: {score:.4f}")
             for metric, score in attack_vals.items():
                 print(f"{metric}: {score:.4f}")
             
             # Log all metrics
-            # self.log_utils.log_mia_stats(auc_scores, current_round)
             self.log_utils.log_mia_stats(attack_vals, current_round)
             self.log_utils.log_mia_stats(metadata, current_round, metadata=True)
             self.log_utils.log_tb_mia_stats(attack_vals, current_round, self.node_id)
 
-            # Receive the model updates from the neighbors
             model_updates = self.comm_utils.receive(node_ids=neighbors)
-            # Aggregate the representations
             self.aggregate(model_updates, keys_to_ignore=self.model_keys_to_ignore)
 
 

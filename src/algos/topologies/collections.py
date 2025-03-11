@@ -115,7 +115,7 @@ class ErdosRenyiTopology(BaseTopology):
         self.p = p
         self.seed = config["seed"]
 
-    def generate_graph(self, full:bool=True) -> None:
+    def generate_graph(self, full:bool=False) -> None:
         """ if full is True, generate a fully connected graph """
         if full:
             while True:

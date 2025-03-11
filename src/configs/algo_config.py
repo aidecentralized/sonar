@@ -202,19 +202,14 @@ swarm: ConfigType = {
 fedstatic: ConfigType = {
     # Collaboration setup
     "algo": "fedstatic",
-    # "topology": {"name": "watts_strogatz", "k": 3, "p": 0.2}, # type: ignore
-    # "topology": {"name": "ring"},  # type: ignore
+    # "topology": {"name": "ring"},  
     # "topology": {"name": "torus", "m": 3, "n": 3}, 
-    # "topology": {"name": "grid"},
     # "topology": {"name": "fully_connected"},
-    # "topology": {"name": "tree"},
-    # "topology": {"name": "line"},
-    "topology": {"name": "erdos_renyi", "p": 0.13},  # type: ignore
+    "topology": {"name": "erdos_renyi", "p": 0.13}, 
     "rounds": 200,
     # Model parameters
     "optimizer": "sgd",
     "model": "resnet10",
-    # "model_lr": 1e-4, # lr for adam
     "model_lr": 0.1,  # lr for sgd
     "batch_size": 256,
 }

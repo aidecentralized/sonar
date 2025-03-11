@@ -324,18 +324,15 @@ def non_iid_balanced(
     """
     Returns a non-IID balanced dataset.
     """
-    print("IM HERE_______________")
     if is_train:
         y = np.array(dset_obj.train_dset.targets)
     else:
         y = np.array(dset_obj.test_dset.targets)
-    print("P1~")
 
     n_cls = dset_obj.num_cls
     clnt_data_list = (np.ones(n_client) * n_data_per_clnt).astype(int)
     if cls_priors is None:
         cls_priors = np.random.dirichlet(alpha=[alpha] * n_cls, size=n_client)
-    print("P2~")
     prior_cumsum = np.cumsum(cls_priors, axis=1)
     idx_list = [np.where(y == i)[0] for i in range(n_cls)]
     cls_amount = np.array([len(idx_list[i]) for i in range(n_cls)])
@@ -345,9 +342,7 @@ def non_iid_balanced(
     ]
     clnt_idx = [[] for _ in range(n_client)]
     clients = list(np.arange(n_client))
-    print("P3~")
     while np.sum(clnt_data_list) != 0:
-        print("P4~")
         curr_clnt = np.random.choice(clients)
         if clnt_data_list[curr_clnt] <= 0:
             clients.remove(curr_clnt)
@@ -395,70 +390,13 @@ def gia_client_dataset(train_dataset, test_dataset, num_labels=10, n=1, node_id=
                 label_to_indices[label].append(idx)
         # after making the label_to_indeces, don't shuffle and just return the index at node_id
         return [label_to_indices[i][node_id] for i in range(num_labels)], [i for i in range(num_labels)]
-        '''
-        ordered_indices = []
-        if selected_labels is None:
-            selected_labels = []
-            for label in range(num_labels):
-                if label in label_to_indices and label_to_indices[label]:
-                    # Shuffle indices for each label to randomize selection
-                    np.random.seed(None)
-                    np.random.shuffle(label_to_indices[label])
-                    for i in range(n):
-                        if i < len(label_to_indices[label]):
-                            random_idx = label_to_indices[label][i]
-                            ordered_indices.append(random_idx)
-                            selected_labels.append(label)
-        else:
-            for label in selected_labels:
-                if label in label_to_indices and label_to_indices[label]:
-                    # Shuffle indices for each label to randomize selection
-                    np.random.seed(None)
-                    np.random.shuffle(label_to_indices[label])
-                    for i in range(n):
-                        if i < len(label_to_indices[label]):
-                            random_idx = label_to_indices[label][i]
-                            ordered_indices.append(random_idx)
-        
-        return ordered_indices, selected_labels
-        
-    
-    if num_labels == 5:
-        if node_id is not None:
-            # Only include the image at node_id in the training set
-            final_train_indices = [node_id]
-            train_selected_labels = [train_dataset[node_id][1]]
-            # Ensure the test labels come from the same class as the training label
-            final_test_indices, test_selected_labels = get_ordered_indices(test_dataset, train_selected_labels)
-        else:
-            # Get ordered indices and selected labels for the training dataset
-            final_train_indices, train_selected_labels = get_ordered_indices(train_dataset)
-            # Get ordered indices and selected labels for the test dataset
-            final_test_indices, test_selected_labels = get_ordered_indices(test_dataset, train_selected_labels)
-    elif num_labels == 1:
-        if node_id is not None:
-            # Only include the image at node_id in the training set
-            final_train_indices = [node_id]
-            train_selected_labels = [train_dataset[node_id][1]]
-            # Ensure the test labels come from the same class as the training label
-            final_test_indices, test_selected_labels = get_ordered_indices(test_dataset, train_selected_labels)
-        else:
-            # Get ordered indices and selected labels for the training dataset
-            final_train_indices, train_selected_labels = get_ordered_indices(train_dataset)
-            # Get ordered indices and selected labels for the test dataset
-            final_test_indices, test_selected_labels = get_ordered_indices(test_dataset, train_selected_labels)
-    else:
-        raise ValueError("Unsupported number of labels. Please use 1 or 5.")
-    '''
+
     final_train_indices, train_selected_labels = get_ordered_indices(train_dataset)
     final_test_indices, test_selected_labels = get_ordered_indices(test_dataset)   
     
     # Create the subsets
     filtered_train_dataset = Subset(train_dataset, final_train_indices)
     filtered_test_dataset = Subset(test_dataset, final_test_indices)
-    
-    # # Create selected_labels in ascending order
-    # selected_labels = sorted(set(train_selected_labels))
     
     # Verify ordering
     for i in range(len(final_train_indices)):
