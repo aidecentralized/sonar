@@ -1,6 +1,7 @@
 # Malicious Configuration
 from utils.types import ConfigType
 from typing import Dict
+import random
 
 # Weight Update Attacks
 sign_flip: ConfigType = {
@@ -49,7 +50,7 @@ data_poisoning: ConfigType = {
 label_flip: ConfigType = {
     "malicious_type": "label_flip",
     "permute_labels": 10,
-    # "permutation": random.shuffle([i for i in range(10)]),
+    "permutation": random.sample(range(10), 10)  # Generates a random permutation of labels 0-9
 }
 
 # List of Malicious node configurations

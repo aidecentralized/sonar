@@ -42,8 +42,8 @@ def combine_and_plot(
             # TODO: modify this to be CI
             std_df = pd.read_csv(os.path.join(experiment_path, f"{metric_name}_std.csv"))
             n = 36
-            ci_df = 1.96 * (std_df / (n ** 0.5))
-            # ci_df = pd.read_csv(os.path.join(experiment_path, f"{metric_name}_ci95.csv"))
+            # ci_df = 1.96 * (std_df / (n ** 0.5))
+            ci_df = pd.read_csv(os.path.join(experiment_path, f"{metric_name}_ci95.csv"))
 
             # Assuming rounds or time steps are the index
             rounds = np.arange(len(metric_df))
@@ -114,21 +114,22 @@ if __name__ == "__main__":
     #     ylabels = ["Accuracy"]
     #     combine_and_plot(exp_name, experiment_map, metrics_list, plot_titles, xlabels, ylabels, output_dir)
 
-    base_dir = "/mas/camera/Experiments/SONAR/jyuan/8_many_colab/label_flip/"
+    base_dir = "/mas/camera/Experiments/SONAR/jyuan/8_many_colab/bad_weights/"
     exp_names = ["0_mal", "1_mal", "4_mal"]
-    plot_names = ["No Malicious", "1 Malicious", "4 Malicious"]
-    topologies = ["ring", "torus", "fully_connected", "erdos_renyi"]
-    output_dir = "/mas/camera/Experiments/SONAR/jyuan/8_many_colab/label_flip/"
-
-    #cifar10_36users_1388_topo_erdos_renyixbad_weights_0_malicious_36_colab_3_5_seed2
+    plot_names = ["No Malicious", "1 Malicious Bad Weights", "4 Malicious Bad Weights"]
+    topologies = ["ring", "torus", "fully_connected", "erdos_renyi", "el", "one_peer_exponential", "base_graph", "dynamic"]
+    output_dir = "/mas/camera/Experiments/SONAR/jyuan/8_many_colab/bad_weights"
 
     for exp_ind, exp_name in enumerate(exp_names):
-        for attacks in ["label_flip"]:
+        for attacks in ["bad_weights"]:
             experiment_map = {}
             for topo in topologies:
-                experiment_map[f"{topo}"] = os.path.join(base_dir, f"cifar10_36users_1388_topo_{topo}x{attacks}_{exp_name}icious_36_colab_3_5_seed2/logs/plots/")
+                if topo in ["base_graph", "dynamic", "one_peer_exponential", "el"]:
+                    experiment_map[f"{topo}"] = os.path.join(base_dir, f"cifar10_36users_1388_topo_{topo}x{attacks}_{exp_name}icious_3_5_seed2/logs/plots/")
+                else:
+                    experiment_map[f"{topo}"] = os.path.join(base_dir, f"cifar10_36users_1388_topo_{topo}x{attacks}_{exp_name}icious_36_colab_3_5_seed2/logs/plots/")
             metrics_list = ["test_acc"]
             plot_titles = [f"{plot_names[exp_ind]}: Test Accuracy Over Time"]
             xlabels = ["Rounds"]
             ylabels = ["Accuracy"]
-            combine_and_plot(exp_name, experiment_map, metrics_list, plot_titles, xlabels, ylabels, output_dir, include_logs=False)
+            combine_and_plot(f"{attacks}_{exp_name}", experiment_map, metrics_list, plot_titles, xlabels, ylabels, output_dir, include_logs=False)

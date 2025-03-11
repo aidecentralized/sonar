@@ -309,9 +309,10 @@ class ModelUtils:
             elif self.malicious_type == "label_flip":
                 # permutation = torch.tensor(self.config.get("permutation", [i for i in range(10)]))
                 print("flipping labels")
-                permute_labels = self.config.get("permute_labels", 10)
-                permutation = torch.randperm(permute_labels)
-                permutation = permutation.to(target.device)
+                # permute_labels = self.config.get("permute_labels", 10)
+                # permutation = torch.randperm(permute_labels)
+                permutation = self.config.get("permutation")
+                permutation = torch.tensor(permutation, dtype=torch.long, device=target.device)
 
                 target = permutation[target] # flipped targets
                 loss = loss_fn(output, target)
