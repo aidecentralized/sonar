@@ -29,6 +29,12 @@ from utils.data_utils import (
     TransformDataset,
     CorruptDataset,
 )
+
+# import the possible attacks
+from algos.attack_add_noise import AddNoiseAttack
+from algos.attack_bad_weights import BadWeightsAttack
+from algos.attack_sign_flip import SignFlipAttack
+
 from utils.log_utils import LogUtils
 from utils.model_utils import ModelUtils
 from utils.community_utils import (
@@ -123,6 +129,8 @@ class BaseNode(ABC):
 
         if "gia" in config and self.node_id in config["gia_attackers"]:
             self.gia_attacker = True
+
+        self.malicious_type = config.get("malicious_type", "normal")
         
         self.log_memory = config.get("log_memory", False)
 
@@ -266,7 +274,7 @@ class BaseNode(ABC):
     def local_round_done(self) -> None:
         self.round += 1
 
-    def get_model_weights(self, chop_model:bool=False) -> Dict[str, int|Dict[str, Any]]:
+    def get_model_weights(self, chop_model:bool=False, get_external_repr:bool=True) -> Dict[str, int|Dict[str, Any]]:
         """
         Share the model weights
         params:
@@ -275,6 +283,9 @@ class BaseNode(ABC):
         if chop_model:
             model, _ = self.model_utils.get_split_model(self.model, self.config["split_layer"])
             model = model.state_dict()
+        elif get_external_repr and self.malicious_type != "normal":
+            # Get the external representation of the malicious model
+            model = self.get_malicious_model_weights()
         else:
             model = self.model.state_dict()
         message: Dict[str, int|Dict[str, Any]] = {"sender": self.node_id, "round": self.round, "model": model}
@@ -290,6 +301,20 @@ class BaseNode(ABC):
                 message["model"][key] = message["model"][key].to("cpu")
 
         return message
+    
+    def get_malicious_model_weights(self) -> Dict[str, Tensor]:
+        """
+        Get the external representation of the model based on the malicious type.
+        """
+        if self.malicious_type == "sign_flip":
+            return SignFlipAttack(self.config, self.model.state_dict()).get_representation()
+        elif self.malicious_type == "bad_weights":
+            # print("bad weights attack")
+            return BadWeightsAttack(self.config, self.model.state_dict()).get_representation()
+        elif self.malicious_type == "add_noise":
+            return AddNoiseAttack(self.config, self.model.state_dict()).get_representation()
+        else:
+            return self.model.state_dict()
 
     def get_local_rounds(self) -> int:
         return self.round
