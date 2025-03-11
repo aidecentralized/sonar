@@ -324,16 +324,18 @@ def non_iid_balanced(
     """
     Returns a non-IID balanced dataset.
     """
+    print("IM HERE_______________")
     if is_train:
         y = np.array(dset_obj.train_dset.targets)
     else:
         y = np.array(dset_obj.test_dset.targets)
+    print("P1~")
 
     n_cls = dset_obj.num_cls
     clnt_data_list = (np.ones(n_client) * n_data_per_clnt).astype(int)
     if cls_priors is None:
         cls_priors = np.random.dirichlet(alpha=[alpha] * n_cls, size=n_client)
-
+    print("P2~")
     prior_cumsum = np.cumsum(cls_priors, axis=1)
     idx_list = [np.where(y == i)[0] for i in range(n_cls)]
     cls_amount = np.array([len(idx_list[i]) for i in range(n_cls)])
@@ -343,8 +345,9 @@ def non_iid_balanced(
     ]
     clnt_idx = [[] for _ in range(n_client)]
     clients = list(np.arange(n_client))
-
+    print("P3~")
     while np.sum(clnt_data_list) != 0:
+        print("P4~")
         curr_clnt = np.random.choice(clients)
         if clnt_data_list[curr_clnt] <= 0:
             clients.remove(curr_clnt)
