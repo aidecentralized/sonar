@@ -10,7 +10,7 @@ from typing import List
 
 from utils.types import ConfigType
 from utils.config_utils import process_config
-from utils.post_hoc_plot_utils2 import aggregate_metrics_across_users, plot_all_metrics
+from utils.post_hoc_plot_utils import aggregate_metrics_across_users, plot_all_metrics
 
 from configs.sys_config import get_algo_configs, get_device_ids
 from configs.algo_config import fedstatic
