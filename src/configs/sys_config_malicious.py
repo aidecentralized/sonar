@@ -6,7 +6,7 @@ import random
 from utils.types import ConfigType
 
 # from utils.config_utils import get_sliding_window_support, get_device_ids
-from .algo_config import (
+from .algo_config_malicious import (
     malicious_algo_config_list,
     default_config_list,
     fedstatic,  # type: ignore
