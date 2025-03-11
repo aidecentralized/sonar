@@ -22,10 +22,7 @@ class FedStaticNode(BaseFedAvgClient):
         super().__init__(config, comm_utils)
         self.topology = select_topology(config, self.node_id)
         self.topology.initialize()
-        print("about to set data params")
-        self.set_data_parameters(config) # TODO this should not need to be reset
-        print("finished setting data params")
-        assert hasattr(self, "dloader"), f"Data loader not set in {self.node_id}"
+        self.set_data_parameters(config) 
     
     def get_neighbors(self) -> List[int]:
         """
