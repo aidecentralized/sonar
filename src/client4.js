@@ -835,10 +835,143 @@ class WebRTCCommUtils {
     }
   }
 
+  /**
+   * Aggregate the current model weights with peer weights
+   * @param {Object} peer_weights - An object containing peer weights
+   * @returns {Promise<void>}
+   */
+  async aggregate(peer_weights) {
+    this.log("Aggregating model weights");
+    
+    // Get current model weights
+    const currentModelWeights = await this.model.getModelWeights();
+    
+    // Prepare weights for averaging
+    const allWeights = [
+      { model: currentModelWeights, weight: 1.0 }
+    ];
+    
+    // Add peer weights to the collection
+    for (const [peerId, peerWeight] of Object.entries(peer_weights)) {
+      if (peerWeight && peerWeight.model) {
+        allWeights.push({ model: peerWeight.model, weight: 1.0 });
+      }
+    }
+    
+    // Normalize weights (equal weighting)
+    const normalizedWeight = 1.0 / allWeights.length;
+    allWeights.forEach(item => item.weight = normalizedWeight);
+    
+    // Perform weighted average of all models
+    const aggregatedWeights = {};
+    
+    // Get all keys from the state dictionary
+    const stateDict = await this.model.getStateDict();
+    
+    for (const key of Object.keys(stateDict)) {
+      let isFirstModel = true;
+      
+      for (const { model, weight } of allWeights) {
+        try {
+          if (!(key in model)) {
+            continue;
+          }
+          
+          if (isFirstModel) {
+            // Initialize with the first model's weighted value
+            aggregatedWeights[key] = this.scaleWeight(model[key], weight);
+            isFirstModel = false;
+          } else {
+            // Add subsequent weighted values
+            aggregatedWeights[key] = this.addWeights(
+              aggregatedWeights[key], 
+              this.scaleWeight(model[key], weight)
+            );
+          }
+        } catch (e) {
+          this.log(`Error processing key ${key}: ${e.message}`);
+        }
+      }
+    }
+    
+    // Update the model with aggregated weights
+    await this.model.setModelWeights(aggregatedWeights);
+    
+    this.log("Model weights aggregated successfully");
+  }
+  
+  /**
+   * Helper method to scale a weight tensor by a coefficient
+   * @param {Object} weight - The weight tensor object
+   * @param {number} coeff - The coefficient to scale by
+   * @returns {Object} The scaled weight tensor
+   */
+  scaleWeight(weight, coeff) {
+    // Handle tensor.js objects
+    if (weight.__isTensor) {
+      const scaledData = new Float32Array(weight.data.length);
+      for (let i = 0; i < weight.data.length; i++) {
+        scaledData[i] = weight.data[i] * coeff;
+      }
+      return {
+        __isTensor: true,
+        data: scaledData,
+        dtype: weight.dtype,
+        shape: weight.shape
+      };
+    }
+    // Handle tf.js tensors
+    else if (weight instanceof tf.Tensor) {
+      return weight.mul(coeff);
+    }
+    // Handle plain arrays or TypedArrays
+    else {
+      const result = new Float32Array(weight.length);
+      for (let i = 0; i < weight.length; i++) {
+        result[i] = weight[i] * coeff;
+      }
+      return result;
+    }
+  }
+  
+  /**
+   * Helper method to add two weight tensors
+   * @param {Object} weight1 - The first weight tensor
+   * @param {Object} weight2 - The second weight tensor
+   * @returns {Object} The sum of the two weight tensors
+   */
+  addWeights(weight1, weight2) {
+    // Handle tensor.js objects
+    if (weight1.__isTensor && weight2.__isTensor) {
+      const sumData = new Float32Array(weight1.data.length);
+      for (let i = 0; i < weight1.data.length; i++) {
+        sumData[i] = weight1.data[i] + weight2.data[i];
+      }
+      return {
+        __isTensor: true,
+        data: sumData,
+        dtype: weight1.dtype,
+        shape: weight1.shape
+      };
+    }
+    // Handle tf.js tensors
+    else if (weight1 instanceof tf.Tensor && weight2 instanceof tf.Tensor) {
+      return weight1.add(weight2);
+    }
+    // Handle plain arrays or TypedArrays
+    else {
+      const result = new Float32Array(weight1.length);
+      for (let i = 0; i < weight1.length; i++) {
+        result[i] = weight1[i] + weight2[i];
+      }
+      return result;
+    }
+  }
+
   async startTraining() {
     this.log('started training, loading dataset...');
   
-    const filePath = path.resolve(__dirname, './datasets/imgs/bloodmnist/bloodmnist_test.json');
+    const filePath = path.resolve(__dirname, './datasets/imgs/bloodmnist/cifar10_test.json');
     const rawData = fs.readFileSync(filePath, 'utf8');
     const data = JSON.parse(rawData);
     const dataset = processData(data);
@@ -846,9 +979,9 @@ class WebRTCCommUtils {
     this.log(`dataset loaded... training model for ${this.config.epochs}  epochs...`);
   
     for (let i = 0; i < this.config.epochs; i++) {
-      // await this.model.local_train_one(dataset)
+      await this.model.local_train_one(dataset)
       // simulate training this a sleep
-      await new Promise(res => setTimeout(res, 30000)), this.log("finished simulated training for 60 seconds");
+      // await new Promise(res => setTimeout(res, 30000)), this.log("finished simulated training for 60 seconds");
 
       this.log(`finished round ${i} training`);
 
@@ -861,7 +994,10 @@ class WebRTCCommUtils {
       const peer_weights = await this.receive();
       this.log(`Round ${i}: Received weights from peers, performing aggregation...`);
       
-      // TODO: perform fed avg with peer_weights
+      // Perform federated averaging with peer_weights
+      await this.aggregate(peer_weights);
+      this.log(`Round ${i}: Completed aggregation of model weights`);
+      
       this.currentRound = i + 1;
     }
 
@@ -1103,7 +1239,7 @@ async function testSendWeights() {
     const resNet10Model = new ResNet10();
 
     // Load the js2python mapping
-    const js2pythonMapping = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'ind2python.json'), 'utf8'));
+    const js2pythonMapping = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'js2python.json'), 'utf8'));
 
     // Get the weights and layers from the model
     const weights = resNet10Model.model.getWeights();
