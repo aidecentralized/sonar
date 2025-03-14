@@ -6,6 +6,30 @@
   <title>Browser App</title>
 </head>
 <body>
+  <h1>Config</h1>
+  <form id="config-form">
+    <div>
+      <label for="signaling_server">signaling_server:</label>
+      <input type="text" id="signaling_server" name="signaling_server" value="ws://localhost:8765" required>
+    </div>
+    <div>
+      <label for="num_users">num_users:</label>
+      <input type="text" id="num_users" name="num_users" value="3" required>
+    </div>
+    <div>
+      <label for="session_id">session_id:</label>
+      <input type="text" id="session_id" name="session_id" value="1111" required>
+    </div>
+    <div>
+      <label for="epochs">epochs:</label>
+      <input type="text" id="epochs" name="epochs" value="10" required>
+    </div>
+    <button type="button" id="save-config-button">Save Config</button>
+  </form>
+  <h1>Data</h1>
+  <input id="data-input" type="file" accept=".json">
+  <h1>Train</h1>
+  <button id="start-button" disabled>Connect</button>
   <h1>Logs:</h1>
   <div id="console-output"></div>
   <script type="module" src="main.js"></script>
