@@ -9,6 +9,13 @@
   <h1>Config</h1>
   <form id="config-form">
     <div>
+      <label for="topology">topology:</label>
+      <select id="topology" name="topology">
+          <option value="ring">ring</option>
+          <option value="fully_connected">fully_connected</option>
+      </select>
+    </div>
+    <div>
       <label for="signaling_server">signaling_server:</label>
       <input type="text" id="signaling_server" name="signaling_server" value="ws://localhost:8765" required>
     </div>
