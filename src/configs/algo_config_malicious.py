@@ -31,7 +31,8 @@ iid_dispfl_clients_new: ConfigType = {
 traditional_fl: ConfigType = {
     # Collaboration setup
     "algo": "fedavg",
-    "rounds": 5,
+    "rounds": 2,
+
     # Model parameters
     "model": "resnet10",
     "model_lr": 3e-4,
@@ -196,19 +197,18 @@ swarm: ConfigType = {
     "average_last_layer": True,
     "mask_finetune_last_layer": False,
     # params for model
-   "position": 0,
+    "position": 0,
 }
 
 fedstatic: ConfigType = {
     # Collaboration setup
     "algo": "fedstatic",
-    "topology": {"name": "watts_strogatz", "k": 3, "p": 0.2}, # type: ignore
-    # "topology": {"name": "base_graph", "max_degree": 2}, # type: ignore
-    "rounds": 3,
+    "topology": {"name": "ring"}, # type: ignore
+    "rounds": 200,
     # Model parameters
-    "optimizer": "sgd",
+    "optimizer": "sgd", # TODO comment out for real training
     "model": "resnet10",
-    "model_lr": 0.1,  # lr for sgd
+    "model_lr": 0.1, # 3e-4,
     "batch_size": 256,
 }
 
@@ -230,11 +230,12 @@ fed_dynamic_weights: ConfigType = {
     # comparison describes the metric or algorithm used to compare the weights of the models
     # sampling describes the method used to sample the neighbors after the comparison
     "topology": {"comparison": "weights_l2", "sampling": "closest"}, # type: ignore
-    "rounds": 20,
+    "rounds": 200,
 
     # Model parameters
+    "optimizer": "sgd",
     "model": "resnet10",
-    "model_lr": 3e-4,
+    "model_lr": 0.1,
     "batch_size": 256,
 }
 
@@ -324,11 +325,10 @@ algo_config_list: List[ConfigType] = [
 
 # Malicious List of algorithm configurations
 malicious_algo_config_list: List[ConfigType] = [
-    traditional_fl,
+    fedstatic,
     malicious_traditional_data_poisoning_attack,
     malicious_traditional_model_poisoning_attack,
     malicious_traditional_model_update_attack,
 ]
 
-default_config_list: List[ConfigType] = [traditional_fl]
-# default_config_list: List[ConfigType] = [fedstatic, fedstatic, fedstatic, fedstatic]
+default_config_list: List[ConfigType] = malicious_algo_config_list

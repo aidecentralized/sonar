@@ -29,6 +29,12 @@ from utils.data_utils import (
     TransformDataset,
     CorruptDataset,
 )
+
+# import the possible attacks
+from algos.attack_add_noise import AddNoiseAttack
+from algos.attack_bad_weights import BadWeightsAttack
+from algos.attack_sign_flip import SignFlipAttack
+
 from utils.log_utils import LogUtils
 from utils.model_utils import ModelUtils
 from utils.community_utils import (
@@ -36,7 +42,7 @@ from utils.community_utils import (
     get_dset_balanced_communities,
     get_dset_communities,
 )
-from utils.types import ConfigType
+from utils.types import ConfigType, TorchModelType
 from utils.dropout_utils import NodeDropout
 from utils.gias import gia_main, LaplacianGossipMatrix, gia_from_disambiguate, compute_param_delta, ReconstructOptim, ParameterTracker 
 
@@ -98,6 +104,7 @@ class BaseNode(ABC):
         self, config: Dict[str, Any], comm_utils: CommunicationManager
     ) -> None:
         self.set_constants()
+        self.config = config
         self.comm_utils = comm_utils
         self.node_id = self.comm_utils.get_rank()
         self.comm_utils.register_node(self)
@@ -125,6 +132,8 @@ class BaseNode(ABC):
 
         if "gia" in config and self.node_id in config["gia_attackers"]:
             self.gia_attacker = True
+
+        self.malicious_type = config.get("malicious_type", "normal")
         
         self.log_memory = config.get("log_memory", False)
 
@@ -138,7 +147,7 @@ class BaseNode(ABC):
         self.round = 0
         self.EMPTY_MODEL_TAG = "EMPTY_MODEL"
 
-    def setup_logging(self, config: Dict[str, ConfigType]) -> None:
+    def setup_logging(self, config: ConfigType) -> None:
         """
         Sets up logging for the node by creating necessary directories and initializing logging utilities.
 
@@ -167,17 +176,11 @@ class BaseNode(ABC):
             print(f"Exiting to prevent accidental overwrite{reset_code}")
             sys.exit(1)
 
-        # TODO: Check if the plot directory should be unique to each node
-        try:
-            self.plot_utils = PlotUtils(config)
-        except FileExistsError:
-            print(f"Plot directory for the node {self.node_id} already exists")
-
         self.log_utils = LogUtils(config)
         if self.node_id == 0:
             self.log_utils.log_console("Config: {}".format(config))
 
-    def setup_cuda(self, config: Dict[str, ConfigType]) -> None:
+    def setup_cuda(self, config: ConfigType) -> None:
         """add docstring here"""
         # Need a mapping from rank to device id
         if (config.get("assign_based_on_host", False)):
@@ -237,7 +240,7 @@ class BaseNode(ABC):
         else:
             self.loss_fn = torch.nn.CrossEntropyLoss()
 
-    def set_shared_exp_parameters(self, config: Dict[str, ConfigType]) -> None:
+    def set_shared_exp_parameters(self, config: ConfigType) -> None:
         self.num_collaborators: int = config["num_collaborators"] # type: ignore
         if self.node_id != 0:
             community_type, number_of_communities = config.get(
@@ -249,13 +252,13 @@ class BaseNode(ABC):
                 else len(set(config["dset"].values()))
             )
             if community_type is not None and community_type == "dataset":
-                self.communities = get_dset_communities(config["num_users"], num_dset)
+                self.communities = get_dset_communities(config["num_users"], num_dset) # type: ignore
             elif community_type is None or number_of_communities == 1:
-                all_users = list(range(1, config["num_users"] + 1))
+                all_users = list(range(1, config["num_users"] + 1)) # type: ignore
                 self.communities = {user: all_users for user in all_users}
             elif community_type == "random":
                 self.communities = get_random_communities(
-                    config["num_users"], number_of_communities
+                    config["num_users"], number_of_communities # type: ignore
                 )
             elif community_type == "balanced":
                 num_dset = (
@@ -276,13 +279,21 @@ class BaseNode(ABC):
     def local_round_done(self) -> None:
         self.round += 1
 
-    def get_model_weights(self) -> Dict[str, Tensor]:
+    def get_model_weights(self, chop_model:bool=False, get_external_repr:bool=True) -> Dict[str, int|Dict[str, Any]]:
         """
         Share the model weights
+        params:
+        @chop_model: bool, if True, the model will only send the client part of the model. Only being used by Split Learning
         """
-        self.model.eval() # set model to eval
-
-        message = {"sender": self.node_id, "round": self.round, "model": self.model.state_dict()}
+        if chop_model:
+            model, _ = self.model_utils.get_split_model(self.model, self.config["split_layer"])
+            model = model.state_dict()
+        elif get_external_repr and self.malicious_type != "normal":
+            # Get the external representation of the malicious model
+            model = self.get_malicious_model_weights()
+        else:
+            model = self.model.state_dict()
+        message: Dict[str, int|Dict[str, Any]] = {"sender": self.node_id, "round": self.round, "model": model}
 
         if "gia" in self.config and hasattr(self, 'images') and hasattr(self, 'labels'):
             # also stream image and labels
@@ -290,10 +301,25 @@ class BaseNode(ABC):
             message["labels"] = self.labels
 
         # Move to CPU before sending
-        for key in message["model"].keys():
-            message["model"][key] = message["model"][key].to("cpu")
-            
+        if isinstance(message["model"], dict):
+            for key in message["model"].keys():
+                message["model"][key] = message["model"][key].to("cpu")
+
         return message
+    
+    def get_malicious_model_weights(self) -> Dict[str, Tensor]:
+        """
+        Get the external representation of the model based on the malicious type.
+        """
+        if self.malicious_type == "sign_flip":
+            return SignFlipAttack(self.config, self.model.state_dict()).get_representation()
+        elif self.malicious_type == "bad_weights":
+            # print("bad weights attack")
+            return BadWeightsAttack(self.config, self.model.state_dict()).get_representation()
+        elif self.malicious_type == "add_noise":
+            return AddNoiseAttack(self.config, self.model.state_dict()).get_representation()
+        else:
+            return self.model.state_dict()
 
     def get_local_rounds(self) -> int:
         return self.round
@@ -400,7 +426,7 @@ class BaseNode(ABC):
         return is_working
 
     def set_model_weights(
-        self, model_wts: OrderedDict[str, Tensor], keys_to_ignore: List[str] = []
+        self, model_wts: TorchModelType, keys_to_ignore: List[str] = []
     ) -> None:
         """
         Set the model weights
@@ -661,6 +687,7 @@ class BaseClient(BaseNode):
             self.classes_of_interest = classes
             self.train_indices = train_indices
             self.train_dset = train_dset
+
             self.dloader = DataLoader(train_dset, batch_size=1, shuffle=False)
             self._test_loader = DataLoader(test_dset, batch_size=1, shuffle=False)
 
@@ -671,6 +698,7 @@ class BaseClient(BaseNode):
             self.log_utils.log_base_image(train_data,
                                           train_labels,
                                           self.node_id)
+
         else:
             if config.get("test_samples_per_class", None) is not None:
                 test_dset, _ = balanced_subset(test_dset, config["test_samples_per_class"])

@@ -1,8 +1,10 @@
+from typing import List
 from algos.topologies.base import BaseTopology
 from utils.types import ConfigType
 
-from math import ceil
+from math import ceil, log2
 import networkx as nx
+from algos.topologies.base_exponential import OnePeerExponentialGraph, HyperHyperCube, SimpleBaseGraph, BaseGraph
 
 
 class RingTopology(BaseTopology):
@@ -161,6 +163,104 @@ class LineTopology(BaseTopology):
             self.graph.add_node(i)
             self.graph.add_edge(i-1, i)
 
+class DynamicGraph(BaseTopology):
+    def __init__(self, config: ConfigType, rank: int):
+        super().__init__(config, rank)
+        self.itr = -1
+
+    def _convert_labels_to_int(self) -> None:
+        """
+        Performs two operations:
+        1. Convert the labels of the graph to integers - useful for grid like graphs where labels are tuples
+        2. Convert the graph to use 1-based indexing - useful for indexing because we reserve 0 for the super node
+        """
+        if self.graph is None:
+            raise ValueError("Graph not initialized")
+        self.graph = [nx.convert_node_labels_to_integers(graph, first_label=1) for graph in self.graph]  # type: ignore
+
+    def generate_graph(self) -> None:
+        raise NotImplementedError
+
+    def _convert_weight_matrices_to_graph(self, w_list):
+        g_list = []
+        for w in w_list:
+            G = nx.from_numpy_array(w.numpy(), create_using=nx.DiGraph)
+            G.remove_edges_from(nx.selfloop_edges(G))
+            g_list.append(G)
+        return g_list
+    
+    def get_in_neighbors(self):
+        """
+        Returns the list of in neighbours of the current node
+        """
+        self.itr += 1
+        return list(self.graph[self.itr%len(self.graph)].predecessors(self.rank))
+
+    def get_out_neighbors(self, i):
+        """
+        Returns the list of out neighbours of the current node
+        """
+        self.itr += 1
+        return list(self.graph[self.itr%len(self.graph)].successors(i))
+    
+    def get_all_neighbours(self) -> List[int]:
+        self.itr += 1
+        return self.get_in_neighbors(self.rank)
+
+class DynamicBaseGraph(DynamicGraph):
+    def __init__(self, config: ConfigType, rank: int):
+        super().__init__(config, rank)
+
+    def generate_graph(self, class_name, *args, **kwargs) -> None:
+        w_list = class_name(*args, **kwargs).w_list
+        self.graph = self._convert_weight_matrices_to_graph(w_list)
+
+
+class OnePeerExponentialTopology(DynamicBaseGraph):
+    def __init__(self, config: ConfigType, rank: int):
+        super().__init__(config, rank)
+
+    def generate_graph(self) -> None:
+        super().generate_graph(OnePeerExponentialGraph, self.num_users)
+
+    # def generate_graph(self) -> None:
+    #     self.graph = [nx.DiGraph() for _ in range(self.num_users)]
+
+    #     num_neighbors = int(log2(self.num_users-1))
+
+    #     for j in range(num_neighbors+1):
+    #         for i in range(self.num_users):
+    #             self.graph[j].add_edge(self.rank, (i+2**j)%self.num_users)
+
+class HyperHyperCubeTopology(DynamicBaseGraph):
+    def __init__(self, config: ConfigType, rank: int):
+        super().__init__(config, rank)
+        self.seed = config["seed"]
+        self.max_degree = config["topology"].get("max_degree", 1)
+
+    def generate_graph(self) -> None:
+        super().generate_graph(HyperHyperCube, self.num_users, self.max_degree, self.seed)
+
+class SimpleBaseGraphTopology(DynamicBaseGraph):
+    def __init__(self, config: ConfigType, rank: int):
+        super().__init__(config, rank)
+        self.seed = config["seed"]
+        self.max_degree = config["topology"].get("max_degree", 1)
+        self.inner_edges = config["topology"].get("inner_edges", True)
+
+    def generate_graph(self) -> None:
+        super().generate_graph(SimpleBaseGraph, self.num_users, self.max_degree, self.seed, self.inner_edges)
+
+class BaseGraphTopology(DynamicBaseGraph):
+    def __init__(self, config: ConfigType, rank: int):
+        super().__init__(config, rank)
+        self.seed = config["seed"]
+        self.max_degree = config["topology"].get("max_degree", 1)
+        self.inner_edges = config["topology"].get("inner_edges", True)
+
+    def generate_graph(self) -> None:
+        super().generate_graph(BaseGraph, self.num_users, self.max_degree, self.seed, self.inner_edges)
+
 def select_topology(config: ConfigType, rank: int) -> BaseTopology:
     """
     Selects the topology based on the configuration.
@@ -196,4 +296,12 @@ def select_topology(config: ConfigType, rank: int) -> BaseTopology:
         return BarbellTopology(config, rank)
     if topology_name == "line":
         return LineTopology(config, rank)
+    if topology_name == "one_peer_exponential":
+        return OnePeerExponentialTopology(config, rank)
+    if topology_name == "hyper_hypercube":
+        return HyperHyperCubeTopology(config, rank)
+    if topology_name == "simple_base_graph":
+        return SimpleBaseGraphTopology(config, rank)
+    if topology_name == "base_graph":
+        return BaseGraphTopology(config, rank)
     raise ValueError(f"Topology {topology_name} not implemented")

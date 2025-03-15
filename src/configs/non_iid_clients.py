@@ -189,7 +189,7 @@ def get_fmow_support(num_clients, domains=FMOW_DMN):
 
 wilds_dpath: defaultdict = defaultdict(lambda: "imgs")
 
-domainnet_base_dir = "/u/abhi24/matlaberp2/p2p/imgs/domainnet/"
+domainnet_base_dir = "/u/redacted24/matlaberp2/p2p/imgs/domainnet/"
 domainnet_dpath = {
     "domainnet_real": domainnet_base_dir,
     "domainnet_sketch": domainnet_base_dir,

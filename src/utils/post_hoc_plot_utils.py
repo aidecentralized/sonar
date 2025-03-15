@@ -24,7 +24,7 @@ def get_node_type(node_id: str, logs_dir: str) -> str:
     config_path = os.path.join(logs_dir, f'node_{node_id}', 'config.json')
     with open(config_path, 'r') as file:
         config = json.load(file)
-    
+
     # Check if node has a malicious type
     return config.get("malicious_type", "normal")
 
@@ -77,14 +77,14 @@ def aggregate_metrics_across_users(logs_dir: str, output_dir: Optional[str] = No
         node_id = node.split('_')[-1]
         metrics = compute_per_user_metrics(node_id, logs_dir)
         metrics['node'] = node
-        
+
         # Get node type and categorize metrics
         node_type = get_node_type(node_id, logs_dir)
         if node_type == "normal":
             normal_metrics.append(metrics)
         elif node_type != "normal":  # Check for malicious nodes
             malicious_metrics.append(metrics)
-        
+
         all_metrics.append(metrics)
 
     # Convert to DataFrame for easier processing
@@ -189,7 +189,7 @@ def aggregate_per_round_data(logs_dir: str, metrics_map: Optional[Dict[str, str]
 def plot_metric_per_round(metric_df: pd.DataFrame, rounds: np.ndarray, metric_name: str, ylabel: str, output_dir: str, plot_avg_only: bool = False) -> None:
     """Plot per-round data for each user and aggregate (mean and std)."""
     plt.figure(figsize=(12, 8), dpi=300)
-    
+
     # Plot per-user data if plot_avg_only is False
     if not plot_avg_only:
         for col in metric_df.columns:
@@ -226,20 +226,20 @@ def plot_metric_per_round(metric_df: pd.DataFrame, rounds: np.ndarray, metric_na
     plt.close()
 
 def compute_per_user_realtime_data(
-    node_id: str, 
-    logs_dir: str, 
-    time_interval: int, 
+    node_id: str,
+    logs_dir: str,
+    time_interval: int,
     num_ticks: Optional[int] = None
 ) -> Dict[str, pd.Series]:
     """
     Optimized computation of per-user real-time data based on elapsed time and logged metrics per round.
-    
+
     Args:
         node_id (str): ID of the node (user).
         logs_dir (str): Directory path where logs are stored.
         time_interval (int): Interval in seconds for each tick in the real-time plot.
         num_ticks (Optional[int]): Total number of ticks to fill. If specified, fills remaining ticks with last known value.
-    
+
     Returns:
         Dict[str, pd.Series]: A dictionary with real-time metrics Series for each metric, indexed by time.
     """
@@ -253,7 +253,7 @@ def compute_per_user_realtime_data(
 
     # Initialize per_time_data for each metric
     per_time_data = {key: [] for key in per_round_data.keys() if key != 'iteration'}
-    
+
     # Determine maximum time based on the final value in round_times and calculate the number of ticks
     max_time = round_times[-1] if len(round_times) > 0 else 0
     calculated_ticks = int(max_time // time_interval + 1)
@@ -270,7 +270,7 @@ def compute_per_user_realtime_data(
             round_idx += 1
         # Use the last valid round's metrics for the current tick
         latest_round_idx = round_idx - 1 if round_idx > 0 else None
-        
+
         for key in per_time_data.keys():
             if latest_round_idx is not None:
                 per_time_data[key].append(per_round_data[key][latest_round_idx])
@@ -287,25 +287,25 @@ def compute_per_user_realtime_data(
     per_time_data = {
         key: pd.Series(data=values, index=time_ticks) for key, values in per_time_data.items()
     }
-    
+
     return per_time_data
 
 
 def aggregate_per_realtime_data(
-    logs_dir: str, 
-    metrics_map: Optional[Dict[str, str]] = None, 
-    time_interval: Optional[int] = None, 
+    logs_dir: str,
+    metrics_map: Optional[Dict[str, str]] = None,
+    time_interval: Optional[int] = None,
     num_ticks: Optional[int] = 200,
 ) -> Dict[str, pd.DataFrame]:
     """
     Aggregate the per-time data for all users.
-    
+
     Args:
         logs_dir (str): Directory path where logs are stored.
         metrics_map (Optional[Dict[str, str]]): Mapping of metric names to file names.
         time_interval (Optional[int]): Interval in seconds for each tick in the real-time plot.
         num_ticks (Optional[int]): Number of ticks to display. Used if time_interval is not provided.
-    
+
     Returns:
         Dict[str, pd.DataFrame]: A dictionary with real-time metrics DataFrames for each metric, indexed by time.
     """
@@ -326,10 +326,10 @@ def aggregate_per_realtime_data(
             node_id = node.split('_')[-1]
             time_data = load_logs(node_id, 'time_elapsed', logs_dir)
             max_elapsed_time = max(max_elapsed_time, time_data['time_elapsed'].max())
-        
+
         # Calculate time_interval based on max_elapsed_time and num_ticks
         time_interval = max_elapsed_time // num_ticks
-    
+
     # Initialize aggregated data storage
     all_users_data = {metric: [] for metric in metrics_map}
     time_ticks = None
@@ -338,7 +338,7 @@ def aggregate_per_realtime_data(
     for node in nodes:
         node_id = node.split('_')[-1]
         user_data = compute_per_user_realtime_data(node_id, logs_dir, time_interval, num_ticks=num_ticks)
-        
+
         # Append data from each user
         for key in metrics_map:
             all_users_data[key].append(user_data[key].values)  # Each should be of shape (num_ticks,)
@@ -363,7 +363,7 @@ def aggregate_per_realtime_data(
 def plot_metric_per_realtime(metric_df: pd.DataFrame, time_ticks: np.ndarray, metric_name: str, ylabel: str, output_dir: str, plot_avg_only: bool = False) -> None:
     """
     Plot per-time elapsed data for each user and aggregate (mean and std).
-    
+
     Args:
         metric_df (pd.DataFrame): DataFrame containing the metric data for each user (one column per user).
         time_ticks (np.ndarray): Array of time elapsed values for each tick.
@@ -372,7 +372,7 @@ def plot_metric_per_realtime(metric_df: pd.DataFrame, time_ticks: np.ndarray, me
         output_dir (str): Directory to save the plot and CSV files.
     """
     plt.figure(figsize=(12, 8), dpi=300)
-    
+
     # Plot per-user data
     if not plot_avg_only:
         for col in metric_df.columns:
@@ -388,7 +388,7 @@ def plot_metric_per_realtime(metric_df: pd.DataFrame, time_ticks: np.ndarray, me
     # Ensure the output directory exists
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-    
+
     # Save the mean and std to CSV
     mean_metric.to_csv(f'{output_dir}{metric_name}_avg_per_time.csv', index=False)
     std_metric.to_csv(f'{output_dir}{metric_name}_std_per_time.csv', index=False)
@@ -405,7 +405,7 @@ def plot_metric_per_realtime(metric_df: pd.DataFrame, time_ticks: np.ndarray, me
     plt.title(f'{ylabel} per User and Aggregate over Time Elapsed', fontsize=16)
     plt.grid(True, linestyle='--', alpha=0.5)
     plt.legend(fontsize=12)
-    
+
     # Save the plot
     plt.savefig(f'{output_dir}{metric_name}_per_time.png')
     plt.close()
@@ -415,7 +415,7 @@ def plot_metric_per_realtime(metric_df: pd.DataFrame, time_ticks: np.ndarray, me
 def create_weighted_images(neighbors, output_dir: str, pos):
     """
     Create the images for the network visualization.
-    
+
     Parameters:
     - neighbors: 3d numpy array of neighbors for each node x - round, y - node, z - neighbors
     """
@@ -427,8 +427,8 @@ def create_weighted_images(neighbors, output_dir: str, pos):
         for node in range(neighbors.shape[1]):
             for neighbor in neighbors[round][node]:
                 freq[node][neighbor-1] += 1
-                
-        # Create the directed graph 
+
+        # Create the directed graph
         graph = nx.DiGraph()
         #add edges based on which edges in freq are greater than 0 and use that as the weight
         for i in range(neighbors.shape[1]):
@@ -437,9 +437,9 @@ def create_weighted_images(neighbors, output_dir: str, pos):
                     graph.add_edge(i + 1, j + 1, weight=3 * freq[i][j])
 
 
-            
-        
-        # draw nodes 
+
+
+        # draw nodes
         nx.draw_networkx_nodes(graph, pos, node_size=700, node_color="skyblue")
         nx.draw_networkx_labels(graph, pos, font_size=8, font_weight="bold")
 
@@ -450,7 +450,7 @@ def create_weighted_images(neighbors, output_dir: str, pos):
             if (u,v) not in curvatureDict:
                 curvatureDict[(u,v)] = 0.1
                 curvatureDict[(v,u)] = 0.1
-            
+
             rad = curvatureDict[(u,v)]
             nx.draw_networkx_edges(
                 graph,
@@ -465,26 +465,26 @@ def create_weighted_images(neighbors, output_dir: str, pos):
         # Create the image
         plt.title(f"Round {round + 1}")
         plt.savefig(f"{output_dir}/weighted_graph_{round + 1}.png")
-    
+
     plt.close()
 
 def create_images(neighbors, output_dir: str, pos):
     """
     Create the images for the network visualization.
-    
+
     Parameters:
     - neighbors: 3d numpy array of neighbors for each node x - round, y - node, z - neighbors
     """
     #create a network x graph and visualize it for each round
     for round in range(neighbors.shape[0]):
 
-        # Create the directed graph 
+        # Create the directed graph
         graph = nx.DiGraph()
         for node in range(neighbors.shape[1]):
             for neighbor in neighbors[round][node]:
                 graph.add_edge(node + 1, neighbor)
-        
-        # draw nodes 
+
+        # draw nodes
         nx.draw_networkx_nodes(graph, pos, node_size=700, node_color="skyblue")
         nx.draw_networkx_labels(graph, pos, font_size=8, font_weight="bold")
 
@@ -496,7 +496,7 @@ def create_images(neighbors, output_dir: str, pos):
             if (u,v) not in curvatureDict:
                 curvatureDict[(u,v)] = 0.1
                 curvatureDict[(v,u)] = 0.1
-            
+
             rad = curvatureDict[(u,v)]
             nx.draw_networkx_edges(
                 graph,
@@ -524,7 +524,7 @@ def create_video(output_dir: str, image_name: str):
 def create_heatmap(neighbors, output_dir: str):
         """
         Create a heatmap of the edge frequency.
-        
+
         Parameters:
         - neighbors: 3d numpy array of neighbors for each node x - round, y - node, z - neighbors
         """
@@ -567,10 +567,10 @@ def plot_all_metrics(logs_dir: str, per_round: bool = True, per_time: bool = Tru
 
         for key, display_name in metrics_map.items():
             plot_metric_per_round(
-                metric_df=all_users_data[key], 
-                rounds=all_users_data['rounds'], 
-                metric_name=key, 
-                ylabel=display_name, 
+                metric_df=all_users_data[key],
+                rounds=all_users_data['rounds'],
+                metric_name=key,
+                ylabel=display_name,
                 output_dir=f'{logs_dir}/plots/',
                 plot_avg_only=plot_avg_only,
                 **kwargs
@@ -586,15 +586,15 @@ def plot_all_metrics(logs_dir: str, per_round: bool = True, per_time: bool = Tru
 
         for key, display_name in metrics_map.items():
             plot_metric_per_realtime(
-                metric_df=all_users_data[key], 
-                time_ticks=all_users_data[key].index.values, 
-                metric_name=key, 
-                ylabel=display_name, 
+                metric_df=all_users_data[key],
+                time_ticks=all_users_data[key].index.values,
+                metric_name=key,
+                ylabel=display_name,
                 output_dir=f'{logs_dir}/plots/',
                 plot_avg_only=plot_avg_only,
                 **kwargs
                 )
-            
+
     neighbors = aggregate_neighbors_across_users(logs_dir)
     # create_heatmap(neighbors, f'{os.path.dirname(logs_dir)}/plots/')
     pos = nx.spring_layout(nx.DiGraph({i+1: [] for i in range(neighbors.shape[1])}))
@@ -603,7 +603,7 @@ def plot_all_metrics(logs_dir: str, per_round: bool = True, per_time: bool = Tru
     create_video(f'{os.path.dirname(logs_dir)}/plots/', 'graph')
     create_video(f'{os.path.dirname(logs_dir)}/plots/', 'weighted_graph')
     create_heatmap(neighbors, f'{os.path.dirname(logs_dir)}/plots/')
-    
+
 
     print("Plots saved as PNG files.")
 
@@ -633,8 +633,7 @@ def aggregate_neighbors_across_users(logs_dir: str) -> np.ndarray:
 # Use if you want to compute for multiple experiment folders
 if __name__ == "__main__":
     # Define the base directory where your experiment logs are saved
-    # base_logs_dir = '/mas/camera/Experiments/SONAR/abhi/'
-    base_logs_dir = "/u/yshi23/sonar/src/expt_dump/mia/"
+    base_logs_dir = '/mas/camera/Experiments/SONAR/redacted/'
 
     # Iterate over each subdirectory in the base directory
     for experiment_folder in os.listdir(base_logs_dir):

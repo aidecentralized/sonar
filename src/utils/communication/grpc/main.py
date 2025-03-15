@@ -172,7 +172,7 @@ class Servicer(comm_pb2_grpc.CommunicationServerServicer):
         with self.lock:
             # FIXME: This is a security vulnerability because
             # any node can update the ip and port of any other node
-            self.peer_ids[request.rank.rank]["ip"] = request.ip  # type: ignore
+            # self.peer_ids[request.rank.rank]["ip"] = request.ip  # type: ignore
             self.peer_ids[request.rank.rank]["port"] = request.port.port  # type: ignore
             return comm_pb2.Empty()  # type: ignore
 
@@ -287,7 +287,7 @@ class GRPCCommunication(CommunicationInterface):
             ],
         )
         comm_pb2_grpc.add_CommunicationServerServicer_to_server(self.servicer, self.listener)  # type: ignore
-        address = f"{self.host}:{self.port}"
+        address = f"*:{self.port}"
         self.listener.add_insecure_port(address)
         self.listener.start()
         print(f"Started listener on {address}")
@@ -439,6 +439,8 @@ class GRPCCommunication(CommunicationInterface):
     # 2. Tensor data - Tensors
     # 3. Metadata - JSON format
     def receive(self, node_ids: List[int]) -> List[Any]:
+        if not self.servicer.base_node:
+            raise Exception("Base node not registered")
         if self.synchronous:
             for id in node_ids:
                 self.wait_until_rounds_match(id)
@@ -446,7 +448,7 @@ class GRPCCommunication(CommunicationInterface):
         def callback_fn(stub: comm_pb2_grpc.CommunicationServerStub) -> OrderedDict[str, Tensor]:
             model = stub.get_model(comm_pb2.Empty()) # type: ignore
             with self.servicer.lock:
-                self.servicer.communication_cost_received += model.ByteSize()
+                self.servicer.communication_cost_received += model.ByteSize() # type: ignore
             return deserialize_message(model.buffer) # type: ignore
 
         for id in node_ids:
@@ -457,15 +459,13 @@ class GRPCCommunication(CommunicationInterface):
             items.append(item)
         return items
 
-    def receive_pushed(self) -> List[OrderedDict[str, Any]]:
+    def receive_pushed(self, num_tries:int = 20, time_to_wait:int = 2) -> List[OrderedDict[str, Any]]:
         # Fetch messages from self.servicer.received_data that have the same or earlier round than  self_round = self.servicer.base_node.get_local_rounds()
         if not self.servicer.base_node:
             raise Exception("Base node not registered")
         self_round = self.servicer.base_node.get_local_rounds()
         items: List[OrderedDict[str, Any]] = []
-        
-        num_tries = 20
-        time_to_wait = 2
+
         while num_tries > 0:
             while self.servicer.received_data.empty() and num_tries > 0:
                 num_tries -= 1
@@ -497,26 +497,27 @@ class GRPCCommunication(CommunicationInterface):
             if not self.is_own_id(peer_id):
                 self.send(peer_id, data)
 
-    def all_gather(self) -> Any:
+    def all_gather(self, ignore_super_node: bool) -> Any:
         # this will block until all items are received
         # from all peers
         items: List[Any] = []
         for peer_id in self.servicer.peer_ids:
-            if not self.is_own_id(peer_id):
-                received_model = self.receive([peer_id])[0]
-                items.append(received_model)
+            if ignore_super_node and peer_id == 0:
+                continue
+            if self.is_own_id(peer_id):
+                continue
+            received_model = self.receive([peer_id])[0]
+            items.append(received_model)
         return items
 
-    def received_push_from_all(self, received_models, peer_ids: Set[int]) -> bool:
+    def received_push_from_all(self, received_models: Dict[str, Any], peer_ids: Set[int]) -> bool:
         received_from = set()
         for model in received_models:
             sender = model.get("sender", 0)
             received_from.add(sender)
 
         print(f"Received from {received_from} and peer_ids are {peer_ids}")
-        
         return peer_ids == received_from
-        
 
     def all_gather_pushed(self) -> Any:
         # this will block until all items are received
@@ -539,6 +540,16 @@ class GRPCCommunication(CommunicationInterface):
 
     def get_comm_cost(self):
         return self.servicer.get_comm_cost()
+
+    def send_start(self, client_id: int, model: OrderedDict[str, Any]):
+        if self.rank != 0:
+            # throw an error if rank is not 0
+            raise Exception("Only the super node can send start")
+        else:
+            host = self.get_host_from_rank(client_id)
+            with grpc.insecure_channel(host) as channel: # type: ignore
+                stub = comm_pb2_grpc.CommunicationServerStub(channel)
+                stub.send_model(comm_pb2.Model(buffer=serialize_message(model))) # type: ignore
 
     def finalize(self):
         # 1. All nodes send finished to the super node
