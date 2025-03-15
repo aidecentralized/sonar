@@ -1,0 +1,13 @@
+{ 
+    "type": "module",
+    "dependencies": {
+      "18": "^0.0.0",
+      "@tensorflow/tfjs": "^4.22.0"
+    },
+    "devDependencies": {
+      "vite": "^5.0.0"
+    },
+    "scripts": {
+      "start": "vite"
+    }
+  }

@@ -1,0 +1,93 @@
+{
+    "exp_id": "test_javascript",
+    "num_users": 3,
+    "session_id": 1111,
+    "num_collaborators": 1,
+    "comm": {
+        "type": "RTC",
+        "host": null,
+        "rank": 1
+    },
+    "dset": "cifar10",
+    "dump_dir": "",
+    "dpath": "./datasets/imgs/cifar10/",
+    "seed": 2,
+    "device_ids": {
+        "node_0": [
+            0
+        ],
+        "node_1": [
+            1
+        ],
+        "node_2": [
+            0
+        ],
+        "node_3": [
+            1
+        ]
+    },
+    "algos": {
+        "node_0": {
+            "algo": "fedstatic",
+            "topology": {
+                "name": "ring"
+            },
+            "rounds": 5,
+            "model": "resnet10",
+            "model_lr": 0.0003,
+            "batch_size": 256
+        },
+        "node_1": {
+            "algo": "fedstatic",
+            "topology": {
+                "name": "ring"
+            },
+            "rounds": 5,
+            "model": "resnet10",
+            "model_lr": 0.0003,
+            "batch_size": 256
+        },
+        "node_2": {
+            "algo": "fedstatic",
+            "topology": {
+                "name": "ring"
+            },
+            "rounds": 5,
+            "model": "resnet10",
+            "model_lr": 0.0003,
+            "batch_size": 256
+        },
+        "node_3": {
+            "algo": "fedstatic",
+            "topology": {
+                "name": "ring"
+            },
+            "rounds": 5,
+            "model": "resnet10",
+            "model_lr": 0.0003,
+            "batch_size": 256
+        }
+    },
+    "samples_per_user": 20,
+    "train_label_distribution": "iid",
+    "test_label_distribution": "iid",
+    "dropout_dicts": {},
+    "exp_keys": [],
+    "num_gpus": 4,
+    "batch_size": 256,
+    "load_existing": false,
+    "experiment_name": "cifar10_3users_20_test_javascript",
+    "dset_name": "cifar10",
+    "log_path": "cifar10_3users_20_test_javascript_seed2/logs//node_1",
+    "images_path": "cifar10_3users_20_test_javascript_seed2/images/",
+    "results_path": "cifar10_3users_20_test_javascript_seed2",
+    "saved_models": "cifar10_3users_20_test_javascript_seed2/saved_models/",
+    "plot_path": "cifar10_3users_20_test_javascript_seed2/plots/",
+    "algo": "fedstatic",
+    "topology": {
+        "name": "ring"
+    },
+    "rounds": 5,
+    "model": "resnet10",
+    "model_lr": 0.0003
+}

@@ -671,7 +671,7 @@ class RTCCommUtils(CommunicationInterface):
         finished = False
         items = []
         # for peer_rank in node_ids: # TODO: change this back, small change for testing
-        for peer_rank in self.neighbors:
+        for peer_rank in self.neighbors.values():
             # self.wait_until_rounds_match(peer_rank)
             model_data = self.get_peer_weights(peer_rank)
             if (model_data):

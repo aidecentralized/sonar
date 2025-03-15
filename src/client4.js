@@ -226,7 +226,8 @@ class WebRTCCommUtils {
     }
 
     async connect() {
-        try {
+      try {
+          console.log(config)
           this.ws = new WebSocket(this.signalingServer);
     
           this.ws.onopen = () => {
@@ -236,7 +237,7 @@ class WebRTCCommUtils {
               this.ws.send(JSON.stringify({
                 type: 'create_session',
                 maxClients: this.size,
-                clientType: 'javascript'
+                clientType: 'javascript',
               }));
             } else {
               // Join an existing session
@@ -244,7 +245,8 @@ class WebRTCCommUtils {
                 type: 'join_session',
                 sessionId: this.sessionId,
                 clientType: 'javascript',
-                maxClients: this.size
+                maxClients: this.size,
+                config: config,
               }));
             }
           };
@@ -312,45 +314,51 @@ class WebRTCCommUtils {
    * handleTopology - Receives neighbors and attempts to connect or remove stale connections.
    */
     async handleTopology(data) {
-        this.log(`Handling topology... rank=${data.rank}, neighbors=${JSON.stringify(data.neighbors)} type ${typeof data.neighbors}`);
+      this.log(`Handling topology... rank=${data.rank}, neighbors=${JSON.stringify(data.neighbors)} type ${typeof data.neighbors}`);
 
-        this.rank = data.rank;
-        const newNeighbors = data.neighbors;
-        this.log(`Received topology. Rank: ${this.rank}, Neighbors: ${JSON.stringify(newNeighbors)}`);
+      this.rank = data.rank;
+      // neighbors: List[int] 
+      const newNeighbors = data.neighbors;
+      this.log(`Received topology. Rank: ${this.rank}, Neighbors: ${JSON.stringify(newNeighbors)}`);
 
-        if (this.neighbors) {
-            const oldNeighbors = new Set(Object.values(this.neighbors));
-            const newNeighborSet = new Set(Object.values(newNeighbors));
-            for (const rank of oldNeighbors) {
-                if (!newNeighborSet.has(rank)) {
-                    await this.cleanupConnection(rank);
-                }
-            }
-        }
+      if (this.neighbors) {
+          const oldNeighbors = new Set(Object.values(this.neighbors));
+          const newNeighborSet = new Set(Object.values(newNeighbors));
+          for (const rank of oldNeighbors) {
+              if (!newNeighborSet.has(rank)) {
+                  await this.cleanupConnection(rank);
+              }
+          }
+      }
 
-        this.neighbors = newNeighbors;
-        this.expectedConnections = Object.keys(newNeighbors).length;
+      this.neighbors = new Map(Object.entries(JSON.parse(newNeighbors)));
+      this.expectedConnections = Object.keys(newNeighbors).length;
 
-        // If we have zero neighbors, we can signal "node_ready" right away
-        if (this.expectedConnections === 0) {
-            this.broadcastNodeReady();
+      // If we have zero neighbors, we can signal "node_ready" right away
+      if (this.expectedConnections === 0) {
+          this.broadcastNodeReady();
 
-        }
+      }
 
-        // Initiate connections to higher-ranked neighbors
-        for (const neighborRank of Object.values(newNeighbors)) {
+      // Initiate connections to higher-ranked neighbors
+      this.log(`neighbors: ${this.neighbors}`);
+      this.log(typeof this.neighbors);
+      for (const neighborList of Object.values(this.neighbors)) {
+        this.log(`Initiating connection to ${neighbor}`);
           // TODO: uncomment this condition later
-            // if (neighborRank > this.rank && 
-            //     !this.connections.has(neighborRank) && 
+            // if (neighborRank > this.rank &&
+            //     !this.connections.has(neighborRank) &&
             //     !this.pendingConnections.has(neighborRank)) {
             //     this.log(`Initiating connection to ${neighborRank}`);
             //     this.pendingConnections.add(neighborRank);
             //     this.initiateConnection(neighborRank);
-            // }
-            this.log(`Initiating connection to ${neighborRank}`);
-            this.pendingConnections.add(neighborRank);
-            this.initiateConnection(neighborRank);
+          // }
+        for (const neighbor of neighborList) {
+          this.log(`Initiating connection to ${neighbor}`);
+          this.pendingConnections.add(neighbor);
+          this.initiateConnection(neighbor);
         }
+      }
     }
 
   // ------------------------ WebRTC Peer Connection ------------------------
@@ -1221,6 +1229,7 @@ class WebRTCCommUtils {
 const SESSION_ID = 1111; // Change this to a fixed or generated session ID
 const MAX_CLIENTS = 3;
 const IS_CREATOR = false; // Set to true if this should create a session
+const topology = {"name": "ring"};
 
 // ** Start WebRTC Comm Utils **
 const signalingServer = 'ws://localhost:8765'; // Your WebSocket server
@@ -1231,6 +1240,8 @@ let config = {
     num_users: MAX_CLIENTS,
     session_id: SESSION_ID,
     epochs: 5,
+    seed: 2,
+    algos: {"node_0": topology},
 }
 const node = new WebRTCCommUtils(config)
 
