@@ -1,0 +1,535 @@
+[
+  {
+    "layerInd": "2_0",
+    "layerName": "conv1.weight",
+    "dtype": "float32",
+    "shape": [
+      3,
+      3,
+      3,
+      64
+    ]
+  },
+  {
+    "layerInd": "3_0",
+    "layerName": "bn1.weight",
+    "dtype": "float32",
+    "shape": [
+      64
+    ]
+  },
+  {
+    "layerInd": "3_1",
+    "layerName": "bn1.bias",
+    "dtype": "float32",
+    "shape": [
+      64
+    ]
+  },
+  {
+    "layerInd": "3_2",
+    "layerName": "bn1.running_mean",
+    "dtype": "float32",
+    "shape": [
+      64
+    ]
+  },
+  {
+    "layerInd": "3_3",
+    "layerName": "bn1.running_var",
+    "dtype": "float32",
+    "shape": [
+      64
+    ]
+  },
+  {
+    "layerInd": "5_0",
+    "layerName": "layer1.0.conv1.weight",
+    "dtype": "float32",
+    "shape": [
+      3,
+      3,
+      64,
+      64
+    ]
+  },
+  {
+    "layerInd": "6_0",
+    "layerName": "layer1.0.bn1.weight",
+    "dtype": "float32",
+    "shape": [
+      64
+    ]
+  },
+  {
+    "layerInd": "6_1",
+    "layerName": "layer1.0.bn1.bias",
+    "dtype": "float32",
+    "shape": [
+      64
+    ]
+  },
+  {
+    "layerInd": "6_2",
+    "layerName": "layer1.0.bn1.running_mean",
+    "dtype": "float32",
+    "shape": [
+      64
+    ]
+  },
+  {
+    "layerInd": "6_3",
+    "layerName": "layer1.0.bn1.running_var",
+    "dtype": "float32",
+    "shape": [
+      64
+    ]
+  },
+  {
+    "layerInd": "8_0",
+    "layerName": "layer1.0.conv2.weight",
+    "dtype": "float32",
+    "shape": [
+      3,
+      3,
+      64,
+      64
+    ]
+  },
+  {
+    "layerInd": "9_0",
+    "layerName": "layer1.0.bn2.weight",
+    "dtype": "float32",
+    "shape": [
+      64
+    ]
+  },
+  {
+    "layerInd": "9_1",
+    "layerName": "layer1.0.bn2.bias",
+    "dtype": "float32",
+    "shape": [
+      64
+    ]
+  },
+  {
+    "layerInd": "9_2",
+    "layerName": "layer1.0.bn2.running_mean",
+    "dtype": "float32",
+    "shape": [
+      64
+    ]
+  },
+  {
+    "layerInd": "9_3",
+    "layerName": "layer1.0.bn2.running_var",
+    "dtype": "float32",
+    "shape": [
+      64
+    ]
+  },
+  {
+    "layerInd": "12_0",
+    "layerName": "layer2.0.conv1.weight",
+    "dtype": "float32",
+    "shape": [
+      3,
+      3,
+      64,
+      128
+    ]
+  },
+  {
+    "layerInd": "13_0",
+    "layerName": "layer2.0.bn1.weight",
+    "dtype": "float32",
+    "shape": [
+      128
+    ]
+  },
+  {
+    "layerInd": "13_1",
+    "layerName": "layer2.0.bn1.bias",
+    "dtype": "float32",
+    "shape": [
+      128
+    ]
+  },
+  {
+    "layerInd": "13_2",
+    "layerName": "layer2.0.bn1.running_mean",
+    "dtype": "float32",
+    "shape": [
+      128
+    ]
+  },
+  {
+    "layerInd": "13_3",
+    "layerName": "layer2.0.bn1.running_var",
+    "dtype": "float32",
+    "shape": [
+      128
+    ]
+  },
+  {
+    "layerInd": "15_0",
+    "layerName": "layer2.0.conv2.weight",
+    "dtype": "float32",
+    "shape": [
+      3,
+      3,
+      128,
+      128
+    ]
+  },
+  {
+    "layerInd": "16_0",
+    "layerName": "layer2.0.shortcut.0.weight",
+    "dtype": "float32",
+    "shape": [
+      1,
+      1,
+      64,
+      128
+    ]
+  },
+  {
+    "layerInd": "17_0",
+    "layerName": "layer2.0.bn2.weight",
+    "dtype": "float32",
+    "shape": [
+      128
+    ]
+  },
+  {
+    "layerInd": "17_1",
+    "layerName": "layer2.0.bn2.bias",
+    "dtype": "float32",
+    "shape": [
+      128
+    ]
+  },
+  {
+    "layerInd": "17_2",
+    "layerName": "layer2.0.bn2.running_mean",
+    "dtype": "float32",
+    "shape": [
+      128
+    ]
+  },
+  {
+    "layerInd": "17_3",
+    "layerName": "layer2.0.bn2.running_var",
+    "dtype": "float32",
+    "shape": [
+      128
+    ]
+  },
+  {
+    "layerInd": "18_0",
+    "layerName": "layer2.0.shortcut.1.weight",
+    "dtype": "float32",
+    "shape": [
+      128
+    ]
+  },
+  {
+    "layerInd": "18_1",
+    "layerName": "layer2.0.shortcut.1.bias",
+    "dtype": "float32",
+    "shape": [
+      128
+    ]
+  },
+  {
+    "layerInd": "18_2",
+    "layerName": "layer2.0.shortcut.1.running_mean",
+    "dtype": "float32",
+    "shape": [
+      128
+    ]
+  },
+  {
+    "layerInd": "18_3",
+    "layerName": "layer2.0.shortcut.1.running_var",
+    "dtype": "float32",
+    "shape": [
+      128
+    ]
+  },
+  {
+    "layerInd": "21_0",
+    "layerName": "layer3.0.conv1.weight",
+    "dtype": "float32",
+    "shape": [
+      3,
+      3,
+      128,
+      256
+    ]
+  },
+  {
+    "layerInd": "22_0",
+    "layerName": "layer3.0.bn1.weight",
+    "dtype": "float32",
+    "shape": [
+      256
+    ]
+  },
+  {
+    "layerInd": "22_1",
+    "layerName": "layer3.0.bn1.bias",
+    "dtype": "float32",
+    "shape": [
+      256
+    ]
+  },
+  {
+    "layerInd": "22_2",
+    "layerName": "layer3.0.bn1.running_mean",
+    "dtype": "float32",
+    "shape": [
+      256
+    ]
+  },
+  {
+    "layerInd": "22_3",
+    "layerName": "layer3.0.bn1.running_var",
+    "dtype": "float32",
+    "shape": [
+      256
+    ]
+  },
+  {
+    "layerInd": "24_0",
+    "layerName": "layer3.0.conv2.weight",
+    "dtype": "float32",
+    "shape": [
+      3,
+      3,
+      256,
+      256
+    ]
+  },
+  {
+    "layerInd": "25_0",
+    "layerName": "layer3.0.shortcut.0.weight",
+    "dtype": "float32",
+    "shape": [
+      1,
+      1,
+      128,
+      256
+    ]
+  },
+  {
+    "layerInd": "26_0",
+    "layerName": "layer3.0.bn2.weight",
+    "dtype": "float32",
+    "shape": [
+      256
+    ]
+  },
+  {
+    "layerInd": "26_1",
+    "layerName": "layer3.0.bn2.bias",
+    "dtype": "float32",
+    "shape": [
+      256
+    ]
+  },
+  {
+    "layerInd": "26_2",
+    "layerName": "layer3.0.bn2.running_mean",
+    "dtype": "float32",
+    "shape": [
+      256
+    ]
+  },
+  {
+    "layerInd": "26_3",
+    "layerName": "layer3.0.bn2.running_var",
+    "dtype": "float32",
+    "shape": [
+      256
+    ]
+  },
+  {
+    "layerInd": "27_0",
+    "layerName": "layer3.0.shortcut.1.weight",
+    "dtype": "float32",
+    "shape": [
+      256
+    ]
+  },
+  {
+    "layerInd": "27_1",
+    "layerName": "layer3.0.shortcut.1.bias",
+    "dtype": "float32",
+    "shape": [
+      256
+    ]
+  },
+  {
+    "layerInd": "27_2",
+    "layerName": "layer3.0.shortcut.1.running_mean",
+    "dtype": "float32",
+    "shape": [
+      256
+    ]
+  },
+  {
+    "layerInd": "27_3",
+    "layerName": "layer3.0.shortcut.1.running_var",
+    "dtype": "float32",
+    "shape": [
+      256
+    ]
+  },
+  {
+    "layerInd": "30_0",
+    "layerName": "layer4.0.conv1.weight",
+    "dtype": "float32",
+    "shape": [
+      3,
+      3,
+      256,
+      512
+    ]
+  },
+  {
+    "layerInd": "31_0",
+    "layerName": "layer4.0.bn1.weight",
+    "dtype": "float32",
+    "shape": [
+      512
+    ]
+  },
+  {
+    "layerInd": "31_1",
+    "layerName": "layer4.0.bn1.bias",
+    "dtype": "float32",
+    "shape": [
+      512
+    ]
+  },
+  {
+    "layerInd": "31_2",
+    "layerName": "layer4.0.bn1.running_mean",
+    "dtype": "float32",
+    "shape": [
+      512
+    ]
+  },
+  {
+    "layerInd": "31_3",
+    "layerName": "layer4.0.bn1.running_var",
+    "dtype": "float32",
+    "shape": [
+      512
+    ]
+  },
+  {
+    "layerInd": "33_0",
+    "layerName": "layer4.0.conv2.weight",
+    "dtype": "float32",
+    "shape": [
+      3,
+      3,
+      512,
+      512
+    ]
+  },
+  {
+    "layerInd": "34_0",
+    "layerName": "layer4.0.shortcut.0.weight",
+    "dtype": "float32",
+    "shape": [
+      1,
+      1,
+      256,
+      512
+    ]
+  },
+  {
+    "layerInd": "35_0",
+    "layerName": "layer4.0.bn2.weight",
+    "dtype": "float32",
+    "shape": [
+      512
+    ]
+  },
+  {
+    "layerInd": "35_1",
+    "layerName": "layer4.0.bn2.bias",
+    "dtype": "float32",
+    "shape": [
+      512
+    ]
+  },
+  {
+    "layerInd": "35_2",
+    "layerName": "layer4.0.bn2.running_mean",
+    "dtype": "float32",
+    "shape": [
+      512
+    ]
+  },
+  {
+    "layerInd": "35_3",
+    "layerName": "layer4.0.bn2.running_var",
+    "dtype": "float32",
+    "shape": [
+      512
+    ]
+  },
+  {
+    "layerInd": "36_0",
+    "layerName": "layer4.0.shortcut.1.weight",
+    "dtype": "float32",
+    "shape": [
+      512
+    ]
+  },
+  {
+    "layerInd": "36_1",
+    "layerName": "layer4.0.shortcut.1.bias",
+    "dtype": "float32",
+    "shape": [
+      512
+    ]
+  },
+  {
+    "layerInd": "36_2",
+    "layerName": "layer4.0.shortcut.1.running_mean",
+    "dtype": "float32",
+    "shape": [
+      512
+    ]
+  },
+  {
+    "layerInd": "36_3",
+    "layerName": "layer4.0.shortcut.1.running_var",
+    "dtype": "float32",
+    "shape": [
+      512
+    ]
+  },
+  {
+    "layerInd": "40_0",
+    "layerName": "linear.weight",
+    "dtype": "float32",
+    "shape": [
+      512,
+      8
+    ]
+  },
+  {
+    "layerInd": "40_1",
+    "layerName": "linear.bias",
+    "dtype": "float32",
+    "shape": [
+      8
+    ]
+  }
+]

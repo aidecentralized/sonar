@@ -1,10 +1,11 @@
-const WebSocket = require('ws');
-const wrtc = require('wrtc');  // Import WebRTC for Node.js
-const { ResNet10 } = require('./model.js');
-const path = require('path');
-const fs = require('fs');
-const tf = require('@tensorflow/tfjs-node');
+import { ResNet10 } from './model.js'
+import * as tf from '@tensorflow/tfjs'
+import js2python from './js2python.json'
+// import ind2python from './ind2python.json'
+
+
 // TODO: this can be replaced by just the browser-side without wrtc once we use browser
+// TODO: I awaited the initiateConnection, but it was originally unecessary (and still might not be necessary), you only need a sufficient timeout
 function processData(jsonData) {
 	const images = jsonData.map(item => item.image)
 	const labels = jsonData.map(item => item.label)
@@ -164,10 +165,10 @@ const NodeState = {
     DISCONNECTING: 3,
 };
 
-class WebRTCCommUtils {
+export class WebRTCCommUtils {
     constructor(config) {
         this.model = new ResNet10();
-        this.config = config || {};
+        this.config = config;
         this.signalingServer = this.config.signaling_server || 'ws://localhost:8765';
     
         // Networking & session references
@@ -198,8 +199,6 @@ class WebRTCCommUtils {
         this.peer_weights = {};
         this.clear_peer_weights = false;
         this.weights_finished = false
-        this.expectedLayers = new Set(); // Track which layers we expect to receive
-        this.receivedWeightsFrom = new Set(); // Track which peers we've received weights_finished from
     
         // Communication cost counters
         this.comm_cost_sent = 0;
@@ -208,16 +207,18 @@ class WebRTCCommUtils {
         // Simple logging
         this.log(`[constructor] RTCCommUtilsJS created with config: ${JSON.stringify(config)}`);
         this.connect()
-
-        this.js2pythonMapping = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'js2python.json'), 'utf8'));
     }
 
     // ---------------------- Basic Logging & State Helpers ----------------------
 
     log(msg) {
-        console.log(`${msg}`);
-        // Append to log file
-        fs.appendFileSync('logs/js_client.log', msg + '\n');
+      const formattedMsg = `[RTCCommUtilsJS] ${msg}`;
+      console.log(formattedMsg);
+
+      const outputArea = document.getElementById("console-output");
+      const newLog = document.createElement("div");
+      newLog.textContent = formattedMsg;
+      outputArea.appendChild(newLog);
     }
 
     setState(newState) {
@@ -226,8 +227,7 @@ class WebRTCCommUtils {
     }
 
     async connect() {
-      try {
-          console.log(config)
+        try {
           this.ws = new WebSocket(this.signalingServer);
     
           this.ws.onopen = () => {
@@ -237,7 +237,7 @@ class WebRTCCommUtils {
               this.ws.send(JSON.stringify({
                 type: 'create_session',
                 maxClients: this.size,
-                clientType: 'javascript',
+                clientType: 'javascript'
               }));
             } else {
               // Join an existing session
@@ -245,8 +245,7 @@ class WebRTCCommUtils {
                 type: 'join_session',
                 sessionId: this.sessionId,
                 clientType: 'javascript',
-                maxClients: this.size,
-                config: config,
+                maxClients: this.size
               }));
             }
           };
@@ -317,7 +316,6 @@ class WebRTCCommUtils {
       this.log(`Handling topology... rank=${data.rank}, neighbors=${JSON.stringify(data.neighbors)} type ${typeof data.neighbors}`);
 
       this.rank = data.rank;
-      // neighbors: List[int] 
       const newNeighbors = data.neighbors;
       this.log(`Received topology. Rank: ${this.rank}, Neighbors: ${JSON.stringify(newNeighbors)}`);
 
@@ -376,7 +374,7 @@ class WebRTCCommUtils {
             }]
         };
 
-        const pc = new wrtc.RTCPeerConnection(config);
+        const pc = new RTCPeerConnection(config);
         
         pc.oniceconnectionstatechange = () => {
             this.log(`ICE state change for ${otherRank}: ${pc.iceConnectionState}`);
@@ -485,7 +483,7 @@ class WebRTCCommUtils {
                 const data = JSON.parse(messageBuffer);
 
                 // If successful, handle the complete message
-                // console.log(`Received message from ${peerRank}: ${data.type}`);
+                console.log(`Received message from ${peerRank}: ${data.type}`);
                 this.handleDataChannelMessage(peerRank, data);
 
                 // Clear the buffer after successful parsing
@@ -494,7 +492,7 @@ class WebRTCCommUtils {
                 // If parsing fails, log the error and keep the buffer for further data
                 if (error instanceof SyntaxError) {
                     // This is expected if the message is incomplete
-                    // console.log(`Waiting for more data to complete the message from ${peerRank}`);
+                    console.log(`Waiting for more data to complete the message from ${peerRank}`);
                 } else {
                     // Log other types of errors
                     this.log(`Failed to parse message from ${peerRank}: ${error}, data: ${messageBuffer.substring(0, 100)} ... ${messageBuffer.substring(messageBuffer.length-30)}`, 'error');
@@ -546,192 +544,157 @@ class WebRTCCommUtils {
    *   - Parse the message
    *   - Handle logic for pings, receiving weights, etc.
    */
-  handleDataChannelMessage(peerRank, data) {
-    try {
-      // this.log(`Received message from peer ${peerRank}: ${data.type}`);
-
-      switch (data.type) {
-
-        case 'weights_request':
-          this.log(`Received weights request from peer ${peerRank}`);
-
-          const currRound = 1;
-          const chunk_size = 2000;
-          const weights = this.model.model.getWeights();
-          const layers = this.model.model.layers;
-
-          for (let i = 0; i < layers.length; i++) {
-              const layer = layers[i];
-              const layerWeights = layer.getWeights();
-
-              for (let j = 0; j < layerWeights.length; j++) {
-                  let weightTensor = layerWeights[j];
-
-                  // Convert to TensorFlow (Python) format before sending
-                  weightTensor = convertTfjsToTf(weightTensor);
-
-                  // Rename the layer and map to Python layer name
-                  const layerName = `${layer.name}_weight_${j}`;
-                  const pythonLayerName = this.js2pythonMapping[layerName];
-
-
-                  const chunks = chunkTensor(weightTensor, chunk_size);
-                  // this.log(`Layer ${i}_${j}: ${pythonLayerName}, dtype: ${weightTensor.dtype}, shape: [${weightTensor.shape.join(', ')}], numChunks: ${chunks.length}`);
-
-                  for (const { chunk, numChunks, originalShape } of chunks) {
-                      const serializableChunk = serializeMessage({
-                          layer_name: pythonLayerName,
-                          chunk: chunk,
-                          num_chunks: numChunks,
-                          original_shape: originalShape
-                      });
-
-                      const response = {
-                          type: "weights_response",
-                          weights: serializableChunk,
-                          round: currRound,
-                          request_id: data.request_id
-                      };
-
-                      this.sendToPeer(peerRank, response);
+    handleDataChannelMessage(peerRank, data) {
+      try {
+        // this.log(`Received message from peer ${peerRank}: ${data.type}`);
+  
+        switch (data.type) {
+  
+          case 'weights_request':
+            this.log(`Received weights request from peer ${peerRank}`);
+  
+            const currRound = 1;
+            const chunk_size = 2000;
+            const weights = this.model.model.getWeights();
+            const layers = this.model.model.layers;
+  
+            for (let i = 0; i < layers.length; i++) {
+                const layer = layers[i];
+                const layerWeights = layer.getWeights();
+  
+                for (let j = 0; j < layerWeights.length; j++) {
+                    let weightTensor = layerWeights[j];
+  
+                    // Convert to TensorFlow (Python) format before sending
+                    weightTensor = convertTfjsToTf(weightTensor);
+  
+                    // Rename the layer and map to Python layer name
+                    const layerName = `${layer.name}_weight_${j}`;
+                    const pythonLayerName = js2python[layerName];
+  
+  
+                    const chunks = chunkTensor(weightTensor, chunk_size);
+                    this.log(`Layer ${i}_${j}: ${pythonLayerName}, dtype: ${weightTensor.dtype}, shape: [${weightTensor.shape.join(', ')}], numChunks: ${chunks.length}`);
+  
+                    // this.log(`numChunks = ${chunks.length} for layer: ${pythonLayerName}`);
+  
+                    for (const { chunk, numChunks, originalShape } of chunks) {
+                        const serializableChunk = serializeMessage({
+                            layer_name: pythonLayerName,
+                            chunk: chunk,
+                            num_chunks: numChunks,
+                            original_shape: originalShape
+                        });
+  
+                        const response = {
+                            type: "weights_response",
+                            weights: serializableChunk,
+                            round: currRound,
+                            request_id: data.request_id
+                        };
+  
+                        this.sendToPeer(peerRank, response);
+                    }
+                }
+            }
+  
+            const finishedMessage = {
+                type: "weights_finished",
+                round: currRound,
+                request_id: data.request_id
+            };
+            this.sendToPeer(peerRank, finishedMessage);
+            break;
+  
+          case 'weights_response':
+            // Reassemble chunk. Increase comm_cost_received, etc.
+            if (this.clear_peer_weights){
+              this.peer_weights = {}
+              this.clear_peer_weights = false
+            }
+  
+              // 1. Deserialize the chunk
+              const chunkData = deserializeMessage(data.weights);
+              
+              let chunk = chunkData.chunk; // this is still a "tensor-like" object
+  
+              // Convert received chunk to TensorFlow.js format
+              chunk = convertTfToTfjs(chunk);
+              
+              const layerName = chunkData.layer_name;
+              const numChunks = chunkData.num_chunks;
+              const originalShape = chunkData.original_shape;
+              
+              if (!this.peer_weights) {
+                this.peer_weights = {};  // Initialize if undefined
+              }
+  
+              // 2. Store the chunk data
+              if (!this.peer_weights[layerName]) {
+                  this.peer_weights[layerName] = [];
+                  this.log(`Received initial ${layerName}`);
+              }
+  
+              this.peer_weights[layerName].push(chunk);
+              
+              // 3. Check if all chunks are received
+              if (this.peer_weights[layerName].length === numChunks) {
+                  // Concatenate all chunk data
+                  let fullArray = [];
+                  for (let partialTensor of this.peer_weights[layerName]) {
+                  // partialTensor.data might be a typed array, so convert to normal array or push directly
+                  fullArray.push(...partialTensor.data);
                   }
+                  // or if these are typed arrays, you could do something like:
+                  //   const totalLength = peerWeights[layerName].reduce((acc, t) => acc + t.data.length, 0);
+                  //   let fullTypedArray = new Float32Array(totalLength);
+                  //   // copy chunk by chunk ...
+              
+                  // If you want a typed array again:
+                  const fullTypedArray = new Float32Array(fullArray);
+              
+                  // This is your final reassembled tensor
+                  const reassembledTensor = {
+                      __isTensor: true,
+                      data: fullTypedArray,
+                      dtype: chunk.dtype,
+                      shape: originalShape
+                  };
+              
+                  // Store it or use it:
+                  this.peer_weights[layerName] = reassembledTensor;
+                  
+                  this.log(`Reassembled layer ${layerName}: shape [${originalShape.join(', ')}]`);
+              } else {
+                // this.log(`Received ${this.peer_weights[layerName].length} / ${numChunks} chunks for ${layerName}`);
               }
-          }
-
-          const finishedMessage = {
-              type: "weights_finished",
-              round: currRound,
-              request_id: data.request_id
-          };
-          this.sendToPeer(peerRank, finishedMessage);
-          break;
-        case 'weights_response': {
-          try {
-            // Reset peer weights if needed
-            if (this.clear_peer_weights) {
-              this.log(`Initializing peer weights for new round`);
-              this.peer_weights = {};
-              this.clear_peer_weights = false;
-            }
-
-            // 1. Deserialize the chunk
-            const chunkData = deserializeMessage(data.weights);
-            
-            let chunk = chunkData.chunk;
-            chunk = convertTfToTfjs(chunk); // Convert to TensorFlow.js format
-            
-            const layerName = chunkData.layer_name;
-            const numChunks = chunkData.num_chunks;
-            const originalShape = chunkData.original_shape;
-            
-            // Initialize peer_weights if needed
-            if (!this.peer_weights) {
-              this.peer_weights = {};
-            }
-            
-            // Initialize the layer in peer_weights if needed
-            if (!this.peer_weights[layerName]) {
-              this.peer_weights[layerName] = [];
-              
-              // Track this layer
-              this.layerChunkTracker[layerName] = {
-                expected: numChunks,
-                received: 0
-              };
-              
-              // this.log(`New layer: ${layerName}, expecting ${numChunks} chunks`);
-            }
-
-            // Store the chunk
-            this.peer_weights[layerName].push(chunk);
-            this.layerChunkTracker[layerName].received++;
-            
-            // Log progress periodically
-            const tracker = this.layerChunkTracker[layerName];
-            if (tracker.received === tracker.expected || 
-                tracker.received === 1 || 
-                tracker.received % 10 === 0) {
-              // this.log(`Layer ${layerName}: ${tracker.received}/${tracker.expected} chunks`);
-            }
-            
-            // If we've received all chunks for this layer, reconstruct it
-            if (tracker.received === tracker.expected) {
-              this.log(`✓ Layer ${layerName} complete: all ${numChunks} chunks received`);
-              
-              // Concatenate all chunk data
-              let fullArray = [];
-              for (let partialTensor of this.peer_weights[layerName]) {
-                fullArray.push(...Array.from(partialTensor.data));
-              }
-              
-              // Create the reassembled tensor
-              const reassembledTensor = {
-                __isTensor: true,
-                data: new Float32Array(fullArray),
-                dtype: chunk.dtype,
-                shape: originalShape
-              };
-              
-              // Replace the array of chunks with the complete tensor
-              this.peer_weights[layerName] = reassembledTensor;
-              
-              // Check if we can move on now
-              if (this.canMoveOn()) {
-                this.log(`All weights are now complete!`);
-              }
-            }
-            
-          } catch (error) {
-            this.log(`Error processing weights_response: ${error.stack}`, 'error');
-          }
-          break;
-        }
-
-        case 'weights_finished': {
-          this.log(`Received weights_finished from peer ${peerRank}`);
-          this.receivedWeightsFinished = true;
-          
-          // Check if we're still missing any chunks
-          const incompleteLayers = Object.entries(this.layerChunkTracker)
-            .filter(([_, info]) => info.received < info.expected)
-            .map(([name, info]) => `${name} (${info.received}/${info.expected})`)
-            .join(', ');
-          
-          if (incompleteLayers) {
-            this.log(`Received weights_finished but still waiting for chunks: ${incompleteLayers}`);
-          } else if (Object.keys(this.layerChunkTracker).length === 0) {
-            this.log(`Received weights_finished but no layers have been registered yet`);
-          } else {
-            this.log(`✓ Received weights_finished and all tracked layers are complete`);
-          }
-          
-          // Check if we can move on now
-          if (this.canMoveOn()) {
-            this.log(`All weights are now complete!`);
-          }
-          
-          break;
-        }
-
-        case 'round_update':
-            this.log(`Received round update from peer ${peerRank}`);
-            this.sendToPeer(peerRank, {
-                type: "round_update_response",
-                round: this.currentRound
-            })
+  
             break;
-        
-        case 'round_update_response':
-            this.log(`Received round update response from peer ${peerRank}`);
-            this.peer_rounds.set(peerRank, data.round)
+  
+          case 'weights_finished':
+            this.log(`Peer ${peerRank} finished sending weights.`);
+            this.weights_finished = true
             break;
-
-        // Add other message types (round_update, etc.) similarly
+  
+          case 'round_update':
+              this.log(`Received round update from peer ${peerRank}`);
+              this.sendToPeer(peerRank, {
+                  type: "round_update_response",
+                  round: this.currentRound
+              })
+              break;
+          
+          case 'round_update_response':
+              this.log(`Received round update response from peer ${peerRank}`);
+              this.peer_rounds.set(peerRank, data.round)
+              break;
+  
+          // Add other message types (round_update, etc.) similarly
+        }
+      } catch (err) {
+        this.log(`handleDataChannelMessage() parse error: ${err}`);
       }
-    } catch (err) {
-      this.log(`handleDataChannelMessage() parse error: ${err}`);
     }
-  }
 
   /**
    * Send a dictionary or object to a specific peer via data channel.
@@ -758,119 +721,41 @@ class WebRTCCommUtils {
     this.comm_cost_sent += msgString.length;
   }
 
-  /**
-   * Single helper function to check if we've received all chunks from all layers
-   * @returns {boolean} True if we can move on, false if we need to wait
-   */
-  canMoveOn() {
-    // First, we need to have received the weights_finished signal
-    if (!this.receivedWeightsFinished) {
-      return false;
-    }
-    
-    // If we have no layers being tracked, we can't move on yet
-    if (Object.keys(this.layerChunkTracker).length === 0) {
-      return false;
-    }
-    
-    // Check if all tracked layers have received all their expected chunks
-    for (const layerName in this.layerChunkTracker) {
-      const tracker = this.layerChunkTracker[layerName];
-      if (tracker.received < tracker.expected) {
-        return false; // This layer is still missing chunks
-      }
-    }
-    
-    // All checks passed
-    return true;
-  }
-
-  async receive() {
-    this.log("Receive was called");
-    
-    // Reset our tracking state
-    this.layerChunkTracker = {};
-    this.receivedWeightsFinished = false;
-    this.clear_peer_weights = true;
-    
-    // Create a promise that will resolve when all weights are received
-    const waitForWeights = new Promise((resolve, reject) => {
-      // Set timeout to prevent indefinite waiting
-      const timeout = setTimeout(() => {
-        // Log what we're still waiting for if timeout occurs
-        const incompleteLayerNames = Object.entries(this.layerChunkTracker)
-          .filter(([_, info]) => info.received < info.expected)
-          .map(([name, info]) => `${name} (${info.received}/${info.expected})`)
-          .join(', ');
-          
-        reject(new Error(`Weights receipt timed out after ${this.weightReceiptTimeout/1000} seconds. Still waiting for: ${incompleteLayerNames}`));
-      }, this.weightReceiptTimeout);
-      
-      // Create a check function that periodically checks if we can move on
-      const checkComplete = () => {
-        if (this.canMoveOn()) {
-          this.log("✓ All expected layers and chunks received, resolving promise");
-          clearTimeout(timeout);
-          resolve();
-        } else {
-          setTimeout(checkComplete, 100); // Check again in 100ms
-        }
-      };
-      
-      // Start checking
-      checkComplete();
-    });
-    
-    // Send weight requests to all neighbors
+  receive() {
+    this.log("Receive was called")
     for (const neighborRank of Object.values(this.neighbors)) {
-      this.log(`Sending weights request for neighbor ${neighborRank}`);
+      this.log(`Sending weights request for neighbor ${neighborRank}}`);
       this.sendToPeer(neighborRank, {
-        type: "weights_request",
-        request_id: Date.now() // Use timestamp as unique request ID
-      });
+          type: "weights_request",
+          request_id: 1
+      })
     }
-    
-    try {
-      // Wait for the weights to be received
-      await waitForWeights;
-      
-      this.log(`✓ Successfully received all peer weights`);
-      return this.peer_weights;
-    } catch (error) {
-      this.log(`Error in receive(): ${error.message}`);
-      // Return whatever weights we have so far
-      return this.peer_weights || {};
+
+    while (!this.weights_finished){
+        // await new Promise(resolve => setTimeout(resolve, 100)); // Async sleep for 100ms
     }
+
+    this.log(`Received peer weights, returning`)
+    this.weights_finished = false
+    return this.peer_weights
   }
 
   async startTraining() {
     this.log('started training, loading dataset...');
   
-    const filePath = path.resolve(__dirname, './datasets/imgs/bloodmnist/bloodmnist_test.json');
-    const rawData = fs.readFileSync(filePath, 'utf8');
-    const data = JSON.parse(rawData);
+    const filePath = '/datasets/imgs/cifar10/cifar10_test.json';
+    const rawData = await fetch(filePath);
+    const data = await rawData.json();
     const dataset = processData(data);
   
-    this.log(`dataset loaded... training model for ${this.config.epochs}  epochs...`);
+    this.log(`dataset loaded... training model for ${this.config.epochs} epochs...`);
   
-    for (let i = 0; i < this.config.epochs; i++) {
-      // await this.model.local_train_one(dataset)
-      // simulate training this a sleep
-      await new Promise(res => setTimeout(res, 30000)), this.log("finished simulated training for 60 seconds");
-
+    for (let i = 0; i < 10; i++) {
+      this.log('starting new round of training');
+      await this.model.local_train_one(dataset);
       this.log(`finished round ${i} training`);
-
-
-      // Reset tracking for this round
-      this.layerChunkTracker = {}; // Format: { layerName: { expected: numChunks, received: count } }
-      this.receivedWeightsFinished = false; // Set to true when weights_finished is received
-      this.weightReceiptTimeout = 120000; // 2 minutes timeout
-      
-      const peer_weights = await this.receive();
-      this.log(`Round ${i}: Received weights from peers, performing aggregation...`);
-      
-      // TODO: perform fed avg with peer_weights
-      this.currentRound = i + 1;
+      const peer_weights = this.receive();
+      // todo: perform fed avg
     }
 
     this.log("finished training")
@@ -901,7 +786,7 @@ class WebRTCCommUtils {
             }
 
             if (data.type === 'offer') {
-                await pc.setRemoteDescription(new wrtc.RTCSessionDescription({
+                await pc.setRemoteDescription(new RTCSessionDescription({
                     type: 'offer',
                     sdp: data.sdp
                 }));
@@ -923,7 +808,7 @@ class WebRTCCommUtils {
                 ///////////////////////////////////////////
 
             } else if (data.type === 'answer') {
-                await pc.setRemoteDescription(new wrtc.RTCSessionDescription({
+                await pc.setRemoteDescription(new RTCSessionDescription({
                     type: 'answer',
                     sdp: data.sdp
                 }));
@@ -1089,131 +974,59 @@ class WebRTCCommUtils {
       
 }
 
+// let node = null;
+
+// function createSession() {
+//     const maxClients = document.getElementById('maxClients').value;
+//     const sessionId = document.getElementById('sessionId').value || generateSessionId();
+//     document.getElementById('sessionId').value = sessionId;
+
+//     node = new TorusNode('ws://localhost:8765');
+//     node.connect({
+//         type: 'create_session',
+//         sessionId: sessionId,
+//         maxClients: parseInt(maxClients)
+//     });
+// }
+
+// function joinSession() {
+//     const sessionId = document.getElementById('joinSessionId').value;
+//     if (!sessionId) {
+//         alert('Please enter a session code');
+//         return;
+//     }
+
+//     node = new TorusNode('ws://localhost:8765');
+//     node.connect({
+//         type: 'join_session',
+//         sessionId: sessionId
+//     });
+// }
+
 // ** Set your session parameters here **
 const SESSION_ID = 1111; // Change this to a fixed or generated session ID
 const MAX_CLIENTS = 3;
 const IS_CREATOR = false; // Set to true if this should create a session
 const topology = {"name": "ring"};
 
+// const sessionInfo = {
+//     type: IS_CREATOR ? 'create_session' : 'join_session',
+//     sessionId: SESSION_ID,
+//     maxClients: MAX_CLIENTS,
+//     clientType: 'javascript'
+// };
+
 // ** Start WebRTC Comm Utils **
 const signalingServer = 'ws://localhost:8765'; // Your WebSocket server
 
 // TODO: fill in config
 let config = {
-    signaling_server: signalingServer,
-    num_users: MAX_CLIENTS,
-    session_id: SESSION_ID,
-    epochs: 5,
-    seed: 2,
-    algos: {"node_0": topology},
-}
-const node = new WebRTCCommUtils(config)
-
-async function testSendWeights() {
-    // Initialize the ResNet10 model
-    const resNet10Model = new ResNet10();
-
-    // Load the js2python mapping
-    const js2pythonMapping = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'ind2python.json'), 'utf8'));
-
-    // Get the weights and layers from the model
-    const weights = resNet10Model.model.getWeights();
-    const layers = resNet10Model.model.layers;
-
-    const chunk_size = 16000; // Define a chunk size for testing
-    console.log(layers.length);
-
-    // Collect information to log
-    const logData = [];
-
-    for (const [layerInd, tensor] of Object.entries(weights)) {
-        // const layer = layers[layerInd];
-        // const layerName = `${layer.name}_weight_${layerInd}`;
-        const pythonLayerName = js2pythonMapping[layerInd];
-
-        console.log(`Layer: ${layerInd}, dtype: ${tensor.dtype}, shape: [${tensor.shape.join(', ')}]`);
-
-        // Collect data for logging
-        logData.push({
-            layerInd: layerInd,
-            layerName: pythonLayerName,
-            dtype: tensor.dtype,
-            shape: tensor.shape
-        });
-
-        const chunks = chunkTensor(tensor, chunk_size);
-        console.log(`numChunks = ${chunks.length} for layer: ${pythonLayerName}`);
-
-        for (const { chunk, numChunks, originalShape } of chunks) {
-            const serializableChunk = serializeMessage({
-                layer_name: pythonLayerName,
-                chunk: chunk,
-                num_chunks: numChunks,
-                original_shape: originalShape
-            });
-
-            const response = {
-                type: "weights_response",
-                weights: serializableChunk,
-                round: 1, // Example round number
-                request_id: 123 // Example request ID
-            };
-
-            // Log the response instead of sending it
-            // console.log(JSON.stringify(response, null, 2));
-        }
-    }
-
-    // Write the collected log data to a file
-    const logFilePath = path.resolve(__dirname, 'weights_seq_log.json');
-    fs.writeFileSync(logFilePath, JSON.stringify(logData, null, 2));
-    console.log(`Log data written to ${logFilePath}`);
+  signaling_server: signalingServer,
+  num_users: MAX_CLIENTS,
+  session_id: SESSION_ID,
+  epochs: 5,
+  seed: 2,
+  algos: {"node_0": topology},
 }
 
-// Run the test
-// testSendWeights();
-
-async function testSendWeights2() {
-    // Initialize the ResNet10 model
-    const resNet10Model = new ResNet10();
-
-    // Load the js2python mapping
-    const js2pythonMapping = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'js2python.json'), 'utf8'));
-
-    // Prepare the JSON structure to store the required information
-    const logData = [];
-
-    const layers = resNet10Model.model.layers;
-    console.log(`Model layers: ${layers.length}`);
-
-    for (let i = 0; i < layers.length; i++) {
-        const layer = layers[i];
-        const layerWeights = layer.getWeights();
-
-        for (let j = 0; j < layerWeights.length; j++) {
-            const weightTensor = layerWeights[j];
-
-            // Rename the layer and map to Python layer name
-            const layerName = `${layer.name}_weight_${j}`;
-            const pythonLayerName = js2pythonMapping[layerName]; // Fallback to original if not found
-
-            // Collect data for logging
-            logData.push({
-                layerInd: `${i}_${j}`,
-                layerName: pythonLayerName,
-                dtype: weightTensor.dtype,
-                shape: weightTensor.shape
-            });
-        }
-    }
-
-    // Write the collected log data to a file
-    const logFilePath = path.resolve(__dirname, 'weights_mapped_log.json');
-    fs.writeFileSync(logFilePath, JSON.stringify(logData, null, 2));
-    console.log(`Mapped weights data written to ${logFilePath}`);
-}
-
-// Run the test
-// testSendWeights2();
-
-module.exports = { WebRTCCommUtils };
+const node = new WebRTCCommUtils(config);

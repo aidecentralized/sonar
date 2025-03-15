@@ -1,0 +1,1 @@
+Client 2 finished training with loss 2.3180, accuracy 0.2000, time taken 0.39 seconds
