@@ -35,10 +35,10 @@ args : argparse.Namespace = parser.parse_args()
 # Command for opening each process
 command_list: List[str] = ["python", "main.py", "-host", args.host]
 if args.dev == True:
-    command_list: List[str] = ["python", "main.py", "-b", "./configs/algo_config_test.py", "-s", "./configs/sys_config_test.py", "-host", args.host]
+    print("here!")
+    command_list: List[str] = ["python", "main.py", "-b", "./configs/algo_config_2.py", "-s", "./configs/sys_config_2.py", "-host", args.host]
 
 # Start process for each user
 for i in range(args.n):
-    print(f"Starting process for user {i}")
     # start a Popen process
     subprocess.Popen(command_list)

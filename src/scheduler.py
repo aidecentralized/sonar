@@ -69,6 +69,7 @@ class Scheduler:
         host: str | None = None,
     ) -> None:
         self.sys_config : Dict[str, Any]= load_config(sys_config_path)
+
         if is_super_node:
             self.sys_config["comm"]["rank"] = 0
         else:
@@ -76,6 +77,8 @@ class Scheduler:
             self.sys_config["comm"]["rank"] = None
         self.config : Dict[str, Any]= {}
         self.config.update(self.sys_config)
+        print(f"sys config path: {sys_config_path}")
+        print(f"config after loading sys config: {self.config}")
 
     def merge_configs(self) -> None:
         self.config.update(self.sys_config)

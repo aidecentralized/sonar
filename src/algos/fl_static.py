@@ -1,7 +1,7 @@
 """
 Module for FedStaticClient and FedStaticServer in Federated Learning.
 """
-from typing import Any, Dict, OrderedDict, List
+from typing import Any, Dict, OrderedDict, List, Tuple
 from collections import OrderedDict, defaultdict
 
 from utils.communication.comm_utils import CommunicationManager
@@ -38,7 +38,8 @@ class FedStaticNode(BaseFedAvgClient):
         self.stats["neighbors"] = neighbors  # type: ignore, where the hell self.stats is coming from
 
         return neighbors
-
+    
+        
     def run_protocol(self) -> None:
         """
         Runs the federated learning protocol for the client.
@@ -64,12 +65,12 @@ class FedStaticNode(BaseFedAvgClient):
 
             neighbors = self.get_neighbors()
             # TODO: Log the neighbors
-            self.receive_and_aggregate(neighbors)
+            self.receive_and_aggregate(neighbors, it)
             # evaluate the model on the test data
             # Inside FedStaticNode.run_protocol()
             self.local_test()
-
             self.round_finalize()
+            # self.local_round_done()
 
 class FedStaticServer(BaseFedAvgClient):
     """

@@ -158,6 +158,8 @@ digit_five_dpath = {
 
 CIFAR10_DSET = "cifar10"
 CIAR10_DPATH = "./datasets/imgs/cifar10/"
+MNIST_DEST = "mnist"
+MNIST_DPATH = "./datasets/imgs/mnist/"
 
 NUM_COLLABORATORS = 3
 DUMP_DIR = "/tmp/new_sonar/"
@@ -340,7 +342,7 @@ grpc_system_config: ConfigType = {
     "num_collaborators": NUM_COLLABORATORS,
     "comm": {"type": "GRPC", "synchronous": True, "peer_ids": ["localhost:32048"]},  # The super-node
     "dset": CIFAR10_DSET,
-    "dump_dir": DUMP_DIR,
+    "dump_dir": f"{DUMP_DIR}test/ring_",
     "dpath": CIAR10_DPATH,
     "seed": 2,
     "device_ids": get_device_ids(num_users, gpu_ids),
@@ -361,21 +363,63 @@ grpc_system_config_gia: ConfigType = {
     "num_users": num_users,
     "num_collaborators": NUM_COLLABORATORS,
     "comm": {"type": "GRPC", "synchronous": True, "peer_ids": ["localhost:50048"]},  # The super-node
-    "dset": CIFAR10_DSET,
-    "dump_dir": DUMP_DIR,
-    "dpath": CIAR10_DPATH,
+    "dset": MNIST_DEST,
+    "dump_dir": f"{DUMP_DIR}disambiguate/torus_",
+    # "dpath": CIAR10_DPATH,
+    "dpath": MNIST_DPATH,
     "seed": 2,
     "device_ids": get_device_ids(num_users, gpu_ids),
-    # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
     "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
     "samples_per_user": 50000 // num_users,  # distributed equally
     "train_label_distribution": "iid",
     "test_label_distribution": "iid",
     "exp_keys": [],
+    "assign_based_on_host": True,
+    "hostname_to_device_ids": {
+        "matlaber1": [2, 3, 4, 5, 6, 7],
+        "matlaber12": [0, 1, 2, 3],
+        "matlaber3": [0, 1, 2, 3],
+        "matlaber4": [0, 2, 3, 4, 5, 6, 7],
+    },
     "dropout_dicts": dropout_dicts,
     "gia":True,
-    "gia_attackers":[1]
+    "gia_attackers":[1],
+    "disaggregate": True
 }
 
-current_config = grpc_system_config
-# current_config = mpi_system_config
+grpc_system_config_mia: ConfigType = {
+    "exp_id": "static",
+    "num_users": num_users,
+    "num_collaborators": NUM_COLLABORATORS,
+    "comm": {"type": "GRPC", "synchronous": True, "peer_ids": ["localhost:50048"]},  # The super-node
+    "dset": CIFAR10_DSET,
+    "dump_dir": f"{DUMP_DIR}mia/SGD/1.0/er_",
+    "dpath": CIFAR10_DSET,
+    "seed": 2,
+    "device_ids": get_device_ids(num_users, gpu_ids),
+    "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
+    "samples_per_user": 50000 // num_users,  # distributed equally
+    "train_label_distribution": "non_iid",
+    "test_label_distribution": "iid",
+    "alpha_data": 1.0,
+    "test_samples_per_user": 500,
+    "exp_keys": [],
+    "assign_based_on_host": True,
+    "hostname_to_device_ids": {
+        "matlaber1": [2, 3, 4, 5, 6, 7],
+        "matlaber12": [0, 1, 2, 3],
+        "matlaber3": [0, 1, 2, 3],
+        "matlaber4": [0, 2, 3, 4, 5, 6, 7],
+        "matlaberp4": [0,1],
+        "matlaberp1": [0,1]
+
+    },
+    "dropout_dicts": dropout_dicts,
+    "mia":True,
+}
+
+
+# current_config = grpc_system_config
+current_config = mpi_system_config
+# current_config = grpc_system_config_gia
+# current_config = grpc_system_config_mia

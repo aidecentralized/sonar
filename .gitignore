@@ -4,8 +4,12 @@ expt_dump_old/
 di_test/
 imgs/
 pascal/
+<<<<<<< HEAD
 data/
 !src/inversefed/data/
+=======
+# data/
+>>>>>>> b73ed37 (mia so far)
 notes.txt
 removeme*.png
 

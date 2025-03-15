@@ -8,6 +8,7 @@ class MNISTDataset:
     """
 
     def __init__(self, dpath: str) -> None:
+        print(f"DEBUG dp: {dpath}")
         self.image_size = 28
         self.num_cls = 10
         self.mean = 0.1307
@@ -27,8 +28,8 @@ class MNISTDataset:
             ]
         )
         self.train_dset = MNIST(
-            root=dpath, train=True, download=True, transform=self.train_transform
+            root=dpath, train=True, download=False, transform=self.train_transform
         )
         self.test_dset = MNIST(
-            root=dpath, train=False, download=True, transform=self.test_transform
+            root=dpath, train=False, download=False, transform=self.test_transform
         )

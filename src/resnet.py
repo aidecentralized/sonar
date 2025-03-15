@@ -13,6 +13,74 @@ import torch.nn.functional as F
 import torch
 from typing import List, Optional, Tuple
 
+# debug model for testing reconstruction in mnist
+class CNN(torch.nn.Module):
+    """ Simple, small CNN model.
+    """
+
+    def __init__(self, nb_classes):
+        """ Model parameter constructor.
+        """
+        super().__init__()
+        # Build parameters
+        self.conv1 = nn.Conv2d(1, 32, 5, 1)
+        self.conv2 = nn.Conv2d(32, 64, 5, 1)
+
+        self.fc1 = nn.Linear(4*4*64, 1024)
+        self.fc2 = nn.Linear(1024, nb_classes)
+
+    def forward(self, x, position=None):
+        # Forward pass
+        x = F.relu(self.conv1(x))
+        x = F.max_pool2d(x, 2, 2)
+        x = F.relu(self.conv2(x))
+
+        x = F.max_pool2d(x, 2, 2)
+        x = torch.flatten(x, 1)
+        x = F.relu(self.fc1(x))
+        x = self.fc2(x)
+        return x
+
+# debug model for testing reconstruction
+class CNN_cifar10(nn.Module):
+    """ Simple, small CNN model adapted for CIFAR-10. """
+    def __init__(self, nb_classes=10):
+        super().__init__()
+        # Build parameters
+        self.conv1 = nn.Conv2d(3, 32, 5, 1)  # Input channels changed to 3
+        self.conv2 = nn.Conv2d(32, 64, 5, 1)
+
+        # Adjusting feature size for CIFAR-10 input (32x32)
+        self.fc1 = nn.Linear(5 * 5 * 64, 1024)  # Updated input size
+        self.fc2 = nn.Linear(1024, nb_classes)
+
+    def forward(self, x, position=None):
+        x = F.relu(self.conv1(x))
+        x = F.max_pool2d(x, 2, 2)
+        x = F.relu(self.conv2(x))
+        x = F.max_pool2d(x, 2, 2)
+        x = torch.flatten(x, 1)
+        x = F.relu(self.fc1(x))
+        x = self.fc2(x)
+        return x
+
+class Net(nn.Module):
+    def __init__(self):
+        super(Net, self).__init__()
+        self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
+        self.conv2 = nn.Conv2d(10, 20, kernel_size=5)
+        self.conv2_drop = nn.Dropout2d()
+        self.fc1 = nn.Linear(320, 50)
+        self.fc2 = nn.Linear(50, 10)
+    def forward(self, x):
+        x = F.relu(F.max_pool2d(self.conv1(x), 2))
+        x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
+        x = x.view(-1, 320)
+        x = F.relu(self.fc1(x))
+        x = F.dropout(x, training=self.training)
+        x = self.fc2(x)
+        return x
+    
 
 class BasicBlock(nn.Module):
     """

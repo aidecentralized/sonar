@@ -86,7 +86,7 @@ class GradientReconstructor():
                     return torch.mean(torch.sum(- labels * torch.nn.functional.log_softmax(pred, dim=-1), 1))
                 self.loss_fn = loss_fn
         else:
-            assert labels.shape[0] == self.num_images
+            assert labels.shape[0] == self.num_images, f"Labels shape {labels.shape} does not match num_images {self.num_images}."
             self.reconstruct_label = False
 
         try:
@@ -109,6 +109,10 @@ class GradientReconstructor():
         else:
             print('Choosing optimal result ...')
             scores = scores[torch.isfinite(scores)]  # guard against NaN/-Inf scores?
+            if scores.numel() == 0:
+                print("All scores are NaN or -Inf. Cannot determine the optimal result.")
+                return None  # or handle the situation as needed
+
             optimal_index = torch.argmin(scores)
             print(f'Optimal result score: {scores[optimal_index]:2.4f}')
             stats['opt'] = scores[optimal_index].item()
@@ -128,6 +132,13 @@ class GradientReconstructor():
             raise ValueError()
 
     def _run_trial(self, x_trial, input_data, labels, dryrun=False):
+        # Print data types
+        print(f"Input data type: {type(input_data)}")
+        if isinstance(input_data, torch.Tensor):
+            print(f"Input data tensor dtype: {input_data.dtype}, shape: {input_data.shape}")
+        if isinstance(labels, torch.Tensor):
+            print(f"Labels tensor dtype: {labels.dtype}, shape: {labels.shape}, labels value: {labels}")
+
         x_trial.requires_grad = True
         if self.reconstruct_label:
             output_test = self.model(x_trial)

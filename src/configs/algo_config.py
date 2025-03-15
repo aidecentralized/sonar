@@ -31,8 +31,7 @@ iid_dispfl_clients_new: ConfigType = {
 traditional_fl: ConfigType = {
     # Collaboration setup
     "algo": "fedavg",
-    "rounds": 2,
-
+    "rounds": 5,
     # Model parameters
     "model": "resnet10",
     "model_lr": 3e-4,
@@ -197,7 +196,7 @@ swarm: ConfigType = {
     "average_last_layer": True,
     "mask_finetune_last_layer": False,
     # params for model
-    "position": 0,
+   "position": 0,
 }
 
 fedstatic: ConfigType = {
@@ -207,9 +206,9 @@ fedstatic: ConfigType = {
     # "topology": {"name": "base_graph", "max_degree": 2}, # type: ignore
     "rounds": 3,
     # Model parameters
-    "optimizer": "sgd", # TODO comment out for real training
+    "optimizer": "sgd",
     "model": "resnet10",
-    "model_lr": 3e-4,
+    "model_lr": 0.1,  # lr for sgd
     "batch_size": 256,
 }
 

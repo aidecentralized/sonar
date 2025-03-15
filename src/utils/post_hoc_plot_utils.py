@@ -639,8 +639,10 @@ if __name__ == "__main__":
     for experiment_folder in os.listdir(base_logs_dir):
         experiment_path = os.path.join(base_logs_dir, experiment_folder)
         logs_dir = os.path.join(experiment_path, 'logs')
+        print(logs_dir)
 
         if os.path.isdir(logs_dir):
+            print(f"Processing logs in: {logs_dir}")
             try:
                 print(f"Processing logs in: {logs_dir}")
                 avg_metrics, std_metrics, df_metrics = aggregate_metrics_across_users(logs_dir)
