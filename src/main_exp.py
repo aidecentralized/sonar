@@ -40,7 +40,7 @@ SAMPLES_PER_USER = 96
 CIFAR10_DSET = "cifar10"
 CIAR10_DPATH = "./datasets/imgs/cifar10/"
 
-DUMP_DIR = "/mas/camera/Experiments/SONAR/abhi/"
+DUMP_DIR = "/mas/camera/Experiments/SONAR/redacted/"
 
 def get_domain_support(
     num_users: int, base: str, domains: List[int] | List[str]
@@ -60,7 +60,7 @@ DOMAINNET_DMN = ["real", "sketch", "clipart"]
 def get_domainnet_support(num_users: int, domains: List[str] = DOMAINNET_DMN):
     return get_domain_support(num_users, "domainnet", domains)
 
-domainnet_base_dir = "/u/abhi24/matlaberp2/p2p/imgs/domainnet/"
+domainnet_base_dir = "/u/redacted24/matlaberp2/p2p/imgs/domainnet/"
 domainnet_dpath = {
     "domainnet_real": domainnet_base_dir,
     "domainnet_sketch": domainnet_base_dir,

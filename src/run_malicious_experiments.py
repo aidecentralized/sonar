@@ -55,7 +55,7 @@ for num_collaborators in [num_nodes, 1]:
                         "topology": topo_config,
                     },
                     "sys": {
-                        "comm": {"type": "GRPC", "synchronous": True, "peer_ids": ["matlaber1.media.mit.edu:1112"]},
+                        "comm": {"type": "GRPC", "synchronous": True, "peer_ids": ["matlaber1.media.redacted.edu:1112"]},
                         "num_users": num_nodes,
                         "num_collaborators": num_collaborators,
                         "samples_per_user": 50000 // num_nodes,

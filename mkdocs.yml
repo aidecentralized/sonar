@@ -1,13 +1,13 @@
 site_name: SONAR - Self-Organizing Network of Aggregated Representations
-repo_url: https://github.com/aidecentralized/sonar/
-site_url: https://aidecentralized.github.io/sonar/
+repo_url: https://github.com/redacted/sonar/
+site_url: https://redacted.github.io/sonar/
 #
 # Navigation
 # https://www.mkdocs.org/user-guide/configuration/#nav
 #
 nav:
   - Home:
-    - Home: index.md
+      - Home: index.md
   - Getting Started:
       - Main: getting-started.md
       - Config File: getting-started/config.md
@@ -15,25 +15,25 @@ nav:
       - Using GRPC: getting-started/grpc.md
       - Automating Experiments: getting-started/experiments.md
   - CollaBench:
-    - Main: collabench.md
-    - Feature Comparison: feature.md
+      - Main: collabench.md
+      - Feature Comparison: feature.md
   - Algorithms:
-    - Algorithms: algorithms.md
-  - Tasks: 
-    - Main: tasks.md
-    - Image Classification: tasks/image-classification.md
-    - Object Detection: tasks/object-detection.md
-    - Text Classification: tasks/text-classification.md
+      - Algorithms: algorithms.md
+  - Tasks:
+      - Main: tasks.md
+      - Image Classification: tasks/image-classification.md
+      - Object Detection: tasks/object-detection.md
+      - Text Classification: tasks/text-classification.md
   - Datasets:
-    - Main: datasets/main.md
-    - Partitioning Strategy: datasets/partitioning.md
+      - Main: datasets/main.md
+      - Partitioning Strategy: datasets/partitioning.md
   - Logging:
-    - Main: logging/logging.md
-    - Log Details: logging/log_details.md
+      - Main: logging/logging.md
+      - Log Details: logging/log_details.md
   - Development:
-    - Overview: development.md
-    - Contribution Guidelines: development/sonar.md
-    - Documentation: development/documentation.md
+      - Overview: development.md
+      - Contribution Guidelines: development/sonar.md
+      - Documentation: development/documentation.md
 
 #
 # Theme Settings
@@ -108,7 +108,6 @@ extra_css:
   - docs/stylesheets/msdl.v2.css
   - docs/stylesheets/theme.v3.css
 
-
 extra:
   # https://squidfunk.github.io/mkdocs-material/setup/setting-up-the-footer/#generator-notice
   generator: false
@@ -121,9 +120,9 @@ extra:
   social:
     # Add slack invite as well
     - icon: fontawesome/brands/github
-      link: https://github.com/aidecentralized/sonar/
+      link: https://github.com/redacted/sonar/
       name: Sonar on GitHub
-  
+
 #
 # Python Markdown
 # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown
@@ -157,7 +156,7 @@ markdown_extensions:
   - pymdownx.snippets:
       auto_append:
         - abbreviations.md
-      base_path: ['./docs/getting-started/', './docs/contributing/', 'includes']
+      base_path: ["./docs/getting-started/", "./docs/contributing/", "includes"]
 
   # https://squidfunk.github.io/mkdocs-material/reference/content-tabs
   - pymdownx.tabbed:
