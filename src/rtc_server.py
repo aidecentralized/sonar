@@ -3,10 +3,12 @@ import json
 import websockets
 import math
 from dataclasses import dataclass
-from typing import Dict, Set, Optional
+from typing import Dict, Set, Optional, Any
 import logging
 from collections import defaultdict
 import secrets
+from algos.topologies.base import BaseTopology
+from algos.topologies.collections import select_topology
 
 logging.basicConfig(level=logging.INFO)
 
@@ -25,6 +27,7 @@ class ClientInfo:
 class SessionInfo:
     session_id: str
     max_clients: int
+    config: Dict[str, Any]
     clients: Dict[websockets.WebSocketServerProtocol, ClientInfo] = None
     num_ready: int = 0
     
@@ -102,19 +105,29 @@ class SignalingServer:
 
                     # Create new session if it doesn't exist
                     max_clients = int(data['maxClients'])
+                    rank = 0
+                    # get topology to send to server
+                    config = data["config"]
+                    # topology_config = {
+                    #     "topology": {"name": config["algos"]["node_0"]["topology"]["name"]},
+                    #     "num_users": config["num_users"],
+                    #     "seed": config["seed"]
+                    # }
+                    # topology = select_topology(topology_config, rank+1)
                     self.sessions[session_id] = SessionInfo(
                         session_id=session_id,
-                        max_clients=max_clients
+                        max_clients=max_clients,
+                        config = config
                     )
 
                     # Add first client to session
-                    rank = 0
                     self.sessions[session_id].clients[websocket] = ClientInfo(
                         rank=0,
                         client_type=data.get('clientType', 'javascript'),
-                        session_id=session_id
+                        session_id=session_id,
                     )
                     session = self.sessions[session_id]
+
 
                 else:
                     session = self.sessions[session_id]
@@ -209,11 +222,31 @@ class SignalingServer:
         grid_size = self.calculate_grid_size(session)
         for ws, info in session.clients.items():
             try:
-                neighbors = self.get_neighbor_ranks(session, info.rank)
+                # neighbors = self.get_neighbor_ranks(session, info.rank)
+
+                # this assumes that max_clients number of clients are connected
+                # list of ints
+                if info.rank == 0:
+                    neighbor_dict = {}
+                    print(neighbor_dict)
+                else:
+                    print(info.rank)
+                    topology_config = {
+                        "topology": {"name": session.config["algos"]["node_0"]["topology"]["name"]},
+                        "num_users": session.config["num_users"],
+                        "seed": session.config["seed"]
+                    }
+                    print(topology_config)
+                    topology = select_topology(topology_config, info.rank)
+                    topology.initialize()
+                    # do we only want 1 neighbor?
+                    neighbors = topology.sample_neighbours(session.config["num_users"]) #type: ignore
+                    neighbor_dict = {f"neighbor{info.rank}": neighbors}
+                    print(neighbor_dict)
                 await ws.send(json.dumps({
                     'type': 'topology',
                     'rank': info.rank,
-                    'neighbors': neighbors,
+                    'neighbors': neighbor_dict,
                     'gridSize': grid_size,
                     'totalClients': len(session.clients)
                 }))
