@@ -241,7 +241,7 @@ class SignalingServer:
                     topology.initialize()
                     # do we only want 1 neighbor?
                     neighbors = topology.sample_neighbours(session.config["num_users"]) #type: ignore
-                    neighbor_dict = {f"neighbor{info.rank}": neighbors}
+                    neighbor_dict = {f"neighbor{info.rank}": [neighbor for neighbor in neighbors if neighbor > info.rank]}
                     print(neighbor_dict)
                 await ws.send(json.dumps({
                     'type': 'topology',
