@@ -341,18 +341,21 @@ export class WebRTCCommUtils {
         }
 
         // Initiate connections to higher-ranked neighbors
-        for (const neighborRank of Object.values(newNeighbors)) {
-          // TODO: uncomment this condition later
-            // if (neighborRank > this.rank && 
-            //     !this.connections.has(neighborRank) && 
-            //     !this.pendingConnections.has(neighborRank)) {
-            //     this.log(`Initiating connection to ${neighborRank}`);
-            //     this.pendingConnections.add(neighborRank);
-            //     this.initiateConnection(neighborRank);
+        for (const neighborList of Object.values(this.neighbors)) {
+          this.log(`Initiating connection to ${neighbor}`);
+            // TODO: uncomment this condition later
+              // if (neighborRank > this.rank &&
+              //     !this.connections.has(neighborRank) &&
+              //     !this.pendingConnections.has(neighborRank)) {
+              //     this.log(`Initiating connection to ${neighborRank}`);
+              //     this.pendingConnections.add(neighborRank);
+              //     this.initiateConnection(neighborRank);
             // }
-            this.log(`Initiating connection to ${neighborRank}`);
-            this.pendingConnections.add(neighborRank);
-            this.initiateConnection(neighborRank);
+          for (const neighbor of neighborList) {
+            this.log(`Initiating connection to ${neighbor}`);
+            this.pendingConnections.add(neighbor);
+            this.initiateConnection(neighbor);
+          }
         }
     }
 

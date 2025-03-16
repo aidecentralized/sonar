@@ -16,7 +16,7 @@ const signalingServer = 'ws://localhost:8765'; // Your WebSocket server
 
 let config = {
     signaling_server: signalingServer,
-    topology: "ring",
+    algos: {node_0: {topology: "ring"}},
     num_users: MAX_CLIENTS,
     session_id: SESSION_ID,
     epochs: 10
@@ -44,7 +44,7 @@ function displayMessage(message) {
 }
 
 saveConfigButton.addEventListener('click', function() {
-    config.topology = document.getElementById('topology').value;
+    config.algos.node_0.topology = document.getElementById('topology').value;
     config.signaling_server = document.getElementById('signaling_server').value;
     config.num_users = document.getElementById('num_users').value;
     config.session_id = document.getElementById('session_id').value;

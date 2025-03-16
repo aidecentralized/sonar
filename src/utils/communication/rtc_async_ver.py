@@ -479,7 +479,8 @@ class RTCCommUtils(CommunicationInterface):
                 'type': 'join_session',
                 'sessionId': session_id,
                 'clientType': 'python',
-                'maxClients': self.config.get("num_users", 2)
+                'maxClients': self.config.get("num_users", 2),
+                'config': self.config
             }))
             response = await self.websocket.recv()
             data = json.loads(response)
@@ -567,11 +568,11 @@ class RTCCommUtils(CommunicationInterface):
     async def handle_topology(self, data):
         self.rank = data["rank"]
         self.setup_file_logging()
-        new_neighbors = data["neighbors"]
+        new_neighbors: List[int] = data["neighbors"][f"neighbor{self.rank}"]
         self.logger.info(f"Node {self.rank} received topology. Neighbors: {new_neighbors}")
 
         if self.neighbors:
-            removed = set(self.neighbors.values()) - set(new_neighbors.values())
+            removed = set(self.neighbors) - set(new_neighbors)
             for rank in removed:
                 await self.cleanup_connection(rank)
 
@@ -585,7 +586,7 @@ class RTCCommUtils(CommunicationInterface):
 
         # Only initiate connections to higher-ranked neighbors
         connection_tasks = []
-        for neighbor_rank in self.neighbors.values():
+        for neighbor_rank in self.neighbors:
             if neighbor_rank is None:
                 continue
             # if neighbor_rank > self.rank:
@@ -670,7 +671,7 @@ class RTCCommUtils(CommunicationInterface):
         finished = False
         items = []
         # for peer_rank in node_ids: # TODO: change this back, small change for testing
-        for peer_rank in self.neighbors.values():
+        for peer_rank in self.neighbors:
             # self.wait_until_rounds_match(peer_rank)
             model_data = self.get_peer_weights(peer_rank)
             if (model_data):
