@@ -271,7 +271,7 @@ class SignalingServer:
 
 async def main():
     server = SignalingServer()
-    async with websockets.serve(server.handle_client, "localhost", 8765):
+    async with websockets.serve(server.handle_client, "0.0.0.0", 8765):
         await asyncio.Future()  # run forever
 
 if __name__ == "__main__":

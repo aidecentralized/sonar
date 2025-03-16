@@ -83,12 +83,12 @@ class RTCCommUtils(CommunicationInterface):
         self.connection_queue = asyncio.Queue()
         self.connection_retries = defaultdict(int)
         self.MAX_RETRIES = 3
-        self.RETRY_DELAY = 2
+        self.RETRY_DELAY = 30  # Increased from 2 to 30 seconds
         self.pending_connections: Set[int] = set()
         self.connected_peers: Set[int] = set()
         self.expected_connections = 0
-        self.connection_timeout = 30
-        self.ice_gathering_timeout = 10
+        self.connection_timeout = 60  # Increased from 30 to 60 seconds
+        self.ice_gathering_timeout = 20  # Increased from 10 to 20 seconds
         self.logger = self.setup_logger()
 
         # Training attributes

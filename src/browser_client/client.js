@@ -187,8 +187,9 @@ export class WebRTCCommUtils {
         // Connection management
         this.connectionRetries = new Map();           // peerRank -> retryCount
         this.MAX_RETRIES = 3;
-        this.RETRY_DELAY = 15000;
-        this.ICE_GATHERING_TIMEOUT = 10000;
+        this.RETRY_DELAY = 30000;                    // Increased from 15000 to 30000
+        this.ICE_GATHERING_TIMEOUT = 20000;          // Increased from 10000 to 20000
+        this.weightReceiptTimeout = 120000; // 2 minutes timeout
     
         // State
         this.state = NodeState.CONNECTING;
@@ -366,12 +367,17 @@ export class WebRTCCommUtils {
    */
     createPeerConnection(otherRank) {
         const config = {
-            iceServers: [{
-                urls: [
-                    'stun:stun.l.google.com:19302',
-                    'stun:stun1.l.google.com:19302'
-                ]
-            }]
+            iceServers: [
+                {urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"]},
+                // // Add TURN server configuration - user needs to replace with actual credentials
+                // {
+                //     urls: ["turn:global.turn.twilio.com:3478?transport=udp",
+                //            "turn:global.turn.twilio.com:3478?transport=tcp"],
+                //     username: "REPLACE_WITH_YOUR_TWILIO_USERNAME",
+                //     credential: "REPLACE_WITH_YOUR_TWILIO_CREDENTIAL"
+                // }
+            ],
+            iceCandidatePoolSize: 10
         };
 
         const pc = new RTCPeerConnection(config);
