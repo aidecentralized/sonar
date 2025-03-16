@@ -228,7 +228,6 @@ class SignalingServer:
                 # list of ints
                 if info.rank == 0:
                     neighbor_dict = {}
-                    print(neighbor_dict)
                 else:
                     print(info.rank)
                     topology_config = {
@@ -236,7 +235,6 @@ class SignalingServer:
                         "num_users": session.config["num_users"],
                         "seed": session.config["seed"]
                     }
-                    print(topology_config)
                     topology = select_topology(topology_config, info.rank)
                     topology.initialize()
                     # do we only want 1 neighbor?
