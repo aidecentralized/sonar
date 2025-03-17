@@ -670,17 +670,15 @@ class RTCCommUtils(CommunicationInterface):
     def receive(self, node_ids: List[int]) -> List[OrderedDict[str, Any]]:
         finished = False
         items = []
-        neighbor_count = 0
         for peer_rank in self.neighbors:
-        # TODO: CHANGE THIS HARDCODING BACK TO THE ABOVE LINE
-            if neighbor_count > 0:
-                break
             # self.wait_until_rounds_match(peer_rank)
             model_data = self.get_peer_weights(peer_rank)
             if (model_data):
                 self.logger.info(f"get_peer_weights() returned {model_data.keys()}")
                 items.append(model_data)
-            neighbor_count += 1
+
+            # TODO: CHANGE THIS TO BE ABLE TO DEAL WITH MULTIPLE NEIGHBORS
+            break
 
         # Process messages with timeout
         timestamp = time.time()
@@ -702,7 +700,7 @@ class RTCCommUtils(CommunicationInterface):
                     # self.logger.info(f"[Main Thread] Popped from message queue type {data['type']} from peer {peer_rank}")
             except Empty:
                 pass
-        self.logger.info(f"ALL CHUNKS RECEIVED")
+        self.logger.info(f"All chunks received from peer {peer_rank}")
 
         # log the time it took to send in a nice format, and the keys of the peer_weights
         self.logger.info(f"Time to receive: {time.strftime('%M:%S', time.gmtime(time.time() - timestamp))}")
@@ -753,7 +751,7 @@ class RTCCommUtils(CommunicationInterface):
                     self.logger.warning(f"Invalid 'round_update_response' from peer {peer_rank}: {message}")
 
             elif msg_type == "weights_request":
-                self.logger.info(f"Received weights request from peer {peer_rank}")
+                self.logger.info(f"Received weights request from peer {peer_rank}, sending weights...")
                 node_data = self.base_node.get_model_weights()
                 curr_round = node_data["round"]
                 # serializable_weights = serialize_message(node_data['model'])
@@ -793,6 +791,8 @@ class RTCCommUtils(CommunicationInterface):
                     "round": curr_round
                 }
                 self.send_to_peer(peer_rank, finished_message)
+
+                self.logger.info(f"Finished sending weights to peer {peer_rank}")
 
             elif msg_type == "weights_response":
                 if self.clear_peer_weights:
