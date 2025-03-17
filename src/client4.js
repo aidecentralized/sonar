@@ -881,7 +881,9 @@ class WebRTCCommUtils {
     });
     
     // Send weight requests to all neighbors
-    for (const neighborRank of Object.values(this.neighbors)) {
+    // for (const neighborRank of Object.values(this.neighbors)) {
+    // TODO: REMOVE THIS HARDCODING
+    for (const neighborRank of [1]) {
       this.log(`Sending weights request for neighbor ${neighborRank}`);
       this.sendToPeer(neighborRank, {
         type: "weights_request",

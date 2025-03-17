@@ -210,11 +210,12 @@ class SignalingServer:
                 await self.broadcast_topology(session)
 
     async def broadcast_topology(self, session: SessionInfo):
-        grid_size = self.calculate_grid_size(session)
+        # grid_size = self.calculate_grid_size(session)
         for ws, info in session.clients.items():
             try:
+                neighbor_dict = {}
                 if info.rank == 0:
-                    neighbor_dict = {}
+                    neighbor_dict[f"neighbor{info.rank}"] = []
                     print(neighbor_dict)
                 else:
                     print(info.rank)
@@ -227,13 +228,13 @@ class SignalingServer:
                     topology.initialize()
                     # do we only want 1 neighbor?
                     neighbors = topology.sample_neighbours(session.config["num_users"]) #type: ignore
-                    neighbor_dict = {f"neighbor{info.rank}": [neighbor for neighbor in neighbors if neighbor > info.rank]}
+                    neighbor_dict.update({f"neighbor{info.rank}": [neighbor for neighbor in neighbors if neighbor > info.rank]})
                     print(neighbor_dict)
                 await ws.send(json.dumps({
                     'type': 'topology',
                     'rank': info.rank,
                     'neighbors': neighbor_dict,
-                    'gridSize': grid_size,
+                    # 'gridSize': grid_size,
                     'totalClients': len(session.clients)
                 }))
             except websockets.exceptions.ConnectionClosed:

@@ -994,7 +994,7 @@ export class WebRTCCommUtils {
     for (let i = 0; i < this.config.epochs; i++) {
       await this.model.local_train_one(this.dataset)
       // simulate training this a sleep
-      // await new Promise(res => setTimeout(res, 30000)), this.log("finished simulated training for 60 seconds");
+      await new Promise(res => setTimeout(res, 20000)), this.log("finished simulated training for 20 seconds");
 
       this.log(`finished round ${i} training`);
 

@@ -235,7 +235,7 @@ class RTCCommUtils(CommunicationInterface):
         self.connected_peers.add(peer_rank)
         self.pending_connections.discard(peer_rank)
         self.logger.info(f"Node {self.rank} connected to peer {peer_rank}. "
-                    f"Connected: {len(self.connected_peers)}/{self.expected_connections + 1}")
+                    f"Connected: {len(self.connected_peers)}/{self.expected_connections}")
         
         await self.websocket.send(json.dumps({
             "type": "connection_established",
@@ -670,13 +670,17 @@ class RTCCommUtils(CommunicationInterface):
     def receive(self, node_ids: List[int]) -> List[OrderedDict[str, Any]]:
         finished = False
         items = []
-        # for peer_rank in node_ids: # TODO: change this back, small change for testing
+        neighbor_count = 0
         for peer_rank in self.neighbors:
+        # TODO: CHANGE THIS HARDCODING BACK TO THE ABOVE LINE
+            if neighbor_count > 0:
+                break
             # self.wait_until_rounds_match(peer_rank)
             model_data = self.get_peer_weights(peer_rank)
             if (model_data):
                 self.logger.info(f"get_peer_weights() returned {model_data.keys()}")
                 items.append(model_data)
+            neighbor_count += 1
 
         # Process messages with timeout
         timestamp = time.time()
