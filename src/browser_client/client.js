@@ -264,11 +264,15 @@ export class WebRTCCommUtils {
         // Extra placeholders for distributed training logic
         this.currentRound = 0;
         this.peer_rounds = new Map();
-        this.peer_weights = {};
+        this.peer_weights = new Map(); // Changed from object to Map to track weights by peer rank
         this.clear_peer_weights = false;
         this.weights_finished = false;
         this.expectedLayers = new Set(); // Track which layers we expect to receive
         this.receivedWeightsFrom = new Set(); // Track which peers we've received weights_finished from
+        
+        // Tracking chunks and completion per peer
+        this.layerChunkTracker = new Map(); // Map of peer_rank -> { layerName: { expected, received } }
+        this.receivedWeightsFinished = new Map(); // Map of peer_rank -> boolean
     
         // Communication cost counters
         this.comm_cost_sent = 0;
@@ -680,13 +684,23 @@ export class WebRTCCommUtils {
   
           case 'weights_response': {
             try {
-              // Reset peer weights if needed
-              if (this.clear_peer_weights) {
-                this.log(`Initializing peer weights for new round`);
-                this.peer_weights = {};
-                this.clear_peer_weights = false;
+                // // Reset peer weights if needed
+                // if (this.clear_peer_weights) {
+                //   this.log(`Initializing peer weights for new round`);
+                //   this.peer_weights = {};
+                //   this.clear_peer_weights = false;
+              // Get peer rank
+              const peerRank = parseInt(peerRank);
+              
+              // Initialize tracking structures for this peer if needed
+              if (!this.layerChunkTracker.has(peerRank)) {
+                this.layerChunkTracker.set(peerRank, {});
               }
-  
+              
+              if (!this.peer_weights.has(peerRank)) {
+                this.peer_weights.set(peerRank, {});
+              }
+              
               // 1. Deserialize the chunk
               const chunkData = deserializeMessage(data.weights);
               
@@ -697,43 +711,42 @@ export class WebRTCCommUtils {
               const numChunks = chunkData.num_chunks;
               const originalShape = chunkData.original_shape;
               
-              // Initialize peer_weights if needed
-              if (!this.peer_weights) {
-                this.peer_weights = {};
-              }
+              // Get this peer's weights and layer trackers
+              const peerWeights = this.peer_weights.get(peerRank);
+              const peerLayerTrackers = this.layerChunkTracker.get(peerRank);
               
-              // Initialize the layer in peer_weights if needed
-              if (!this.peer_weights[layerName]) {
-                this.peer_weights[layerName] = [];
+              // Initialize the layer tracking for this peer if needed
+              if (!peerWeights[layerName]) {
+                peerWeights[layerName] = [];
                 
                 // Track this layer
-                this.layerChunkTracker[layerName] = {
+                peerLayerTrackers[layerName] = {
                   expected: numChunks,
                   received: 0
                 };
                 
-                // this.log(`New layer: ${layerName}, expecting ${numChunks} chunks`);
+                // this.log(`New layer ${layerName} from peer ${peerRank}, expecting ${numChunks} chunks`);
               }
 
               // Store the chunk
-              this.peer_weights[layerName].push(chunk);
-              this.layerChunkTracker[layerName].received++;
+              peerWeights[layerName].push(chunk);
+              peerLayerTrackers[layerName].received++;
               
               // Log progress periodically
-              const tracker = this.layerChunkTracker[layerName];
+              const tracker = peerLayerTrackers[layerName];
               if (tracker.received === tracker.expected || 
                   tracker.received === 1 || 
                   tracker.received % 10 === 0) {
-                // this.log(`Layer ${layerName}: ${tracker.received}/${tracker.expected} chunks`);
+                // this.log(`Layer ${layerName} from peer ${peerRank}: ${tracker.received}/${tracker.expected} chunks`);
               }
               
               // If we've received all chunks for this layer, reconstruct it
               if (tracker.received === tracker.expected) {
-                this.log(`✓ Layer ${layerName} complete: all ${numChunks} chunks received`);
+                this.log(`✓ Layer ${layerName} from peer ${peerRank} complete: all ${numChunks} chunks received`);
                 
                 // Concatenate all chunk data
                 let fullArray = [];
-                for (let partialTensor of this.peer_weights[layerName]) {
+                for (let partialTensor of peerWeights[layerName]) {
                   fullArray.push(...Array.from(partialTensor.data));
                 }
                 
@@ -746,11 +759,11 @@ export class WebRTCCommUtils {
                 };
                 
                 // Replace the array of chunks with the complete tensor
-                this.peer_weights[layerName] = reassembledTensor;
+                peerWeights[layerName] = reassembledTensor;
                 
                 // Check if we can move on now
                 if (this.canMoveOn()) {
-                  this.log(`All weights are now complete!`);
+                  this.log(`All weights are now complete from all peers!`);
                 }
               }
               
@@ -761,26 +774,32 @@ export class WebRTCCommUtils {
           }
   
           case 'weights_finished': {
+            const peerRank = parseInt(peerRank);
             this.log(`Received weights_finished from peer ${peerRank}`);
-            this.receivedWeightsFinished = true;
+            this.receivedWeightsFinished.set(peerRank, true);
             
-            // Check if we're still missing any chunks
-            const incompleteLayers = Object.entries(this.layerChunkTracker)
-              .filter(([_, info]) => info.received < info.expected)
-              .map(([name, info]) => `${name} (${info.received}/${info.expected})`)
-              .join(', ');
-            
-            if (incompleteLayers) {
-              this.log(`Received weights_finished but still waiting for chunks: ${incompleteLayers}`);
-            } else if (Object.keys(this.layerChunkTracker).length === 0) {
-              this.log(`Received weights_finished but no layers have been registered yet`);
+            // Check if we're still missing any chunks from this peer
+            if (this.layerChunkTracker.has(peerRank)) {
+              const peerLayerTrackers = this.layerChunkTracker.get(peerRank);
+              const incompleteLayers = Object.entries(peerLayerTrackers)
+                .filter(([_, info]) => info.received < info.expected)
+                .map(([name, info]) => `${name} (${info.received}/${info.expected})`)
+                .join(', ');
+              
+              if (incompleteLayers) {
+                this.log(`Received weights_finished from peer ${peerRank} but still waiting for chunks: ${incompleteLayers}`);
+              } else if (Object.keys(peerLayerTrackers).length === 0) {
+                this.log(`Received weights_finished from peer ${peerRank} but no layers have been registered yet`);
+              } else {
+                this.log(`✓ Received weights_finished from peer ${peerRank} and all tracked layers are complete`);
+              }
             } else {
-              this.log(`✓ Received weights_finished and all tracked layers are complete`);
+              this.log(`Received weights_finished from peer ${peerRank} but no layer tracking data exists`);
             }
             
             // Check if we can move on now
             if (this.canMoveOn()) {
-              this.log(`All weights are now complete!`);
+              this.log(`All weights are now complete from all peers!`);
             }
             
             break;
@@ -798,8 +817,6 @@ export class WebRTCCommUtils {
               this.log(`Received round update response from peer ${peerRank}`);
               this.peer_rounds.set(peerRank, data.round)
               break;
-  
-          // Add other message types (round_update, etc.) similarly
         }
       } catch (err) {
         this.log(`handleDataChannelMessage() parse error: ${err}`);
@@ -836,21 +853,30 @@ export class WebRTCCommUtils {
    * @returns {boolean} True if we can move on, false if we need to wait
    */
   canMoveOn() {
-    // First, we need to have received the weights_finished signal
-    if (!this.receivedWeightsFinished) {
+    // If we haven't received any weights finished signals or have no neighbors, we can't move on
+    if (this.receivedWeightsFinished.size === 0 || this.connectedPeers.size === 0) {
       return false;
     }
     
-    // If we have no layers being tracked, we can't move on yet
-    if (Object.keys(this.layerChunkTracker).length === 0) {
+    // Check if we've received weights_finished from all neighbors we're connected to
+    for (const peerRank of this.connectedPeers) {
+      if (!this.receivedWeightsFinished.has(peerRank) || !this.receivedWeightsFinished.get(peerRank)) {
+        return false;
+      }
+    }
+    
+    // If we have no layers being tracked for any peer, we can't move on yet
+    if (this.layerChunkTracker.size === 0) {
       return false;
     }
     
-    // Check if all tracked layers have received all their expected chunks
-    for (const layerName in this.layerChunkTracker) {
-      const tracker = this.layerChunkTracker[layerName];
-      if (tracker.received < tracker.expected) {
-        return false; // This layer is still missing chunks
+    // Check if all tracked layers for all peers have received all their expected chunks
+    for (const [peerRank, layerTrackers] of this.layerChunkTracker.entries()) {
+      for (const layerName in layerTrackers) {
+        const tracker = layerTrackers[layerName];
+        if (tracker.received < tracker.expected) {
+          return false; // This layer is still missing chunks for this peer
+        }
       }
     }
     
@@ -863,8 +889,9 @@ export class WebRTCCommUtils {
     
     // Reset our tracking state
     this.clear_peer_weights = true;
-    this.layerChunkTracker = {}; // Format: { layerName: { expected: numChunks, received: count } }
-    this.receivedWeightsFinished = false; // Set to true when weights_finished is received
+    this.layerChunkTracker = new Map(); // Reset per-peer layer tracking
+    this.receivedWeightsFinished = new Map(); // Reset per-peer completion status
+    this.peer_weights = new Map(); // Reset peer weights map
     this.weightReceiptTimeout = 120000; // 2 minutes timeout
     
     // Create a promise that will resolve when all weights are received
@@ -872,18 +899,26 @@ export class WebRTCCommUtils {
       // Set timeout to prevent indefinite waiting
       const timeout = setTimeout(() => {
         // Log what we're still waiting for if timeout occurs
-        const incompleteLayerNames = Object.entries(this.layerChunkTracker)
-          .filter(([_, info]) => info.received < info.expected)
-          .map(([name, info]) => `${name} (${info.received}/${info.expected})`)
-          .join(', ');
+        let incompleteInfo = [];
+        
+        for (const [peerRank, layerTrackers] of this.layerChunkTracker.entries()) {
+          const incompleteLayerNames = Object.entries(layerTrackers)
+            .filter(([_, info]) => info.received < info.expected)
+            .map(([name, info]) => `${name} (${info.received}/${info.expected})`)
+            .join(', ');
+            
+          if (incompleteLayerNames) {
+            incompleteInfo.push(`Peer ${peerRank}: ${incompleteLayerNames}`);
+          }
+        }
           
-        reject(new Error(`Weights receipt timed out after ${this.weightReceiptTimeout/1000} seconds. Still waiting for: ${incompleteLayerNames}`));
+        reject(new Error(`Weights receipt timed out after ${this.weightReceiptTimeout/1000} seconds. Still waiting for: ${incompleteInfo.join('; ')}`));
       }, this.weightReceiptTimeout);
       
       // Create a check function that periodically checks if we can move on
       const checkComplete = () => {
         if (this.canMoveOn()) {
-          this.log("✓ All expected layers and chunks received, resolving promise");
+          this.log("✓ All expected layers and chunks received from all peers, resolving promise");
           clearTimeout(timeout);
           resolve();
         } else {
@@ -895,10 +930,8 @@ export class WebRTCCommUtils {
       checkComplete();
     });
     
-    // Send weight requests to all neighbors
-    // for (const neighborRank of Object.values(this.neighbors)) {
-    // TODO: REMOVE THIS HARDCODING
-    for (const neighborRank of [1]) {
+    // Send weight requests to all connected neighbors
+    for (const neighborRank of Object.values(this.neighbors)) {
       this.log(`Sending weights request for neighbor ${neighborRank}`);
       this.sendToPeer(neighborRank, {
         type: "weights_request",
@@ -910,23 +943,40 @@ export class WebRTCCommUtils {
       // Wait for the weights to be received
       await waitForWeights;
       
-      this.log(`✓ Successfully received all peer weights`);
-      return this.peer_weights;
+      this.log(`✓ Successfully received weights from ${this.peer_weights.size} peers`);
+      
+      // Convert Map to array of objects to maintain compatibility with the existing aggregate function
+      const peerWeightsArray = [];
+      for (const [peerRank, weights] of this.peer_weights.entries()) {
+        peerWeightsArray.push({
+          sender: peerRank,
+          model: weights
+        });
+      }
+      
+      return peerWeightsArray;
     } catch (error) {
       this.log(`Error in receive(): ${error.message}`);
-      // Return whatever weights we have so far
-      return this.peer_weights || {};
+      // Return whatever weights we have so far as an array of objects
+      const peerWeightsArray = [];
+      for (const [peerRank, weights] of this.peer_weights.entries()) {
+        peerWeightsArray.push({
+          sender: peerRank,
+          model: weights
+        });
+      }
+      return peerWeightsArray;
     }
   }
 
   /**
    * Aggregate the current model weights with peer weights
-   * @param {Object} peer_weights - An object containing peer weights
+   * @param {Array} peer_weights_array - An array of objects containing peer weights with their sender IDs
    * @returns {Promise<void>}
    */
-  async aggregate(peer_weights) {
+  async aggregate(peer_weights_array) {
     this.log("Aggregating model weights");
-    this.log(`Peer weights received: ${Object.keys(peer_weights).length} entries`);
+    this.log(`Peer weight entries received: ${peer_weights_array.length}`);
     
     try {
       // Get current model weights and layers
@@ -960,10 +1010,9 @@ export class WebRTCCommUtils {
       for (const [jsName, pythonName] of Object.entries(js2python)) {
         python2jsMapping[pythonName] = jsName;
       }      
+      
       // Count how many peer models we're aggregating with
-      // TODO: make this flexible
-      const peerModelCount = 1
-      // const peerModelCount = Object.keys(peer_weights).length;
+      const peerModelCount = peer_weights_array.length;
       
       this.log(`Found ${peerModelCount} peer models for aggregation`);
       
@@ -971,66 +1020,74 @@ export class WebRTCCommUtils {
       if (peerModelCount > 0) {
         this.log("Starting weight aggregation with peers");
         
-        // Process each peer weight tensor
-        for (const [pythonLayerName, weightTensor] of Object.entries(peer_weights)) {
-          // Skip if this isn't a weight tensor or if we don't have a mapping for it
-          if (!weightTensor || !weightTensor.__isTensor || !python2jsMapping[pythonLayerName]) {
-            this.log(`Skipping ${pythonLayerName}: is tensor? ${weightTensor?.__isTensor}, has mapping? ${Boolean(python2jsMapping[pythonLayerName])}`);
-            continue;
-          }
+        // Process each peer model
+        for (const peerData of peer_weights_array) {
+          const peerRank = peerData.sender;
+          const peerWeights = peerData.model;
           
-          const jsLayerName = python2jsMapping[pythonLayerName];
-          const weightIndex = layerMap[jsLayerName];
+          this.log(`Processing weights from peer ${peerRank}`);
           
-          // Skip if we don't have this layer in our model
-          if (weightIndex === undefined) {
-            this.log(`Warning: No matching weight index for ${jsLayerName} (python: ${pythonLayerName})`);
-            continue;
-          }
-          
-          // this.log(`Processing ${pythonLayerName} -> ${jsLayerName} at index ${weightIndex}`);
-          
-          // Get the current weight tensor for this layer (the cloned one)
-          const currentWeight = weightsList[weightIndex];
-          
-          // Convert torch dtype to TF.js compatible dtype
-          let tensorDtype = weightTensor.dtype;
-          if (tensorDtype && tensorDtype.startsWith('torch.')) {
-            tensorDtype = tensorDtype.replace('torch.', '');
-          }
-          
-          const incomingData = Array.from(weightTensor.data);
-          
-          // Create the incoming tensor with the original shape from PyTorch
-          const incomingTensor = tf.tensor(
-            incomingData,
-            weightTensor.shape,
-            tensorDtype
-          );
-          
-          // Get the expected shape from the current model weights
-          const expectedShape = currentWeight.shape;
-          
-          // Use our enhanced convertTfToTfjs function to handle reshaping and conversion
-          const convertedTensor = convertTfToTfjs(incomingTensor, currentWeight, this.log.bind(this));
-          
-          // Skip if conversion failed
-          if (!convertedTensor) {
-            this.log(`Conversion failed for ${jsLayerName}, skipping`);
+          // Process each weight tensor in this peer's model
+          for (const [pythonLayerName, weightTensor] of Object.entries(peerWeights)) {
+            // Skip if this isn't a weight tensor or if we don't have a mapping for it
+            if (!weightTensor || !weightTensor.__isTensor || !python2jsMapping[pythonLayerName]) {
+              this.log(`Skipping ${pythonLayerName} from peer ${peerRank}: is tensor? ${weightTensor?.__isTensor}, has mapping? ${Boolean(python2jsMapping[pythonLayerName])}`);
+              continue;
+            }
+            
+            const jsLayerName = python2jsMapping[pythonLayerName];
+            const weightIndex = layerMap[jsLayerName];
+            
+            // Skip if we don't have this layer in our model
+            if (weightIndex === undefined) {
+              this.log(`Warning: No matching weight index for ${jsLayerName} (python: ${pythonLayerName}) from peer ${peerRank}`);
+              continue;
+            }
+            
+            // this.log(`Processing ${pythonLayerName} -> ${jsLayerName} at index ${weightIndex} from peer ${peerRank}`);
+            
+            // Get the current weight tensor for this layer (the cloned one)
+            const currentWeight = weightsList[weightIndex];
+            
+            // Convert torch dtype to TF.js compatible dtype
+            let tensorDtype = weightTensor.dtype;
+            if (tensorDtype && tensorDtype.startsWith('torch.')) {
+              tensorDtype = tensorDtype.replace('torch.', '');
+            }
+            
+            const incomingData = Array.from(weightTensor.data);
+            
+            // Create the incoming tensor with the original shape from PyTorch
+            const incomingTensor = tf.tensor(
+              incomingData,
+              weightTensor.shape,
+              tensorDtype
+            );
+            
+            // Get the expected shape from the current model weights
+            const expectedShape = currentWeight.shape;
+            
+            // Use our enhanced convertTfToTfjs function to handle reshaping and conversion
+            const convertedTensor = convertTfToTfjs(incomingTensor, currentWeight, this.log.bind(this));
+            
+            // Skip if conversion failed
+            if (!convertedTensor) {
+              this.log(`Conversion failed for ${jsLayerName}, skipping`);
+              incomingTensor.dispose();
+              continue;
+            }
+            
+            // Add to current weights and create a new tensor to store the result
+            const updatedTensor = currentWeight.add(convertedTensor);
+            
+            // Replace in our weights list
+            weightsList[weightIndex].dispose(); // Dispose the old cloned tensor
+            weightsList[weightIndex] = updatedTensor;
+            
+            // Clean up tensors to avoid memory leaks
             incomingTensor.dispose();
-            continue;
+            convertedTensor.dispose();
           }
-          
-          // Add to current weights and create a new tensor to store the result
-          const updatedTensor = currentWeight.add(convertedTensor);
-          
-          // Replace in our weights list
-          weightsList[weightIndex].dispose(); // Dispose the old cloned tensor
-          weightsList[weightIndex] = updatedTensor;
-          
-          // Clean up tensors to avoid memory leaks
-          incomingTensor.dispose();
-          convertedTensor.dispose();
         }
         
         // Average the weights (divide by total number of models)
@@ -1185,7 +1242,7 @@ export class WebRTCCommUtils {
       }
     }
   }
-  
+
   /**
    * Helper method to scale a weight tensor by a coefficient
    * @param {Object} weight - The weight tensor object
@@ -1269,7 +1326,7 @@ export class WebRTCCommUtils {
       // simulate training this a sleep
       // await new Promise(res => setTimeout(res, 20000)), this.log("finished simulated training for 20 seconds");
 
-      this.log(`finished round ${i} training`);
+      this.log(`Finished round ${i} training, receiving weights...`);
 
 
       // Reset tracking for this round
@@ -1349,7 +1406,7 @@ export class WebRTCCommUtils {
                     sdpMid: '0'
                 });
             }
-        } catch (error) {
+    } catch (error) {
             this.log(`handleSignalingMessage error: ${error}`);
         }
     }

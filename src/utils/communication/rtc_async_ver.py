@@ -97,7 +97,7 @@ class RTCCommUtils(CommunicationInterface):
         # self.model_weights = np.zeros(10)  # Example model weights
         self.model_weights = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
         self.peer_rounds: Dict[int, int] = {}
-        self.peer_weights: Dict[Any, Any] = {}
+        self.peer_weights: Dict[int, Dict[Any, Any]] = {}  # Map peer_rank to their weights
         self.message_callbacks: Dict[str, Any] = {}
         self.rounds_match_events: Dict[int, threading.Event] = {}
 
@@ -110,10 +110,10 @@ class RTCCommUtils(CommunicationInterface):
         self.comm_cost_sent = 0
         self.comm_cost_received = 0
 
-        # Add tracking for expected chunks
-        self.expected_chunks = {}  # {layer_name: expected_num_chunks}
-        self.received_chunks = {}  # {layer_name: current_num_chunks} 
-        self.all_chunks_received = False
+        # Add tracking for expected chunks (per peer)
+        self.expected_chunks: Dict[int, Dict[str, int]] = {}  # {peer_rank: {layer_name: expected_num_chunks}}
+        self.received_chunks: Dict[int, Dict[str, int]] = {}  # {peer_rank: {layer_name: current_num_chunks}}
+        self.all_chunks_received: Dict[int, bool] = {}  # Track completion per peer
 
     def setup_logger(self) -> logging.Logger:
         # Create logs directory if it doesn't exist
@@ -614,48 +614,58 @@ class RTCCommUtils(CommunicationInterface):
 
     # TODO: Here are all the functions that are not going to be on the listening thread
     def get_peer_weights(self, peer_rank: int, max_retries: int = 3) -> Optional[np.ndarray]:
-        requests = set()
+        """Request and get the weights from a peer."""
+        self.logger.info(f"Requesting weights from peer {peer_rank}")
+        
+        if peer_rank not in self.data_channels:
+            self.logger.error(f"No data channel to peer {peer_rank}")
+            return None
+
+        request_id = str(time.time())
+        requests = []
+
         for attempt in range(max_retries):
             try:
-                request_id = f"weights_request_{time.time()}_{random.randint(0, 1000)}"
-                requests.add(request_id)
-
-                # Create an event for synchronization
-                # response_event = threading.Event()
-                # response_data = []
-
-                # def callback(data):
-                #     response_data.append(data)
-                #     response_event.set()
-
-                # self.message_callbacks[request_id] = callback
+                # Clear old weights for this peer if needed
+                if peer_rank in self.peer_weights and self.clear_peer_weights:
+                    self.peer_weights[peer_rank] = {}
+                    if peer_rank in self.expected_chunks:
+                        self.expected_chunks[peer_rank] = {}  # Reset tracking
+                    if peer_rank in self.received_chunks:
+                        self.received_chunks[peer_rank] = {}
+                    if peer_rank in self.all_chunks_received:
+                        self.all_chunks_received[peer_rank] = False
 
                 self.send_to_peer(peer_rank, {
                     "type": "weights_request",
-                    "request_id": request_id
+                    "request_id": request_id,
                 })
+                return
+                
+                requests.append(request_id)
 
-                return # for testing
+                # Wait for response with a timeout
+                start_time = time.time()
+                while time.time() - start_time < 30:  # 30-second timeout
+                    try:
+                        message = self.message_queue.get(timeout=0.1)
+                        if not message:
+                            continue
+                        
+                        data = message[1]
+                        peer_rank = message[0]
+                        
+                        self.handle_data_channel_message(peer_rank, data)
+                        if (data["type"] == "weights_response" and data["request_id"] in requests):
+                            self.logger.info(f"request id matched!")
+                            # reconstructed_weights = OrderedDict({k: torch.tensor(v) if isinstance(v, list) else v for k, v in data["weights"].items()})
+                            sender = peer_rank
+                            curr_round = data["round"]
+                            deserialized_weights = deserialize_message(data["weights"])
+                            return {'sender': sender, 'round': curr_round, 'model': deserialized_weights}
 
-                # Wait for response with timeout
-                # if response_event.wait(timeout=5.0):
-                #     return np.array(response_data[0]["weights"])
-                message = self.message_queue.get(timeout=5.0)
-                self.logger.info('########after message_queue.get', message)
-                self.logger.info(f"[Main Thread] Popped from message_queue, reading...")
-
-                if (message):
-                    self.logger.info(f"[Main Thread] Received from peer {message[0]} of type {message[1]['type']}")
-                    peer_rank = message[0]
-                    data = message[1]
-                    self.handle_data_channel_message(peer_rank, data)
-                    if (data["type"] == "weights_response" and data["request_id"] in requests):
-                        self.logger.info(f"request id matched!")
-                        # reconstructed_weights = OrderedDict({k: torch.tensor(v) if isinstance(v, list) else v for k, v in data["weights"].items()})
-                        sender = peer_rank
-                        curr_round = data["round"]
-                        deserialized_weights = deserialize_message(data["weights"])
-                        return {'sender': sender, 'round': curr_round, 'model': deserialized_weights}
+                    except Empty:
+                        pass
 
                 self.logger.warning(f"Timeout getting weights from peer {peer_rank}, attempt {attempt + 1}")
 
@@ -670,21 +680,24 @@ class RTCCommUtils(CommunicationInterface):
     def receive(self, node_ids: List[int]) -> List[OrderedDict[str, Any]]:
         finished = False
         items = []
+        
+        # Keep track of which peers we're waiting for
+        awaiting_peers = set(self.neighbors)
+        peer_finished = {}
+        
         for peer_rank in self.neighbors:
             # self.wait_until_rounds_match(peer_rank)
             model_data = self.get_peer_weights(peer_rank)
             if (model_data):
                 self.logger.info(f"get_peer_weights() returned {model_data.keys()}")
                 items.append(model_data)
-
-            # TODO: CHANGE THIS TO BE ABLE TO DEAL WITH MULTIPLE NEIGHBORS
-            break
+            peer_finished[peer_rank] = False
 
         # Process messages with timeout
         timestamp = time.time()
         timeout = 300
         
-        while not (self.all_chunks_received and finished):
+        while awaiting_peers:
             if time.time() - timestamp > timeout:
                 self.logger.error("Timeout waiting for all chunks to arrive")
                 break
@@ -696,30 +709,39 @@ class RTCCommUtils(CommunicationInterface):
                     data = message[1]
                     self.handle_data_channel_message(peer_rank, data)
                     if data["type"] == "weights_finished":
-                        finished = True
-                    # self.logger.info(f"[Main Thread] Popped from message queue type {data['type']} from peer {peer_rank}")
+                        peer_finished[peer_rank] = True
+                        # Check if this peer's data is complete
+                        if peer_rank in self.all_chunks_received and self.all_chunks_received[peer_rank]:
+                            awaiting_peers.discard(peer_rank)
+                            self.logger.info(f"All chunks received from peer {peer_rank}")
             except Empty:
+                # Check if any peers have completed since last time
+                for peer_rank in list(awaiting_peers):
+                    if peer_rank in self.all_chunks_received and self.all_chunks_received[peer_rank] and peer_finished[peer_rank]:
+                        awaiting_peers.discard(peer_rank)
+                        self.logger.info(f"All chunks received from peer {peer_rank}")
                 pass
-        self.logger.info(f"All chunks received from peer {peer_rank}")
 
         # log the time it took to send in a nice format, and the keys of the peer_weights
         self.logger.info(f"Time to receive: {time.strftime('%M:%S', time.gmtime(time.time() - timestamp))}")
-        # try:
-            # for key in self.peer_weights:               
-                # self.logger.info(f"Layer: {key}, dtype: {self.peer_weights[key].dtype}, size: {self.peer_weights[key].size()}")
-        # except Exception as e:
-            # self.logger.error(f"Error logging peer weights: {e}, keys: {self.peer_weights.keys()}, types: {type(self.peer_weights[key])}")
         
+        # Check for incomplete layers from any peers
+        for peer_rank in self.neighbors:
+            if peer_rank in self.expected_chunks:
+                incomplete_layers = [
+                    layer_name for layer_name in self.expected_chunks[peer_rank]
+                    if self.received_chunks[peer_rank].get(layer_name, 0) < self.expected_chunks[peer_rank][layer_name]
+                ]
+                if incomplete_layers:
+                    self.logger.error(f"Incomplete layers from peer {peer_rank} after timeout: {incomplete_layers}")
 
-        incomplete_layers = [
-            layer_name for layer_name in self.expected_chunks
-            if self.received_chunks[layer_name] < self.expected_chunks[layer_name]
-        ]
-        if incomplete_layers:
-            self.logger.error(f"Incomplete layers after timeout: {incomplete_layers}")
-
+        # Create a list of models from each peer
+        result = []
+        for peer_rank in self.peer_weights:
+            result.append({'sender': peer_rank, 'model': self.peer_weights[peer_rank]})
+        
         self.clear_peer_weights = True
-        return [{'model': self.peer_weights}]
+        return result
 
     def send_to_peer(self, peer_rank: int, data: dict):
         # self.logger.info(f"[Main Thread] Putting message of type {data['type']} in send queue for peer {peer_rank}")
@@ -795,12 +817,15 @@ class RTCCommUtils(CommunicationInterface):
                 self.logger.info(f"Finished sending weights to peer {peer_rank}")
 
             elif msg_type == "weights_response":
-                if self.clear_peer_weights:
-                    self.peer_weights = {}
-                    self.expected_chunks = {}  # Reset tracking
-                    self.received_chunks = {}
-                    self.all_chunks_received = False
-                    self.clear_peer_weights = False
+                # Initialize data structures for this peer if needed
+                if peer_rank not in self.peer_weights or self.clear_peer_weights:
+                    self.peer_weights[peer_rank] = {}
+                    self.expected_chunks[peer_rank] = {}  # Reset tracking
+                    self.received_chunks[peer_rank] = {}
+                    self.all_chunks_received[peer_rank] = False
+                    # Only reset the flag after processing the first incoming message
+                    if self.clear_peer_weights:
+                        self.clear_peer_weights = False
 
                 chunk_data = deserialize_message(data["weights"])
                 layer_name = chunk_data["layer_name"]
@@ -808,35 +833,32 @@ class RTCCommUtils(CommunicationInterface):
                 num_chunks = chunk_data["num_chunks"]
                 original_shape = chunk_data["original_shape"]
 
-                # Track expected chunks for this layer
-                if layer_name not in self.expected_chunks:
-                    self.expected_chunks[layer_name] = num_chunks
-                    self.received_chunks[layer_name] = 0
+                # Track expected chunks for this layer for this peer
+                if layer_name not in self.expected_chunks[peer_rank]:
+                    self.expected_chunks[peer_rank][layer_name] = num_chunks
+                    self.received_chunks[peer_rank][layer_name] = 0
 
-                if layer_name not in self.peer_weights:
-                    self.peer_weights[layer_name] = []
+                if layer_name not in self.peer_weights[peer_rank]:
+                    self.peer_weights[peer_rank][layer_name] = []
                     # self.logger.info(f"Received initial {layer_name}")
 
-                self.peer_weights[layer_name].append(chunk)
-                self.received_chunks[layer_name] += 1
+                self.peer_weights[peer_rank][layer_name].append(chunk)
+                self.received_chunks[peer_rank][layer_name] += 1
 
                 size_received = chunk.numel() * chunk.element_size()
                 self.comm_cost_received += size_received
 
-                # Check if all chunks are received for this layer
-                if self.received_chunks[layer_name] == self.expected_chunks[layer_name]:
-                    full_tensor = torch.cat(self.peer_weights[layer_name])
-                    self.peer_weights[layer_name] = full_tensor.reshape(original_shape)
-                    # self.logger.info(f"Reconstructed full tensor for {layer_name}")
-                # else:
-                #     self.logger.info(f"Received {len(self.peer_weights[layer_name])} / {num_chunks} chunks for {layer_name}")
+                # Check if all chunks are received for this layer for this peer
+                if self.received_chunks[peer_rank][layer_name] == self.expected_chunks[peer_rank][layer_name]:
+                    full_tensor = torch.cat(self.peer_weights[peer_rank][layer_name])
+                    self.peer_weights[peer_rank][layer_name] = full_tensor.reshape(original_shape)
+                    # self.logger.info(f"Reconstructed full tensor for {layer_name} from peer {peer_rank}")
 
-                # Check if all layers are complete
-                self.all_chunks_received = all(
-                    self.received_chunks.get(layer, 0) == self.expected_chunks.get(layer)
-                    for layer in self.expected_chunks.keys()
+                # Check if all layers are complete for this peer
+                self.all_chunks_received[peer_rank] = all(
+                    self.received_chunks[peer_rank].get(layer, 0) == self.expected_chunks[peer_rank].get(layer)
+                    for layer in self.expected_chunks[peer_rank].keys()
                 )
-
             elif msg_type == "weights_finished":
                 self.logger.info(f"Received finished message for weights from peer {peer_rank}")
                 
