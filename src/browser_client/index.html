@@ -1,23 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Browser App</title>
-  <!-- Link to Google Fonts (Montserrat) -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link 
-    href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" 
-    rel="stylesheet"
-  >
-  <!-- Link to the external stylesheet -->
-  <link rel="stylesheet" href="styles.css" />
+  <title>Project SONAR - Home</title>
+  <link rel="stylesheet" href="styling/styles.css" />
 </head>
+
 <body>
-  <header class="hero">
-    <div class="hero-content">
-      <h1>Browser App</h1>
+
+  <header class="top-bar">
+    <div class="logo-container">
+      <img src="assets/logo.png" alt="MIT Logo" class="mit-logo" />
+      <span class="project-name">Project SONAR</span>
+    </div>
+
+    <div class="hamburger-menu" id="hamburger-menu">
+      <div class="line"></div>
+      <div class="line"></div>
+      <div class="line"></div>
     </div>
   </header>
 
@@ -109,8 +110,38 @@
       <div id="console-output"></div>
     </section>
   </main>
+  <nav class="mobile-nav" id="mobile-nav">
+    <ul>
+      <li><a href="./index.html">Home</a></li>
+      <li><a href="./about.html">About</a></li>
+      <li><a href="./browser.html">Session</a></li>
+    </ul>
+  </nav>
+
+  <section class="hero">
+    <div class="hero-text">
+      <h1>What’s our <span class="highlight">plan?</span></h1>
+      <p>
+        Project SONAR aims to create a collaborative framework for training
+        and fine-tuning ML models over decentralized datasets.
+      </p>
+      <div class="button-group">
+        <a href="./about.html" class="btn about-btn">About Us</a>
+        <a href="https://github.com/aidecentralized/sonar/" target="_blank" class="btn github-btn">GitHub</a>
+      </div>
+    </div>
+  </section>
 
 
-  <script type="module" src="main.js"></script>
+  <script>
+    const hamburger = document.getElementById("hamburger-menu");
+    const mobileNav = document.getElementById("mobile-nav");
+
+    hamburger.addEventListener("click", function () {
+      mobileNav.classList.toggle("active");
+    });
+  </script>
+
 </body>
+
 </html>

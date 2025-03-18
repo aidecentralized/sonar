@@ -1,0 +1,134 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  color: #fff;
+  background-color: #000; 
+}
+
+body {
+  background: url("../assets/webwall.avif") no-repeat center center fixed;
+  background-size: cover;
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 2rem;
+  background-color: rgba(0, 0, 0, 0.8);
+  position: relative;
+  z-index: 999;
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+}
+
+.mit-logo {
+  height: 40px;
+  margin-right: 1rem;
+}
+
+.project-name {
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: #fff;
+}
+
+.highlight {
+  color: #ff2a2a;
+}
+
+.hamburger-menu {
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  gap: 0.4rem;
+}
+
+.hamburger-menu .line {
+  width: 25px;
+  height: 2px;
+  background-color: #fff;
+}
+
+.mobile-nav {
+  position: absolute;
+  top: 70px;
+  right: 2rem;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 1rem;
+  border-radius: 4px;
+  z-index: 1000;
+  opacity: 0;
+  transform: translateY(-10px);
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.mobile-nav.active {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.mobile-nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.mobile-nav li {
+  margin: 0.5rem 0;
+}
+
+.mobile-nav a {
+  text-decoration: none;
+  color: #fff;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.mobile-nav a:hover {
+  color: #ccc;
+}
+
+.hero {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: calc(100vh - 70px);
+  padding: 0 2rem;
+}
+
+.about-hero {
+  justify-content: center; 
+}
+
+.about-container {
+  max-width: 800px;
+  margin: auto;
+  padding: 2rem;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.about-container h1 {
+  font-size: 3rem;
+  margin-bottom: 1.5rem;
+}
+
+.about-container p {
+  font-size: 1.2rem;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+  color: #ccc;
+}
