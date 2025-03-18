@@ -78,6 +78,7 @@ class RTCCommUtils(CommunicationInterface):
         self.size: int = int(config.get("num_users", 2))
         self.session_id = 1111
         self.neighbors = None
+        self.collaborator_ids: List[int] = []
         self.state = NodeState.CONNECTING
         self.state_lock = asyncio.Lock()
         self.connection_queue = asyncio.Queue()
@@ -680,12 +681,15 @@ class RTCCommUtils(CommunicationInterface):
     def receive(self, node_ids: List[int]) -> List[OrderedDict[str, Any]]:
         finished = False
         items = []
+        self.peer_weights = {}
         
         # Keep track of which peers we're waiting for
-        awaiting_peers = set(self.neighbors)
+        self.collaborator_ids = node_ids
+        self.logger.info(f"Collaborator IDs: {self.collaborator_ids}")
+        awaiting_peers = set(self.collaborator_ids)
         peer_finished = {}
         
-        for peer_rank in self.neighbors:
+        for peer_rank in self.collaborator_ids:
             # self.wait_until_rounds_match(peer_rank)
             model_data = self.get_peer_weights(peer_rank)
             if (model_data):
@@ -695,7 +699,7 @@ class RTCCommUtils(CommunicationInterface):
 
         # Process messages with timeout
         timestamp = time.time()
-        timeout = 300
+        timeout = 60 * 20 # 20 minutes
         
         while awaiting_peers:
             if time.time() - timestamp > timeout:
@@ -714,6 +718,7 @@ class RTCCommUtils(CommunicationInterface):
                         if peer_rank in self.all_chunks_received and self.all_chunks_received[peer_rank]:
                             awaiting_peers.discard(peer_rank)
                             self.logger.info(f"All chunks received from peer {peer_rank}")
+
             except Empty:
                 # Check if any peers have completed since last time
                 for peer_rank in list(awaiting_peers):
@@ -726,7 +731,9 @@ class RTCCommUtils(CommunicationInterface):
         self.logger.info(f"Time to receive: {time.strftime('%M:%S', time.gmtime(time.time() - timestamp))}")
         
         # Check for incomplete layers from any peers
-        for peer_rank in self.neighbors:
+        # for peer_rank in self.neighbors:
+        # TODO: change this back
+        for peer_rank in self.peer_weights:
             if peer_rank in self.expected_chunks:
                 incomplete_layers = [
                     layer_name for layer_name in self.expected_chunks[peer_rank]
@@ -794,11 +801,18 @@ class RTCCommUtils(CommunicationInterface):
                 # self.logger.info(f"Sending model weights. Keys: {node_data['model'].keys()}")
                 for layer_name, tensor in node_data['model'].items():
                     # self.logger.info(f"Layer: {layer_name}, dtype: {tensor.dtype}, size: {tensor.size()}")
+                    chunk_idx = 0
                     for chunk, num_chunks, original_shape in self.chunk_tensor(tensor, chunk_size):
                         size_sent = chunk.numel() * chunk.element_size()
                         self.comm_cost_sent += size_sent
 
-                        serializable_chunk = serialize_message({'layer_name': layer_name, 'chunk': chunk, 'num_chunks': num_chunks, 'original_shape': original_shape})
+                        serializable_chunk = serialize_message({
+                            'layer_name': layer_name, 
+                            'chunk': chunk, 
+                            'chunk_idx': chunk_idx,  # Add chunk index
+                            'num_chunks': num_chunks, 
+                            'original_shape': original_shape
+                        })
                         response = {
                             "type": "weights_response",
                             "weights": serializable_chunk,
@@ -806,6 +820,7 @@ class RTCCommUtils(CommunicationInterface):
                             "request_id": data["request_id"]
                         }
                         self.send_to_peer(peer_rank, response)
+                        chunk_idx += 1  # Increment chunk index
 
                 finished_message = {
                     "type": "weights_finished",
@@ -830,6 +845,7 @@ class RTCCommUtils(CommunicationInterface):
                 chunk_data = deserialize_message(data["weights"])
                 layer_name = chunk_data["layer_name"]
                 chunk = chunk_data["chunk"]
+                chunk_idx = chunk_data["chunk_idx"]  # Get chunk index
                 num_chunks = chunk_data["num_chunks"]
                 original_shape = chunk_data["original_shape"]
 
@@ -839,10 +855,11 @@ class RTCCommUtils(CommunicationInterface):
                     self.received_chunks[peer_rank][layer_name] = 0
 
                 if layer_name not in self.peer_weights[peer_rank]:
-                    self.peer_weights[peer_rank][layer_name] = []
+                    self.peer_weights[peer_rank][layer_name] = [None] * num_chunks  # Initialize list with None placeholders
                     # self.logger.info(f"Received initial {layer_name}")
 
-                self.peer_weights[peer_rank][layer_name].append(chunk)
+                # Store chunk at correct position based on index
+                self.peer_weights[peer_rank][layer_name][chunk_idx] = chunk
                 self.received_chunks[peer_rank][layer_name] += 1
 
                 size_received = chunk.numel() * chunk.element_size()
@@ -850,9 +867,14 @@ class RTCCommUtils(CommunicationInterface):
 
                 # Check if all chunks are received for this layer for this peer
                 if self.received_chunks[peer_rank][layer_name] == self.expected_chunks[peer_rank][layer_name]:
-                    full_tensor = torch.cat(self.peer_weights[peer_rank][layer_name])
-                    self.peer_weights[peer_rank][layer_name] = full_tensor.reshape(original_shape)
-                    # self.logger.info(f"Reconstructed full tensor for {layer_name} from peer {peer_rank}")
+                    # Ensure no chunks are None before concatenating
+                    if None not in self.peer_weights[peer_rank][layer_name]:
+                        full_tensor = torch.cat(self.peer_weights[peer_rank][layer_name])
+                        self.peer_weights[peer_rank][layer_name] = full_tensor.reshape(original_shape)
+                        # self.logger.info(f"Reconstructed full tensor for {layer_name} from peer {peer_rank}")
+                    else:
+                        self.logger.warning(f"Missing chunks for layer {layer_name} from peer {peer_rank}")
+                        self.received_chunks[peer_rank][layer_name] -= 1  # Decrement since we can't consider it complete
 
                 # Check if all layers are complete for this peer
                 self.all_chunks_received[peer_rank] = all(

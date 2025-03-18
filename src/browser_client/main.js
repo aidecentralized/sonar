@@ -19,7 +19,8 @@ let config = {
     algos: {node_0: {topology: "ring"}},
     num_users: MAX_CLIENTS,
     session_id: SESSION_ID,
-    epochs: 10
+    epochs: 10,
+    num_collaborators: 1,
 };
 
 let dataset = null;
@@ -49,6 +50,7 @@ saveConfigButton.addEventListener('click', function() {
     config.num_users = document.getElementById('num_users').value;
     config.session_id = document.getElementById('session_id').value;
     config.epochs = document.getElementById('epochs').value;
+    config.num_collaborators = document.getElementById('num_collaborators').value;
     displayMessage('Config Saved:');
     displayMessage(JSON.stringify(config, null, 2));
 });

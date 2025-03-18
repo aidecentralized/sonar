@@ -185,11 +185,11 @@ class ResNet10 extends Model {
 
 	async local_train_one(dataSet, config = {
 		epochs: 1,
-		batchSize: 16,
+		batchSize: 64,
 		validationSplit: 0.2,
 		shuffle: true,
 		verbose: 1
-	}) {
+	}, logFunc = console.log) {
 		// take raw array of values and turn to tensor
 		const images = tf.tensor2d(dataSet.images, [dataSet.images.length, imageFlattenSize])
 		const labels = tf.oneHot(tf.tensor1d(dataSet.labels, 'int32'), imageClasses)
@@ -204,13 +204,31 @@ class ResNet10 extends Model {
 			callbacks: {
 				// callback in between epochs
 				onEpochEnd: (epoch, logs) => {
-					console.log(`Epoch ${epoch + 1}`)
-					console.log(`Loss: ${logs.loss.toFixed(4)}`)
-					console.log(`Accuracy: ${(logs.acc * 100).toFixed(2)}%`)
-					// if (logs.val_loss) {
-					// 	addLog(`  Validation Loss: ${logs.val_loss.toFixed(4)}`)
-					// 	addLog(`  Validation Accuracy: ${(logs.val_acc * 100).toFixed(2)}%`)
-					// }
+					const epochLog = `Epoch ${epoch + 1}`;
+					const lossLog = `Loss: ${logs.loss.toFixed(4)}`;
+					const accLog = `Accuracy: ${(logs.acc * 100).toFixed(2)}%`;
+					
+					// Use standard console.log for development visibility
+					console.log(epochLog);
+					console.log(lossLog);
+					console.log(accLog);
+					
+					// Use the custom log function if provided
+					if (logFunc && typeof logFunc === 'function') {
+						logFunc(epochLog);
+						logFunc(lossLog);
+						logFunc(accLog);
+						
+						// Log validation metrics if available
+						if (logs.val_loss) {
+							const valLossLog = `Validation Loss: ${logs.val_loss.toFixed(4)}`;
+							const valAccLog = `Validation Accuracy: ${(logs.val_acc * 100).toFixed(2)}%`;
+							console.log(valLossLog);
+							console.log(valAccLog);
+							logFunc(valLossLog);
+							logFunc(valAccLog);
+						}
+					}
 
 					// TODO: should I add sending here?
 				}

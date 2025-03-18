@@ -98,7 +98,7 @@ def copy_source_code(config: ConfigType) -> None:
                 copytree(folder, path + folder[1:])
             except FileExistsError:
                 print(f"Folder {folder} already exists in {path}")
-    os.mkdir(config["saved_models"])
+    os.makedirs(config["saved_models"], exist_ok=True)
     os.makedirs(config["log_path"], exist_ok=True)
     print("source code copied to exp_dump")
 

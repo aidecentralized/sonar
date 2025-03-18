@@ -392,7 +392,7 @@ for i in range(1, num_users + 1):
 # for swift, synchronous should preferable be False
 gpu_ids = [0, 1]
 rtc_config: ConfigType = {
-    "exp_id": "test_javascript3",
+    "exp_id": "test_javascript4",
     "num_users": num_users,
     "session_id": 1111,
     "num_collaborators": NUM_COLLABORATORS,
@@ -404,7 +404,7 @@ rtc_config: ConfigType = {
     "device_ids": get_device_ids(num_users, gpu_ids),
     # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
     "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
-    "samples_per_user": 20,  # distributed equally
+    "samples_per_user": 50000 // num_users,  # distributed equally
     "train_label_distribution": "iid",
     "test_label_distribution": "iid",
     "dropout_dicts": dropout_dicts,
