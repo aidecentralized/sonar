@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Browser App</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link 
+    href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" 
+    rel="stylesheet"
+  >
+
+  <link rel="stylesheet" href="./styling/browser.css" />
+</head>
+<body>
+
+  <header class="top-bar">
+    <div class="logo-container">
+      <img src="assets/logo.png" alt="Browser App Logo" class="mit-logo" />
+      <span class="project-name">Project SONAR</span>
+    </div>
+    <div class="hamburger-menu" id="hamburger-menu">
+      <div class="line"></div>
+      <div class="line"></div>
+      <div class="line"></div>
+    </div>
+  </header>
+
+  <nav class="mobile-nav" id="mobile-nav">
+    <ul>
+      <li><a href="./index.html">Home</a></li>
+      <li><a href="./about.html">About</a></li>
+      <li><a href="./browser.html">Session</a></li>
+    </ul>
+  </nav>
+
+
+  <div class="session-title">
+    <h1>Session</h1>
+  </div>
+
+  <main>
+    <div class="two-column-layout">
+      <section class="card config-card">
+        <h2>Config</h2>
+        <form id="config-form">
+          <div class="form-group">
+            <label for="topology">Topology</label>
+            <select id="topology" name="topology">
+              <option value="ring">ring</option>
+              <option value="fully_connected">fully_connected</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="signaling_server">Signaling Server</label>
+            <input 
+              type="text" 
+              id="signaling_server" 
+              name="signaling_server" 
+              value="ws://localhost:8765" 
+              required
+            >
+          </div>
+          <div class="form-group">
+            <label for="num_users">Number of Users</label>
+            <input 
+              type="text" 
+              id="num_users" 
+              name="num_users" 
+              value="3" 
+              required
+            >
+          </div>
+          <div class="form-group">
+            <label for="session_id">Session ID</label>
+            <input 
+              type="text" 
+              id="session_id" 
+              name="session_id" 
+              value="1111" 
+              required
+            >
+          </div>
+          <div class="form-group">
+            <label for="epochs">Epochs</label>
+            <input 
+              type="text" 
+              id="epochs" 
+              name="epochs" 
+              value="10" 
+              required
+            >
+          </div>
+          <button type="button" id="save-config-button">Save Config</button>
+        </form>
+      </section>
+
+      <div class="right-column">
+        <section class="card dark-card">
+          <h2>Data</h2>
+          <label for="data-input" class="file-label">Choose File</label>
+          <input id="data-input" type="file" accept=".json">
+        </section>
+
+        <section class="card dark-card">
+          <h2>Train</h2>
+          <button id="start-button" disabled>Connect</button>
+        </section>
+
+        <section class="card logs-card">
+          <h2>Logs</h2>
+          <div id="console-output"></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="main.js"></script>
+  <script>
+    const hamburger = document.getElementById("hamburger-menu");
+    const mobileNav = document.getElementById("mobile-nav");
+    
+    hamburger.addEventListener("click", () => {
+      mobileNav.classList.toggle("active");
+    });
+  </script>
+</body>
+</html>
