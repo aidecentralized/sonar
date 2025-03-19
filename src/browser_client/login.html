@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login</title>
+  <!-- Google Fonts (optional) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <!-- Font Awesome (if you need icons) -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+  />
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="login.css" />
+</head>
+<body>
+  <!-- (Optional) Top Navigation, remove if not needed -->
+  <header class="top-nav">
+    <div class="left-section">
+      <!-- Replace with your MIT logo -->
+      <img src="assets/Logos.png" alt="MIT Logo" class="mit-logo" />
+      <span class="project-name">Project SONAR</span>
+    </div>
+    <div class="right-section">
+      <i class="fa-solid fa-bars hamburger"></i>
+    </div>
+  </header>
+
+  <!-- Main container for the login form -->
+  <main class="login-container">
+    <!-- Title above the box -->
+    <h1 class="login-title">Login</h1>
+
+    <!-- The dark box with red outline -->
+    <div class="login-box">
+      <input
+        type="text"
+        class="login-input"
+        placeholder="Username"
+      />
+      <input
+        type="password"
+        class="login-input"
+        placeholder="Password"
+      />
+
+      <!-- The large rounded button -->
+      <button class="login-button" onclick="goToHome()">Login</button>
+    </div>
+  </main>
+
+  <!-- Inline JS to redirect on button click -->
+  <script>
+    function goToHome() {
+      window.location.href = 'home.html';
+    }
+  </script>
+</body>
+</html>
