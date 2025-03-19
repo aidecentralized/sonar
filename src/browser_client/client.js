@@ -243,6 +243,7 @@ export class WebRTCCommUtils {
         this.sessionId = this.config.sessionId || 1111;
         this.rank = null;
         this.size = this.config.num_users || 2;
+        this.num_collaborators = this.config.num_collaborators || 1;
         this.expectedConnections = 0;
     
         // WebRTC connections
@@ -256,7 +257,7 @@ export class WebRTCCommUtils {
         this.MAX_RETRIES = 3;
         this.RETRY_DELAY = 30000;                    // Increased from 15000 to 30000
         this.ICE_GATHERING_TIMEOUT = 20000;          // Increased from 10000 to 20000
-        this.weightReceiptTimeout = 120000; // 2 minutes timeout
+        this.weightReceiptTimeout = 10 * 60 * 1000; // 10 minutes timeout
     
         // State
         this.state = NodeState.CONNECTING;
@@ -289,10 +290,62 @@ export class WebRTCCommUtils {
       const formattedMsg = `[RTCCommUtilsJS] ${msg}`;
       console.log(formattedMsg);
 
+      // Write to console output DOM element
       const outputArea = document.getElementById("console-output");
       const newLog = document.createElement("div");
       newLog.textContent = formattedMsg;
       outputArea.appendChild(newLog);
+      
+      // Store logs in localStorage with timestamp
+      this.saveLogToStorage(formattedMsg);
+    }
+    
+    saveLogToStorage(logMessage) {
+      try {
+        const timestamp = new Date().toISOString();
+        const logEntry = `${timestamp} ${logMessage}`;
+        
+        // Get existing logs from localStorage
+        let logs = localStorage.getItem('clientLogs') || '';
+        
+        // Append new log entry
+        logs += logEntry + '\n';
+        
+        // Save back to localStorage (with size limit to prevent exceeding storage quota)
+        const maxLogSize = 500 * 1024; // 500KB limit
+        if (logs.length > maxLogSize) {
+          logs = logs.substring(logs.length - maxLogSize);
+          // Make sure we don't cut in the middle of a line
+          logs = logs.substring(logs.indexOf('\n') + 1);
+        }
+        
+        localStorage.setItem('clientLogs', logs);
+      } catch (error) {
+        console.error('Failed to save log to storage:', error);
+      }
+    }
+    
+    // Helper method to export logs to a downloadable file
+    exportLogs() {
+      try {
+        const logs = localStorage.getItem('clientLogs') || '';
+        const blob = new Blob([logs], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `client_logs_${Date.now()}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        
+        // Cleanup
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, 100);
+      } catch (error) {
+        console.error('Failed to export logs:', error);
+      }
     }
 
     setState(newState) {
@@ -415,7 +468,7 @@ export class WebRTCCommUtils {
 
         // Initiate connections to higher-ranked neighbors
         for (const neighborList of Object.values(this.neighbors)) {
-          this.log(`Initiating connection to ${neighbor}`);
+          this.log(`Initiating connection to ${neighborList}`);
             // TODO: uncomment this condition later
               // if (neighborRank > this.rank &&
               //     !this.connections.has(neighborRank) &&
@@ -499,7 +552,6 @@ export class WebRTCCommUtils {
                 checkState();
             });
             // await this.waitForIceGathering(pc, this.ICE_GATHERING_TIMEOUT);
-
             // Send offer
             await this.sendSignalingMessage(targetRank, {
                 type: 'offer',
@@ -602,8 +654,7 @@ export class WebRTCCommUtils {
              `Connected: ${this.connectedPeers.size}/${this.expectedConnections}`);
 
     // If we've reached the expected number, let the server know
-    // if (this.connectedPeers.size === this.expectedConnections) {
-    if (this.connectedPeers.size >= 2) {
+    if (this.connectedPeers.size === this.expectedConnections) {
       this.broadcastNodeReady();
     }
 
@@ -622,9 +673,10 @@ export class WebRTCCommUtils {
    *   - Parse the message
    *   - Handle logic for pings, receiving weights, etc.
    */
-    handleDataChannelMessage(peerRank, data) {
+    handleDataChannelMessage(peerRankStr, data) {
       try {
         // this.log(`Received message from peer ${peerRank}: ${data.type}`);
+        const peerRank = parseInt(peerRankStr);
   
         switch (data.type) {
   
@@ -654,10 +706,12 @@ export class WebRTCCommUtils {
                     const chunks = chunkTensor(weightTensor, chunk_size);
                     // this.log(`Layer ${i}_${j}: ${pythonLayerName}, dtype: ${weightTensor.dtype}, shape: [${weightTensor.shape.join(', ')}], numChunks: ${chunks.length}`);
     
+                    let chunkIdx = 0; // Add chunk index counter
                     for (const { chunk, numChunks, originalShape } of chunks) {
                         const serializableChunk = serializeMessage({
                             layer_name: pythonLayerName,
                             chunk: chunk,
+                            chunk_idx: chunkIdx, // Add chunk index to serialized data
                             num_chunks: numChunks,
                             original_shape: originalShape
                         });
@@ -670,6 +724,7 @@ export class WebRTCCommUtils {
                         };
   
                         this.sendToPeer(peerRank, response);
+                        chunkIdx++; // Increment chunk index
                     }
                 }
             }
@@ -690,7 +745,7 @@ export class WebRTCCommUtils {
                 //   this.peer_weights = {};
                 //   this.clear_peer_weights = false;
               // Get peer rank
-              const peerRank = parseInt(peerRank);
+              // const peerRank = parseInt(peerRank);
               
               // Initialize tracking structures for this peer if needed
               if (!this.layerChunkTracker.has(peerRank)) {
@@ -708,6 +763,7 @@ export class WebRTCCommUtils {
               chunk = convertTfToTfjs(chunk); // Convert to TensorFlow.js format
               
               const layerName = chunkData.layer_name;
+              const chunkIdx = chunkData.chunk_idx; // Get the chunk index
               const numChunks = chunkData.num_chunks;
               const originalShape = chunkData.original_shape;
               
@@ -717,7 +773,8 @@ export class WebRTCCommUtils {
               
               // Initialize the layer tracking for this peer if needed
               if (!peerWeights[layerName]) {
-                peerWeights[layerName] = [];
+                // Initialize with array of proper size filled with nulls
+                peerWeights[layerName] = Array(numChunks).fill(null);
                 
                 // Track this layer
                 peerLayerTrackers[layerName] = {
@@ -728,8 +785,8 @@ export class WebRTCCommUtils {
                 // this.log(`New layer ${layerName} from peer ${peerRank}, expecting ${numChunks} chunks`);
               }
 
-              // Store the chunk
-              peerWeights[layerName].push(chunk);
+              // Store the chunk at correct position using its index
+              peerWeights[layerName][chunkIdx] = chunk;
               peerLayerTrackers[layerName].received++;
               
               // Log progress periodically
@@ -742,28 +799,36 @@ export class WebRTCCommUtils {
               
               // If we've received all chunks for this layer, reconstruct it
               if (tracker.received === tracker.expected) {
-                this.log(`✓ Layer ${layerName} from peer ${peerRank} complete: all ${numChunks} chunks received`);
-                
-                // Concatenate all chunk data
-                let fullArray = [];
-                for (let partialTensor of peerWeights[layerName]) {
-                  fullArray.push(...Array.from(partialTensor.data));
-                }
-                
-                // Create the reassembled tensor
-                const reassembledTensor = {
-                  __isTensor: true,
-                  data: new Float32Array(fullArray),
-                  dtype: chunk.dtype,
-                  shape: originalShape
-                };
-                
-                // Replace the array of chunks with the complete tensor
-                peerWeights[layerName] = reassembledTensor;
-                
-                // Check if we can move on now
-                if (this.canMoveOn()) {
-                  this.log(`All weights are now complete from all peers!`);
+                // Check that all chunks are received (no null values)
+                if (!peerWeights[layerName].includes(null)) {
+                  // this.log(`✓ Layer ${layerName} from peer ${peerRank} complete: all ${numChunks} chunks received`);
+                  
+                  // Concatenate all chunk data
+                  let fullArray = [];
+                  for (let partialTensor of peerWeights[layerName]) {
+                    fullArray.push(...Array.from(partialTensor.data));
+                  }
+                  
+                  // Create the reassembled tensor
+                  const reassembledTensor = {
+                    __isTensor: true,
+                    data: new Float32Array(fullArray),
+                    dtype: chunk.dtype,
+                    shape: originalShape
+                  };
+                  
+                  // Replace the array of chunks with the complete tensor
+                  peerWeights[layerName] = reassembledTensor;
+                  
+                  // Check if we can move on now
+                  if (this.canMoveOn()) {
+                    this.log(`All weights are now complete from all peers!`);
+                  }
+                } else {
+                  // Some chunks are missing despite the counter reaching expected count
+                  this.log(`Warning: Layer ${layerName} from peer ${peerRank} has missing chunks despite count reaching expected`, 'warning');
+                  // Decrement the counter since we can't consider it complete
+                  peerLayerTrackers[layerName].received--;
                 }
               }
               
@@ -774,7 +839,7 @@ export class WebRTCCommUtils {
           }
   
           case 'weights_finished': {
-            const peerRank = parseInt(peerRank);
+            // const peerRank = parseInt(peerRank);
             this.log(`Received weights_finished from peer ${peerRank}`);
             this.receivedWeightsFinished.set(peerRank, true);
             
@@ -884,8 +949,7 @@ export class WebRTCCommUtils {
     return true;
   }
 
-  async receive() {
-    this.log("Receive was called");
+  async receive(collaborator_list) {
     
     // Reset our tracking state
     this.clear_peer_weights = true;
@@ -931,7 +995,9 @@ export class WebRTCCommUtils {
     });
     
     // Send weight requests to all connected neighbors
-    for (const neighborRank of Object.values(this.neighbors)) {
+    // TODO: fix this hard code:
+    // for (const neighborRank of Object.values(this.neighbors)) {
+    for (const neighborRank of collaborator_list) {
       this.log(`Sending weights request for neighbor ${neighborRank}`);
       this.sendToPeer(neighborRank, {
         type: "weights_request",
@@ -1314,40 +1380,65 @@ export class WebRTCCommUtils {
   async startTraining() {
     this.log('started training, loading dataset...');
   
-    // const filePath = '/datasets/imgs/cifar10/cifar10_test.json';
-    // const rawData = await fetch(filePath);
-    // const data = await rawData.json();
-    // const dataset = processData(data);
-  
-    // this.log(`dataset loaded... training model for ${this.config.epochs} epochs...`);
-
-    for (let i = 0; i < this.config.epochs; i++) {
-      await this.model.local_train_one(this.dataset)
-      // simulate training this a sleep
-      // await new Promise(res => setTimeout(res, 20000)), this.log("finished simulated training for 20 seconds");
-
-      this.log(`Finished round ${i} training, receiving weights...`);
-
-
-      // Reset tracking for this round
-      this.layerChunkTracker = {}; // Format: { layerName: { expected: numChunks, received: count } }
-      this.receivedWeightsFinished = false; // Set to true when weights_finished is received
-      this.weightReceiptTimeout = 120000; // 2 minutes timeout
+    try {
+      // Simple check for dataset existence
+      if (!this.dataset) {
+        throw new Error('Dataset is undefined');
+      }
       
-      const peer_weights = await this.receive();
-      this.log(`Round ${i}: Received weights from peers, performing aggregation...`);
+      // Check if the dataset has the train/test structure
+      const hasSeparatedData = this.dataset.test !== null;
       
-      // Perform federated averaging with peer_weights
-      await this.aggregate(peer_weights);
-      this.log(`Round ${i}: Completed aggregation of model weights`);
-      
-      this.currentRound = i + 1;
+      if (this.dataset.test) {
+        const trainSamples = this.dataset.train.images ? this.dataset.train.images.length : 0;
+        const testSamples = this.dataset.test.images ? this.dataset.test.images.length : 0;
+        this.log(`Dataset loaded with ${trainSamples} training samples and ${testSamples} test samples.`);
+      } else {
+        const trainSamples = this.dataset.train.images ? this.dataset.train.images.length : 0;
+        this.log(`Dataset loaded with ${trainSamples} training samples. Using custom validation split.`);
+      }
+
+      // Define how often to export logs (every N epochs)
+      const logExportFrequency = 10; // Export logs every 10 epochs
+
+      for (let i = 0; i < this.config.epochs; i++) {
+        // Pass this.log as custom logger to the model's training function
+        await this.model.local_train_one(this.dataset, undefined, this.log.bind(this))
+        
+        this.log(`Finished round ${i} training, receiving weights...`);
+
+        // Reset tracking for this round
+        this.layerChunkTracker = {}; // Format: { layerName: { expected: numChunks, received: count } }
+        this.receivedWeightsFinished = false; // Set to true when weights_finished is received
+        this.weightReceiptTimeout = 120000; // 2 minutes timeout
+        
+        // randomly choose num_collaborators from connectedPeers
+        const collaborator_list = [...this.connectedPeers.keys()].sort(() => Math.random() - 0.5).slice(0, this.num_collaborators);
+        
+        const peer_weights = await this.receive(collaborator_list);
+        this.log(`Round ${i}: Received weights from peers, performing aggregation...`);
+        
+        // Perform federated averaging with peer_weights
+        await this.aggregate(peer_weights);
+        this.log(`Round ${i}: Completed aggregation of model weights`);
+        
+        this.currentRound = i + 1;
+        
+        // Export logs at regular intervals during training
+        if ((i + 1) % logExportFrequency === 0) {
+        this.log(`Exporting logs at round ${i+1}...`); 
+        this.exportLogs();
+        }
+      }
+
+      this.log("finished training")
+      this.exportLogs()
+    } catch (error) {
+      this.log(`Error in training: ${error.message}`);
+      console.error(error);
+      this.exportLogs();
     }
-
-    this.log("finished training")
   }
-
-
 
   // -------------------------- Signaling & ICE Handling --------------------------
 
