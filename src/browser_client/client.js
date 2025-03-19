@@ -232,11 +232,12 @@ const NodeState = {
 };
 
 export class WebRTCCommUtils {
-    constructor(config, dataset) {
+    constructor(config, trainDataset, testDataset = null) {
         this.model = new ResNet10();
         this.config = config;
         this.signalingServer = this.config.signaling_server || 'ws://localhost:8765';
-        this.dataset = dataset;
+        this.trainDataset = trainDataset;
+        this.testDataset = testDataset;
 
         // Networking & session references
         this.ws = null;                               // WebSocket connection
@@ -1382,28 +1383,22 @@ export class WebRTCCommUtils {
   
     try {
       // Simple check for dataset existence
-      if (!this.dataset) {
-        throw new Error('Dataset is undefined');
-      }
-      
-      // Check if the dataset has the train/test structure
-      const hasSeparatedData = this.dataset.test !== null;
-      
-      if (this.dataset.test) {
-        const trainSamples = this.dataset.train.images ? this.dataset.train.images.length : 0;
-        const testSamples = this.dataset.test.images ? this.dataset.test.images.length : 0;
-        this.log(`Dataset loaded with ${trainSamples} training samples and ${testSamples} test samples.`);
-      } else {
-        const trainSamples = this.dataset.train.images ? this.dataset.train.images.length : 0;
-        this.log(`Dataset loaded with ${trainSamples} training samples. Using custom validation split.`);
+      if (!this.trainDataset) {
+        throw new Error('Training dataset is undefined');
       }
 
       // Define how often to export logs (every N epochs)
       const logExportFrequency = 10; // Export logs every 10 epochs
 
       for (let i = 0; i < this.config.epochs; i++) {
-        // Pass this.log as custom logger to the model's training function
-        await this.model.local_train_one(this.dataset, undefined, this.log.bind(this))
+        // Use both training and testing datasets if available
+        if (this.testDataset) {
+          this.log(`Starting round ${i} with separate training and testing datasets`);
+          await this.model.local_train_one(this.trainDataset, this.testDataset, undefined, this.log.bind(this));
+        } else {
+          this.log(`Starting round ${i} with training dataset only`);
+          await this.model.local_train_one(this.trainDataset, null, undefined, this.log.bind(this));
+        }
         
         this.log(`Finished round ${i} training, receiving weights...`);
 

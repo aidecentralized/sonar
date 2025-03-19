@@ -1,7 +1,8 @@
 import { data } from '@tensorflow/tfjs';
 import { processData, WebRTCCommUtils } from './client.js'
 
-const dataInput = document.getElementById('data-input');
+const trainDataInput = document.getElementById('train-data-input');
+const testDataInput = document.getElementById('test-data-input');
 const startButton = document.getElementById('start-button');
 const consoleOutput = document.getElementById('console-output');
 const saveConfigButton = document.getElementById('save-config-button');
@@ -23,18 +24,20 @@ let config = {
     num_collaborators: 1,
 };
 
-let dataset = null;
-
+let trainDataset = null;
+let testDataset = null;
 
 function disableButtons() {
-    dataInput.disabled = true;
+    trainDataInput.disabled = true;
+    testDataInput.disabled = true;
     startButton.disabled = true;
     saveConfigButton.disabled = true;
 }
 
 function enableButtons() {
-    dataInput.disabled = false;
-    startButton.disabled = false;
+    trainDataInput.disabled = false;
+    testDataInput.disabled = false;
+    startButton.disabled = trainDataset === null; // Only enable if training data exists
     saveConfigButton.disabled = false;
 }
 
@@ -55,26 +58,96 @@ saveConfigButton.addEventListener('click', function() {
     displayMessage(JSON.stringify(config, null, 2));
 });
 
-dataInput.addEventListener('change', function(event) {
+trainDataInput.addEventListener('change', function(event) {
     const file = event.target.files[0];
     if (file) {
-        displayMessage('Loading file: ' + file.name);
+        displayMessage('Loading training file: ' + file.name);
         const reader = new FileReader();
         reader.onload = function(e) {
             try {
                 const rawData = JSON.parse(e.target.result);
-                dataset = processData(rawData);
-                displayMessage('Successfully loaded data');
-                enableButtons();
+                trainDataset = processData(rawData);
+                displayMessage('Successfully loaded training data');
+                enableButtons(); // Enable start button when training data is loaded
             } catch (error) {
-                displayMessage('Error loading data');
+                displayMessage('Error loading training data: ' + error.message);
             }
         };
-        reader.readAsText(file)
+        reader.readAsText(file);
     }
 });
 
+testDataInput.addEventListener('change', function(event) {
+    const file = event.target.files[0];
+    if (file) {
+        displayMessage('Loading test file: ' + file.name);
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const rawData = JSON.parse(e.target.result);
+                testDataset = processData(rawData);
+                displayMessage('Successfully loaded test data');
+            } catch (error) {
+                displayMessage('Error loading test data: ' + error.message);
+            }
+        };
+        reader.readAsText(file);
+    }
+});
+
+// Helper function to split a dataset into training and testing portions
+function splitDataset(dataset, trainRatio = 0.8) {
+    // Create copies of the arrays to avoid modifying the original
+    const images = [...dataset.images];
+    const labels = [...dataset.labels];
+    
+    // Shuffle the arrays together (maintaining corresponding indices)
+    for (let i = images.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        // Swap images
+        [images[i], images[j]] = [images[j], images[i]];
+        // Swap corresponding labels
+        [labels[i], labels[j]] = [labels[j], labels[i]];
+    }
+    
+    // Calculate split index
+    const splitIndex = Math.floor(images.length * trainRatio);
+    
+    // Create training and testing datasets
+    const trainData = {
+        images: images.slice(0, splitIndex),
+        labels: labels.slice(0, splitIndex)
+    };
+    
+    const testData = {
+        images: images.slice(splitIndex),
+        labels: labels.slice(splitIndex)
+    };
+    
+    return { trainData, testData };
+}
+
 startButton.addEventListener('click', function() {
     disableButtons();
-    const node = new WebRTCCommUtils(config, dataset);
+    
+    if (!trainDataset) {
+        displayMessage('Error: Training dataset not loaded');
+        enableButtons();
+        return;
+    }
+    
+    let finalTrainDataset = trainDataset;
+    let finalTestDataset = testDataset;
+    
+    // If only training data is available, split it
+    if (!testDataset) {
+        displayMessage('No separate test dataset provided. Splitting training data 80/20...');
+        const { trainData, testData } = splitDataset(trainDataset);
+        finalTrainDataset = trainData;
+        finalTestDataset = testData;
+        displayMessage(`Split complete: Training data has ${finalTrainDataset.images.length} samples, Test data has ${finalTestDataset.images.length} samples`);
+    }
+    
+    displayMessage(`Starting training with ${finalTrainDataset.images.length} training samples and ${finalTestDataset.images.length} testing samples`);
+    const node = new WebRTCCommUtils(config, finalTrainDataset, finalTestDataset);
 });

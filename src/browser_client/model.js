@@ -179,55 +179,113 @@ export class ResNet10 extends Model {
 		}
 	}
 
-	async local_train_one(dataSet, config = {
+	async local_train_one(trainDataSet, testDataSet = null, config = {
 		epochs: 1,
-		batchSize: 16,
+		batchSize: 64,
 		validationSplit: 0.2,
 		shuffle: true,
 		verbose: 1
-	}) {
+	}, logFunc = console.log) {
 		// take raw array of values and turn to tensor
-		const images = tf.tensor2d(dataSet.images, [dataSet.images.length, imageFlattenSize])
-		const labels = tf.oneHot(tf.tensor1d(dataSet.labels, 'int32'), imageClasses)
-
+		const trainImages = tf.tensor2d(trainDataSet.images, [trainDataSet.images.length, imageFlattenSize])
+		const trainLabels = tf.oneHot(tf.tensor1d(trainDataSet.labels, 'int32'), imageClasses)
+		
+		// prepare test data if provided
+		let testImages = null;
+		let testLabels = null;
+		
 		// create config object
 		const trainingConfig = {
 			epochs: 1,
 			batchSize: config.batchSize,
-			validationSplit: config.validationSplit,
 			shuffle: config.shuffle,
 			verbose: config.verbose,
 			callbacks: {
 				// callback in between epochs
 				onEpochEnd: (epoch, logs) => {
-					console.log(`Epoch ${epoch + 1}`)
-					console.log(`Loss: ${logs.loss.toFixed(4)}`)
-					console.log(`Accuracy: ${(logs.acc * 100).toFixed(2)}%`)
-					// if (logs.val_loss) {
-					// 	addLog(`  Validation Loss: ${logs.val_loss.toFixed(4)}`)
-					// 	addLog(`  Validation Accuracy: ${(logs.val_acc * 100).toFixed(2)}%`)
-					// }
+					const epochLog = `Epoch ${epoch + 1}`;
+					const lossLog = `Loss: ${logs.loss.toFixed(4)}`;
+					const accLog = `Accuracy: ${(logs.acc * 100).toFixed(2)}%`;
+					
+					// Use standard console.log for development visibility
+					console.log(epochLog);
+					console.log(lossLog);
+					console.log(accLog);
+					
+					// Use the custom log function if provided
+					if (logFunc && typeof logFunc === 'function') {
+						logFunc(epochLog);
+						logFunc(lossLog);
+						logFunc(accLog);
+						
+						// Log validation metrics if available
+						if (logs.val_loss) {
+							const valLossLog = `Validation Loss: ${logs.val_loss.toFixed(4)}`;
+							const valAccLog = `Validation Accuracy: ${(logs.val_acc * 100).toFixed(2)}%`;
+							console.log(valLossLog);
+							console.log(valAccLog);
+							logFunc(valLossLog);
+							logFunc(valAccLog);
+						}
+					}
 
 					// TODO: should I add sending here?
 				}
 			}
 		}
+		
+		// If testDataSet is provided, use it as validation data instead of using validationSplit
+		if (testDataSet) {
+			testImages = tf.tensor2d(testDataSet.images, [testDataSet.images.length, imageFlattenSize]);
+			testLabels = tf.oneHot(tf.tensor1d(testDataSet.labels, 'int32'), imageClasses);
+			
+			// Remove validationSplit since we're using separate validation data
+			delete trainingConfig.validationSplit;
+		} else {
+			// Use validationSplit parameter when no separate test data is provided
+			trainingConfig.validationSplit = config.validationSplit;
+		}
 
 		try {
-			console.log(`Beginning training...`)
-			const history = await this.model.fit(images, labels, trainingConfig)
-			console.log(`Training completed`)
+			console.log(`Beginning training...`);
+			let history;
+			
+			if (testDataSet) {
+				// Use separate validation data
+				history = await this.model.fit(
+					trainImages, 
+					trainLabels, 
+					{
+						...trainingConfig,
+						validationData: [testImages, testLabels]
+					}
+				);
+			} else {
+				// Use validation split
+				history = await this.model.fit(trainImages, trainLabels, trainingConfig);
+			}
+			
+			console.log(`Training completed`);
 
-			images.dispose()
-			labels.dispose()
+			// Clean up tensors
+			trainImages.dispose();
+			trainLabels.dispose();
+			
+			if (testImages) testImages.dispose();
+			if (testLabels) testLabels.dispose();
 
-			return history
+			return history;
 		} catch (error) {
-			console.error('Error during training: ', error)
+			console.error('Error during training: ', error);
 
-			images.dispose()
-			labels.dispose()
-			throw error
+			// Clean up tensors even if there's an error
+			trainImages.dispose();
+			trainLabels.dispose();
+			
+			if (testImages) testImages.dispose();
+			if (testLabels) testLabels.dispose();
+			
+			throw error;
 		}
 	}
 }
