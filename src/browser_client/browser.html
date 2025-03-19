@@ -1,19 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Browser App</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link 
-    href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" 
-    rel="stylesheet"
-  >
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="./styling/browser.css" />
 </head>
+
 <body>
 
   <header class="top-bar">
@@ -55,43 +54,19 @@
           </div>
           <div class="form-group">
             <label for="signaling_server">Signaling Server</label>
-            <input 
-              type="text" 
-              id="signaling_server" 
-              name="signaling_server" 
-              value="ws://localhost:8765" 
-              required
-            >
+            <input type="text" id="signaling_server" name="signaling_server" value="ws://localhost:8765" required>
           </div>
           <div class="form-group">
             <label for="num_users">Number of Users</label>
-            <input 
-              type="text" 
-              id="num_users" 
-              name="num_users" 
-              value="3" 
-              required
-            >
+            <input type="text" id="num_users" name="num_users" value="3" required>
           </div>
           <div class="form-group">
             <label for="session_id">Session ID</label>
-            <input 
-              type="text" 
-              id="session_id" 
-              name="session_id" 
-              value="1111" 
-              required
-            >
+            <input type="text" id="session_id" name="session_id" value="1111" required>
           </div>
           <div class="form-group">
             <label for="epochs">Epochs</label>
-            <input 
-              type="text" 
-              id="epochs" 
-              name="epochs" 
-              value="10" 
-              required
-            >
+            <input type="text" id="epochs" name="epochs" value="10" required>
           </div>
           <button type="button" id="save-config-button">Save Config</button>
         </form>
@@ -121,10 +96,11 @@
   <script>
     const hamburger = document.getElementById("hamburger-menu");
     const mobileNav = document.getElementById("mobile-nav");
-    
+
     hamburger.addEventListener("click", () => {
       mobileNav.classList.toggle("active");
     });
   </script>
 </body>
+
 </html>

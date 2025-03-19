@@ -2,19 +2,20 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-  }
-  
-  html, body {
+}
+
+html,
+body {
     height: 100%;
     font-family: 'Helvetica Neue', Arial, sans-serif;
     color: #e0e0e0;
     background-color: #000;
     background: url("../assets/webwall.avif") no-repeat center center fixed;
     background-size: cover;
-    overflow-y: hidden; 
-  }
+    overflow-y: hidden;
+}
 
-  .top-bar {
+.top-bar {
     position: sticky;
     top: 0;
     display: flex;
@@ -23,39 +24,39 @@
     padding: 1rem 2rem;
     background-color: rgba(0, 0, 0, 0.8);
     z-index: 1000;
-  }
-  
-  .logo-container {
+}
+
+.logo-container {
     display: flex;
     align-items: center;
-  }
-  
-  .mit-logo {
+}
+
+.mit-logo {
     height: 40px;
     margin-right: 1rem;
-  }
-  
-  .project-name {
+}
+
+.project-name {
     font-size: 1.2rem;
     font-weight: 600;
     letter-spacing: 0.5px;
-  }
-  
-  .hamburger-menu {
+}
+
+.hamburger-menu {
     display: flex;
     flex-direction: column;
     cursor: pointer;
     gap: 0.4rem;
-  }
-  
-  .hamburger-menu .line {
+}
+
+.hamburger-menu .line {
     width: 25px;
     height: 2px;
     background-color: #fff;
-  }
+}
 
-  .mobile-nav {
-    position: sticky;
+.mobile-nav {
+    position: absolute;
     top: 70px;
     right: 2rem;
     background: rgba(0, 0, 0, 0.8);
@@ -94,91 +95,93 @@
   .mobile-nav a:hover {
     color: #fff;
   }
-  
-  .session-title {
+
+.session-title {
     text-align: center;
     margin: 2rem 0 1rem 0;
-  }
-  .session-title h1 {
+}
+
+.session-title h1 {
     font-size: 2rem;
     font-weight: 600;
     color: #fff;
     z-index: 10020;
-  }
-  
-  main {
+}
+
+main {
     padding: 1rem 2rem;
     max-width: 1400px;
     margin: 0 auto;
-     transform: translateY(-25%); 
-  }
-  
-  .two-column-layout {
+    transform: translateY(1%);
+}
+
+.two-column-layout {
     display: flex;
     gap: 1.5rem;
-  }
-  
-  .config-card {
+}
+
+.config-card {
     flex: 0 0 30%;
-  }
-  
-  .right-column {
+}
+
+.right-column {
     flex: 1;
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
-  }
-  
-  .card {
+}
+
+.card {
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
     padding: 1.5rem;
-  }
-  
-  .dark-card {
-    background: #111; 
+}
+
+.dark-card {
+    background: #111;
     color: #fff;
-  }
-  
-  .logs-card {
+}
+
+.logs-card {
     background: #000;
     color: "white";
-  }
-  
-  .card h2 {
+}
+
+.card h2 {
     margin-bottom: 1rem;
     font-size: 1.5rem;
     font-weight: 600;
-  }
-  
-  .form-group {
+}
+
+.form-group {
     margin-bottom: 1rem;
     display: flex;
     flex-direction: column;
-  }
-  
-  .form-group label {
+}
+
+.form-group label {
     margin-bottom: 0.5rem;
     font-weight: 600;
     color: #fff;
-  }
-  
-  .form-group input,
-  .form-group select {
+}
+
+.form-group input,
+.form-group select {
     padding: 0.5rem;
     border: none;
     border-radius: 4px;
     font-size: 1rem;
     margin-bottom: 0.5rem;
-  }
-  
-  .config-card input,
-  .config-card select {
+}
+
+.config-card input,
+.config-card select {
     color: #fff;
     background-color: #333;
-  }
+}
 
-  button, .btn {
+button,
+.btn {
     padding: 0.8rem 1.5rem;
     border: none;
     border-radius: 4px;
@@ -186,23 +189,26 @@
     cursor: pointer;
     transition: background-color 0.3s ease;
     color: #fff;
-  }
-  button:hover, .btn:hover {
+}
+
+button:hover,
+.btn:hover {
     opacity: 0.9;
-  }
-  
-  #save-config-button {
+}
+
+#save-config-button {
     background-color: #ff2a2a;
-  }
-  
-  #start-button {
+}
+
+#start-button {
     background-color: #ff2a2a;
-  }
-  
-  input[type="file"] {
+}
+
+input[type="file"] {
     display: none;
-  }
-  .file-label {
+}
+
+.file-label {
     display: inline-block;
     padding: 0.8rem 1.5rem;
     background-color: #ff2a2a;
@@ -210,30 +216,32 @@
     border-radius: 4px;
     cursor: pointer;
     transition: background-color 0.3s ease;
-  }
-  .file-label:hover {
+}
+
+.file-label:hover {
     background-color: #e60000;
-  }
-  
-  #console-output {
-    background: #f5f5f5; 
+}
+
+#console-output {
+    background: #f5f5f5;
     padding: 1rem;
     border-radius: 4px;
     height: 150px;
     overflow-y: auto;
     font-family: monospace;
     color: #000;
-  }
+}
 
-  @media (max-width: 900px) {
+@media (max-width: 900px) {
     .two-column-layout {
-      flex-direction: column;
+        flex-direction: column;
     }
+
     .config-card {
-      flex: 1;
+        flex: 1;
     }
+
     .right-column {
-      flex: 1;
+        flex: 1;
     }
-  }
-  
+}
