@@ -1,24 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
-  <title>Project SONAR - Home</title>
-  <link rel="stylesheet" href="styling/styles.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Project SONAR</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
-
 <body>
-
-  <header class="top-bar">
-    <div class="logo-container">
-      <img src="assets/logo.png" alt="MIT Logo" class="mit-logo" />
+  <header class="top-nav">
+    <div class="left-section">
+      <img src="assets/Logos.png" alt="MIT Logo" class="mit-logo" />
       <span class="project-name">Project SONAR</span>
     </div>
-
-    <div class="hamburger-menu" id="hamburger-menu">
-      <div class="line"></div>
-      <div class="line"></div>
-      <div class="line"></div>
+    <div class="right-section">
+      <button class="login-btn" onclick="window.location.href='login.html'">Log In</button>
+      <button class="get-started-btn">Get Started</button>
     </div>
   </header>
 
@@ -128,20 +124,42 @@
       <div class="button-group">
         <a href="./about.html" class="btn about-btn">About Us</a>
         <a href="https://github.com/aidecentralized/sonar/" target="_blank" class="btn github-btn">GitHub</a>
+  <main class="main-content">
+    <section class="left-box">
+      <div class="box-header">
+        <img src="assets/logo.png" alt="Project Brief Icon" class="circular-icon" />
+        <span>Project Brief</span>
       </div>
-    </div>
-  </section>
-
-
-  <script>
-    const hamburger = document.getElementById("hamburger-menu");
-    const mobileNav = document.getElementById("mobile-nav");
-
-    hamburger.addEventListener("click", function () {
-      mobileNav.classList.toggle("active");
-    });
-  </script>
-
+      <h1 class="main-heading">
+        Data is the bedrock of <span class="highlight">modern AI.</span>
+      </h1>
+      <p class="sub-text">
+        However, for real-world industries such as healthcare it is fragmented across organizations.
+      </p>
+    </section>
+    <section class="right-column">
+      <div class="top-box">
+        <div class="box-header">
+          <span>Video/photo og Project</span>
+        </div>
+      </div>
+      <div class="bottom-box">
+        <div class="box-header">
+          <span>Some Project data</span>
+        </div>
+        <div class="stats-row">
+          <div class="stats-item">
+            <p id="monthlyUsers">20k+</p>
+            <span class="label">Our monthly user</span>
+          </div>
+          <div class="stats-item">
+            <p id="dailyUsers">6k+</p>
+            <span class="label">Daily Active user</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="stats.js"></script>
 </body>
-
 </html>
