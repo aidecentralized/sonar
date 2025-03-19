@@ -18,7 +18,6 @@ body {
   background-size: cover;
 }
 
-/* 2. TOP BAR */
 .top-bar {
   display: flex;
   align-items: center;
