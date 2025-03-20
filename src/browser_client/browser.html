@@ -9,32 +9,24 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
-
+  <link rel="icon" href="assets/Miit.png" type="image/x-icon">
   <link rel="stylesheet" href="./styling/browser.css" />
 </head>
 
 <body>
 
   <header class="top-bar">
-    <div class="logo-container">
-      <img src="assets/Logos.png" alt="Browser App Logo" class="mit-logo" />
-      <span class="project-name">Project SONAR</span>
+    <div class="logo-area">
+      <img src="assets/Logos.png" alt="MIT Logo" class="mit-logo" />
+      <div class="text-group">
+        <div class="project-sonar">Project SONAR</div>
+      </div>
     </div>
-    <div class="hamburger-menu" id="hamburger-menu">
-      <div class="line"></div>
-      <div class="line"></div>
-      <div class="line"></div>
+    <div class="menu-icon">
+      <button class="session-btn" onclick="window.location.href='about.html'">About Us</button>
+      <button class="session-btn" onclick="window.location.href='index.html'">Home</button>
     </div>
   </header>
-
-  <nav class="mobile-nav" id="mobile-nav">
-    <ul>
-      <li><a href="./index.html">Home</a></li>
-      <li><a href="./about.html">About</a></li>
-      <li><a href="./browser.html">Session</a></li>
-    </ul>
-  </nav>
-
 
   <div class="session-title">
     <h1>Session</h1>
@@ -93,14 +85,6 @@
   </main>
 
   <script type="module" src="main.js"></script>
-  <script>
-    const hamburger = document.getElementById("hamburger-menu");
-    const mobileNav = document.getElementById("mobile-nav");
-
-    hamburger.addEventListener("click", () => {
-      mobileNav.classList.toggle("active");
-    });
-  </script>
 </body>
 
 </html>

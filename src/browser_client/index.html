@@ -3,56 +3,61 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Project SONAR</title>
-  <link rel="stylesheet" href="styles.css" />
+  <title>Home - Expand Effect</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styling/styles.css" />
+  <link rel="icon" href="assets/Miit.png" type="image/x-icon">
+
 </head>
 <body>
-  <header class="top-nav">
-    <div class="left-section">
+  <header class="top-bar">
+    <div class="logo-area">
       <img src="assets/Logos.png" alt="MIT Logo" class="mit-logo" />
-      <span class="project-name">Project SONAR</span>
+      <div class="text-group">
+        <div class="project-sonar">Project SONAR</div>
+      </div>
     </div>
-    <div class="right-section">
-      <button class="login-btn" onclick="window.location.href='login.html'">Log In</button>
-      <button class="get-started-btn">Get Started</button>
+    <div class="menu-icon">
+      <button class="session-btn" onclick="window.location.href='about.html'">About Us</button>
+      <button class="session-btn" onclick="window.location.href='browser.html'">Session</button>
     </div>
   </header>
-  <main class="main-content">
-    <section class="left-box">
-      <div class="box-header">
-        <img src="assets/logo.png" alt="Project Brief Icon" class="circular-icon" />
-        <span>Project Brief</span>
-      </div>
-      <h1 class="main-heading">
-        Data is the bedrock of <span class="highlight">modern AI.</span>
-      </h1>
-      <p class="sub-text">
-        However, for real-world industries such as healthcare it is fragmented across organizations.
-      </p>
-    </section>
-    <section class="right-column">
-      <div class="top-box">
-        <div class="box-header">
-          <span>Video/photo og Project</span>
-        </div>
-      </div>
-      <div class="bottom-box">
-        <div class="box-header">
-          <span>Some Project data</span>
-        </div>
-        <div class="stats-row">
-          <div class="stats-item">
-            <p id="monthlyUsers">20k+</p>
-            <span class="label">Our monthly user</span>
-          </div>
-          <div class="stats-item">
-            <p id="dailyUsers">6k+</p>
-            <span class="label">Daily Active user</span>
-          </div>
-        </div>
+  <div class="slides">
+    <section class="slide" style="background-image: url('assets/webwall.jpeg')">
+      <div class="content">
+        <h1>Data is the bedrock of <span class="highlight">modern AI.</span></h1>
+        <p>However, for real-world industries such as healthcare it is fragmented across organizations.</p>
       </div>
     </section>
-  </main>
-  <script src="stats.js"></script>
+    <section class="slide" style="background-image: url('assets/webwall.jpeg')">
+      <div class="content">
+        <h1>What's our <span class="highlight">plan?</span></h1>
+        <p>Project SONAR aims to create a collaborative framework for training and fine-tuning ML models.</p>
+      </div>
+    </section>
+    <section class="slide" style="background-image: url('assets/webwall.jpeg')">
+      <div class="content">
+        <h1>What's our <span class="highlight">timeline?</span></h1>
+        <p>Enabling individuals to own their data, personalize it, and benefit from collective knowledge.</p>
+      </div>
+    </section>
+    <section class="slide" style="background-image: url('assets/webwall.jpeg')">
+      <div class="content">
+        <h1>Get <span class="highlight">Started.</span></h1>
+        <p>Begin leveraging the power of decentralized, collaborative AI frameworks.</p>
+      </div>
+    </section>
+  </div>
+  <div class="dot-indicator">
+    <ul>
+      <li class="active"></li>
+      <li></li>
+      <li></li>
+      <li></li>
+    </ul>
+  </div>
+  <script src="index.js"></script>
 </body>
 </html>

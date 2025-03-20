@@ -1,0 +1,176 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  font-family: 'Poppins', sans-serif,'Helvetica Neue';
+  background: #000;
+  color: #fff;
+  overflow: hidden;
+}
+
+
+.top-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 60px;
+  background-color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2rem;
+  z-index: 1000;
+}
+
+.logo-area {
+  display: flex;
+  align-items: center;
+}
+
+.mit-logo {
+  height: 30px;
+  margin-right: 1rem;
+}
+
+.text-group {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.mit-name {
+  font-size: 0.8rem;
+  font-weight: 300;
+}
+
+.project-sonar {
+  font-size: 1rem;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.menu-icon {
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+
+.slides {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+
+.slide {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0; 
+  left: 0;
+  background-size: cover;
+  background-position: center;
+
+  opacity: 0;
+  transform: scale(1.1);
+  transition: opacity 0.67s ease, transform 0.67s ease;
+}
+
+
+.slide.active {
+  opacity: 1;
+  transform: scale(1);
+}
+
+
+.slide .content {
+  position: absolute;
+  left: 5%;
+  top: 42%;
+  max-width: 600px;
+  transform: translateY(-50%);
+  transition: opacity 0.67s ease, transform 0.67s ease;
+  opacity: 0;
+}
+
+.slide.active .content {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.slide h1 {
+  font-size: 3rem;
+  line-height: 1.2;
+  margin-bottom: 1rem;
+}
+
+.slide p {
+  font-size: 1.1rem;
+  color: #ccc;
+  line-height: 1.6;
+}
+
+.highlight {
+  color: #ff2a2a;
+}
+
+/* DOT INDICATOR (RIGHT CENTER) */
+.dot-indicator {
+  position: fixed;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1000;
+}
+
+.dot-indicator ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dot-indicator ul li {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.dot-indicator ul li.active,
+.dot-indicator ul li:hover {
+  background-color: #fff;
+}
+
+.session-btn {
+  background: transparent;
+  color: #fff;
+  border: 1px solid #fff;
+  padding: 0.4rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 1rem; 
+}
+.session-btn:hover {
+  background: #fff;
+  color: #000;
+}
+
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .slide h1 {
+    font-size: 2rem;
+  }
+  .slide p {
+    font-size: 1rem;
+  }
+}
