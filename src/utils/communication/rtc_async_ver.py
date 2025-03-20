@@ -701,7 +701,7 @@ class RTCCommUtils(CommunicationInterface):
 
         # Process messages with timeout
         timestamp = time.time()
-        timeout = 60 * 3 # 3 minutes
+        timeout = 60 * 5 # 5 minutes
         
         while awaiting_peers:
             if time.time() - timestamp > timeout:
@@ -743,6 +743,7 @@ class RTCCommUtils(CommunicationInterface):
                 ]
                 if incomplete_layers:
                     self.logger.error(f"Incomplete layers from peer {peer_rank} after timeout: {incomplete_layers}")
+                    return []
 
         # Create a list of models from each peer
         result = []

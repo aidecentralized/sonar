@@ -233,7 +233,7 @@ const NodeState = {
 
 class WebRTCCommUtils {
     constructor(config, trainDataset, testDataset = null) {
-        this.startTime = Date.now(  );
+        this.startTime = Date.now();
         this.model = new ResNet10();
         this.config = config || {};
         this.signalingServer = this.config.signaling_server || 'ws://localhost:8765';
