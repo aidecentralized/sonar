@@ -1,15 +1,18 @@
-import * as tf from '@tensorflow/tfjs'
+// const tf = require('@tensorflow/tfjs');
+const tf = require('@tensorflow/tfjs-node');
+// Add explicit garbage collection and memory management helpers
+tf.ENV.set('WEBGL_FORCE_F16_TEXTURES', false);
+tf.ENV.set('WEBGL_DELETE_TEXTURE_THRESHOLD', 0);
 
 // BLOODMNIST
-// const imageShape = [28, 28, 3];
-// const imageFlattenSize = 2352;
-// const imageClasses = 8;
-
-// CIFAR10
-const imageShape = [32, 32, 3];
-const imageFlattenSize = 3072;
-const imageClasses = 10;
-
+ // const imageShape = [28, 28, 3];
+ // const imageFlattenSize = 2352;
+ // const imageClasses = 8;
+ 
+ // CIFAR10
+ const imageShape = [32, 32, 3];
+ const imageFlattenSize = 3072;
+ const imageClasses = 10;
 
 class Model {
 	constructor() {
@@ -28,7 +31,7 @@ class Model {
 }
 
 // resnet
-export class ResNet10 extends Model {
+class ResNet10 extends Model {
 	constructor() {
 		super()
 		console.log("Initializing ResNet10 instance...")
@@ -37,7 +40,6 @@ export class ResNet10 extends Model {
 
 	// Build the model
 	buildModel() {
-
 		const inputs = tf.input({ shape: [imageFlattenSize] });
 
 		let x = tf.layers.reshape({ targetShape: imageShape }).apply(inputs);
@@ -63,6 +65,11 @@ export class ResNet10 extends Model {
 		// Global Average Pooling
 		x = tf.layers.globalAveragePooling2d({ dataFormat: 'channelsLast' }).apply(x);
 
+		// Fully Connected Layer
+		// BLOODMNIST
+		// x = tf.layers.dense({ units: 8, activation: 'softmax' }).apply(x);
+		
+		// CIFAR10
 		x = tf.layers.dense({ units: imageClasses, activation: 'softmax' }).apply(x);
 
 		const model = tf.model({ inputs, outputs: x });
@@ -179,6 +186,75 @@ export class ResNet10 extends Model {
 		}
 	}
 
+	// async local_train_one(dataSet, config = {
+	// 	epochs: 1,
+	// 	batchSize: 64,
+	// 	validationSplit: 0.2,
+	// 	shuffle: true,
+	// 	verbose: 1
+	// }, logFunc = console.log) {
+	// 	// take raw array of values and turn to tensor
+	// 	const images = tf.tensor2d(dataSet.images, [dataSet.images.length, imageFlattenSize])
+	// 	const labels = tf.oneHot(tf.tensor1d(dataSet.labels, 'int32'), imageClasses)
+		
+	// 	// create config object
+	// 	const trainingConfig = {
+	// 		epochs: 1,
+	// 		batchSize: config.batchSize,
+	// 		validationSplit: config.validationSplit,
+	// 		shuffle: config.shuffle,
+	// 		verbose: config.verbose,
+	// 		callbacks: {
+	// 			// callback in between epochs
+	// 			onEpochEnd: (epoch, logs) => {
+	// 				const epochLog = `Epoch ${epoch + 1}`;
+	// 				const lossLog = `Loss: ${logs.loss.toFixed(4)}`;
+	// 				const accLog = `Accuracy: ${(logs.acc * 100).toFixed(2)}%`;
+					
+	// 				// Use standard console.log for development visibility
+	// 				console.log(epochLog);
+	// 				console.log(lossLog);
+	// 				console.log(accLog);
+					
+	// 				// Use the custom log function if provided
+	// 				if (logFunc && typeof logFunc === 'function') {
+	// 					logFunc(epochLog);
+	// 					logFunc(lossLog);
+	// 					logFunc(accLog);
+						
+	// 					// Log validation metrics if available
+	// 					if (logs.val_loss) {
+	// 						const valLossLog = `Validation Loss: ${logs.val_loss.toFixed(4)}`;
+	// 						const valAccLog = `Validation Accuracy: ${(logs.val_acc * 100).toFixed(2)}%`;
+	// 						console.log(valLossLog);
+	// 						console.log(valAccLog);
+	// 						logFunc(valLossLog);
+	// 						logFunc(valAccLog);
+	// 					}
+	// 				}
+
+	// 				// TODO: should I add sending here?
+	// 			}
+	// 		}
+	// 	}
+
+	// 	try {
+	// 		console.log(`Beginning training...`)
+	// 		const history = await this.model.fit(images, labels, trainingConfig)
+	// 		console.log(`Training completed`)
+
+	// 		images.dispose()
+	// 		labels.dispose()
+
+	// 		return history
+	// 	} catch (error) {
+	// 		console.error('Error during training: ', error)
+
+	// 		images.dispose()
+	// 		labels.dispose()
+	// 		throw error
+	// 	}
+	// }
 	async local_train_one(trainDataSet, testDataSet = null, config = {
 		epochs: 1,
 		batchSize: 64,
@@ -186,13 +262,34 @@ export class ResNet10 extends Model {
 		shuffle: true,
 		verbose: 1
 	}, logFunc = console.log) {
-		// take raw array of values and turn to tensor
-		const trainImages = tf.tensor2d(trainDataSet.images, [trainDataSet.images.length, imageFlattenSize])
-		const trainLabels = tf.oneHot(tf.tensor1d(trainDataSet.labels, 'int32'), imageClasses)
+		// Explicitly enable memory cleanup
+		tf.engine().startScope();
 		
-		// prepare test data if provided
-		let testImages = null;
-		let testLabels = null;
+		// Wrap tensor creation in tidy blocks to automatically manage memory
+		const tensors = tf.tidy(() => {
+			// take raw array of values and turn to tensor
+			const trainImages = tf.tensor2d(trainDataSet.images, [trainDataSet.images.length, imageFlattenSize]);
+			const trainLabels = tf.oneHot(tf.tensor1d(trainDataSet.labels, 'int32'), imageClasses);
+			
+			// prepare test data if provided
+			let testImages = null;
+			let testLabels = null;
+			
+			if (testDataSet) {
+				testImages = tf.tensor2d(testDataSet.images, [testDataSet.images.length, imageFlattenSize]);
+				testLabels = tf.oneHot(tf.tensor1d(testDataSet.labels, 'int32'), imageClasses);
+			}
+			
+			return {
+				trainImages,
+				trainLabels,
+				testImages,
+				testLabels
+			};
+		});
+		
+		// Extract tensors from the tidied operation
+		const { trainImages, trainLabels, testImages, testLabels } = tensors;
 		
 		// create config object
 		const trainingConfig = {
@@ -228,17 +325,16 @@ export class ResNet10 extends Model {
 							logFunc(valAccLog);
 						}
 					}
-
-					// TODO: should I add sending here?
+					
+					// Force garbage collection between epochs
+					tf.engine().endScope();
+					tf.engine().startScope();
 				}
 			}
 		}
 		
 		// If testDataSet is provided, use it as validation data instead of using validationSplit
 		if (testDataSet) {
-			testImages = tf.tensor2d(testDataSet.images, [testDataSet.images.length, imageFlattenSize]);
-			testLabels = tf.oneHot(tf.tensor1d(testDataSet.labels, 'int32'), imageClasses);
-			
 			// Remove validationSplit since we're using separate validation data
 			delete trainingConfig.validationSplit;
 		} else {
@@ -248,7 +344,6 @@ export class ResNet10 extends Model {
 
 		try {
 			console.log(`Beginning training...`);
-			const startTime = performance.now();
 			let history;
 			
 			if (testDataSet) {
@@ -266,95 +361,96 @@ export class ResNet10 extends Model {
 				history = await this.model.fit(trainImages, trainLabels, trainingConfig);
 			}
 			
-			const endTime = performance.now();
-			const trainingTime = (endTime - startTime) / 1000; // Convert to seconds
-			console.log(`Training completed in ${trainingTime.toFixed(2)} seconds`);
+			console.log(`Training completed`);
 
-			// Clean up tensors
-			trainImages.dispose();
-			trainLabels.dispose();
+			// Clean up tensors - make sure to clean up even if we complete normally
+			tf.dispose([trainImages, trainLabels]);
+			if (testImages) tf.dispose([testImages, testLabels]);
 			
-			if (testImages) testImages.dispose();
-			if (testLabels) testLabels.dispose();
-
-			// Extract metrics
-			const metrics = {
-				trainAcc: history.history.acc[0],
-				trainLoss: history.history.loss[0],
-				trainTime: trainingTime
-			};
+			// End the memory scope we started at the beginning
+			tf.engine().endScope();
 			
-			// If validation data was used, include validation metrics
-			if (history.history.val_acc) {
-				metrics.testAcc = history.history.val_acc[0];
-				metrics.testLoss = history.history.val_loss[0];
+			// Run garbage collection explicitly
+			if (global.gc) {
+				global.gc();
 			}
 			
-			return metrics;
+			return history;
 		} catch (error) {
 			console.error('Error during training: ', error);
 
 			// Clean up tensors even if there's an error
-			trainImages.dispose();
-			trainLabels.dispose();
+			tf.dispose([trainImages, trainLabels]);
+			if (testImages) tf.dispose([testImages, testLabels]);
 			
-			if (testImages) testImages.dispose();
-			if (testLabels) testLabels.dispose();
+			// End the memory scope even on error
+			tf.engine().endScope();
+			
+			// Run garbage collection explicitly
+			if (global.gc) {
+				global.gc();
+			}
 			
 			throw error;
 		}
 	}
 
 	async local_test(testDataSet, logFunc = console.log) {
-		logFunc("local_test called");
 		if (!testDataSet) {
 			console.error("No test dataset provided.");
-			return { testAcc: 0, testLoss: 0, testTime: 0 };
+			return;
 		}
 	
-		// Convert test data to tensors
-		const testImages = tf.tensor2d(testDataSet.images, [testDataSet.images.length, imageFlattenSize]);
-		const testLabels = tf.oneHot(tf.tensor1d(testDataSet.labels, 'int32'), imageClasses);
+		// Explicitly enable memory cleanup
+		tf.engine().startScope();
 	
 		try {
+			// Convert test data to tensors
+			const { testImages, testLabels } = tf.tidy(() => {
+				const images = tf.tensor2d(testDataSet.images, [testDataSet.images.length, imageFlattenSize]);
+				const labels = tf.oneHot(tf.tensor1d(testDataSet.labels, 'int32'), imageClasses);
+				return { testImages: images, testLabels: labels };
+			});
+	
 			console.log("Evaluating model on test data...");
-			const startTime = performance.now();
 			const evalResult = await this.model.evaluate(testImages, testLabels);
-			const endTime = performance.now();
-			const testTime = (endTime - startTime) / 1000; // Convert to seconds
-			
+	
 			// Extract loss and accuracy values
 			const testLoss = evalResult[0].dataSync()[0];
-			const testAccuracy = evalResult[1].dataSync()[0];
+			const testAccuracy = evalResult[1].dataSync()[0] * 100;
 	
 			// Log results
-			const lossLog = `Test Loss (After Aggregation): ${testLoss.toFixed(4)}`;
-			const accLog = `Test Accuracy (After Aggregation): ${(testAccuracy * 100).toFixed(2)}%`;
-			const timeLog = `Test Time: ${testTime.toFixed(2)} seconds`;
+			const lossLog = `Test Loss: ${testLoss.toFixed(4)}`;
+			const accLog = `Test Accuracy: ${testAccuracy.toFixed(2)}%`;
 	
 			console.log(lossLog);
 			console.log(accLog);
-			console.log(timeLog);
 	
 			if (logFunc && typeof logFunc === 'function') {
 				logFunc(lossLog);
 				logFunc(accLog);
-				logFunc(timeLog);
 			}
+	
+			// Dispose tensors
+			tf.dispose([testImages, testLabels]);
 			
-			// Return metrics
+			// Return test metrics
 			return {
-				testAcc: testAccuracy,
-				testLoss: testLoss,
-				testTime: testTime
+				testAcc: testAccuracy / 100, // Convert back to 0-1 range
+				testLoss: testLoss
 			};
+	
 		} catch (error) {
 			console.error("Error during evaluation:", error);
-			return { testAcc: 0, testLoss: 0, testTime: 0 };
 		} finally {
-			// Dispose tensors
-			testImages.dispose();
-			testLabels.dispose();
+			// End the memory scope and force garbage collection
+			tf.engine().endScope();
+			if (global.gc) {
+				global.gc();
+			}
 		}
 	}
+	
 }
+
+module.exports = { ResNet10 };

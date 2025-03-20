@@ -231,6 +231,104 @@ const NodeState = {
     DISCONNECTING: 3,
 };
 
+// Logger utility for metrics in browser environment
+class MetricsLogger {
+  constructor() {
+    this.metrics = new Map();
+  }
+
+  initializeMetric(metricName) {
+    // Initialize with header
+    this.metrics.set(metricName, 'iteration,value\n');
+    console.log(`Initialized metric log: ${metricName}`);
+  }
+
+  logMetric(metricName, iteration, value) {
+    // Make sure the metric is initialized
+    if (!this.metrics.has(metricName)) {
+      this.initializeMetric(metricName);
+    }
+
+    // Append the data
+    const currentData = this.metrics.get(metricName);
+    const logLine = `${iteration},${value}\n`;
+    this.metrics.set(metricName, currentData + logLine);
+  }
+
+  // Export all metrics as CSV files in a zip archive
+  exportLogs() {
+    try {
+      // If no metrics have been logged, show a message
+      if (this.metrics.size === 0) {
+        console.log('No metrics to export');
+        return;
+      }
+
+      // Create a zip file containing all metrics
+      import('jszip').then(JSZip => {
+        const zip = new JSZip.default();
+        
+        // Add each metric as a separate CSV file
+        for (const [metricName, csvData] of this.metrics.entries()) {
+          zip.file(`${metricName}.csv`, csvData);
+        }
+        
+        // Generate the zip file
+        zip.generateAsync({ type: 'blob' }).then(content => {
+          // Create a download link
+          const url = URL.createObjectURL(content);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `metrics_${Date.now()}.zip`;
+          document.body.appendChild(a);
+          a.click();
+          
+          // Cleanup
+          setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }, 100);
+        });
+      }).catch(error => {
+        console.error('Failed to load JSZip:', error);
+        this.exportIndividualCSVs();
+      });
+    } catch (error) {
+      console.error('Failed to export metrics:', error);
+      this.exportIndividualCSVs();
+    }
+  }
+
+  // Fallback method to export individual CSV files if JSZip fails
+  exportIndividualCSVs() {
+    for (const [metricName, csvData] of this.metrics.entries()) {
+      const blob = new Blob([csvData], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${metricName}_${Date.now()}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Cleanup
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
+    }
+  }
+
+  // Get a specific metric's data
+  getMetricData(metricName) {
+    return this.metrics.get(metricName) || '';
+  }
+
+  // Clear all metrics
+  clearMetrics() {
+    this.metrics.clear();
+  }
+}
+
 export class WebRTCCommUtils {
     constructor(config, trainDataset, testDataset = null) {
         this.model = new ResNet10();
@@ -258,7 +356,7 @@ export class WebRTCCommUtils {
         this.MAX_RETRIES = 3;
         this.RETRY_DELAY = 30000;                    // Increased from 15000 to 30000
         this.ICE_GATHERING_TIMEOUT = 20000;          // Increased from 10000 to 20000
-        this.weightReceiptTimeout = 10 * 60 * 1000; // 10 minutes timeout
+        this.weightReceiptTimeout = 3 * 60 * 1000; // 3 minutes timeout
     
         // State
         this.state = NodeState.CONNECTING;
@@ -279,6 +377,17 @@ export class WebRTCCommUtils {
         // Communication cost counters
         this.comm_cost_sent = 0;
         this.comm_cost_received = 0;
+    
+        // Initialize metrics logger
+        this.metricsLogger = new MetricsLogger();
+        
+        // Initialize metrics
+        ['test_acc', 'test_loss', 'test_time', 
+         'train_acc', 'train_loss', 'train_time',
+         'time_elapsed', 'bytes_sent', 'bytes_received',
+         'peak_dram', 'peak_gpu', 'neighbors'].forEach(metric => {
+            this.metricsLogger.initializeMetric(metric);
+        });
     
         // Simple logging
         this.log(`[constructor] RTCCommUtilsJS created with config: ${JSON.stringify(config)}`);
@@ -329,6 +438,7 @@ export class WebRTCCommUtils {
     // Helper method to export logs to a downloadable file
     exportLogs() {
       try {
+        // Export client logs
         const logs = localStorage.getItem('clientLogs') || '';
         const blob = new Blob([logs], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
@@ -344,6 +454,11 @@ export class WebRTCCommUtils {
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
         }, 100);
+        
+        // Export metrics logs
+        if (this.metricsLogger) {
+          this.metricsLogger.exportLogs();
+        }
       } catch (error) {
         console.error('Failed to export logs:', error);
       }
@@ -469,7 +584,7 @@ export class WebRTCCommUtils {
 
         // Initiate connections to higher-ranked neighbors
         for (const neighborList of Object.values(this.neighbors)) {
-          this.log(`Initiating connection to ${neighborList}`);
+          // this.log(`Initiating connection to ${neighborList}`);
             // TODO: uncomment this condition later
               // if (neighborRank > this.rank &&
               //     !this.connections.has(neighborRank) &&
@@ -920,12 +1035,12 @@ export class WebRTCCommUtils {
    */
   canMoveOn() {
     // If we haven't received any weights finished signals or have no neighbors, we can't move on
-    if (this.receivedWeightsFinished.size === 0 || this.connectedPeers.size === 0) {
-      return false;
-    }
+    // if (this.receivedWeightsFinished.size === 0 || this.connectedPeers.size === 0) {
+    //   return false;
+    // }
     
     // Check if we've received weights_finished from all neighbors we're connected to
-    for (const peerRank of this.connectedPeers) {
+    for (const peerRank of this.collaborator_list) {
       if (!this.receivedWeightsFinished.has(peerRank) || !this.receivedWeightsFinished.get(peerRank)) {
         return false;
       }
@@ -950,14 +1065,12 @@ export class WebRTCCommUtils {
     return true;
   }
 
-  async receive(collaborator_list) {
-    
+  async receive() {
     // Reset our tracking state
     this.clear_peer_weights = true;
     this.layerChunkTracker = new Map(); // Reset per-peer layer tracking
     this.receivedWeightsFinished = new Map(); // Reset per-peer completion status
     this.peer_weights = new Map(); // Reset peer weights map
-    this.weightReceiptTimeout = 120000; // 2 minutes timeout
     
     // Create a promise that will resolve when all weights are received
     const waitForWeights = new Promise((resolve, reject) => {
@@ -998,7 +1111,7 @@ export class WebRTCCommUtils {
     // Send weight requests to all connected neighbors
     // TODO: fix this hard code:
     // for (const neighborRank of Object.values(this.neighbors)) {
-    for (const neighborRank of collaborator_list) {
+    for (const neighborRank of this.collaborator_list) {
       this.log(`Sending weights request for neighbor ${neighborRank}`);
       this.sendToPeer(neighborRank, {
         type: "weights_request",
@@ -1387,17 +1500,41 @@ export class WebRTCCommUtils {
         throw new Error('Training dataset is undefined');
       }
 
+      this.collaborator_list = [...this.connectedPeers.keys()].sort(() => Math.random() - 0.5).slice(0, this.num_collaborators);
+
       // Define how often to export logs (every N epochs)
       const logExportFrequency = 10; // Export logs every 10 epochs
+      
+      // Track time elapsed
+      const trainingStartTime = performance.now();
 
       for (let i = 0; i < this.config.epochs; i++) {
         // Use both training and testing datasets if available
+        let trainMetrics;
         if (this.testDataset) {
           this.log(`Starting round ${i} with separate training and testing datasets`);
-          await this.model.local_train_one(this.trainDataset, this.testDataset, undefined, this.log.bind(this));
+          trainMetrics = await this.model.local_train_one(this.trainDataset, this.testDataset, undefined, this.log.bind(this));
         } else {
           this.log(`Starting round ${i} with training dataset only`);
-          await this.model.local_train_one(this.trainDataset, null, undefined, this.log.bind(this));
+          trainMetrics = await this.model.local_train_one(this.trainDataset, null, undefined, this.log.bind(this));
+        }
+        
+        // Log training metrics
+        if (trainMetrics) {
+          this.updateTrainingMetrics(
+            trainMetrics.trainAcc, 
+            trainMetrics.trainLoss, 
+            trainMetrics.trainTime
+          );
+          
+          // If validation metrics are available from training
+          if (trainMetrics.testAcc) {
+            this.updateTestingMetrics(
+              trainMetrics.testAcc,
+              trainMetrics.testLoss,
+              0 // No separate test time available here
+            );
+          }
         }
         
         this.log(`Finished round ${i} training, receiving weights...`);
@@ -1405,37 +1542,84 @@ export class WebRTCCommUtils {
         // Reset tracking for this round
         this.layerChunkTracker = {}; // Format: { layerName: { expected: numChunks, received: count } }
         this.receivedWeightsFinished = false; // Set to true when weights_finished is received
-        this.weightReceiptTimeout = 120000; // 2 minutes timeout
         
         // randomly choose num_collaborators from connectedPeers
-        const collaborator_list = [...this.connectedPeers.keys()].sort(() => Math.random() - 0.5).slice(0, this.num_collaborators);
+        this.collaborator_list = [...this.connectedPeers.keys()].sort(() => Math.random() - 0.5).slice(0, this.num_collaborators);
         
-        const peer_weights = await this.receive(collaborator_list);
+        const peer_weights = await this.receive();
         this.log(`Round ${i}: Received weights from peers, performing aggregation...`);
+        
+        // Update communication metrics after receiving weights
+        this.updateCommMetrics();
         
         // Perform federated averaging with peer_weights
         await this.aggregate(peer_weights);
         this.log(`Round ${i}: Completed aggregation of model weights`);
+
+        // Run testing and log metrics
+        const testMetrics = await this.model.local_test(this.testDataset, this.log.bind(this));
+        if (testMetrics) {
+          this.updateTestingMetrics(
+            testMetrics.testAcc,
+            testMetrics.testLoss,
+            testMetrics.testTime
+          );
+        }
         
+        // Update current round for metrics logging
         this.currentRound = i + 1;
+        
+        // Calculate and log time elapsed since training started
+        const currentTime = performance.now();
+        const timeElapsed = (currentTime - trainingStartTime) / 1000; // in seconds
+        this.logMetric('total_time', timeElapsed);
         
         // Export logs at regular intervals during training
         if ((i + 1) % logExportFrequency === 0) {
-        this.log(`Exporting logs at round ${i+1}...`); 
-        this.exportLogs();
+          this.log(`Exporting logs at round ${i+1}...`); 
+          this.exportLogs();
         }
       }
 
-      this.log("finished training")
-      this.exportLogs()
+      this.log("finished training");
+      this.exportLogs();
     } catch (error) {
       this.log(`Error in training: ${error.message}`);
       console.error(error);
+      
+      // Export logs even if there's an error
       this.exportLogs();
     }
   }
 
-  // -------------------------- Signaling & ICE Handling --------------------------
+  // Update training metrics
+  updateTrainingMetrics(trainAcc, trainLoss, trainTime) {
+    this.logMetric('train_acc', trainAcc);
+    this.logMetric('train_loss', trainLoss);
+    this.logMetric('train_time', trainTime);
+    
+    // Also update communication metrics
+    this.updateCommMetrics();
+    
+    // Export logs periodically (e.g., every 5 rounds)
+    if (this.currentRound % 5 === 0) {
+      this.exportLogs();
+    }
+  }
+  
+  // Update testing metrics
+  updateTestingMetrics(testAcc, testLoss, testTime) {
+    this.logMetric('test_acc', testAcc);
+    this.logMetric('test_loss', testLoss);
+    this.logMetric('test_time', testTime);
+  }
+  
+  // Update system metrics
+  updateSystemMetrics(timeElapsed, peakDram = 0, peakGpu = 0) {
+    this.logMetric('time_elapsed', timeElapsed);
+    this.logMetric('peak_dram', peakDram);
+    this.logMetric('peak_gpu', peakGpu);
+  }
 
   /**
    * handleSignalingMessage - React to "offer", "answer", or "candidate" from the server.
@@ -1644,60 +1828,16 @@ export class WebRTCCommUtils {
     //   }
     // }
       
+
+  logMetric(metricName, value) {
+    if (this.metricsLogger) {
+      this.metricsLogger.logMetric(metricName, this.currentRound, value);
+    }
+  }
+
+  updateCommMetrics() {
+    this.logMetric('bytes_sent', this.comm_cost_sent);
+    this.logMetric('bytes_received', this.comm_cost_received);
+    this.logMetric('neighbors', this.connectedPeers.size);
+  }
 }
-
-// let node = null;
-
-// function createSession() {
-//     const maxClients = document.getElementById('maxClients').value;
-//     const sessionId = document.getElementById('sessionId').value || generateSessionId();
-//     document.getElementById('sessionId').value = sessionId;
-
-//     node = new TorusNode('ws://localhost:8765');
-//     node.connect({
-//         type: 'create_session',
-//         sessionId: sessionId,
-//         maxClients: parseInt(maxClients)
-//     });
-// }
-
-// function joinSession() {
-//     const sessionId = document.getElementById('joinSessionId').value;
-//     if (!sessionId) {
-//         alert('Please enter a session code');
-//         return;
-//     }
-
-//     node = new TorusNode('ws://localhost:8765');
-//     node.connect({
-//         type: 'join_session',
-//         sessionId: sessionId
-//     });
-// }
-
-
-
-// // ** Set your session parameters here **
-// const SESSION_ID = 1111; // Change this to a fixed or generated session ID
-// const MAX_CLIENTS = 3;
-// const IS_CREATOR = false; // Set to true if this should create a session
-
-// // const sessionInfo = {
-// //     type: IS_CREATOR ? 'create_session' : 'join_session',
-// //     sessionId: SESSION_ID,
-// //     maxClients: MAX_CLIENTS,
-// //     clientType: 'javascript'
-// // };
-
-// // ** Start WebRTC Comm Utils **
-// const signalingServer = 'ws://localhost:8765'; // Your WebSocket server
-
-// // TODO: fill in config
-// const config = {
-//     signaling_server: signalingServer,
-//     num_users: MAX_CLIENTS,
-//     session_id: SESSION_ID,
-//     epochs: 10
-// };
-
-// const node = new WebRTCCommUtils(config);
