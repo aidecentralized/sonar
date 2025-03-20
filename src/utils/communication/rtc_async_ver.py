@@ -91,6 +91,7 @@ class RTCCommUtils(CommunicationInterface):
         self.connection_timeout = 60  # Increased from 30 to 60 seconds
         self.ice_gathering_timeout = 20  # Increased from 10 to 20 seconds
         self.logger = self.setup_logger()
+        self.network_ready_bool = False
 
         # Training attributes
         self.current_round = 0
@@ -133,7 +134,7 @@ class RTCCommUtils(CommunicationInterface):
     def setup_file_logging(self):
         if self.rank is not None:
             # Create file handler
-            fh = logging.FileHandler(f"logs/client_{self.rank}_new.log", mode='w')
+            fh = logging.FileHandler(f"logs/client_{self.rank}_newer.log", mode='w')
             fh.setLevel(logging.INFO)
             
             # Create formatter
@@ -539,6 +540,7 @@ class RTCCommUtils(CommunicationInterface):
                             await self.change_state(NodeState.READY)
                             self.logger.info("All connections established!")
                             network_ready_event.set()  # Set the event when network is ready
+                            self.network_ready_bool = True
                             return
                 
                 await process_messages()
@@ -699,7 +701,7 @@ class RTCCommUtils(CommunicationInterface):
 
         # Process messages with timeout
         timestamp = time.time()
-        timeout = 60 * 20 # 20 minutes
+        timeout = 60 * 3 # 3 minutes
         
         while awaiting_peers:
             if time.time() - timestamp > timeout:
@@ -707,7 +709,7 @@ class RTCCommUtils(CommunicationInterface):
                 break
             
             try:
-                message = self.message_queue.get(timeout=0.1)
+                message = self.message_queue.get()
                 if message:
                     peer_rank = message[0]
                     data = message[1]
