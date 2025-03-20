@@ -382,7 +382,7 @@ medmnist_grpc_config: ConfigType = {
     "test_samples_per_user": 200,
 }
 
-num_users = 3
+num_users = 10
 dropout_dict = {}
 dropout_dicts = {"node_0": {}}
 for i in range(1, num_users + 1):
@@ -390,9 +390,9 @@ for i in range(1, num_users + 1):
 
 # for swift or fedavgpush, just modify the algo_configs list
 # for swift, synchronous should preferable be False
-gpu_ids = [0, 1]
+gpu_ids = [2, 3, 7]
 rtc_config: ConfigType = {
-    "exp_id": "test_javascript4",
+    "exp_id": "test_train_10_clients3",
     "num_users": num_users,
     "session_id": 1111,
     "num_collaborators": NUM_COLLABORATORS,

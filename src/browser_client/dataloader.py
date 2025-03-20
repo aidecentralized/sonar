@@ -346,7 +346,7 @@ if __name__ == "__main__":
     # convert_cifar10_to_json("./public/datasets/imgs/cifar10/")
     
     # Example usage for IID partitioning
-    partition_cifar10_to_json("./public/datasets/imgs/cifar10_iid/", num_clients=20, iid=True)
+    partition_cifar10_to_json("./public/datasets/imgs/cifar10_iid_split10/", num_clients=10, iid=True)
     
     # Example usage for non-IID label-skewed partitioning
     # partition_cifar10_to_json("./public/datasets/imgs/cifar10_non_iid/", 

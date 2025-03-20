@@ -197,7 +197,7 @@ fedstatic: ConfigType = {
     # Model parameters
     "model": "resnet10",
     "model_lr": 3e-4,
-    "batch_size": 256,
+    "batch_size": 64,
 }
 
 swift: ConfigType = {
