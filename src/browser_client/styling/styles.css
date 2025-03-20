@@ -4,11 +4,13 @@
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   height: 100%;
   font-family: 'Helvetica Neue', Arial, sans-serif;
   color: #fff;
-  background-color: #000; 
+  background-color: #000;
+  overflow: hidden;
 }
 
 body {
@@ -40,12 +42,8 @@ body {
   font-size: 1.2rem;
   font-weight: 600;
   letter-spacing: 0.5px;
-  color: #fff;
 }
 
-.highlight {
-  color: #ff2a2a;
-}
 
 .hamburger-menu {
   display: flex;
@@ -59,6 +57,7 @@ body {
   height: 2px;
   background-color: #fff;
 }
+
 
 .mobile-nav {
   position: absolute;
@@ -92,13 +91,13 @@ body {
 
 .mobile-nav a {
   text-decoration: none;
-  color: #fff;
+  color: #e0e0e0;
   font-weight: 500;
   transition: color 0.2s ease;
 }
 
 .mobile-nav a:hover {
-  color: #ccc;
+  color: #fff;
 }
 
 .hero {
@@ -109,26 +108,60 @@ body {
   padding: 0 2rem;
 }
 
-.about-hero {
-  justify-content: center; 
+.hero-text {
+  max-width: 600px;
 }
 
-.about-container {
-  max-width: 800px;
-  margin: auto;
-  padding: 2rem;
-  border-radius: 8px;
-  text-align: center;
-}
-
-.about-container h1 {
+.hero-text h1 {
   font-size: 3rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
+  line-height: 1.2;
 }
 
-.about-container p {
+.hero-text p {
   font-size: 1.2rem;
-  line-height: 1.6;
-  margin-bottom: 1.5rem;
+  line-height: 1.5;
+  max-width: 500px;
   color: #ccc;
+  margin-bottom: 2rem;
+}
+
+.highlight {
+  color: #ff2a2a;
+}
+
+.button-group {
+  display: flex;
+  gap: 1rem;
+}
+
+.btn {
+  text-decoration: none;
+  font-size: 1rem;
+  padding: 0.8rem 1.5rem;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+  display: inline-block;
+}
+
+
+.about-btn {
+  background-color: #ff2a2a;
+  color: #fff;
+  border: none;
+}
+
+.about-btn:hover {
+  background-color: #e60000;
+}
+
+.github-btn {
+  background-color: transparent;
+  color: #ff2a2a;
+  border: 2px solid #ff2a2a;
+}
+
+.github-btn:hover {
+  background-color: #ff2a2a;
+  color: #fff;
 }
