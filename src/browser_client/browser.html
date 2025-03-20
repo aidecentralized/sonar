@@ -68,16 +68,32 @@
             <label for="epochs">Epochs</label>
             <input type="text" id="epochs" name="epochs" value="10" required>
           </div>
+          <div class="form-group">
+            <label for="num_collaborators">Num Collaborators</label>
+            <input type="text" id="num_collaborators" name="num_collaborators" value="1" required>
+          </div>
           <button type="button" id="save-config-button">Save Config</button>
         </form>
       </section>
 
       <div class="right-column">
         <section class="card dark-card">
-          <h2>Data</h2>
-          <label for="data-input" class="file-label">Choose File</label>
-          <input id="data-input" type="file" accept=".json">
-        </section>
+          <div class="data-section">
+            <div class="data-block">
+              <h2>Training Data</h2>
+              <label for="train-data-input" class="file-label">Choose File</label>
+              <input id="train-data-input" type="file" accept=".json">
+            </div>
+            
+            <div class="data-block">
+              <h2>Testing Data (Optional)</h2>
+              <label for="test-data-input" class="file-label">Choose File</label>
+              <input id="test-data-input" type="file" accept=".json">
+              <p class="input-note">If not provided, 20% of training data will be used for validation</p>
+            </div>
+          </div>
+        
+        </section>        
 
         <section class="card dark-card">
           <h2>Train</h2>

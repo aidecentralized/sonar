@@ -232,6 +232,23 @@ input[type="file"] {
     color: #000;
 }
 
+.data-section {
+    display: flex;
+    gap: 2rem;
+}
+
+.data-block {
+    flex: 1;
+}
+
+.input-note {
+    font-style: italic;
+    font-size: 0.9rem;
+    color: #b0b0b0;
+    margin-top: 0.5rem;
+}
+
+
 @media (max-width: 900px) {
     .two-column-layout {
         flex-direction: column;
