@@ -6,16 +6,18 @@
 
 html,
 body {
-  height: 100%;
+  height: auto;
+  min-height: 100vh;
   font-family: 'Helvetica Neue', Arial, sans-serif;
   color: #fff;
   background-color: #000;
-  overflow: hidden;
+  overflow: auto;
 }
 
 body {
-  background: url("../assets/webwall.jpeg") no-repeat center center fixed;
+  background: url("../assets/webwall.jpeg") no-repeat center center;
   background-size: cover;
+  background-attachment: scroll;
 }
 
 .top-bar {
