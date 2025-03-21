@@ -12,7 +12,7 @@ body {
     background-color: #000;
     background: url("../assets/webwall.jpeg") no-repeat center center fixed;
     background-size: cover;
-    overflow-y: hidden;
+    overflow-y: auto;
 }
 
 .top-bar {
@@ -31,7 +31,7 @@ body {
     align-items: center;
 }
 
-.mit-logo {
+.logo {
     height: 40px;
     margin-right: 1rem;
 }
