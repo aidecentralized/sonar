@@ -6,11 +6,6 @@ from utils.communication.comm_utils import CommunicationManager
 from algos.base_class import BaseClient, BaseServer
 import time
 
-# import the possible attacks
-from algos.attack_add_noise import AddNoiseAttack
-from algos.attack_bad_weights import BadWeightsAttack
-from algos.attack_sign_flip import SignFlipAttack
-
 class FedAvgClient(BaseClient):
     def __init__(
         self, config: Dict[str, Any], comm_utils: CommunicationManager
@@ -43,27 +38,7 @@ class FedAvgClient(BaseClient):
 
         message = {"sender": self.node_id, "round": self.round}
 
-        malicious_type = self.config.get("malicious_type", "normal")
-
-        if malicious_type == "normal":
-            message["model"] = self.model.state_dict()  # type: ignore
-        elif malicious_type == "bad_weights":
-            # Corrupt the weights
-            message["model"] = BadWeightsAttack(
-                self.config, self.model.state_dict()
-            ).get_representation()
-        elif malicious_type == "sign_flip":
-            # Flip the sign of the weights, also TODO: consider label flipping
-            message["model"] = SignFlipAttack(
-                self.config, self.model.state_dict()
-            ).get_representation()
-        elif malicious_type == "add_noise":
-            # Add noise to the weights
-            message["model"] = AddNoiseAttack(
-                self.config, self.model.state_dict()
-            ).get_representation()
-        else:
-            message["model"] = self.model.state_dict()  # type: ignore
+        message["model"] = self.model.state_dict()  # type: ignore
 
         # move the model to cpu before sending
         for key in message["model"].keys():
