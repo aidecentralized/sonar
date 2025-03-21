@@ -6,7 +6,7 @@
 
 html,
 body {
-    height: 100%;
+    height: auto;
     font-family: 'Helvetica Neue', Arial, sans-serif;
     color: #e0e0e0;
     background-color: #000;
