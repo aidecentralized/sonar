@@ -1,1 +1,1 @@
-{"type":"module","dependencies":{"18":"^0.0.0","@tensorflow/tfjs":"^4.22.0","jszip":"^3.10.1"},"devDependencies":{"vite":"^5.0.0"},"scripts":{"start":"vite --host 0.0.0.0 --port $PORT"}}
+{"type":"module","dependencies":{"18":"^0.0.0","@tensorflow/tfjs":"^4.22.0","jszip":"^3.10.1"},"devDependencies":{"vite":"^5.0.0"},"scripts":{ "dev":"vite", "start":"vite --host 0.0.0.0 --port $PORT"}}
