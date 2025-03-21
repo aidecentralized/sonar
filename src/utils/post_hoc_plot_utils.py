@@ -239,7 +239,7 @@ def plot_all_metrics(logs_dir: str, metrics_map: Optional[Dict[str, str]] = None
 # Use if you a specific experiment folder
 # if __name__ == "__main__":
 #     # Define the path where your experiment logs are saved
-#     logs_dir = '/mas/camera/Experiments/SONAR/abhi/cifar10_36users_1250_convergence_ringm3_seed2/logs/'
+#     logs_dir = ''
 #     avg_metrics, std_metrics, df_metrics = aggregate_metrics_across_users(logs_dir)
 #     plot_all_metrics(logs_dir)
 
@@ -247,7 +247,7 @@ def plot_all_metrics(logs_dir: str, metrics_map: Optional[Dict[str, str]] = None
 # Use if you want to compute for multiple experiment folders
 if __name__ == "__main__":
     # Define the base directory where your experiment logs are saved
-    base_logs_dir = '/mas/camera/Experiments/SONAR/abhi/'
+    base_logs_dir = ''
 
     # Iterate over each subdirectory in the base directory
     for experiment_folder in os.listdir(base_logs_dir):
