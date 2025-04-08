@@ -8,7 +8,7 @@ def get_random_communities(
     assert num_clients % num_communities == 0
 
     clients_per_community = num_clients // num_communities
-    indices = np.random.permutation(range(1, num_clients + 1))
+    indices: np.ndarray = np.random.permutation(range(1, num_clients + 1))
 
     support: Dict[int, List[int]] = {}
     for i, c_id in enumerate(indices):
@@ -40,7 +40,7 @@ def get_dset_balanced_communities(
     num_assigned = 0
     communities: Dict[int, List[int]] = {k: [] for k in range(num_communities)}
     while num_assigned < num_clients:
-        communities_random_order = {
+        communities_random_order: Dict[int, int] = {
             k: v for k, v in enumerate(np.random.permutation(range(num_communities)))
         }
         communities_id = sorted(

@@ -32,7 +32,7 @@ class NodeDropout:
             dropout_method_params = dropout_distribution_dict.get("parameters", {})
             dropout_method = dropout_distribution_dict.get("method", "uniform")
             self.rng = rng
-            self.dropped_recently = False
+            self.dropped_recently: bool = False
 
 
             if dropout_method == "uniform":
