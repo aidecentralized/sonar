@@ -480,7 +480,8 @@ export class WebRTCCommUtils {
               this.ws.send(JSON.stringify({
                 type: 'create_session',
                 maxClients: this.size,
-                clientType: 'javascript'
+                clientType: 'javascript',
+                config: this.config,
               }));
             } else {
               // Join an existing session
@@ -488,7 +489,8 @@ export class WebRTCCommUtils {
                 type: 'join_session',
                 sessionId: this.sessionId,
                 clientType: 'javascript',
-                maxClients: this.size
+                maxClients: this.size,
+                config: this.config,
               }));
             }
           };
@@ -1026,7 +1028,8 @@ export class WebRTCCommUtils {
     }
 
     // Update "communication cost sent" if relevant
-    this.comm_cost_sent += msgString.length;
+    const sizeInBytes = new TextEncoder().encode(msgString).length;  // Calculate size in bytes
+    this.comm_cost_sent += sizeInBytes;
   }
 
   /**
@@ -1503,7 +1506,7 @@ export class WebRTCCommUtils {
       this.collaborator_list = [...this.connectedPeers.keys()].sort(() => Math.random() - 0.5).slice(0, this.num_collaborators);
 
       // Define how often to export logs (every N epochs)
-      const logExportFrequency = 10; // Export logs every 10 epochs
+      const logExportFrequency = 1; // Export logs every 10 epochs
       
       // Track time elapsed
       const trainingStartTime = performance.now();
