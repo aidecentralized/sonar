@@ -69,7 +69,7 @@
       <li><a href="./index.html">Home</a></li>
       <li><a href="./about.html">About</a></li>
       <li><a href="./browser.html">Session</a></li>
-      <li><a href="./sessions.html">Browse Sessions</a></li>
+      <li><a href="./sessions.html">Explore Sessions</a></li>
     </ul>
   </nav>
 
@@ -92,7 +92,7 @@
           </div>
           <div class="form-group">
             <label for="signaling_server">Signaling Server</label>
-            <input type="text" id="signaling_server" name="signaling_server" value="ws://localhost:8765" required>
+            <input type="text" id="signaling_server" name="signaling_server" value="ws://18.27.79.107:8888" required>
           </div>
           <div class="form-group">
             <label for="num_users">Number of Users</label>
@@ -111,6 +111,7 @@
             <input type="text" id="num_collaborators" name="num_collaborators" value="1" required>
           </div>
           <button type="button" id="save-config-button">Save Config</button>
+          <button type="button" id="start-button" class="connect-button" disabled>Connect</button>
         </form>
       </section>
 
@@ -119,33 +120,36 @@
           <div class="data-section">
             <div class="data-block">
               <h2>Training Data</h2>
-              <label for="train-data-input" class="file-label">Choose File</label>
-              <input id="train-data-input" type="file" accept=".json">
+              <div class="data-input-container">
+                <div class="data-upload">
+                  <label for="train-data-input" class="file-label">Upload File</label>
+                  <input id="train-data-input" type="file" accept=".json">
+                </div>
+              </div>
             </div>
             
             <div class="data-block">
               <h2>Testing Data (Optional)</h2>
-              <label for="test-data-input" class="file-label">Choose File</label>
-              <input id="test-data-input" type="file" accept=".json">
+              <div class="data-input-container">
+                <div class="data-upload">
+                  <label for="test-data-input" class="file-label">Upload File</label>
+                  <input id="test-data-input" type="file" accept=".json">
+                </div>
+              </div>
               <p class="input-note">If not provided, 20% of training data will be used for validation</p>
             </div>
           </div>
 
-          <div class="data-section">
+          <div class="data-section sample-partitions">
             <div class="data-block">
-              <h2>Sample Data Partitions</h2>
-              <select id="fileDropdown">
-                <option value="">-- Choose a partition --</option>
+              <h2>Sample Datasets</h2>
+              <select id="fileDropdown" class="styled-select">
+                <option value="">-- Choose a sample partition --</option>
               </select>
             </div>
           </div>
         
         </section>        
-
-        <section class="card dark-card">
-          <h2>Train</h2>
-          <button id="start-button" disabled>Connect</button>
-        </section>
 
         <section class="card logs-card">
           <h2>Logs</h2>

@@ -6,7 +6,7 @@ const testDataInput = document.getElementById('test-data-input');
 const startButton = document.getElementById('start-button');
 const consoleOutput = document.getElementById('console-output');
 const saveConfigButton = document.getElementById('save-config-button');
-const dropdown = document.getElementById('fileDropdown');
+const fileDropdown = document.getElementById('fileDropdown');
 
 // ** Set your session parameters here **
 const SESSION_ID = 1111; // Change this to a fixed or generated session ID
@@ -29,11 +29,12 @@ const samplePartitions = [
     'cifar10_client_9_test.json'
 ];
 
+// Add sample partitions to dropdown
 samplePartitions.forEach(file => {
     const option = document.createElement('option');
     option.value = file;
     option.textContent = file;
-    dropdown.appendChild(option);
+    fileDropdown.appendChild(option);
 });
 
 let config = {
@@ -51,6 +52,7 @@ let testDataset = null;
 function disableButtons() {
     trainDataInput.disabled = true;
     testDataInput.disabled = true;
+    fileDropdown.disabled = true;
     startButton.disabled = true;
     saveConfigButton.disabled = true;
 }
@@ -58,6 +60,7 @@ function disableButtons() {
 function enableButtons() {
     trainDataInput.disabled = false;
     testDataInput.disabled = false;
+    fileDropdown.disabled = false;
     startButton.disabled = trainDataset === null; // Only enable if training data exists
     saveConfigButton.disabled = false;
 }
@@ -66,6 +69,7 @@ function displayMessage(message) {
     const newLog = document.createElement("div");
     newLog.textContent = message;
     consoleOutput.appendChild(newLog);
+    consoleOutput.scrollTop = consoleOutput.scrollHeight; // Auto-scroll to bottom
 }
 
 saveConfigButton.addEventListener('click', function() {
@@ -75,8 +79,22 @@ saveConfigButton.addEventListener('click', function() {
     config.session_id = document.getElementById('session_id').value;
     config.epochs = document.getElementById('epochs').value;
     config.num_collaborators = document.getElementById('num_collaborators').value;
+    
+    // Save to localStorage for persistence
+    localStorage.setItem('topology', config.algos.node_0.topology);
+    localStorage.setItem('signalingServer', config.signaling_server);
+    localStorage.setItem('numUsers', config.num_users);
+    localStorage.setItem('sessionId', config.session_id);
+    localStorage.setItem('epochs', config.epochs);
+    localStorage.setItem('numCollaborators', config.num_collaborators);
+    
     displayMessage('Config Saved:');
     displayMessage(JSON.stringify(config, null, 2));
+    
+    // Enable the Connect button if training data is loaded
+    if (trainDataset) {
+        startButton.disabled = false;
+    }
 });
 
 trainDataInput.addEventListener('change', function(event) {
@@ -90,7 +108,9 @@ trainDataInput.addEventListener('change', function(event) {
                 trainDataset = processData(rawData);
                 displayMessage('Successfully loaded training data');
                 enableButtons(); // Enable start button when training data is loaded
-                dropdown.value = '';
+                
+                // Reset dropdown
+                fileDropdown.value = '';
             } catch (error) {
                 displayMessage('Error loading training data: ' + error.message);
             }
@@ -109,7 +129,6 @@ testDataInput.addEventListener('change', function(event) {
                 const rawData = JSON.parse(e.target.result);
                 testDataset = processData(rawData);
                 displayMessage('Successfully loaded test data');
-                dropdown.value = '';
             } catch (error) {
                 displayMessage('Error loading test data: ' + error.message);
             }
@@ -118,21 +137,27 @@ testDataInput.addEventListener('change', function(event) {
     }
 });
 
-dropdown.addEventListener('change', async (e) => {
+// Handler for the sample partitions dropdown
+fileDropdown.addEventListener('change', async (e) => {
     const filename = e.target.value;
     if (!filename) return;
   
     try {
-      const res = await fetch(`/datasets/imgs/cifar10_iid/${filename}`);
-      const json = await res.json();
-      trainDataset = processData(json);
-      displayMessage('Successfully loaded sample partition.');
-    //   displayMessage(JSON.stringify(trainDataset, null, 2));
-      testDataset = null;
+        const res = await fetch(`/datasets/imgs/cifar10_iid/${filename}`);
+        const json = await res.json();
+        trainDataset = processData(json);
+        enableButtons(); // Enable start button when training data is loaded
+        displayMessage('Successfully loaded sample partition.');
+        
+        // Clear file inputs
+        trainDataInput.value = '';
+        testDataInput.value = '';
+        
+        testDataset = null;
     } catch (err) {
-      output.textContent = `Error loading file: ${err.message}`;
+        displayMessage(`Error loading file: ${err.message}`);
     }
-  });
+});
 
 // Helper function to split a dataset into training and testing portions
 function splitDataset(dataset, trainRatio = 0.8) {
