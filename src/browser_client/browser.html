@@ -9,8 +9,45 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
   <link rel="stylesheet" href="./styling/browser.css" />
+  <style>
+    .notification {
+      background-color: rgba(42, 127, 255, 0.1);
+      border-left: 4px solid #2a7fff;
+      color: #fff;
+      padding: 10px 15px;
+      margin-bottom: 15px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: opacity 0.5s ease;
+    }
+    
+    .notification i {
+      color: #2a7fff;
+    }
+    
+    .pre-filled {
+      animation: highlight 2s ease;
+    }
+    
+    @keyframes highlight {
+      0% { background-color: rgba(42, 127, 255, 0.1); }
+      100% { background-color: transparent; }
+    }
+    
+    .pre-filled .form-group {
+      position: relative;
+    }
+    
+    .pre-filled input, 
+    .pre-filled select {
+      border-left: 3px solid #2a7fff !important;
+    }
+  </style>
 </head>
 
 <body>
@@ -32,6 +69,7 @@
       <li><a href="./index.html">Home</a></li>
       <li><a href="./about.html">About</a></li>
       <li><a href="./browser.html">Session</a></li>
+      <li><a href="./sessions.html">Browse Sessions</a></li>
     </ul>
   </nav>
 
@@ -124,6 +162,75 @@
 
     hamburger.addEventListener("click", () => {
       mobileNav.classList.toggle("active");
+    });
+
+    // Load session configuration from localStorage if available
+    document.addEventListener('DOMContentLoaded', () => {
+      // Get form elements
+      const topologySelect = document.getElementById('topology');
+      const signalingServerInput = document.getElementById('signaling_server');
+      const numUsersInput = document.getElementById('num_users');
+      const sessionIdInput = document.getElementById('session_id');
+      const epochsInput = document.getElementById('epochs');
+      const numCollaboratorsInput = document.getElementById('num_collaborators');
+      
+      // Check if we have session configuration in localStorage
+      const sessionId = localStorage.getItem('sessionId');
+      
+      if (sessionId) {
+        // Set session ID
+        sessionIdInput.value = sessionId;
+        
+        // Set other fields if available
+        if (localStorage.getItem('topology')) {
+          // Find the option with the matching value and select it
+          const topologyValue = localStorage.getItem('topology');
+          for (let i = 0; i < topologySelect.options.length; i++) {
+            if (topologySelect.options[i].value === topologyValue) {
+              topologySelect.selectedIndex = i;
+              break;
+            }
+          }
+        }
+        
+        if (localStorage.getItem('signalingServer')) {
+          signalingServerInput.value = localStorage.getItem('signalingServer');
+        }
+        
+        if (localStorage.getItem('numUsers')) {
+          numUsersInput.value = localStorage.getItem('numUsers');
+        }
+        
+        if (localStorage.getItem('epochs')) {
+          epochsInput.value = localStorage.getItem('epochs');
+        }
+        
+        if (localStorage.getItem('numCollaborators')) {
+          numCollaboratorsInput.value = localStorage.getItem('numCollaborators');
+        }
+        
+        // Highlight the form to indicate it's been pre-filled
+        const configForm = document.getElementById('config-form');
+        configForm.classList.add('pre-filled');
+        
+        // Add a notification that the form was pre-filled from session
+        const notification = document.createElement('div');
+        notification.className = 'notification';
+        notification.innerHTML = `<i class="fas fa-info-circle"></i> Form pre-filled from session ${sessionId}`;
+        
+        // Insert notification before the form
+        configForm.parentNode.insertBefore(notification, configForm);
+        
+        // Auto-hide notification after 5 seconds
+        setTimeout(() => {
+          notification.style.opacity = '0';
+          setTimeout(() => {
+            if (notification.parentNode) {
+              notification.parentNode.removeChild(notification);
+            }
+          }, 500);
+        }, 5000);
+      }
     });
   </script>
 </body>

@@ -339,7 +339,7 @@ export class WebRTCCommUtils {
 
         // Networking & session references
         this.ws = null;                               // WebSocket connection
-        this.sessionId = this.config.sessionId || 1111;
+        this.sessionId = this.config.session_id || 1111;
         this.rank = null;
         this.size = this.config.num_users || 2;
         this.num_collaborators = this.config.num_collaborators || 1;

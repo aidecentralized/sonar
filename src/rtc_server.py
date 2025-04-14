@@ -29,6 +29,7 @@ class SessionInfo:
     config: Dict[str, Any]
     clients: Dict[websockets.WebSocketServerProtocol, ClientInfo] = None
     num_ready: int = 0
+    metadata: Optional[str] = None
     
     def __post_init__(self):
         self.clients = {}
@@ -74,7 +75,9 @@ class SignalingServer:
                 # Create new session
                 self.sessions[session_id] = SessionInfo(
                     session_id=session_id,
-                    max_clients=max_clients
+                    max_clients=max_clients,
+                    config=data.get('config', {}),
+                    metadata=data.get('metadata')
                 )
                 
                 # Add first client to session
@@ -108,7 +111,8 @@ class SignalingServer:
                     self.sessions[session_id] = SessionInfo(
                         session_id=session_id,
                         max_clients=max_clients,
-                        config=config
+                        config=config,
+                        metadata=data.get('metadata')
                     )
 
                     # Add first client to session
@@ -150,6 +154,47 @@ class SignalingServer:
                     logging.info(f"Session {session_id} is full, broadcasting topology")
                     await self.broadcast_session_ready(session)
                     await self.broadcast_topology(session)
+            
+            elif data['type'] == 'list_sessions':
+                # Return information about all available sessions
+                sessions_info = []
+                for session_id, session in self.sessions.items():
+                    sessions_info.append({
+                        'session_id': session_id,
+                        'max_clients': session.max_clients,
+                        'current_clients': len(session.clients),
+                        'metadata': session.metadata
+                    })
+                
+                await websocket.send(json.dumps({
+                    'type': 'sessions_list',
+                    'sessions': sessions_info
+                }))
+                logging.info(f"Sent list of {len(sessions_info)} sessions")
+                
+            elif data['type'] == 'list_session_details':
+                # Return detailed information about a specific session
+                session_id = data['sessionId']
+                if session_id in self.sessions:
+                    session = self.sessions[session_id]
+                    # Convert client websockets to ranks for serialization
+                    client_ranks = [info.rank for info in session.clients.values()]
+                    
+                    await websocket.send(json.dumps({
+                        'type': 'session_details',
+                        'session_id': session_id,
+                        'max_clients': session.max_clients,
+                        'current_clients': len(session.clients),
+                        'client_ranks': client_ranks,
+                        'metadata': session.metadata,
+                        'config': session.config
+                    }))
+                    logging.info(f"Sent details for session {session_id}")
+                else:
+                    await websocket.send(json.dumps({
+                        'type': 'error',
+                        'message': f'Session {session_id} not found'
+                    }))
             
             async for message in websocket:
                 data = json.loads(message)
@@ -219,10 +264,11 @@ class SignalingServer:
                 else:
                     print(info.rank)
                     topology_config = {
-                        "topology": {"name": session.config["algos"]["node_0"]["topology"]["name"]},
+                        "topology": session.config["algos"]["node_0"]["topology"],
                         "num_users": session.config["num_users"],
                         "seed": session.config["seed"]
                     }
+                    # TODO: everyone can specify their own topology actually
                     topology = select_topology(topology_config, info.rank)
                     topology.initialize()
                     # do we only want 1 neighbor?
@@ -271,7 +317,7 @@ class SignalingServer:
 
 async def main():
     server = SignalingServer()
-    async with websockets.serve(server.handle_client, "0.0.0.0", 8765):
+    async with websockets.serve(server.handle_client, "0.0.0.0", 8888):
         await asyncio.Future()  # run forever
 
 if __name__ == "__main__":
