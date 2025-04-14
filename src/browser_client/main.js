@@ -6,6 +6,7 @@ const testDataInput = document.getElementById('test-data-input');
 const startButton = document.getElementById('start-button');
 const consoleOutput = document.getElementById('console-output');
 const saveConfigButton = document.getElementById('save-config-button');
+const dropdown = document.getElementById('fileDropdown');
 
 // ** Set your session parameters here **
 const SESSION_ID = 1111; // Change this to a fixed or generated session ID
@@ -14,6 +15,26 @@ const IS_CREATOR = false; // Set to true if this should create a session
 
 // ** Start WebRTC Comm Utils **
 const signalingServer = 'ws://localhost:8765'; // Your WebSocket server
+
+const samplePartitions = [
+    'cifar10_client_0_test.json', 
+    'cifar10_client_1_test.json',
+    'cifar10_client_2_test.json',
+    'cifar10_client_3_test.json',
+    'cifar10_client_4_test.json',
+    'cifar10_client_5_test.json',
+    'cifar10_client_6_test.json',
+    'cifar10_client_7_test.json',
+    'cifar10_client_8_test.json',
+    'cifar10_client_9_test.json'
+];
+
+samplePartitions.forEach(file => {
+    const option = document.createElement('option');
+    option.value = file;
+    option.textContent = file;
+    dropdown.appendChild(option);
+});
 
 let config = {
     signaling_server: signalingServer,
@@ -69,6 +90,7 @@ trainDataInput.addEventListener('change', function(event) {
                 trainDataset = processData(rawData);
                 displayMessage('Successfully loaded training data');
                 enableButtons(); // Enable start button when training data is loaded
+                dropdown.value = '';
             } catch (error) {
                 displayMessage('Error loading training data: ' + error.message);
             }
@@ -87,6 +109,7 @@ testDataInput.addEventListener('change', function(event) {
                 const rawData = JSON.parse(e.target.result);
                 testDataset = processData(rawData);
                 displayMessage('Successfully loaded test data');
+                dropdown.value = '';
             } catch (error) {
                 displayMessage('Error loading test data: ' + error.message);
             }
@@ -94,6 +117,22 @@ testDataInput.addEventListener('change', function(event) {
         reader.readAsText(file);
     }
 });
+
+dropdown.addEventListener('change', async (e) => {
+    const filename = e.target.value;
+    if (!filename) return;
+  
+    try {
+      const res = await fetch(`/datasets/imgs/cifar10_iid/${filename}`);
+      const json = await res.json();
+      trainDataset = processData(json);
+      displayMessage('Successfully loaded sample partition.');
+    //   displayMessage(JSON.stringify(trainDataset, null, 2));
+      testDataset = null;
+    } catch (err) {
+      output.textContent = `Error loading file: ${err.message}`;
+    }
+  });
 
 // Helper function to split a dataset into training and testing portions
 function splitDataset(dataset, trainRatio = 0.8) {
