@@ -89,7 +89,7 @@ CIAR10_DPATH = "./datasets/imgs/cifar10/"
 NUM_COLLABORATORS = 1
 DUMP_DIR = ""
 
-num_users = 10
+num_users = 3
 dropout_dict = {}
 dropout_dicts = {"node_0": {}}
 for i in range(1, num_users + 1):

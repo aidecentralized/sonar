@@ -260,10 +260,9 @@ class MetricsLogger {
     try {
       // If no metrics have been logged, show a message
       if (this.metrics.size === 0) {
-        console.log('No metrics to export');
+        this.log('No metrics to export');
         return;
       }
-
       // Create a zip file containing all metrics
       import('jszip').then(JSZip => {
         const zip = new JSZip.default();
@@ -457,6 +456,7 @@ export class WebRTCCommUtils {
         
         // Export metrics logs
         if (this.metricsLogger) {
+          this.log("LOGGING METRICS")
           this.metricsLogger.exportLogs();
         }
       } catch (error) {
@@ -498,6 +498,9 @@ export class WebRTCCommUtils {
           this.ws.onmessage = async (event) => {
             const data = JSON.parse(event.data);
             this.log(`Received message from server: ${data.type}`);
+            // const dataStr = JSON.stringify(data);
+            // const sizeInBytes = new TextEncoder().encode(dataStr).length;
+            // this.comm_cost_received += sizeInBytes;
     
             switch (data.type) {
   
@@ -724,29 +727,32 @@ export class WebRTCCommUtils {
 
         channel.onmessage = (event) => {
             try {
-                // Append the incoming data to the buffer
-                messageBuffer += event.data;
+              // Append the incoming data to the buffer
+              messageBuffer += event.data;
 
-                // Try to parse the buffer as JSON
-                const data = JSON.parse(messageBuffer);
+              // Try to parse the buffer as JSON
+              const data = JSON.parse(messageBuffer);
+              const dataStr = JSON.stringify(data);
+              const sizeInBytes = new TextEncoder().encode(dataStr).length; 
+              this.comm_cost_received += sizeInBytes;
 
-                // If successful, handle the complete message
-                // console.log(`Received message from ${peerRank}: ${data.type}`);
-                this.handleDataChannelMessage(peerRank, data);
+              // If successful, handle the complete message
+              // console.log(`Received message from ${peerRank}: ${data.type}`);
+              this.handleDataChannelMessage(peerRank, data);
 
-                // Clear the buffer after successful parsing
-                messageBuffer = '';
+              // Clear the buffer after successful parsing
+              messageBuffer = '';
             } catch (error) {
-                // If parsing fails, log the error and keep the buffer for further data
-                if (error instanceof SyntaxError) {
-                    // This is expected if the message is incomplete
-                    // console.log(`Waiting for more data to complete the message from ${peerRank}`);
-                } else {
-                    // Log other types of errors
-                    this.log(`Failed to parse message from ${peerRank}: ${error}, data: ${messageBuffer.substring(0, 100)} ... ${messageBuffer.substring(messageBuffer.length-30)}`, 'error');
-                    // Clear the buffer if it's a different error
-                    messageBuffer = '';
-                }
+              // If parsing fails, log the error and keep the buffer for further data
+              if (error instanceof SyntaxError) {
+                  // This is expected if the message is incomplete
+                  // console.log(`Waiting for more data to complete the message from ${peerRank}`);
+              } else {
+                  // Log other types of errors
+                  this.log(`Failed to parse message from ${peerRank}: ${error}, data: ${messageBuffer.substring(0, 100)} ... ${messageBuffer.substring(messageBuffer.length-30)}`, 'error');
+                  // Clear the buffer if it's a different error
+                  messageBuffer = '';
+              }
             }
         };
 
@@ -1028,6 +1034,7 @@ export class WebRTCCommUtils {
     }
 
     // Update "communication cost sent" if relevant
+    
     const sizeInBytes = new TextEncoder().encode(msgString).length;  // Calculate size in bytes
     this.comm_cost_sent += sizeInBytes;
   }
@@ -1506,7 +1513,7 @@ export class WebRTCCommUtils {
       this.collaborator_list = [...this.connectedPeers.keys()].sort(() => Math.random() - 0.5).slice(0, this.num_collaborators);
 
       // Define how often to export logs (every N epochs)
-      const logExportFrequency = 1; // Export logs every 10 epochs
+      const logExportFrequency = 1; // Export logs every N epochs
       
       // Track time elapsed
       const trainingStartTime = performance.now();
