@@ -1,15 +1,19 @@
 import * as tf from '@tensorflow/tfjs'
 
-// BLOODMNIST
-// const imageShape = [28, 28, 3];
-// const imageFlattenSize = 2352;
-// const imageClasses = 8;
-
-// CIFAR10
-const imageShape = [32, 32, 3];
-const imageFlattenSize = 3072;
-const imageClasses = 10;
-
+export const supportedDatasets = {
+	'cifar10': {
+		'imageShape': [32, 32, 3],
+		'imageClasses': 10
+	},
+	// 'bloodmnist': {
+	// 	'imageShape': [28, 28, 3],
+	// 	'imageClasses': 8
+	// },
+	'mnist': {
+		'imageShape': [28, 28, 1],
+		'imageClasses': 10
+	}
+}
 
 class Model {
 	constructor() {
@@ -29,18 +33,25 @@ class Model {
 
 // resnet
 export class ResNet10 extends Model {
-	constructor() {
+	constructor(dataset) {
 		super()
 		console.log("Initializing ResNet10 instance...")
+		if (!(dataset in supportedDatasets)) {
+			throw new Error('Dataset not supported.')
+		}
+		this.imageShape = supportedDatasets[dataset]['imageShape']
+		this.imageClasses = supportedDatasets[dataset]['imageClasses']
+		this.imageFlattenSize = this.imageShape.reduce((prod, num) => prod * num, 1)
+
 		this.model = this.buildModel()
 	}
 
 	// Build the model
 	buildModel() {
 
-		const inputs = tf.input({ shape: [imageFlattenSize] });
+		const inputs = tf.input({ shape: [this.imageFlattenSize] });
 
-		let x = tf.layers.reshape({ targetShape: imageShape }).apply(inputs);
+		let x = tf.layers.reshape({ targetShape: this.imageShape }).apply(inputs);
 
 		// Initial Conv Layer
 		x = tf.layers.conv2d({
@@ -63,7 +74,7 @@ export class ResNet10 extends Model {
 		// Global Average Pooling
 		x = tf.layers.globalAveragePooling2d({ dataFormat: 'channelsLast' }).apply(x);
 
-		x = tf.layers.dense({ units: imageClasses, activation: 'softmax' }).apply(x);
+		x = tf.layers.dense({ units: this.imageClasses, activation: 'softmax' }).apply(x);
 
 		const model = tf.model({ inputs, outputs: x });
 
@@ -123,7 +134,7 @@ export class ResNet10 extends Model {
 	}
 
 	forward(x) {
-		return super.forward(x, [1, imageShape])
+		return super.forward(x, [1, this.imageShape])
 	}
 
 	async train(dataSet, config = {
@@ -134,9 +145,9 @@ export class ResNet10 extends Model {
 		verbose: 1
 	}) {
 		// take raw array of values and turn to tensor
-		const images = tf.tensor2d(dataSet.images, [dataSet.images.length, imageFlattenSize])
+		const images = tf.tensor2d(dataSet.images, [dataSet.images.length, this.imageFlattenSize])
 
-		const labels = tf.oneHot(tf.tensor1d(dataSet.labels, 'int32'), imageClasses)
+		const labels = tf.oneHot(tf.tensor1d(dataSet.labels, 'int32'), this.imageClasses)
 
 		// create config object
 		const trainingConfig = {
@@ -187,8 +198,8 @@ export class ResNet10 extends Model {
 		verbose: 1
 	}, logFunc = console.log) {
 		// take raw array of values and turn to tensor
-		const trainImages = tf.tensor2d(trainDataSet.images, [trainDataSet.images.length, imageFlattenSize])
-		const trainLabels = tf.oneHot(tf.tensor1d(trainDataSet.labels, 'int32'), imageClasses)
+		const trainImages = tf.tensor2d(trainDataSet.images, [trainDataSet.images.length, this.imageFlattenSize])
+		const trainLabels = tf.oneHot(tf.tensor1d(trainDataSet.labels, 'int32'), this.imageClasses)
 		
 		// prepare test data if provided
 		let testImages = null;
@@ -236,8 +247,8 @@ export class ResNet10 extends Model {
 		
 		// If testDataSet is provided, use it as validation data instead of using validationSplit
 		if (testDataSet) {
-			testImages = tf.tensor2d(testDataSet.images, [testDataSet.images.length, imageFlattenSize]);
-			testLabels = tf.oneHot(tf.tensor1d(testDataSet.labels, 'int32'), imageClasses);
+			testImages = tf.tensor2d(testDataSet.images, [testDataSet.images.length, this.imageFlattenSize]);
+			testLabels = tf.oneHot(tf.tensor1d(testDataSet.labels, 'int32'), this.imageClasses);
 			
 			// Remove validationSplit since we're using separate validation data
 			delete trainingConfig.validationSplit;
@@ -313,8 +324,8 @@ export class ResNet10 extends Model {
 		}
 	
 		// Convert test data to tensors
-		const testImages = tf.tensor2d(testDataSet.images, [testDataSet.images.length, imageFlattenSize]);
-		const testLabels = tf.oneHot(tf.tensor1d(testDataSet.labels, 'int32'), imageClasses);
+		const testImages = tf.tensor2d(testDataSet.images, [testDataSet.images.length, this.imageFlattenSize]);
+		const testLabels = tf.oneHot(tf.tensor1d(testDataSet.labels, 'int32'), this.imageClasses);
 	
 		try {
 			console.log("Evaluating model on test data...");

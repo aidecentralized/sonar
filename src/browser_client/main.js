@@ -1,12 +1,14 @@
 import { data } from '@tensorflow/tfjs';
 import { processData, WebRTCCommUtils } from './client.js'
+import { supportedDatasets } from './model.js';
 
 const trainDataInput = document.getElementById('train-data-input');
 const testDataInput = document.getElementById('test-data-input');
 const startButton = document.getElementById('start-button');
 const consoleOutput = document.getElementById('console-output');
 const saveConfigButton = document.getElementById('save-config-button');
-const dropdown = document.getElementById('fileDropdown');
+const fileDropdown = document.getElementById('fileDropdown');
+const datasetDropdown = document.getElementById('datasetDropdown');
 
 // ** Set your session parameters here **
 const SESSION_ID = 1111; // Change this to a fixed or generated session ID
@@ -26,14 +28,31 @@ const samplePartitions = [
     'cifar10_client_6_test.json',
     'cifar10_client_7_test.json',
     'cifar10_client_8_test.json',
-    'cifar10_client_9_test.json'
+    'cifar10_client_9_test.json',
+    'mnist_client_0_test.json', 
+    'mnist_client_1_test.json',
+    'mnist_client_2_test.json',
+    'mnist_client_3_test.json',
+    'mnist_client_4_test.json',
+    'mnist_client_5_test.json',
+    'mnist_client_6_test.json',
+    'mnist_client_7_test.json',
+    'mnist_client_8_test.json',
+    'mnist_client_9_test.json'
 ];
 
 samplePartitions.forEach(file => {
     const option = document.createElement('option');
     option.value = file;
     option.textContent = file;
-    dropdown.appendChild(option);
+    fileDropdown.appendChild(option);
+});
+
+Object.keys(supportedDatasets).forEach(dataset => {
+    const option = document.createElement('option');
+    option.value = dataset;
+    option.textContent = dataset;
+    datasetDropdown.appendChild(option);
 });
 
 let config = {
@@ -45,6 +64,7 @@ let config = {
     num_collaborators: 1,
 };
 
+let datasetType = '';
 let trainDataset = null;
 let testDataset = null;
 
@@ -53,6 +73,8 @@ function disableButtons() {
     testDataInput.disabled = true;
     startButton.disabled = true;
     saveConfigButton.disabled = true;
+    fileDropdown.disabled = true;
+    datasetDropdown.disabled = true;
 }
 
 function enableButtons() {
@@ -60,12 +82,16 @@ function enableButtons() {
     testDataInput.disabled = false;
     startButton.disabled = trainDataset === null; // Only enable if training data exists
     saveConfigButton.disabled = false;
+    fileDropdown.disabled = false;
+    datasetDropdown.disabled = false;
 }
 
-function displayMessage(message) {
+export function displayMessage(message) {
     const newLog = document.createElement("div");
     newLog.textContent = message;
     consoleOutput.appendChild(newLog);
+
+    consoleOutput.scrollTop = consoleOutput.scrollHeight;
 }
 
 saveConfigButton.addEventListener('click', function() {
@@ -90,7 +116,7 @@ trainDataInput.addEventListener('change', function(event) {
                 trainDataset = processData(rawData);
                 displayMessage('Successfully loaded training data');
                 enableButtons(); // Enable start button when training data is loaded
-                dropdown.value = '';
+                fileDropdown.value = '';
             } catch (error) {
                 displayMessage('Error loading training data: ' + error.message);
             }
@@ -109,7 +135,7 @@ testDataInput.addEventListener('change', function(event) {
                 const rawData = JSON.parse(e.target.result);
                 testDataset = processData(rawData);
                 displayMessage('Successfully loaded test data');
-                dropdown.value = '';
+                fileDropdown.value = '';
             } catch (error) {
                 displayMessage('Error loading test data: ' + error.message);
             }
@@ -118,21 +144,27 @@ testDataInput.addEventListener('change', function(event) {
     }
 });
 
-dropdown.addEventListener('change', async (e) => {
+fileDropdown.addEventListener('change', async (e) => {
     const filename = e.target.value;
     if (!filename) return;
   
     try {
-      const res = await fetch(`/datasets/imgs/cifar10_iid/${filename}`);
+      const res = await fetch(`/datasets/imgs/${filename.split('_')[0]}/${filename}`);
       const json = await res.json();
       trainDataset = processData(json);
       displayMessage('Successfully loaded sample partition.');
     //   displayMessage(JSON.stringify(trainDataset, null, 2));
       testDataset = null;
+      enableButtons();
     } catch (err) {
       output.textContent = `Error loading file: ${err.message}`;
     }
   });
+
+datasetDropdown.addEventListener('change', (e) => {
+    datasetType = e.target.value;
+    displayMessage('Selected dataset: ' + datasetType)
+});
 
 // Helper function to split a dataset into training and testing portions
 function splitDataset(dataset, trainRatio = 0.8) {
@@ -174,6 +206,12 @@ startButton.addEventListener('click', function() {
         enableButtons();
         return;
     }
+
+    if (!datasetType) {
+        displayMessage('Error: No dataset type selected');
+        enableButtons();
+        return;
+    }
     
     let finalTrainDataset = trainDataset;
     let finalTestDataset = testDataset;
@@ -188,5 +226,5 @@ startButton.addEventListener('click', function() {
     }
     
     displayMessage(`Starting training with ${finalTrainDataset.images.length} training samples and ${finalTestDataset.images.length} testing samples`);
-    const node = new WebRTCCommUtils(config, finalTrainDataset, finalTestDataset);
+    const node = new WebRTCCommUtils(config, datasetType, finalTrainDataset, finalTestDataset);
 });

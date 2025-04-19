@@ -1,6 +1,7 @@
 import { ResNet10 } from './model.js'
 import * as tf from '@tensorflow/tfjs'
 import js2python from './js2python.json'
+import { displayMessage } from './main.js'
 // import ind2python from './ind2python.json'
 
 
@@ -330,8 +331,8 @@ class MetricsLogger {
 }
 
 export class WebRTCCommUtils {
-    constructor(config, trainDataset, testDataset = null) {
-        this.model = new ResNet10();
+    constructor(config, datasetType, trainDataset, testDataset = null) {
+        this.model = new ResNet10(datasetType);
         this.config = config;
         this.signalingServer = this.config.signaling_server || 'ws://localhost:8765';
         this.trainDataset = trainDataset;
@@ -401,10 +402,7 @@ export class WebRTCCommUtils {
       console.log(formattedMsg);
 
       // Write to console output DOM element
-      const outputArea = document.getElementById("console-output");
-      const newLog = document.createElement("div");
-      newLog.textContent = formattedMsg;
-      outputArea.appendChild(newLog);
+      displayMessage(formattedMsg);
       
       // Store logs in localStorage with timestamp
       this.saveLogToStorage(formattedMsg);
