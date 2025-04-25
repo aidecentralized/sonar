@@ -562,8 +562,8 @@ export class WebRTCCommUtils {
           };
     
           this.ws.onerror = (err) => {
-            this.log(`WebSocket error: ${err}`);
-          };
+            this.log(`WebSocket error: ${JSON.stringify(err)}`);
+           };
     
           this.ws.onclose = () => {
             this.log('WebSocket disconnected.');
@@ -600,9 +600,9 @@ export class WebRTCCommUtils {
             const oldNeighbors = new Set(Object.values(this.neighbors));
             const newNeighborSet = new Set(Object.values(newNeighbors));
             for (const rank of oldNeighbors) {
-                if (!newNeighborSet.has(rank)) {
-                    await this.cleanupConnection(rank);
-                }
+              // if (!newNeighborSet.has(rank)) {
+              await this.cleanupConnection(rank);
+              // }
             }
         }
 
@@ -626,11 +626,13 @@ export class WebRTCCommUtils {
               //     this.pendingConnections.add(neighborRank);
               //     this.initiateConnection(neighborRank);
             // }
-            for (const neighbor of neighborList) {
-                this.log(`Initiating connection to ${neighbor}`);
-                this.pendingConnections.add(neighbor);
-                this.initiateConnection(neighbor);
+          for (const neighbor of neighborList) {
+            if (this.rank < neighbor) {
+              this.log(`Initiating connection to ${neighbor}`);
+              this.pendingConnections.add(neighbor);
+              this.initiateConnection(neighbor);
             }
+          }
         }
     }
 
