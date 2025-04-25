@@ -76,7 +76,7 @@ class RTCCommUtils(CommunicationInterface):
         self.data_channels: Dict[int, RTCDataChannel] = {}
         self.rank = None
         self.size: int = int(config.get("num_users", 2))
-        self.session_id = config.get("session_id", 1111)
+        self.session_id = config.get("session_id", "1111")
         self.neighbors = None
         self.collaborator_ids: List[int] = []
         self.state = NodeState.CONNECTING

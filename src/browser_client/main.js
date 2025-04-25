@@ -9,7 +9,7 @@ const saveConfigButton = document.getElementById('save-config-button');
 const fileDropdown = document.getElementById('fileDropdown');
 
 // ** Set your session parameters here **
-const SESSION_ID = 1111; // Change this to a fixed or generated session ID
+const SESSION_ID = "1111"; // Change this to a fixed or generated session ID
 const MAX_CLIENTS = 3;
 const IS_CREATOR = false; // Set to true if this should create a session
 
@@ -45,6 +45,7 @@ let config = {
     epochs: 10,
     num_collaborators: 1,
     joinActiveSession: false, // Default to false
+    seed: 2,
 };
 
 let trainDataset = null;
