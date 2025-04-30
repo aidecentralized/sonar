@@ -607,7 +607,12 @@ export class WebRTCCommUtils {
         }
 
         this.neighbors = newNeighbors;
-        this.expectedConnections = Object.keys(newNeighbors).length;
+        
+        if (Object.keys(neighbors).length !== 1) {
+          throw new Error('Expected exactly one key in neighbors');
+        }
+        this.expectedConnections = Object.values(this.neighbors)[0].lengths;
+        
 
         // If we have zero neighbors, we can signal "node_ready" right away
         if (this.expectedConnections === 0) {
@@ -1704,6 +1709,7 @@ export class WebRTCCommUtils {
         // Perform federated averaging with peer_weights
         await this.aggregate(peer_weights);
         this.log(`Round ${i}: Completed aggregation of model weights`);
+
 
         // Run testing and log metrics
         const testMetrics = await this.model.local_test(this.testDataset, this.log.bind(this));
