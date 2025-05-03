@@ -44,6 +44,7 @@ let config = {
     session_id: SESSION_ID,
     epochs: 10,
     num_collaborators: 1,
+    joinActiveSession: false, // Default to false
 };
 
 let trainDataset = null;
@@ -79,6 +80,7 @@ saveConfigButton.addEventListener('click', function() {
     config.session_id = document.getElementById('session_id').value;
     config.epochs = document.getElementById('epochs').value;
     config.num_collaborators = document.getElementById('num_collaborators').value;
+    config.joinActiveSession = document.getElementById('join_active_session').checked;
     
     // Save to localStorage for persistence
     localStorage.setItem('topology', config.algos.node_0.topology);
@@ -87,6 +89,7 @@ saveConfigButton.addEventListener('click', function() {
     localStorage.setItem('sessionId', config.session_id);
     localStorage.setItem('epochs', config.epochs);
     localStorage.setItem('numCollaborators', config.num_collaborators);
+    localStorage.setItem('joinActiveSession', config.joinActiveSession);
     
     displayMessage('Config Saved:');
     displayMessage(JSON.stringify(config, null, 2));

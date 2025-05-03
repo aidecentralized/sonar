@@ -178,3 +178,4 @@ cython_debug/
 #.idea/
 
 node_modules/browser_client/package-lock.json
+src/browser_client/node_modules/

@@ -97,13 +97,15 @@ class SignalingServer:
                 logging.info(f"Created session {session_id} for {max_clients} clients")
                 
             elif data['type'] == 'join_session':
-                session_id = data['sessionId']
+                session_id = int(data['sessionId'])
                 if session_id not in self.sessions:
+                    print(f"Session ID {session_id} not found, creating new session")
                     # await websocket.send(json.dumps({
                     #     'type': 'error',
                     #     'message': 'Invalid session ID'
                     # }))
                     # return
+                    
 
                     # Create new session if it doesn't exist
                     max_clients = int(data['maxClients'])
@@ -154,6 +156,81 @@ class SignalingServer:
                     logging.info(f"Session {session_id} is full, broadcasting topology")
                     await self.broadcast_session_ready(session)
                     await self.broadcast_topology(session)
+            
+            elif data['type'] == 'join_active_session':
+                session_id = int(data['sessionId'])
+                if session_id not in self.sessions:
+                    await websocket.send(json.dumps({
+                        'type': 'error',
+                        'message': 'Session not found or not active'
+                    }))
+                    return
+                
+                session = self.sessions[session_id]
+                
+                # Check if there are any active clients in the session
+                if len(session.clients) == 0:
+                    await websocket.send(json.dumps({
+                        'type': 'error',
+                        'message': 'Session exists but has no active clients'
+                    }))
+                    return
+                
+                # Determine the current training round from an existing client
+                # We'll assume the first client has the most up-to-date round info
+                current_round = 0
+                
+                # Add the new client to the session with the next available rank
+                new_rank = max([info.rank for info in session.clients.values()], default=-1) + 1
+                session.clients[websocket] = ClientInfo(
+                    rank=new_rank,
+                    client_type=data.get('clientType', 'javascript'),
+                    session_id=session_id
+                )
+                
+                # Send active session joined confirmation
+                await websocket.send(json.dumps({
+                    'type': 'active_session_joined',
+                    'sessionId': session_id,
+                    'rank': new_rank,
+                    'currentRound': current_round
+                }))
+                
+                logging.info(f"Client joined active session {session_id} with rank {new_rank}")
+                client_config = data["config"]
+                print("client_config", client_config)
+                
+                # Immediately send topology to the new client
+                # We need to mark this as an active session so the client knows to sync model state
+                topology_config = {
+                    "topology": {"name": client_config["algos"]["node_0"]["topology"]},
+                    "num_users": int(client_config["num_users"]),
+                    "seed": int(client_config.get("seed", 2))
+                }
+
+                print("topology_config", topology_config)
+                try:
+                    topology = select_topology(topology_config, new_rank)
+                    topology.initialize()
+                    all_neighbors = topology.get_all_neighbours()
+                    neighbor_dict = {}
+                    neighbor_dict.update({f"neighbor{new_rank}": [neighbor for neighbor in all_neighbors]})
+                    print("neighbor_dict of rank", new_rank, "is", neighbor_dict)
+                    
+                    await websocket.send(json.dumps({
+                        'type': 'topology',
+                        'rank': new_rank,
+                        'neighbors': neighbor_dict,
+                        'totalClients': len(session.clients),
+                        'isActiveSession': True
+                    }))
+                except Exception as e:
+                    print("Failed to select topology:", e)
+                    await websocket.send(json.dumps({
+                        'type': 'error',
+                        'message': 'Failed to select topology'
+                    }))
+                    return
             
             elif data['type'] == 'list_sessions':
                 # Return information about all available sessions
@@ -226,8 +303,23 @@ class SignalingServer:
                 elif data['type'] == "node_ready":
                     session.num_ready += 1
                     print("Updating num_ready to ", session.num_ready)
-                    await self.check_session_ready(session)
-
+                    
+                    # Check if the client is joining an active session
+                    joining_active_session = data.get('joiningActiveSession', False)
+                    client_rank = session.clients[websocket].rank
+                    
+                    if joining_active_session:
+                        logging.info(f"Client {client_rank} joined active session {session.session_id} and is ready")
+                        
+                        # For nodes joining an active session, we only need to notify this specific node
+                        # that it's ready to start training, without waiting for all nodes to be ready
+                        await websocket.send(json.dumps({
+                            'type': 'network_ready'
+                        }))
+                    else:
+                        # For normal session setup, check if all nodes are ready
+                        await self.check_session_ready(session)
+            
 
         except websockets.exceptions.ConnectionClosed:
             # Find and clean up the client's session
@@ -280,7 +372,8 @@ class SignalingServer:
                     'type': 'topology',
                     'rank': info.rank,
                     'neighbors': neighbor_dict,
-                    'totalClients': len(session.clients)
+                    'totalClients': len(session.clients),
+                    'isActiveSession': False  # Default to false for normal topology broadcasts
                 }))
             except websockets.exceptions.ConnectionClosed:
                 logging.error(f"Failed to send topology to client {info.rank}")

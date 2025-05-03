@@ -333,22 +333,23 @@ export class WebRTCCommUtils {
         this.model = new ResNet10();
         this.config = config;
         this.signalingServer = this.config.signaling_server || 'ws://localhost:8765';
-        this.trainDataset = trainDataset;
-        this.testDataset = testDataset;
-
-        // Networking & session references
-        this.ws = null;                               // WebSocket connection
-        this.sessionId = this.config.session_id || 1111;
+        this.sessionId = this.config.session_id;
         this.rank = null;
         this.size = this.config.num_users || 2;
         this.num_collaborators = this.config.num_collaborators || 1;
+        this.joinActiveSession = this.config.joinActiveSession || false; // Flag to indicate joining an active session
         this.expectedConnections = 0;
     
-        // WebRTC connections
-        this.connections = new Map();                 // peerRank -> RTCPeerConnection
-        this.dataChannels = new Map();                // peerRank -> RTCDataChannel
-        this.connectedPeers = new Set();
-        this.pendingConnections = new Set();
+        // Training data
+        this.trainDataset = trainDataset;
+        this.testDataset = testDataset;
+
+        // WebRTC state
+        this.ws = null;                               // WebSocket connection
+        this.connections = new Map();                 // RTCPeerConnection objects
+        this.dataChannels = new Map();                // RTCDataChannel objects
+        this.pendingConnections = new Set();          // Ranks we're trying to connect to
+        this.connectedPeers = new Set();              // Ranks we're connected to
     
         // Connection management
         this.connectionRetries = new Map();           // peerRank -> retryCount
@@ -483,8 +484,17 @@ export class WebRTCCommUtils {
                 clientType: 'javascript',
                 config: this.config,
               }));
+            } else if (this.joinActiveSession) {
+              // Join an active session
+              this.ws.send(JSON.stringify({
+                type: 'join_active_session',
+                sessionId: this.sessionId,
+                clientType: 'javascript',
+                maxClients: this.size,
+                config: this.config,
+              }));
             } else {
-              // Join an existing session
+              // Join an existing session (not yet active)
               this.ws.send(JSON.stringify({
                 type: 'join_session',
                 sessionId: this.sessionId,
@@ -514,6 +524,13 @@ export class WebRTCCommUtils {
                 this.sessionId = data.sessionId;
                 this.rank = data.rank;
                 this.log(`Joined session. ID=${this.sessionId}, rank=${this.rank}`);
+                break;
+    
+              case 'active_session_joined':
+                this.sessionId = data.sessionId;
+                this.rank = data.rank;
+                this.currentRound = data.currentRound || 0;
+                this.log(`Joined active session. ID=${this.sessionId}, rank=${this.rank}, current round=${this.currentRound}`);
                 break;
     
               case 'session_ready':
@@ -560,6 +577,7 @@ export class WebRTCCommUtils {
 
   /**
    * handleTopology - Receives neighbors and attempts to connect or remove stale connections.
+   * Now supports dynamic joining of nodes to an active session.
    */
     async handleTopology(data) {
         this.log(`Handling topology... rank=${data.rank}, neighbors=${JSON.stringify(data.neighbors)} type ${typeof data.neighbors}`);
@@ -568,6 +586,16 @@ export class WebRTCCommUtils {
         const newNeighbors = data.neighbors;
         this.log(`Received topology. Rank: ${this.rank}, Neighbors: ${JSON.stringify(newNeighbors)}`);
 
+        // Track if this is a dynamic join to an active session
+        const isActiveSession = data.isActiveSession || false;
+        
+        if (isActiveSession) {
+            this.log('Joining active session - will synchronize with current state after connections are established');
+            
+            // Set a flag to request model state after connections are established
+            this.needModelStateSync = true;
+        }
+        
         if (this.neighbors) {
             const oldNeighbors = new Set(Object.values(this.neighbors));
             const newNeighborSet = new Set(Object.values(newNeighbors));
@@ -598,11 +626,11 @@ export class WebRTCCommUtils {
               //     this.pendingConnections.add(neighborRank);
               //     this.initiateConnection(neighborRank);
             // }
-          for (const neighbor of neighborList) {
-            this.log(`Initiating connection to ${neighbor}`);
-            this.pendingConnections.add(neighbor);
-            this.initiateConnection(neighbor);
-          }
+            for (const neighbor of neighborList) {
+                this.log(`Initiating connection to ${neighbor}`);
+                this.pendingConnections.add(neighbor);
+                this.initiateConnection(neighbor);
+            }
         }
     }
 
@@ -1006,6 +1034,12 @@ export class WebRTCCommUtils {
               this.log(`Received round update response from peer ${peerRank}`);
               this.peer_rounds.set(peerRank, data.round)
               break;
+          case 'model_state_request':
+            this.handleModelStateRequest(data, this.dataChannels.get(peerRank));
+            break;
+          case 'model_state_response':
+            this.handleModelStateResponse(data);
+            break;
         }
       } catch (err) {
         this.log(`handleDataChannelMessage() parse error: ${err}`);
@@ -1501,6 +1535,109 @@ export class WebRTCCommUtils {
     }
   }
 
+  async requestCurrentModelState(neighborRank) {
+    try {
+      if (!this.dataChannels.has(neighborRank)) {
+        this.log(`Cannot request model state: no data channel to peer ${neighborRank}`, 'error');
+        return;
+      }
+
+      const channel = this.dataChannels.get(neighborRank);
+      if (channel.readyState !== 'open') {
+        this.log(`Cannot request model state: channel to peer ${neighborRank} not open`, 'error');
+        return;
+      }
+
+      this.log(`Requesting current model state from peer ${neighborRank}`);
+      
+      // Send request for current model state
+      const request = {
+        type: 'model_state_request',
+        requestId: Date.now(),
+        fromRank: this.rank
+      };
+      
+      channel.send(JSON.stringify(request));
+      
+      // Set up a promise that will resolve when we receive the model state
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error(`Timeout waiting for model state from peer ${neighborRank}`));
+        }, 30000); // 30 second timeout
+        
+        this.modelStatePromises = this.modelStatePromises || {};
+        this.modelStatePromises[request.requestId] = {
+          resolve,
+          reject,
+          timeout
+        };
+      });
+    } catch (error) {
+      this.log(`Error requesting model state: ${error}`, 'error');
+      throw error;
+    }
+  }
+
+  handleModelStateRequest(request, channel) {
+    try {
+      this.log(`Received model state request from peer ${request.fromRank}`);
+      
+      // Get current model weights
+      const weights = this.model.model.getWeights();
+      
+      // Send model state response
+      const response = {
+        type: 'model_state_response',
+        requestId: request.requestId,
+        fromRank: this.rank,
+        toRank: request.fromRank,
+        currentRound: this.currentRound || 0,
+        weights: tensorToSerializable(weights)
+      };
+      
+      this.log(`Sending current model state to peer ${request.fromRank}`);
+      channel.send(JSON.stringify(response));
+    } catch (error) {
+      this.log(`Error handling model state request: ${error}`, 'error');
+    }
+  }
+
+  handleModelStateResponse(response) {
+    try {
+      this.log(`Received model state from peer ${response.fromRank}, round ${response.currentRound}`);
+      
+      // Update current round if needed
+      if (response.currentRound > (this.currentRound || 0)) {
+        this.currentRound = response.currentRound;
+        this.log(`Updated current round to ${this.currentRound}`);
+      }
+      
+      // Deserialize and set model weights
+      const weights = serializableToTensor(response.weights);
+      this.model.model.setWeights(weights);
+      
+      this.log('Successfully updated model with current state');
+      
+      // Resolve the promise for this request
+      if (this.modelStatePromises && this.modelStatePromises[response.requestId]) {
+        const { resolve, timeout } = this.modelStatePromises[response.requestId];
+        clearTimeout(timeout);
+        resolve(true);
+        delete this.modelStatePromises[response.requestId];
+      }
+    } catch (error) {
+      this.log(`Error handling model state response: ${error}`, 'error');
+      
+      // Reject the promise for this request
+      if (this.modelStatePromises && this.modelStatePromises[response.requestId]) {
+        const { reject, timeout } = this.modelStatePromises[response.requestId];
+        clearTimeout(timeout);
+        reject(error);
+        delete this.modelStatePromises[response.requestId];
+      }
+    }
+  }
+
   async startTraining() {
     this.log('started training, loading dataset...');
   
@@ -1550,7 +1687,7 @@ export class WebRTCCommUtils {
         this.log(`Finished round ${i} training, receiving weights...`);
 
         // Reset tracking for this round
-        this.layerChunkTracker = {}; // Format: { layerName: { expected: numChunks, received: count } }
+        this.layerChunkTracker = {}; // Format: { layerName: { expected, received } }
         this.receivedWeightsFinished = false; // Set to true when weights_finished is received
         
         // randomly choose num_collaborators from connectedPeers
@@ -1706,14 +1843,16 @@ export class WebRTCCommUtils {
 
     /**
      * broadcastNodeReady - Notifies the signaling server that we've set up all channels.
+     * For nodes joining an active session, synchronizes with the current model state first.
      */
     broadcastNodeReady() {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-        this.ws.send(JSON.stringify({
-            type: 'node_ready',
-            sessionId: this.sessionId,
-            rank: this.rank
-        }));
+            this.ws.send(JSON.stringify({
+                type: 'node_ready',
+                sessionId: this.sessionId,
+                rank: this.rank,
+                joiningActiveSession: this.joinActiveSession
+            }));
         }
     }
   // --------------------- Error Handling & Cleanup ---------------------
@@ -1768,7 +1907,7 @@ export class WebRTCCommUtils {
     //     for (const [layerName, tensor] of Object.entries(model)) {
     //       console.log(`Layer: ${layerName}, dtype: ${tensor.dtype}, shape: [${tensor.shape.join(', ')}]`);
       
-    //       const chunks = chunkTensor(tensor, chunkSize);
+    //       const chunks = chunkTensor(tensor, chunk_size);
     //       for (const { chunk, numChunks, originalShape } of chunks) {
     //         const serializableChunk = serializeMessage({
     //           layer_name: layerName,
