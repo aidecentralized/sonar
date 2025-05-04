@@ -70,7 +70,7 @@ def deserialize_message(json_str: str) -> Dict[str, Any]:
 class RTCCommUtils(CommunicationInterface):
     def __init__(self, config: Dict[str, Dict[str, Any]]):
         self.config = config
-        self.signaling_server = config.get("signaling_server", "ws://localhost:8888")
+        self.signaling_server = config.get("signaling_server", "ws://10.29.253.135:8888")
         self.websocket = None
         self.connections: Dict[int, RTCPeerConnection] = {}
         self.data_channels: Dict[int, RTCDataChannel] = {}
@@ -191,6 +191,7 @@ class RTCCommUtils(CommunicationInterface):
                         channel = self.data_channels[peer_rank]
                         if channel.readyState == "open":
                             message = json.dumps(data)
+                            self.comm_cost_sent += len(message.encode('utf-8'))
                             channel.send(message)
                             # self.logger.info(f"Successfully sent message to peer {peer_rank}")
                         else:
@@ -807,7 +808,7 @@ class RTCCommUtils(CommunicationInterface):
                     chunk_idx = 0
                     for chunk, num_chunks, original_shape in self.chunk_tensor(tensor, chunk_size):
                         size_sent = chunk.numel() * chunk.element_size()
-                        self.comm_cost_sent += size_sent
+                        # self.comm_cost_sent += size_sent
 
                         serializable_chunk = serialize_message({
                             'layer_name': layer_name, 
@@ -866,7 +867,8 @@ class RTCCommUtils(CommunicationInterface):
                 self.received_chunks[peer_rank][layer_name] += 1
 
                 size_received = chunk.numel() * chunk.element_size()
-                self.comm_cost_received += size_received
+                # self.comm_cost_received += size_received
+                self.comm_cost_received += len(data.encode('utf-8'))
 
                 # Check if all chunks are received for this layer for this peer
                 if self.received_chunks[peer_rank][layer_name] == self.expected_chunks[peer_rank][layer_name]:
