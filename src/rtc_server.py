@@ -360,13 +360,13 @@ class SignalingServer:
                         "num_users": session.config["num_users"],
                         "seed": session.config["seed"]
                     }
-                    num_collaborators = session.config["num_collaborators"]
+                    # num_collaborators = session.config["num_collaborators"]
                     # TODO: everyone can specify their own topology actually
                     topology = select_topology(topology_config, info.rank)
                     topology.initialize()
                     # do we only want 1 neighbor?
-                    neighbors = topology.sample_neighbours(num_collaborators) #type: ignore
-                    # all_neighbors = topology.get_all_neighbours()
+                    # neighbors = topology.sample_neighbours(num_collaborators) #type: ignore
+                    neighbors = topology.get_all_neighbours()
                     neighbor_dict.update({f"neighbor{info.rank}": neighbors})
                     print(neighbor_dict)
                 await ws.send(json.dumps({
