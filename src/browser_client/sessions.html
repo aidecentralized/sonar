@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Explore Sessions - Project SONAR</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+  <link rel="stylesheet" href="./styling/browser.css" />
+  <style>
+    .sessions-container {
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .server-settings {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+    }
+
+    .server-settings label {
+      white-space: nowrap;
+      font-weight: 600;
+    }
+
+    .server-settings input {
+      flex: 1;
+      padding: 0.5rem 1rem;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      color: #fff;
+      font-size: 0.9rem;
+    }
+
+    .save-button {
+      background-color: #7f2aff;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+    }
+
+    .save-button:hover {
+      background-color: #9955ff;
+      transform: translateY(-2px);
+    }
+
+    .refresh-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+
+    .auto-refresh {
+      display: flex;
+      align-items: center;
+    }
+
+    .auto-refresh input {
+      margin-right: 0.5rem;
+    }
+
+    .refresh-button {
+      background-color: #2aff7f;
+      color: #000;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s ease;
+    }
+
+    .refresh-button:hover {
+      background-color: #55ffaa;
+      transform: translateY(-2px);
+    }
+
+    .session-card {
+      background: linear-gradient(to right, #111, #1a1a1a);
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      padding: 1rem;
+      border-left: 4px solid #2a7fff;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      transition: all 0.3s ease;
+    }
+
+    .session-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .session-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .session-id {
+      font-weight: bold;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .expand-icon {
+      cursor: pointer;
+      color: #aaa;
+      transition: transform 0.3s ease, color 0.3s ease;
+      padding: 0.5rem;
+    }
+
+    .expand-icon:hover {
+      color: #fff;
+    }
+
+    .expand-icon.expanded {
+      transform: rotate(180deg);
+      color: #2a7fff;
+    }
+
+    .session-clients {
+      font-size: 0.9rem;
+      color: #aaa;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+    }
+
+    .session-metadata {
+      font-style: italic;
+      color: #ccc;
+      margin: 0.5rem 0;
+      padding-left: 0.5rem;
+      border-left: 2px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .session-details {
+      display: none;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 1rem;
+      border-radius: 4px;
+      margin-top: 0.5rem;
+      border-left: 2px solid #2a7fff;
+    }
+
+    .session-details.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .session-details h3 {
+      margin-bottom: 0.5rem;
+      color: #2a7fff;
+      font-size: 1rem;
+    }
+
+    .session-details pre {
+      background: rgba(0, 0, 0, 0.5);
+      padding: 0.5rem;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 0.9rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .session-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 0.5rem;
+    }
+
+    .join-button {
+      background-color: #2a7fff;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s ease;
+    }
+
+    .join-button:hover {
+      background-color: #5599ff;
+      transform: translateY(-2px);
+    }
+
+    .no-sessions {
+      text-align: center;
+      padding: 2rem;
+      color: #aaa;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      border: 1px dashed rgba(255, 255, 255, 0.1);
+    }
+
+    /* Loading spinner */
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 1s ease-in-out infinite;
+      margin-left: 10px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="top-bar">
+    <div class="logo-container">
+      <img src="assets/logo.png" alt="Browser App Logo" class="logo" />
+      <span class="project-name">Project SONAR</span>
+    </div>
+    <div class="hamburger-menu" id="hamburger-menu">
+      <div class="line"></div>
+      <div class="line"></div>
+      <div class="line"></div>
+    </div>
+  </header>
+
+  <nav class="mobile-nav" id="mobile-nav">
+    <ul>
+      <li><a href="./index.html">Home</a></li>
+      <li><a href="./about.html">About</a></li>
+      <li><a href="./browser.html">Session</a></li>
+      <li><a href="./sessions.html">Explore Sessions</a></li>
+    </ul>
+  </nav>
+
+  <div class="session-title">
+    <h1>Explore Sessions</h1>
+  </div>
+
+  <main>
+    <div class="card dark-card">
+      <div class="server-settings">
+        <label for="signaling-server">Signaling Server URL:</label>
+        <input type="text" id="signaling-server" value="ws://18.27.79.107:8888">
+        <button id="save-server-button" class="save-button">
+          <i class="fas fa-save"></i> Save
+        </button>
+      </div>
+      
+      <div class="refresh-controls">
+        <div class="auto-refresh">
+          <input type="checkbox" id="auto-refresh" checked>
+          <label for="auto-refresh">Auto-refresh (every 5 seconds)</label>
+          <div id="refresh-indicator" class="spinner" style="display: none;"></div>
+        </div>
+        <button id="refresh-button" class="refresh-button">
+          <i class="fas fa-sync-alt"></i> Refresh Sessions
+        </button>
+      </div>
+      
+      <div id="sessions-container" class="sessions-container">
+        <div class="no-sessions">Loading sessions...</div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Hamburger menu functionality
+    const hamburger = document.getElementById("hamburger-menu");
+    const mobileNav = document.getElementById("mobile-nav");
+
+    hamburger.addEventListener("click", () => {
+      mobileNav.classList.toggle("active");
+    });
+
+    // Session management functionality
+    const sessionsContainer = document.getElementById('sessions-container');
+    const refreshButton = document.getElementById('refresh-button');
+    const autoRefreshCheckbox = document.getElementById('auto-refresh');
+    const refreshIndicator = document.getElementById('refresh-indicator');
+    const signalingServerInput = document.getElementById('signaling-server');
+    const saveServerButton = document.getElementById('save-server-button');
+    
+    let refreshInterval;
+    let isRefreshing = false;
+    let expandedSessions = new Set(); // Track expanded sessions
+
+    // Default signaling server URL - can be updated from localStorage if available
+    let signalingServerUrl = localStorage.getItem('signalingServer') || 'ws://localhost:8888';
+    
+    // Initialize the input field with the current value
+    signalingServerInput.value = signalingServerUrl;
+    
+    // Save the signaling server URL to localStorage
+    saveServerButton.addEventListener('click', () => {
+      signalingServerUrl = signalingServerInput.value.trim();
+      localStorage.setItem('signalingServer', signalingServerUrl);
+      
+      // Show toast notification instead of alert
+      const toast = document.createElement('div');
+      toast.style.position = 'fixed';
+      toast.style.bottom = '20px';
+      toast.style.right = '20px';
+      toast.style.background = '#2aff7f';
+      toast.style.color = '#000';
+      toast.style.padding = '10px 20px';
+      toast.style.borderRadius = '4px';
+      toast.style.zIndex = '9999';
+      toast.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+      toast.style.transition = 'all 0.3s ease';
+      toast.innerHTML = '<i class="fas fa-check-circle"></i> Server URL saved!';
+      
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => document.body.removeChild(toast), 300);
+      }, 2000);
+      
+      refreshSessions(); // Refresh sessions with the new URL
+    });
+    
+    // Also update when pressing Enter in the input field
+    signalingServerInput.addEventListener('keyup', (e) => {
+      if (e.key === 'Enter') {
+        saveServerButton.click();
+      }
+    });
+
+    // Function to create WebSocket connection
+    function createWebSocket() {
+      return new Promise((resolve, reject) => {
+        const ws = new WebSocket(signalingServerUrl);
+        
+        ws.onopen = () => {
+          console.log('Connected to signaling server');
+          resolve(ws);
+        };
+        
+        ws.onerror = (error) => {
+          console.error('WebSocket error:', error);
+          reject(error);
+        };
+        
+        ws.onclose = () => {
+          console.log('Disconnected from signaling server');
+        };
+      });
+    }
+
+    // Function to fetch all sessions
+    async function fetchSessions() {
+      if (isRefreshing) return;
+      
+      isRefreshing = true;
+      refreshIndicator.style.display = 'inline-block';
+      
+      try {
+        const ws = await createWebSocket();
+        
+        return new Promise((resolve) => {
+          ws.send(JSON.stringify({
+            type: 'list_sessions'
+          }));
+          
+          ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'sessions_list') {
+              ws.close();
+              resolve(data.sessions);
+            }
+          };
+        });
+      } catch (error) {
+        console.error('Error fetching sessions:', error);
+        return [];
+      } finally {
+        isRefreshing = false;
+        refreshIndicator.style.display = 'none';
+      }
+    }
+
+    // Function to fetch session details
+    async function fetchSessionDetails(sessionId) {
+      try {
+        const ws = await createWebSocket();
+        
+        return new Promise((resolve) => {
+          ws.send(JSON.stringify({
+            type: 'list_session_details',
+            sessionId: sessionId
+          }));
+          
+          ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'session_details' || data.type === 'error') {
+              ws.close();
+              resolve(data);
+            }
+          };
+        });
+      } catch (error) {
+        console.error('Error fetching session details:', error);
+        return { type: 'error', message: 'Failed to connect to server' };
+      }
+    }
+
+    // Function to toggle session details
+    async function toggleSessionDetails(sessionId, expandIcon) {
+      const detailsElement = document.getElementById(`details-${sessionId}`);
+      
+      // Toggle details visibility
+      if (detailsElement.classList.contains('active')) {
+        detailsElement.classList.remove('active');
+        expandIcon.classList.remove('expanded');
+        expandedSessions.delete(sessionId);
+      } else {
+        detailsElement.classList.add('active');
+        expandIcon.classList.add('expanded');
+        expandedSessions.add(sessionId);
+        
+        // Show loading spinner
+        detailsElement.innerHTML = '<div class="spinner"></div>';
+        
+        // Fetch and display session details
+        const details = await fetchSessionDetails(sessionId);
+        
+        if (details.type === 'error') {
+          detailsElement.innerHTML = `<div class="error">${details.message}</div>`;
+        } else {
+          let detailsHtml = `
+            <h3><i class="fas fa-info-circle"></i> Session Details</h3>
+            <p><strong>Session ID:</strong> ${details.session_id}</p>
+            <p><strong>Clients:</strong> ${details.current_clients} / ${details.max_clients}</p>
+            <p><strong>Client Ranks:</strong> ${details.client_ranks.join(', ')}</p>
+          `;
+          
+          if (details.metadata) {
+            detailsHtml += `<p><strong>Metadata:</strong> ${details.metadata}</p>`;
+          }
+          
+          detailsHtml += `
+            <h3><i class="fas fa-cog"></i> Configuration</h3>
+            <pre>${JSON.stringify(details.config, null, 2)}</pre>
+          `;
+          
+          detailsElement.innerHTML = detailsHtml;
+        }
+      }
+    }
+
+    // Function to render sessions list
+    function renderSessions(sessions) {
+      if (!sessions || sessions.length === 0) {
+        sessionsContainer.innerHTML = '<div class="no-sessions"><i class="fas fa-search"></i> No active sessions found</div>';
+        return;
+      }
+      
+      sessionsContainer.innerHTML = '';
+      
+      sessions.forEach(session => {
+        const sessionCard = document.createElement('div');
+        sessionCard.className = 'session-card';
+        sessionCard.dataset.sessionId = session.session_id;
+        
+        const header = document.createElement('div');
+        header.className = 'session-header';
+        
+        const sessionId = document.createElement('div');
+        sessionId.className = 'session-id';
+        
+        const expandIcon = document.createElement('i');
+        expandIcon.className = 'fas fa-chevron-down expand-icon';
+        if (expandedSessions.has(session.session_id)) {
+          expandIcon.classList.add('expanded');
+        }
+        expandIcon.addEventListener('click', (e) => {
+          e.stopPropagation();
+          toggleSessionDetails(session.session_id, expandIcon);
+        });
+        
+        sessionId.innerHTML = `<i class="fas fa-project-diagram"></i> Session: ${session.session_id}`;
+        sessionId.appendChild(expandIcon);
+        
+        const sessionClients = document.createElement('div');
+        sessionClients.className = 'session-clients';
+        sessionClients.innerHTML = `<i class="fas fa-users"></i> ${session.current_clients} / ${session.max_clients}`;
+        
+        header.appendChild(sessionId);
+        header.appendChild(sessionClients);
+        sessionCard.appendChild(header);
+        
+        if (session.metadata) {
+          const metadata = document.createElement('div');
+          metadata.className = 'session-metadata';
+          metadata.innerHTML = `<i class="fas fa-comment-alt"></i> ${session.metadata}`;
+          sessionCard.appendChild(metadata);
+        }
+        
+        const detailsContainer = document.createElement('div');
+        detailsContainer.className = 'session-details';
+        detailsContainer.id = `details-${session.session_id}`;
+        
+        // If this session was previously expanded, mark it as active
+        if (expandedSessions.has(session.session_id)) {
+          detailsContainer.classList.add('active');
+          detailsContainer.innerHTML = '<div class="spinner"></div>';
+          
+          // Fetch details for expanded sessions
+          fetchSessionDetails(session.session_id).then(details => {
+            if (details.type === 'error') {
+              detailsContainer.innerHTML = `<div class="error">${details.message}</div>`;
+            } else {
+              let detailsHtml = `
+                <h3><i class="fas fa-info-circle"></i> Session Details</h3>
+                <p><strong>Session ID:</strong> ${details.session_id}</p>
+                <p><strong>Clients:</strong> ${details.current_clients} / ${details.max_clients}</p>
+                <p><strong>Client Ranks:</strong> ${details.client_ranks.join(', ')}</p>
+              `;
+              
+              if (details.metadata) {
+                detailsHtml += `<p><strong>Metadata:</strong> ${details.metadata}</p>`;
+              }
+              
+              detailsHtml += `
+                <h3><i class="fas fa-cog"></i> Configuration</h3>
+                <pre>${JSON.stringify(details.config, null, 2)}</pre>
+              `;
+              
+              detailsContainer.innerHTML = detailsHtml;
+            }
+          });
+        }
+        
+        const actionsContainer = document.createElement('div');
+        actionsContainer.className = 'session-actions';
+        
+        const joinButton = document.createElement('button');
+        joinButton.className = 'join-button';
+        joinButton.innerHTML = '<i class="fas fa-sign-in-alt"></i> Join Session';
+        joinButton.addEventListener('click', (e) => {
+          e.stopPropagation();
+          
+          // Fetch session details before redirecting
+          fetchSessionDetails(session.session_id).then(details => {
+            if (details.type !== 'error') {
+              // Store session configuration in localStorage
+              localStorage.setItem('sessionId', details.session_id);
+              
+              // Store the configuration
+              if (details.config) {
+                // Store individual config values
+                if (details.config.signaling_server) {
+                  localStorage.setItem('signalingServer', details.config.signaling_server);
+                }
+                
+                if (details.config.algos && details.config.algos.node_0 && details.config.algos.node_0.topology) {
+                  localStorage.setItem('topology', details.config.algos.node_0.topology);
+                }
+                
+                if (details.config.num_users) {
+                  localStorage.setItem('numUsers', details.config.num_users);
+                }
+                
+                if (details.config.epochs) {
+                  localStorage.setItem('epochs', details.config.epochs);
+                }
+                
+                if (details.config.num_collaborators) {
+                  localStorage.setItem('numCollaborators', details.config.num_collaborators);
+                }
+                
+                // Also store the complete config as JSON for any additional fields
+                localStorage.setItem('sessionConfig', JSON.stringify(details.config));
+              }
+              
+              // Navigate to browser.html
+              window.location.href = './browser.html';
+            } else {
+              alert('Failed to fetch session details. Please try again.');
+            }
+          }).catch(error => {
+            console.error('Error fetching session details:', error);
+            alert('Failed to fetch session details. Please try again.');
+          });
+        });
+        
+        actionsContainer.appendChild(joinButton);
+        
+        sessionCard.appendChild(detailsContainer);
+        sessionCard.appendChild(actionsContainer);
+        
+        sessionsContainer.appendChild(sessionCard);
+      });
+    }
+
+    // Function to refresh sessions
+    async function refreshSessions() {
+      const sessions = await fetchSessions();
+      renderSessions(sessions);
+    }
+
+    // Initial load
+    refreshSessions();
+
+    // Set up refresh button
+    refreshButton.addEventListener('click', refreshSessions);
+
+    // Set up auto-refresh
+    function setupAutoRefresh() {
+      if (autoRefreshCheckbox.checked) {
+        refreshInterval = setInterval(refreshSessions, 5000);
+      } else {
+        clearInterval(refreshInterval);
+      }
+    }
+
+    autoRefreshCheckbox.addEventListener('change', setupAutoRefresh);
+    
+    // Initial setup of auto-refresh
+    setupAutoRefresh();
+
+    // Clean up on page unload
+    window.addEventListener('beforeunload', () => {
+      clearInterval(refreshInterval);
+    });
+  </script>
+</body>
+
+</html>

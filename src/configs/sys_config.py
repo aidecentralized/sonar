@@ -89,7 +89,7 @@ CIAR10_DPATH = "./datasets/imgs/cifar10/"
 NUM_COLLABORATORS = 1
 DUMP_DIR = ""
 
-num_users = 10
+num_users = 3
 dropout_dict = {}
 dropout_dicts = {"node_0": {}}
 for i in range(1, num_users + 1):
@@ -101,7 +101,7 @@ gpu_ids = [2, 3, 7]
 rtc_config: ConfigType = {
     "exp_id": "test_train_10_clients3",
     "num_users": num_users,
-    "session_id": 1111,
+    "session_id": "1111",
     "num_collaborators": NUM_COLLABORATORS,
     "comm": {"type": "RTC"},
     "dset": CIFAR10_DSET,

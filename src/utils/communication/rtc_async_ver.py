@@ -70,13 +70,13 @@ def deserialize_message(json_str: str) -> Dict[str, Any]:
 class RTCCommUtils(CommunicationInterface):
     def __init__(self, config: Dict[str, Dict[str, Any]]):
         self.config = config
-        self.signaling_server = config.get("signaling_server", "ws://localhost:8765")
+        self.signaling_server = config.get("signaling_server", "ws://localhost:8888")
         self.websocket = None
         self.connections: Dict[int, RTCPeerConnection] = {}
         self.data_channels: Dict[int, RTCDataChannel] = {}
         self.rank = None
         self.size: int = int(config.get("num_users", 2))
-        self.session_id = 1111
+        self.session_id = config.get("session_id", "1111")
         self.neighbors = None
         self.collaborator_ids: List[int] = []
         self.state = NodeState.CONNECTING

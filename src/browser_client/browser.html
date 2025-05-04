@@ -9,8 +9,60 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
   <link rel="stylesheet" href="./styling/browser.css" />
+  <style>
+    .notification {
+      background-color: rgba(42, 127, 255, 0.1);
+      border-left: 4px solid #2a7fff;
+      color: #fff;
+      padding: 10px 15px;
+      margin-bottom: 15px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: opacity 0.5s ease;
+    }
+    
+    .notification i {
+      color: #2a7fff;
+    }
+    
+    .pre-filled {
+      animation: highlight 2s ease;
+    }
+    
+    @keyframes highlight {
+      0% { background-color: rgba(42, 127, 255, 0.1); }
+      100% { background-color: transparent; }
+    }
+    
+    .pre-filled .form-group {
+      position: relative;
+    }
+    
+    .pre-filled input, 
+    .pre-filled select {
+      border-left: 3px solid #2a7fff !important;
+    }
+    
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .checkbox-group input[type="checkbox"] {
+      width: auto;
+      margin: 0;
+    }
+    
+    .checkbox-group label {
+      margin-bottom: 0;
+    }
+  </style>
 </head>
 
 <body>
@@ -32,6 +84,7 @@
       <li><a href="./index.html">Home</a></li>
       <li><a href="./about.html">About</a></li>
       <li><a href="./browser.html">Session</a></li>
+      <li><a href="./sessions.html">Explore Sessions</a></li>
     </ul>
   </nav>
 
@@ -54,7 +107,7 @@
           </div>
           <div class="form-group">
             <label for="signaling_server">Signaling Server</label>
-            <input type="text" id="signaling_server" name="signaling_server" value="ws://localhost:8765" required>
+            <input type="text" id="signaling_server" name="signaling_server" value="ws://18.27.79.107:8888" required>
           </div>
           <div class="form-group">
             <label for="num_users">Number of Users</label>
@@ -63,6 +116,10 @@
           <div class="form-group">
             <label for="session_id">Session ID</label>
             <input type="text" id="session_id" name="session_id" value="1111" required>
+          </div>
+          <div class="form-group checkbox-group">
+            <input type="checkbox" id="join_active_session" name="join_active_session">
+            <label for="join_active_session">Join active session</label>
           </div>
           <div class="form-group">
             <label for="epochs">Epochs</label>
@@ -73,6 +130,7 @@
             <input type="text" id="num_collaborators" name="num_collaborators" value="1" required>
           </div>
           <button type="button" id="save-config-button">Save Config</button>
+          <button type="button" id="start-button" class="connect-button" disabled>Connect</button>
         </form>
       </section>
 
@@ -91,33 +149,36 @@
           <div class="data-section">
             <div class="data-block">
               <h2>Training Data</h2>
-              <label for="train-data-input" class="file-label">Choose File</label>
-              <input id="train-data-input" type="file" accept=".json">
+              <div class="data-input-container">
+                <div class="data-upload">
+                  <label for="train-data-input" class="file-label">Upload File</label>
+                  <input id="train-data-input" type="file" accept=".json">
+                </div>
+              </div>
             </div>
             
             <div class="data-block">
               <h2>Testing Data (Optional)</h2>
-              <label for="test-data-input" class="file-label">Choose File</label>
-              <input id="test-data-input" type="file" accept=".json">
+              <div class="data-input-container">
+                <div class="data-upload">
+                  <label for="test-data-input" class="file-label">Upload File</label>
+                  <input id="test-data-input" type="file" accept=".json">
+                </div>
+              </div>
               <p class="input-note">If not provided, 20% of training data will be used for validation</p>
             </div>
           </div>
 
-          <div class="data-section">
+          <div class="data-section sample-partitions">
             <div class="data-block">
-              <h2>Sample Data Partitions</h2>
-              <select id="fileDropdown">
-                <option value="">-- Choose a partition --</option>
+              <h2>Sample Datasets</h2>
+              <select id="fileDropdown" class="styled-select">
+                <option value="">-- Choose a sample partition --</option>
               </select>
             </div>
           </div>
         
         </section>        
-
-        <section class="card dark-card">
-          <h2>Train</h2>
-          <button id="start-button" disabled>Connect</button>
-        </section>
 
         <section class="card logs-card">
           <h2>Logs</h2>
@@ -134,6 +195,80 @@
 
     hamburger.addEventListener("click", () => {
       mobileNav.classList.toggle("active");
+    });
+
+    // Load session configuration from localStorage if available
+    document.addEventListener('DOMContentLoaded', () => {
+      // Get form elements
+      const topologySelect = document.getElementById('topology');
+      const signalingServerInput = document.getElementById('signaling_server');
+      const numUsersInput = document.getElementById('num_users');
+      const sessionIdInput = document.getElementById('session_id');
+      const epochsInput = document.getElementById('epochs');
+      const numCollaboratorsInput = document.getElementById('num_collaborators');
+      const joinActiveSessionCheckbox = document.getElementById('join_active_session');
+      
+      // Check if we have session configuration in localStorage
+      const sessionId = localStorage.getItem('sessionId');
+      
+      if (sessionId) {
+        // Set session ID
+        sessionIdInput.value = sessionId;
+        
+        // Set other fields if available
+        if (localStorage.getItem('topology')) {
+          // Find the option with the matching value and select it
+          const topologyValue = localStorage.getItem('topology');
+          for (let i = 0; i < topologySelect.options.length; i++) {
+            if (topologySelect.options[i].value === topologyValue) {
+              topologySelect.selectedIndex = i;
+              break;
+            }
+          }
+        }
+        
+        if (localStorage.getItem('signalingServer')) {
+          signalingServerInput.value = localStorage.getItem('signalingServer');
+        }
+        
+        if (localStorage.getItem('numUsers')) {
+          numUsersInput.value = localStorage.getItem('numUsers');
+        }
+        
+        if (localStorage.getItem('epochs')) {
+          epochsInput.value = localStorage.getItem('epochs');
+        }
+        
+        if (localStorage.getItem('numCollaborators')) {
+          numCollaboratorsInput.value = localStorage.getItem('numCollaborators');
+        }
+        
+        if (localStorage.getItem('joinActiveSession')) {
+          joinActiveSessionCheckbox.checked = localStorage.getItem('joinActiveSession') === 'true';
+        }
+        
+        // Highlight the form to indicate it's been pre-filled
+        const configForm = document.getElementById('config-form');
+        configForm.classList.add('pre-filled');
+        
+        // Add a notification that the form was pre-filled from session
+        const notification = document.createElement('div');
+        notification.className = 'notification';
+        notification.innerHTML = `<i class="fas fa-info-circle"></i> Form pre-filled from session ${sessionId}`;
+        
+        // Insert notification before the form
+        configForm.parentNode.insertBefore(notification, configForm);
+        
+        // Auto-hide notification after 5 seconds
+        setTimeout(() => {
+          notification.style.opacity = '0';
+          setTimeout(() => {
+            if (notification.parentNode) {
+              notification.parentNode.removeChild(notification);
+            }
+          }, 500);
+        }, 5000);
+      }
     });
   </script>
 </body>

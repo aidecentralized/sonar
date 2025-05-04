@@ -36,6 +36,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+node_modules
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -177,4 +178,5 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-node_modules/
+node_modules/browser_client/package-lock.json
+src/browser_client/node_modules/

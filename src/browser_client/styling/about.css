@@ -118,17 +118,119 @@ body {
   margin: auto;
   padding: 2rem;
   border-radius: 8px;
-  text-align: center;
+  background-color: rgba(0, 0, 0, 0.7);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
 .about-container h1 {
   font-size: 3rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.about-container h2 {
+  font-size: 1.4rem;
+  color: #ccc;
+  margin-bottom: 0.5rem;
+  font-weight: normal;
+}
+
+.subtitle {
+  font-size: 1.1rem;
+  color: #ff2a2a;
+  margin-bottom: 2rem;
+  font-style: italic;
+}
+
+.about-section {
+  margin-bottom: 2rem;
+  text-align: left;
+}
+
+.about-section h3 {
+  font-size: 1.6rem;
+  color: #2a7fff;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.5rem;
 }
 
 .about-container p {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   line-height: 1.6;
-  margin-bottom: 1.5rem;
-  color: #ccc;
+  margin-bottom: 1rem;
+  color: #ddd;
+}
+
+.about-section ul {
+  list-style-position: inside;
+  margin-bottom: 1rem;
+  padding-left: 1rem;
+}
+
+.about-section li {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin-bottom: 0.5rem;
+  color: #ddd;
+}
+
+.about-section li strong {
+  color: #2aff7f;
+}
+
+.button-group {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  justify-content: center;
+}
+
+.btn {
+  text-decoration: none;
+  font-size: 1rem;
+  padding: 0.8rem 1.5rem;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  display: inline-block;
+}
+
+.explore-btn {
+  background-color: #2a7fff;
+  color: #fff;
+  border: none;
+}
+
+.explore-btn:hover {
+  background-color: #1a6eff;
+  transform: translateY(-2px);
+}
+
+.training-btn {
+  background-color: #2aff7f;
+  color: #000;
+  font-weight: 600;
+  border: none;
+}
+
+.training-btn:hover {
+  background-color: #1aef6f;
+  transform: translateY(-2px);
+}
+
+@media (max-width: 768px) {
+  .about-container h1 {
+    font-size: 2.2rem;
+  }
+  
+  .about-container h2 {
+    font-size: 1.2rem;
+  }
+  
+  .about-section h3 {
+    font-size: 1.4rem;
+  }
+  
+  .button-group {
+    flex-direction: column;
+  }
 }
