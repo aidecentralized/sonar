@@ -2,6 +2,7 @@ import { ResNet10 } from './model.js'
 import * as tf from '@tensorflow/tfjs'
 import js2python from './js2python.json'
 import { displayMessage } from './main.js'
+import JSZip from 'jszip';
 // import ind2python from './ind2python.json'
 
 
@@ -266,33 +267,28 @@ class MetricsLogger {
       }
 
       // Create a zip file containing all metrics
-      import('jszip').then(JSZip => {
-        const zip = new JSZip.default();
+      const zip = new JSZip();
+      
+      // Add each metric as a separate CSV file
+      for (const [metricName, csvData] of this.metrics.entries()) {
+        zip.file(`${metricName}.csv`, csvData);
+      }
+      
+      // Generate the zip file
+      zip.generateAsync({ type: 'blob' }).then(content => {
+        // Create a download link
+        const url = URL.createObjectURL(content);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `metrics_${Date.now()}.zip`;
+        document.body.appendChild(a);
+        a.click();
         
-        // Add each metric as a separate CSV file
-        for (const [metricName, csvData] of this.metrics.entries()) {
-          zip.file(`${metricName}.csv`, csvData);
-        }
-        
-        // Generate the zip file
-        zip.generateAsync({ type: 'blob' }).then(content => {
-          // Create a download link
-          const url = URL.createObjectURL(content);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `metrics_${Date.now()}.zip`;
-          document.body.appendChild(a);
-          a.click();
-          
-          // Cleanup
-          setTimeout(() => {
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-          }, 100);
-        });
-      }).catch(error => {
-        console.error('Failed to load JSZip:', error);
-        this.exportIndividualCSVs();
+        // Cleanup
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, 100);
       });
     } catch (error) {
       console.error('Failed to export metrics:', error);

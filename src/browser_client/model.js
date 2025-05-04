@@ -192,7 +192,7 @@ export class ResNet10 extends Model {
 
 	async local_train_one(trainDataSet, testDataSet = null, config = {
 		epochs: 1,
-		batchSize: 64,
+		batchSize: 16,
 		validationSplit: 0.2,
 		shuffle: true,
 		verbose: 1
@@ -244,7 +244,7 @@ export class ResNet10 extends Model {
 				}
 			}
 		}
-		
+
 		// If testDataSet is provided, use it as validation data instead of using validationSplit
 		if (testDataSet) {
 			testImages = tf.tensor2d(testDataSet.images, [testDataSet.images.length, this.imageFlattenSize]);
