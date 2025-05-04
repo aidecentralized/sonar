@@ -279,7 +279,11 @@ class MetricsLogger {
         const url = URL.createObjectURL(content);
         const a = document.createElement('a');
         a.href = url;
+<<<<<<< HEAD
         a.download = `client_${rank}_metrics_${Date.now()}.zip`;
+=======
+        a.download = `metrics_${Date.now()}.zip`;
+>>>>>>> 958b4d1 (fixed bugs to make client work on mobile)
         document.body.appendChild(a);
         a.click();
         
