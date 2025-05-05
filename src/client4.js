@@ -237,6 +237,13 @@ class WebRTCCommUtils {
         this.model = new ResNet10();
         this.config = config || {};
         this.signalingServer = this.config.signaling_server || 'ws://localhost:8765';
+        this.rank = null;
+        this.size = this.config.num_users || 2;
+        this.num_collaborators = this.config.num_collaborators || 1;
+        this.joinActiveSession = this.config.joinActiveSession || false; // Flag to indicate joining an active session
+        this.expectedConnections = 0;
+
+        // Training data
         this.trainDataset = trainDataset;
         this.testDataset = testDataset;
     
@@ -319,7 +326,17 @@ class WebRTCCommUtils {
               this.ws.send(JSON.stringify({
                 type: 'create_session',
                 maxClients: this.size,
-                clientType: 'javascript'
+                clientType: 'javascript',
+                config: this.config,
+              }));
+            } else if (this.joinActiveSession) {
+              // Join an active session
+              this.ws.send(JSON.stringify({
+                type: 'join_active_session',
+                sessionId: this.sessionId,
+                clientType: 'javascript',
+                maxClients: this.size,
+                config: this.config,
               }));
             } else {
               // Join an existing session
@@ -327,7 +344,8 @@ class WebRTCCommUtils {
                 type: 'join_session',
                 sessionId: this.sessionId,
                 clientType: 'javascript',
-                maxClients: this.size
+                maxClients: this.size,
+                config: this.config,
               }));
             }
           };
@@ -640,8 +658,8 @@ class WebRTCCommUtils {
     try {
       const peerRank = parseInt(peerRankStr);
       // Track bytes received (approximately) - using the stringified data size
-      const dataSize = JSON.stringify(data).length;
-      this.bytesReceived += dataSize;
+      // const dataSize = JSON.stringify(data).length;
+      // this.bytesReceived += dataSize;
       // Don't log every message, we'll log the total at the end of the round
       
       // this.log(`Received message from peer ${peerRank}: ${data.type}`);
@@ -1543,7 +1561,8 @@ class WebRTCCommUtils {
         this.ws.send(JSON.stringify({
             type: 'node_ready',
             sessionId: this.sessionId,
-            rank: this.rank
+            rank: this.rank,
+            joiningActiveSession: this.joinActiveSession
         }));
         }
     }
