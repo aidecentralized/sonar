@@ -283,6 +283,7 @@ class WebRTCCommUtils {
         // Tracking chunks and completion per peer
         this.layerChunkTracker = new Map(); // Map of peer_rank -> { layerName: { expected, received } }
         this.receivedWeightsFinished = new Map(); // Map of peer_rank -> boolean
+        this.receivedLayers = new Map(); 
     
         // Communication cost counters
         this.comm_cost_sent = 0;
@@ -792,9 +793,15 @@ class WebRTCCommUtils {
                   dtype: chunk.dtype,
                   shape: originalShape
                 };
+
+                // aggregate the layer
+                this.log(`Aggregating weights from layer ${layerName}`);
+                this.aggregate_layer(layerName, reassembledTensor, peerRank);
+                delete peerWeights[layerName];
+
                 
                 // Replace the array of chunks with the complete tensor
-                peerWeights[layerName] = reassembledTensor;
+                // peerWeights[layerName] = reassembledTensor;
                 
                 // Check if we can move on now
                 if (this.canMoveOn()) {
@@ -923,6 +930,7 @@ class WebRTCCommUtils {
     }
     
     // All checks passed
+    this.receivedLayers = new Map();
     return true;
   }
 
@@ -1284,6 +1292,531 @@ class WebRTCCommUtils {
       }
     }
   }
+
+  /**
+   * Aggregate the current model weights with peer layer weights
+   * @param {Array} peer_layer_weights - An object containing peer weights for 1 layer
+   * @param {number} sender - the sender ID
+   * @returns {Promise<void>}
+   */
+    aggregate_layer(layer_name, peer_layer_weights, sender) {
+      this.log("Aggregating model weights");    
+      // this.log(`Peer weights: ${peer_layer_weights}`);
+      try {
+        // Create a reverse mapping from Python layer names to JS layer names
+        const python2jsMapping = {};
+        for (const [jsName, pythonName] of Object.entries(js2python)) {
+          python2jsMapping[pythonName] = jsName;
+        }     
+    
+        const jsLayerName = python2jsMapping[layer_name];
+        if (jsLayerName === undefined) {
+          return;
+        }
+        const pythonLayerName = layer_name;
+        // this.log(`jsLayerName: ${jsLayerName}`);
+        // this.log(`pythonLayerName = ${pythonLayerName}`);
+  
+        // update the number of peers we have received from for this layer
+        if (!this.receivedLayers.has(jsLayerName)) {
+          this.receivedLayers[jsLayerName] = 1;
+        } else {
+          this.receivedLayers[jsLayerName]++;
+        }
+        // Get current model weights and layers
+        const layers = this.model.model.layers;
+        
+        // Get layer weights of layer layer_name
+        const originalWeights = [];
+        const weightsList = [];
+        let layerIndex = 0;
+        
+        // First, get all the current weights in order and clone them
+        const layer_name_split = jsLayerName.split("_");
+        let jsName = jsLayerName;
+        if (layer_name_split[layer_name_split.length - 2] === "weight") {
+          jsName = layer_name_split.slice(0, layer_name_split.length - 2).join("_");
+        }
+        // this.log(`jsLayerName: ${jsLayerName}`);
+        // this.log(`jsName: ${jsName}`);
+        for (let i = 0; i < layers.length; i++) {
+          const layer = layers[i];
+          if (layer.name === jsName) { // name sure that resnet is using js layer names?
+            this.log(`FOUND LAYER: ${layer.name}`);
+            layerIndex = i;
+            const layerWeights = layer.getWeights();
+            for (let j = 0; j < layerWeights.length; j++) {
+              
+              // Clone the weight tensor to avoid modifying the original
+              const clonedWeight = layerWeights[j].clone();
+              
+              weightsList.push(clonedWeight);
+              originalWeights.push(layerWeights[j]); // Keep reference to originals
+            }
+          }
+        } 
+        // this.log(`Original weights length: ${weightsList.length}`);
+        // this.log(`Peer weights length: ${peer_layer_weights.length}`);
+  
+        // Only proceed if we have peers to aggregate with
+        this.log("Starting weight aggregation with peer");
+  
+        let weight_index = undefined;
+        try {
+          weight_index = parseInt(layer_name_split[layer_name_split.length-1]);
+        } catch {
+          if (!peer_layer_weights || !peer_layer_weights.__isTensor || !python2jsMapping[pythonLayerName]) {
+            this.log(`Skipping ${pythonLayerName} from peer ${peerRank}: is tensor? ${weightTensor?.__isTensor}, has mapping? ${Boolean(python2jsMapping[pythonLayerName])}`);
+            return;
+          }
+        }
+        if (weight_index === undefined || weight_index === NaN) {
+          return;
+        }
+        const originalTensor = weightsList[weight_index];
+        // Process each peer model
+        
+        this.log(`Processing weights from peer ${sender}`);
+  
+        // Skip if this isn't a weight tensor or if we don't have a mapping for it
+        // if (!weightTensor || !weightTensor.__isTensor || !python2jsMapping[pythonLayerName]) {
+        //   this.log(`Skipping ${pythonLayerName} from peer ${peerRank}: is tensor? ${weightTensor?.__isTensor}, has mapping? ${Boolean(python2jsMapping[pythonLayerName])}`);
+        //   return;
+        // }
+      
+        // this.log(`Processing ${pythonLayerName} -> ${jsLayerName} at index ${weightIndex} from peer ${peerRank}`);
+      
+        // Convert torch dtype to TF.js compatible dtype
+        let tensorDtype = peer_layer_weights.dtype;
+        if (tensorDtype && tensorDtype.startsWith('torch.')) {
+          tensorDtype = tensorDtype.replace('torch.', '');
+        }
+      
+        const incomingData = Array.from(peer_layer_weights.data);
+      
+        // Create the incoming tensor with the original shape from PyTorch
+        const incomingTensor = tf.tensor(
+          incomingData,
+          peer_layer_weights.shape,
+          tensorDtype
+        );
+  
+        // Use our enhanced convertTfToTfjs function to handle reshaping and conversion
+        const convertedTensor = convertTfToTfjs(incomingTensor, originalTensor, this.log.bind(this));
+      
+        // Skip if conversion failed
+        if (!convertedTensor) {
+          this.log(`Conversion failed for ${jsLayerName}, skipping`);
+          incomingTensor.dispose();
+          return;
+        }
+      
+        // this.log(`original tensor shape: ${originalTensor.shape}`);
+        // this.log(`Aggregating layers`);
+        // i/i+1 * original + 1/i+1 * incoming
+        const i = this.receivedLayers[jsLayerName];
+        const originalMultiplier = tf.scalar(i / (i + 1));
+        const incomingMultiplier = tf.scalar(1 / (i + 1));
+        const scaledOriginal = originalTensor.mul(originalMultiplier);
+        const scaledIncoming = convertedTensor.mul(incomingMultiplier);
+        const updatedTensor = scaledOriginal.add(scaledIncoming);
+  
+        // Clean up tensors and scalars to avoid memory leaks
+        originalTensor.dispose();
+        incomingTensor.dispose();
+        convertedTensor.dispose();
+        scaledOriginal.dispose();
+        scaledIncoming.dispose();
+        originalMultiplier.dispose();
+        incomingMultiplier.dispose();
+      
+        // Replace in our weights list
+        weightsList[weight_index].dispose(); // Dispose the old cloned tensor
+        weightsList[weight_index] = updatedTensor;
+        
+        // const finalWeightsList = [];
+        // Verify shapes match the original model before setting weights      
+        const aggregatedWeight = weightsList[weight_index];
+        const originalShape = originalWeights[weight_index].shape;
+        
+        if (!arraysEqual(originalShape, aggregatedWeight.shape)) {
+          this.log(`SHAPE MISMATCH for tensor ${jsLayerName}: expected ${originalShape}, got ${aggregatedWeight.shape}`);
+          
+          try {
+            // Try to reshape
+            this.log(`Attempting to reshape tensor ${jsLayerName} from ${aggregatedWeight.shape} to ${originalShape}`);
+            const reshapedWeight = aggregatedWeight.reshape(originalShape);
+            this.log(`Reshape succeeded!`);
+            weightsList[weight_index] = reshapedWeight;
+            aggregatedWeight.dispose();
+          } catch (error) {
+            this.log(`Error reshaping tensor ${jsLayerName}: ${error.message}`);
+            
+            // Additional logging and diagnostic information
+            const originalElements = originalShape.reduce((a, b) => a * b, 1);
+            const aggregatedElements = aggregatedWeight.shape.reduce((a, b) => a * b, 1);
+            this.log(`Element counts - Original: ${originalElements}, Aggregated: ${aggregatedElements}`);
+            
+            if (originalElements === aggregatedElements) {
+              this.log(`Element counts match, but reshape failed. Attempting to flatten and reshape.`);
+              try {
+                const flattened = aggregatedWeight.flatten();
+                const reshaped = flattened.reshape(originalShape);
+                this.log(`Flatten and reshape succeeded!`);
+                weightsList[weight_index] = reshaped;
+                flattened.dispose();
+                aggregatedWeight.dispose();
+              } catch (secondError) {
+                this.log(`Flatten and reshape also failed: ${secondError.message}`);
+                this.log(`Falling back to original weight.`);
+                // Clone the original weight to ensure we don't modify it
+                weightsList[weight_index] = originalWeights[weight_index].clone();
+                aggregatedWeight.dispose();
+              }
+            } else {
+              this.log(`Element counts don't match. Using original weight.`);
+              // Clone the original weight to ensure we don't modify it
+              weightsList[weight_index] = originalWeights[weight_index].clone();
+              aggregatedWeight.dispose();
+            }
+          }
+        } 
+        
+        // Set the aggregated weights back to the model layer by layer
+        try {
+          this.log("Attempting to set weights layer by layer instead of all at once");
+          
+          const layer = layers[layerIndex];
+          const layerWeights = layer.getWeights();
+          
+          if (layerWeights.length > 0) {
+            
+            // Set weights just for this specific layer
+            if (weightsList.length === layerWeights.length) {
+              try {
+                layer.setWeights(weightsList);
+              } catch (layerError) {
+                this.log(`Error setting weights for layer ${layer.name}: ${layerError.message}`);
+                
+                // If this specific layer fails, use its original weights
+                this.log(`Falling back to original weights for layer ${layer.name}`);
+                const originalLayerWeights = layerWeights.map(w => w.clone());
+                layer.setWeights(originalLayerWeights);
+                
+              }
+            }
+          }
+          
+          
+          this.log("Layer-by-layer weight setting completed");
+        } catch (layeredError) {
+          this.log(`Error in layer-by-layer approach: ${layeredError.message}`);
+          this.log("Falling back to original weights for the entire model");
+          
+          // Clean up final weights
+          weightsList.forEach(w => {
+            if (w && !w.isDisposed) {
+              w.dispose();
+            }
+          });
+          
+          // Set original weights back to the model
+          const safeOriginalWeights = originalWeights.map(w => w.clone());
+          this.model.model.setWeights(safeOriginalWeights);
+        }
+        
+        this.log("Model weights aggregated successfully");
+      } catch (error) {
+        this.log(`Error in aggregate: ${error.message}`);
+        this.log(error.stack);
+        
+        // Additional error info
+        this.log("Error context:");
+        try {
+          this.log(`Model defined: ${Boolean(this.model && this.model.model)}`);
+          this.log(`Peer weights type: ${typeof peer_layer_weights}`);
+  
+        } catch (e) {
+          this.log(`Error while logging debug info: ${e.message}`);
+        }
+      }
+  
+      
+    }
+  
+    /**
+     * Aggregate the current model weights with peer weights
+     * @param {Array} peer_weights_array - An array of objects containing peer weights with their sender IDs
+     * @returns {Promise<void>}
+     */
+    async aggregate(peer_weights_array) {
+      this.log("Aggregating model weights");
+      this.log(`Peer weight entries received: ${peer_weights_array.length}`);
+      
+      try {
+        // Get current model weights and layers
+        const layers = this.model.model.layers;
+        this.log(`Model has ${layers.length} layers`);
+        
+        // Make a clone of all current weights to avoid modifying the original tensors directly
+        const originalWeights = [];
+        const layerMap = {};
+        let weightsList = [];
+        
+        // First, get all the current weights in order and clone them
+        for (let i = 0; i < layers.length; i++) {
+          const layer = layers[i];
+          const layerWeights = layer.getWeights();
+          
+          for (let j = 0; j < layerWeights.length; j++) {
+            const jsLayerName = `${layer.name}_weight_${j}`;
+            
+            // Clone the weight tensor to avoid modifying the original
+            const clonedWeight = layerWeights[j].clone();
+            
+            layerMap[jsLayerName] = weightsList.length;
+            weightsList.push(clonedWeight);
+            originalWeights.push(layerWeights[j]); // Keep reference to originals
+          }
+        }
+        
+        // Create a reverse mapping from Python layer names to JS layer names
+        const python2jsMapping = {};
+        for (const [jsName, pythonName] of Object.entries(js2python)) {
+          python2jsMapping[pythonName] = jsName;
+        }      
+        
+        // Count how many peer models we're aggregating with
+        const peerModelCount = peer_weights_array.length;
+        
+        this.log(`Found ${peerModelCount} peer models for aggregation`);
+        
+        // Only proceed if we have peers to aggregate with
+        if (peerModelCount > 0) {
+          this.log("Starting weight aggregation with peers");
+          
+          // Process each peer model
+          for (const peerData of peer_weights_array) {
+            const peerRank = peerData.sender;
+            const peerWeights = peerData.model;
+            
+            this.log(`Processing weights from peer ${peerRank}`);
+            
+            // Process each weight tensor in this peer's model
+            for (const [pythonLayerName, weightTensor] of Object.entries(peerWeights)) {
+              // Skip if this isn't a weight tensor or if we don't have a mapping for it
+              if (!weightTensor || !weightTensor.__isTensor || !python2jsMapping[pythonLayerName]) {
+                this.log(`Skipping ${pythonLayerName} from peer ${peerRank}: is tensor? ${weightTensor?.__isTensor}, has mapping? ${Boolean(python2jsMapping[pythonLayerName])}`);
+                continue;
+              }
+              
+              const jsLayerName = python2jsMapping[pythonLayerName];
+              const weightIndex = layerMap[jsLayerName];
+              
+              // Skip if we don't have this layer in our model
+              if (weightIndex === undefined) {
+                this.log(`Warning: No matching weight index for ${jsLayerName} (python: ${pythonLayerName}) from peer ${peerRank}`);
+                continue;
+              }
+              
+              // this.log(`Processing ${pythonLayerName} -> ${jsLayerName} at index ${weightIndex} from peer ${peerRank}`);
+              
+              // Get the current weight tensor for this layer (the cloned one)
+              const currentWeight = weightsList[weightIndex];
+              
+              // Convert torch dtype to TF.js compatible dtype
+              let tensorDtype = weightTensor.dtype;
+              if (tensorDtype && tensorDtype.startsWith('torch.')) {
+                tensorDtype = tensorDtype.replace('torch.', '');
+              }
+              
+              const incomingData = Array.from(weightTensor.data);
+              
+              // Create the incoming tensor with the original shape from PyTorch
+              const incomingTensor = tf.tensor(
+                incomingData,
+                weightTensor.shape,
+                tensorDtype
+              );
+              
+              // Get the expected shape from the current model weights
+              const expectedShape = currentWeight.shape;
+              
+              // Use our enhanced convertTfToTfjs function to handle reshaping and conversion
+              const convertedTensor = convertTfToTfjs(incomingTensor, currentWeight, this.log.bind(this));
+              
+              // Skip if conversion failed
+              if (!convertedTensor) {
+                this.log(`Conversion failed for ${jsLayerName}, skipping`);
+                incomingTensor.dispose();
+                continue;
+              }
+              
+              // Add to current weights and create a new tensor to store the result
+              const updatedTensor = currentWeight.add(convertedTensor);
+              
+              // Replace in our weights list
+              weightsList[weightIndex].dispose(); // Dispose the old cloned tensor
+              weightsList[weightIndex] = updatedTensor;
+              
+              // Clean up tensors to avoid memory leaks
+              incomingTensor.dispose();
+              convertedTensor.dispose();
+            }
+          }
+          
+          // Average the weights (divide by total number of models)
+          const totalModels = 1 + peerModelCount; // Current model + peer models
+          this.log(`Averaging weights across ${totalModels} models (1 local + ${peerModelCount} peers)`);
+          const scalar = tf.scalar(1 / totalModels);
+          
+          // Scale each weight tensor
+          for (let i = 0; i < weightsList.length; i++) {
+            const tensor = weightsList[i];
+            
+            // Create a new scaled tensor
+            const scaledTensor = tensor.mul(scalar);
+            
+            // Dispose the old tensor and replace with the scaled one
+            tensor.dispose();
+            weightsList[i] = scaledTensor;
+          }
+          
+          scalar.dispose(); // Clean up the scalar
+          
+          // Verify shapes match the original model before setting weights
+          const finalWeightsList = [];
+          
+          for (let i = 0; i < weightsList.length; i++) {
+            const aggregatedWeight = weightsList[i];
+            const originalShape = originalWeights[i].shape;
+            
+            if (!arraysEqual(originalShape, aggregatedWeight.shape)) {
+              this.log(`SHAPE MISMATCH for tensor ${i}: expected ${originalShape}, got ${aggregatedWeight.shape}`);
+              
+              try {
+                // Try to reshape
+                this.log(`Attempting to reshape tensor ${i} from ${aggregatedWeight.shape} to ${originalShape}`);
+                const reshapedWeight = aggregatedWeight.reshape(originalShape);
+                this.log(`Reshape succeeded!`);
+                finalWeightsList.push(reshapedWeight);
+                aggregatedWeight.dispose();
+              } catch (error) {
+                this.log(`Error reshaping tensor ${i}: ${error.message}`);
+                
+                // Additional logging and diagnostic information
+                const originalElements = originalShape.reduce((a, b) => a * b, 1);
+                const aggregatedElements = aggregatedWeight.shape.reduce((a, b) => a * b, 1);
+                this.log(`Element counts - Original: ${originalElements}, Aggregated: ${aggregatedElements}`);
+                
+                if (originalElements === aggregatedElements) {
+                  this.log(`Element counts match, but reshape failed. Attempting to flatten and reshape.`);
+                  try {
+                    const flattened = aggregatedWeight.flatten();
+                    const reshaped = flattened.reshape(originalShape);
+                    this.log(`Flatten and reshape succeeded!`);
+                    finalWeightsList.push(reshaped);
+                    flattened.dispose();
+                    aggregatedWeight.dispose();
+                  } catch (secondError) {
+                    this.log(`Flatten and reshape also failed: ${secondError.message}`);
+                    this.log(`Falling back to original weight.`);
+                    // Clone the original weight to ensure we don't modify it
+                    finalWeightsList.push(originalWeights[i].clone());
+                    aggregatedWeight.dispose();
+                  }
+                } else {
+                  this.log(`Element counts don't match. Using original weight.`);
+                  // Clone the original weight to ensure we don't modify it
+                  finalWeightsList.push(originalWeights[i].clone());
+                  aggregatedWeight.dispose();
+                }
+              }
+            } else {
+              finalWeightsList.push(aggregatedWeight);
+            }
+          }
+          
+          // Set the aggregated weights back to the model layer by layer
+          try {
+            this.log("Attempting to set weights layer by layer instead of all at once");
+            let weightIndex = 0;
+            
+            for (let i = 0; i < layers.length; i++) {
+              const layer = layers[i];
+              const layerWeights = layer.getWeights();
+              
+              if (layerWeights.length > 0) {
+                // Extract just the weights needed for this layer
+                const weightsForLayer = [];
+                for (let j = 0; j < layerWeights.length; j++) {
+                  if (weightIndex < finalWeightsList.length) {
+                    weightsForLayer.push(finalWeightsList[weightIndex]);
+                    weightIndex++;
+                  }
+                }
+                
+                // Set weights just for this specific layer
+                if (weightsForLayer.length === layerWeights.length) {
+                  try {
+                    layer.setWeights(weightsForLayer);
+                  } catch (layerError) {
+                    this.log(`Error setting weights for layer ${layer.name}: ${layerError.message}`);
+                    
+                    // If this specific layer fails, use its original weights
+                    this.log(`Falling back to original weights for layer ${layer.name}`);
+                    const originalLayerWeights = layerWeights.map(w => w.clone());
+                    layer.setWeights(originalLayerWeights);
+                    
+                    // Skip ahead in the index
+                    weightIndex -= weightsForLayer.length;
+                    weightIndex += layerWeights.length;
+                  }
+                }
+              }
+            }
+            
+            this.log("Layer-by-layer weight setting completed");
+          } catch (layeredError) {
+            this.log(`Error in layer-by-layer approach: ${layeredError.message}`);
+            this.log("Falling back to original weights for the entire model");
+            
+            // Clean up final weights
+            finalWeightsList.forEach(w => {
+              if (w && !w.isDisposed) {
+                w.dispose();
+              }
+            });
+            
+            // Set original weights back to the model
+            const safeOriginalWeights = originalWeights.map(w => w.clone());
+            this.model.model.setWeights(safeOriginalWeights);
+          }
+        } else {
+          this.log("No peer tensors found for aggregation, keeping original weights");
+          
+          // Clean up our cloned weights
+          weightsList.forEach(w => w.dispose());
+        }
+        
+        this.log("Model weights aggregated successfully");
+      } catch (error) {
+        this.log(`Error in aggregate: ${error.message}`);
+        this.log(error.stack);
+        
+        // Additional error info
+        this.log("Error context:");
+        try {
+          this.log(`Model defined: ${Boolean(this.model && this.model.model)}`);
+          this.log(`Peer weights type: ${typeof peer_weights}`);
+          if (peer_weights) {
+            this.log(`Peer weights keys: ${Object.keys(peer_weights).join(', ')}`);
+          }
+        } catch (e) {
+          this.log(`Error while logging debug info: ${e.message}`);
+        }
+      }
+    }  
   
   /**
    * Helper method to scale a weight tensor by a coefficient
@@ -1376,6 +1909,7 @@ class WebRTCCommUtils {
 
     // randomly choose num_collaborators from connectedPeers
     this.collaborator_list = [...this.connectedPeers.keys()].sort(() => Math.random() - 0.5).slice(0, this.num_collaborators);
+    this.log(`Collaborators for round ${i} are ${this.collaborator_list.join(', ')}`)
     
     for (let i = 0; i < this.config.epochs; i++) {
       this.currentRound = i;
@@ -1452,12 +1986,13 @@ class WebRTCCommUtils {
         
         this.metricsLogger.logMetric('neighbors', i, JSON.stringify(this.collaborator_list));
         
-        const peer_weights = await this.receive();
-        this.log(`Round ${i}: Received weights from peers, performing aggregation...`);
+        // const peer_weights = await this.receive();
+        await this.receive();
+        this.log(`Round ${i}: Received and aggregated weights from peers`);
         
         // Perform federated averaging with peer_weights
-        await this.aggregate(peer_weights);
-        this.log(`Round ${i}: Completed aggregation of model weights`);
+        // await this.aggregate(peer_weights);
+        // this.log(`Round ${i}: Completed aggregation of model weights`);
 
         const testResult = await this.model.local_test(this.testDataset);
         
