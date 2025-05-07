@@ -284,6 +284,9 @@ class WebRTCCommUtils {
         this.layerChunkTracker = new Map(); // Map of peer_rank -> { layerName: { expected, received } }
         this.receivedWeightsFinished = new Map(); // Map of peer_rank -> boolean
         this.receivedLayers = new Map(); 
+
+        this.sendQueues = new Map();  // peerRank -> [msg1, msg2, ...]
+        this.isSending = new Map();   // peerRank -> true/false 
     
         // Communication cost counters
         this.comm_cost_sent = 0;
@@ -875,26 +878,69 @@ class WebRTCCommUtils {
   /**
    * Send a dictionary or object to a specific peer via data channel.
    */
+  // sendToPeer(peerRank, obj) {
+  //   // this.log(`Sending message to peer ${peerRank} (typeof ${typeof peerRank}): ${obj.type}`);
+  //   const channel = this.dataChannels.get(peerRank);
+  //   if (!channel || channel.readyState !== 'open') {
+  //     this.log(`Channel to peer ${peerRank} not open or not found; dataChannels=${JSON.stringify([...this.dataChannels.entries()])} (typeof ${typeof this.dataChannels.keys()})`, 'error');
+  //     this.log(`Channel state: ${channel ? channel.readyState : 'N/A'}`);
+  //     return;
+  //   }
+  //   const msgString = JSON.stringify(obj);
+  //   // channel.send(msgString);
+
+  //   const MAX_BUFFER = 65535; // Adjust based on testing
+  //   if (channel.bufferedAmount > MAX_BUFFER) {
+  //       setTimeout(() => this.sendToPeer(peerRank, obj), 100);
+  //   } else {
+  //       channel.send(msgString);
+  //   }
+
+  //   // Update "communication cost sent" if relevant
+  //   this.comm_cost_sent += msgString.length;
+  // }
   sendToPeer(peerRank, obj) {
-    // this.log(`Sending message to peer ${peerRank} (typeof ${typeof peerRank}): ${obj.type}`);
+    if (!this.sendQueues.has(peerRank)) this.sendQueues.set(peerRank, []);
+    if (!this.isSending.has(peerRank)) this.isSending.set(peerRank, false);
+  
+    const queue = this.sendQueues.get(peerRank);
+    queue.push(obj);
+  
+    if (!this.isSending.get(peerRank)) {
+      this.drainSendQueue(peerRank);
+    }
+  }
+
+  drainSendQueue(peerRank) {
     const channel = this.dataChannels.get(peerRank);
-    if (!channel || channel.readyState !== 'open') {
-      this.log(`Channel to peer ${peerRank} not open or not found; dataChannels=${JSON.stringify([...this.dataChannels.entries()])} (typeof ${typeof this.dataChannels.keys()})`, 'error');
-      this.log(`Channel state: ${channel ? channel.readyState : 'N/A'}`);
+    if (!channel || channel.readyState !== 'open') return;
+  
+    const queue = this.sendQueues.get(peerRank);
+    if (!queue || queue.length === 0) {
+      this.isSending.set(peerRank, false);
       return;
     }
-    const msgString = JSON.stringify(obj);
-    // channel.send(msgString);
-
-    const MAX_BUFFER = 65535; // Adjust based on testing
-    if (channel.bufferedAmount > MAX_BUFFER) {
-        setTimeout(() => this.sendToPeer(peerRank, obj), 100);
-    } else {
+  
+    this.isSending.set(peerRank, true);
+  
+    const MAX_BUFFER = 65535;
+    const trySend = () => {
+      while (queue.length > 0 && channel.bufferedAmount < MAX_BUFFER) {
+        const obj = queue.shift();
+        const msgString = JSON.stringify(obj);
         channel.send(msgString);
-    }
-
-    // Update "communication cost sent" if relevant
-    this.comm_cost_sent += msgString.length;
+        const sizeInBytes = new TextEncoder().encode(msgString).length;
+        this.comm_cost_sent += sizeInBytes;
+      }
+  
+      if (queue.length > 0) {
+        setTimeout(trySend, 100);  // try again after short delay
+      } else {
+        this.isSending.set(peerRank, false);  // done sending
+      }
+    };
+  
+    trySend();
   }
 
   /**

@@ -371,6 +371,9 @@ export class WebRTCCommUtils {
         // Tracking chunks and completion per peer
         this.layerChunkTracker = new Map(); // Map of peer_rank -> { layerName: { expected, received } }
         this.receivedWeightsFinished = new Map(); // Map of peer_rank -> boolean
+
+        this.sendQueues = new Map();  // peerRank -> [msg1, msg2, ...]
+        this.isSending = new Map();   // peerRank -> true/false 
     
         // Communication cost counters
         this.comm_cost_sent = 0;
@@ -640,13 +643,6 @@ export class WebRTCCommUtils {
         const config = {
             iceServers: [
                 {urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"]},
-                // // Add TURN server configuration - user needs to replace with actual credentials
-                // {
-                //     urls: ["turn:global.turn.twilio.com:3478?transport=udp",
-                //            "turn:global.turn.twilio.com:3478?transport=tcp"],
-                //     username: "REPLACE_WITH_YOUR_TWILIO_USERNAME",
-                //     credential: "REPLACE_WITH_YOUR_TWILIO_CREDENTIAL"
-                // }
             ],
             iceCandidatePoolSize: 10
         };
@@ -888,14 +884,6 @@ export class WebRTCCommUtils {
   
           case 'weights_response': {
             try {
-                // // Reset peer weights if needed
-                // if (this.clear_peer_weights) {
-                //   this.log(`Initializing peer weights for new round`);
-                //   this.peer_weights = {};
-                //   this.clear_peer_weights = false;
-              // Get peer rank
-              // const peerRank = parseInt(peerRank);
-              
               // Initialize tracking structures for this peer if needed
               if (!this.layerChunkTracker.has(peerRank)) {
                 this.layerChunkTracker.set(peerRank, {});
@@ -1053,30 +1041,72 @@ export class WebRTCCommUtils {
   /**
    * Send a dictionary or object to a specific peer via data channel.
    */
+  // sendToPeer(peerRank, obj) {
+  //   // this.log(`Sending message to peer ${peerRank} (typeof ${typeof peerRank}): ${obj.type}`);
+  //   const channel = this.dataChannels.get(peerRank);
+  //   if (!channel || channel.readyState !== 'open') {
+  //     this.log(`Channel to peer ${peerRank} not open or not found; dataChannels=${JSON.stringify([...this.dataChannels.entries()])} (typeof ${typeof this.dataChannels.keys()})`, 'error');
+  //     this.log(`Channel state: ${channel ? channel.readyState : 'N/A'}`);
+  //     return;
+  //   }
+  //   const msgString = JSON.stringify(obj);
+  //   // channel.send(msgString);
+
+  //   const MAX_BUFFER = 65535; // Adjust based on testing
+  //   if (channel.bufferedAmount > MAX_BUFFER) {
+  //       setTimeout(() => this.sendToPeer(peerRank, obj), 100);
+  //   } else {
+  //       channel.send(msgString);
+  //       // Update "communication cost sent" if relevant
+  //       const sizeInBytes = new TextEncoder().encode(msgString).length;  // Calculate size in bytes
+  //       this.comm_cost_sent += sizeInBytes;
+  //   }
+  // }
+
   sendToPeer(peerRank, obj) {
-    // this.log(`Sending message to peer ${peerRank} (typeof ${typeof peerRank}): ${obj.type}`);
-    const channel = this.dataChannels.get(peerRank);
-    if (!channel || channel.readyState !== 'open') {
-      this.log(`Channel to peer ${peerRank} not open or not found; dataChannels=${JSON.stringify([...this.dataChannels.entries()])} (typeof ${typeof this.dataChannels.keys()})`, 'error');
-      this.log(`Channel state: ${channel ? channel.readyState : 'N/A'}`);
-      return;
+    if (!this.sendQueues.has(peerRank)) this.sendQueues.set(peerRank, []);
+    if (!this.isSending.has(peerRank)) this.isSending.set(peerRank, false);
+  
+    const queue = this.sendQueues.get(peerRank);
+    queue.push(obj);
+  
+    if (!this.isSending.get(peerRank)) {
+      this.drainSendQueue(peerRank);
     }
-    const msgString = JSON.stringify(obj);
-    // channel.send(msgString);
-
-    const MAX_BUFFER = 65535; // Adjust based on testing
-    if (channel.bufferedAmount > MAX_BUFFER) {
-        setTimeout(() => this.sendToPeer(peerRank, obj), 100);
-    } else {
-        channel.send(msgString);
-    }
-
-    // Update "communication cost sent" if relevant
-    
-    const sizeInBytes = new TextEncoder().encode(msgString).length;  // Calculate size in bytes
-    this.comm_cost_sent += sizeInBytes;
   }
 
+  drainSendQueue(peerRank) {
+    const channel = this.dataChannels.get(peerRank);
+    if (!channel || channel.readyState !== 'open') return;
+  
+    const queue = this.sendQueues.get(peerRank);
+    if (!queue || queue.length === 0) {
+      this.isSending.set(peerRank, false);
+      return;
+    }
+  
+    this.isSending.set(peerRank, true);
+  
+    const MAX_BUFFER = 65535;
+    const trySend = () => {
+      while (queue.length > 0 && channel.bufferedAmount < MAX_BUFFER) {
+        const obj = queue.shift();
+        const msgString = JSON.stringify(obj);
+        channel.send(msgString);
+        const sizeInBytes = new TextEncoder().encode(msgString).length;
+        this.comm_cost_sent += sizeInBytes;
+      }
+  
+      if (queue.length > 0) {
+        setTimeout(trySend, 100);  // try again after short delay
+      } else {
+        this.isSending.set(peerRank, false);  // done sending
+      }
+    };
+  
+    trySend();
+  }
+  
   /**
    * Single helper function to check if we've received all chunks from all layers
    * @returns {boolean} True if we can move on, false if we need to wait
