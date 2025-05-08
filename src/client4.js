@@ -447,7 +447,9 @@ class WebRTCCommUtils {
         }
 
         this.neighbors = newNeighbors;
-        this.expectedConnections = Object.keys(newNeighbors).length;
+        const key = `neighbor${data.rank}`;
+        this.expectedConnections = this.neighbors[key].length;
+        this.log(`Expected connections: ${this.expectedConnections}`);
 
         // If we have zero neighbors, we can signal "node_ready" right away
         if (this.expectedConnections === 0) {
@@ -456,21 +458,38 @@ class WebRTCCommUtils {
         }
 
         // Initiate connections to higher-ranked neighbors
-        for (const neighborList of Object.values(this.neighbors)) {
-          // TODO: uncomment this condition later
-            // if (neighborRank > this.rank && 
-            //     !this.connections.has(neighborRank) && 
-            //     !this.pendingConnections.has(neighborRank)) {
-            //     this.log(`Initiating connection to ${neighborRank}`);
-            //     this.pendingConnections.add(neighborRank);
-            //     this.initiateConnection(neighborRank);
+        for (const neighbor of this.neighbors[key]) {
+          // this.log(`Initiating connection to ${neighborList}`);
+            // TODO: uncomment this condition later
+              // if (neighborRank > this.rank &&
+              //     !this.connections.has(neighborRank) &&
+              //     !this.pendingConnections.has(neighborRank)) {
+              //     this.log(`Initiating connection to ${neighborRank}`);
+              //     this.pendingConnections.add(neighborRank);
+              //     this.initiateConnection(neighborRank);
             // }
-            for (const neighbor of neighborList) {
-              this.log(`Initiating connection to ${neighbor}`);
-              this.pendingConnections.add(neighbor);
-              this.initiateConnection(neighbor);
-            }
+          if (this.rank < neighbor) {
+            this.log(`Initiating connection to ${neighbor}`);
+            this.pendingConnections.add(neighbor);
+            this.initiateConnection(neighbor);
+          }
+          
         }
+        // for (const neighborList of Object.values(this.neighbors)) {
+        //   // TODO: uncomment this condition later
+        //     // if (neighborRank > this.rank && 
+        //     //     !this.connections.has(neighborRank) && 
+        //     //     !this.pendingConnections.has(neighborRank)) {
+        //     //     this.log(`Initiating connection to ${neighborRank}`);
+        //     //     this.pendingConnections.add(neighborRank);
+        //     //     this.initiateConnection(neighborRank);
+        //     // }
+        //     for (const neighbor of neighborList) {
+        //       this.log(`Initiating connection to ${neighbor}`);
+        //       this.pendingConnections.add(neighbor);
+        //       this.initiateConnection(neighbor);
+        //     }
+        // }
     }
 
   // ------------------------ WebRTC Peer Connection ------------------------
@@ -1958,7 +1977,6 @@ class WebRTCCommUtils {
 
     // randomly choose num_collaborators from connectedPeers
     this.collaborator_list = [...this.connectedPeers.keys()].sort(() => Math.random() - 0.5).slice(0, this.num_collaborators);
-    this.log(`Collaborators for round ${i} are ${this.collaborator_list.join(', ')}`)
     
     for (let i = 0; i < this.config.epochs; i++) {
       this.currentRound = i;
