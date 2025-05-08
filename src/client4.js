@@ -242,6 +242,7 @@ class WebRTCCommUtils {
         this.num_collaborators = this.config.num_collaborators || 1;
         this.joinActiveSession = this.config.joinActiveSession || false; // Flag to indicate joining an active session
         this.expectedConnections = 0;
+        this.logFolderName = this.config.log_folder_name || this.startTime;
 
         // Training data
         this.trainDataset = trainDataset;
@@ -371,7 +372,7 @@ class WebRTCCommUtils {
                 this.log(`Joined session. ID=${this.sessionId}, rank=${this.rank}`);
                 
                 // Initialize metrics logger now that we have the rank
-                this.metricsLogger = new MetricsLogger(path.join('logs', `${this.startTime}`, `node_${this.rank}`));
+                this.metricsLogger = new MetricsLogger(path.join('logs', `${this.logFolderName}`, `node_${this.rank}`));
                 
                 // Initialize metrics files
                 ['test_acc', 'test_loss', 'test_time', 
@@ -2344,7 +2345,7 @@ class MetricsLogger {
 
 // ** Set your session parameters here **
 const SESSION_ID = 1111; // Change this to a fixed or generated session ID
-const MAX_CLIENTS = 3;
+const MAX_CLIENTS = 10;
 const IS_CREATOR = false; // Set to true if this should create a session
 
 // ** Start WebRTC Comm Utils **
@@ -2357,6 +2358,7 @@ let config = {
     session_id: SESSION_ID,
     epochs: 200,
     num_collaborators: 1,
+    log_folder_name: 'iid_baseline',
 }
 
 // const filePath = path.resolve(__dirname, './datasets/imgs/cifar10/cifar10_test_small.json');
