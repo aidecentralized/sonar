@@ -87,9 +87,9 @@ CIFAR10_DSET = "cifar10"
 CIAR10_DPATH = "./datasets/imgs/cifar10/"
 
 NUM_COLLABORATORS = 1
-DUMP_DIR = ""
+DUMP_DIR = "/mas/camera/Experiments/SONAR/jyuan/_tmp/"
 
-num_users = 3
+num_users = 2
 dropout_dict = {}
 dropout_dicts = {"node_0": {}}
 for i in range(1, num_users + 1):
@@ -99,12 +99,13 @@ for i in range(1, num_users + 1):
 # for swift, synchronous should preferable be False
 gpu_ids = [2, 3, 7]
 rtc_config: ConfigType = {
-    "exp_id": "test_train_10_clients3",
+    "exp_id": "test_mnist4",
     "num_users": num_users,
     "session_id": "1111",
     "num_collaborators": NUM_COLLABORATORS,
     "comm": {"type": "RTC"},
-    "dset": CIFAR10_DSET,
+    # "dset": CIFAR10_DSET,
+    "dset": "mnist",
     "dump_dir": DUMP_DIR,
     "dpath": CIAR10_DPATH,
     "seed": 2,

@@ -379,4 +379,15 @@ if __name__ == "__main__":
 
     # partition_mnist_unique_labels(output_dir="../public/datasets/imgs/mnist_non_iid_unique_labels/", num_clients=10, test_size_per_client=200)
 
-    partition_mnist_dirichlet_fixed(output_dir="../public/datasets/imgs/mnist_non_iid_dirichlet/", num_clients=10, alpha=0.5, test_size_per_client=200)
+    # partition_mnist_dirichlet_fixed(output_dir="../public/datasets/imgs/mnist_non_iid_dirichlet/", num_clients=10, alpha=0.5, test_size_per_client=200)
+
+        # Example usage for IID partitioning
+    partition_mnist_to_json("../public/datasets/imgs/mnist/mnist_iid_split10/", num_clients=10, iid=True, generate_both_tests=False)
+    
+    # Example usage for non-IID label-skewed partitioning
+    partition_mnist_to_json("../public/datasets/imgs/mnist/mnist_label_skew_3/", 
+                              num_clients=10, iid=False, non_iid_strategy="label_skew", classes_per_client=3, generate_both_tests=True)
+    
+    # Example usage for non-IID Dirichlet partitioning
+    partition_mnist_to_json("../public/datasets/imgs/mnist/mnist_dirichlet_0.5/", 
+                              num_clients=10, iid=False, non_iid_strategy="dirichlet", alpha=0.5, generate_both_tests=True)
