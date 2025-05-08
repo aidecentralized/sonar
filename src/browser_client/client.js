@@ -258,7 +258,7 @@ class MetricsLogger {
   }
 
   // Export all metrics as CSV files in a zip archive
-  exportLogs() {
+  exportLogs(rank=0) {
     try {
       // If no metrics have been logged, show a message
       if (this.metrics.size === 0) {
@@ -279,7 +279,7 @@ class MetricsLogger {
         const url = URL.createObjectURL(content);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `metrics_${Date.now()}.zip`;
+        a.download = `client_${rank}_metrics_${Date.now()}.zip`;
         document.body.appendChild(a);
         a.click();
         
@@ -378,6 +378,7 @@ export class WebRTCCommUtils {
         // Communication cost counters
         this.comm_cost_sent = 0;
         this.comm_cost_received = 0;
+        this.trainingStartTime = null;
     
         // Initialize metrics logger
         this.metricsLogger = new MetricsLogger();
@@ -443,7 +444,7 @@ export class WebRTCCommUtils {
         
         const a = document.createElement('a');
         a.href = url;
-        a.download = `client_logs_${Date.now()}.txt`;
+        a.download = `client_${this.rank}_logs_${Date.now()}.txt`;
         document.body.appendChild(a);
         a.click();
         
@@ -456,7 +457,7 @@ export class WebRTCCommUtils {
         // Export metrics logs
         if (this.metricsLogger) {
           this.log("LOGGING METRICS")
-          this.metricsLogger.exportLogs();
+          this.metricsLogger.exportLogs(this.rank);
         }
       } catch (error) {
         console.error('Failed to export logs:', error);
@@ -1939,7 +1940,7 @@ export class WebRTCCommUtils {
       const logExportFrequency = 1; // Export logs every N epochs
       
       // Track time elapsed
-      const trainingStartTime = performance.now();
+      this.trainingStartTime = performance.now();
 
       for (let i = 0; i < this.config.epochs; i++) {
         // Use both training and testing datasets if available
@@ -1985,6 +1986,7 @@ export class WebRTCCommUtils {
         
         // Update communication metrics after receiving weights
         this.updateCommMetrics();
+        this.updateSystemMetrics();
         
         // Perform federated averaging with peer_weights
         // await this.aggregate(peer_weights);
@@ -2006,8 +2008,7 @@ export class WebRTCCommUtils {
         
         // Calculate and log time elapsed since training started
         const currentTime = performance.now();
-        const timeElapsed = (currentTime - trainingStartTime) / 1000; // in seconds
-        this.logMetric('total_time', timeElapsed);
+        const timeElapsed = (currentTime - this.trainingStartTime) / 1000; // in seconds
         
         // Export logs at regular intervals during training
         if ((i + 1) % logExportFrequency === 0) {
@@ -2032,14 +2033,6 @@ export class WebRTCCommUtils {
     this.logMetric('train_acc', trainAcc);
     this.logMetric('train_loss', trainLoss);
     this.logMetric('train_time', trainTime);
-    
-    // Also update communication metrics
-    this.updateCommMetrics();
-    
-    // Export logs periodically (e.g., every 5 rounds)
-    if (this.currentRound % 5 === 0) {
-      this.exportLogs();
-    }
   }
   
   // Update testing metrics
@@ -2050,7 +2043,9 @@ export class WebRTCCommUtils {
   }
   
   // Update system metrics
-  updateSystemMetrics(timeElapsed, peakDram = 0, peakGpu = 0) {
+  updateSystemMetrics(peakDram = 0, peakGpu = 0) {
+    const currentTime = performance.now();
+    const timeElapsed = (currentTime - this.trainingStartTime) / 1000; // in seconds
     this.logMetric('time_elapsed', timeElapsed);
     this.logMetric('peak_dram', peakDram);
     this.logMetric('peak_gpu', peakGpu);

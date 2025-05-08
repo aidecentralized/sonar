@@ -595,6 +595,9 @@ class WebRTCCommUtils {
 
                 // Try to parse the buffer as JSON
                 const data = JSON.parse(messageBuffer);
+                const dataStr = JSON.stringify(data);
+                const sizeInBytes = new TextEncoder().encode(dataStr).length; 
+                this.comm_cost_received += sizeInBytes;
 
                 // If successful, handle the complete message
                 // console.log(`Received message from ${peerRank}: ${data.type}`);
@@ -1962,8 +1965,10 @@ class WebRTCCommUtils {
       this.log(`Starting round ${i} of training`);
       
       // Initialize byte counters for this round
-      this.bytesReceived = 0;
-      this.bytesSent = 0;
+      // this.bytesReceived = 0;
+      // this.bytesSent = 0;
+      this.comm_cost_received = 0;
+      this.comm_cost_sent = 0;
       
       // Record start time for this training round
       const roundStartTime = Date.now();
@@ -2016,8 +2021,8 @@ class WebRTCCommUtils {
         this.metricsLogger.logMetric('peak_gpu', i, 0);
         
         // Log the total bytes sent and received for this round
-        this.metricsLogger.logMetric('bytes_sent', i, this.bytesSent);
-        this.metricsLogger.logMetric('bytes_received', i, this.bytesReceived);
+        this.metricsLogger.logMetric('bytes_sent', i, this.comm_cost_sent);
+        this.metricsLogger.logMetric('bytes_received', i, this.comm_cost_received);
         
         this.log(`finished round ${i} training`);
 
@@ -2321,11 +2326,11 @@ class MetricsLogger {
 
 // ** Set your session parameters here **
 const SESSION_ID = 1111; // Change this to a fixed or generated session ID
-const MAX_CLIENTS = 10;
+const MAX_CLIENTS = 3;
 const IS_CREATOR = false; // Set to true if this should create a session
 
 // ** Start WebRTC Comm Utils **
-const signalingServer = 'ws://localhost:8765'; // Your WebSocket server
+const signalingServer = 'ws://localhost:8888'; // Your WebSocket server
 
 // TODO: fill in config
 let config = {
