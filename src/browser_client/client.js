@@ -626,7 +626,7 @@ export class WebRTCCommUtils {
               //     this.pendingConnections.add(neighborRank);
               //     this.initiateConnection(neighborRank);
             // }
-          if (this.rank < neighbor) {
+          if (this.rank > neighbor) {
             this.log(`Initiating connection to ${neighbor}`);
             this.pendingConnections.add(neighbor);
             this.initiateConnection(neighbor);
@@ -1089,6 +1089,7 @@ export class WebRTCCommUtils {
     this.isSending.set(peerRank, true);
   
     const MAX_BUFFER = 65535;
+    this.log(`Trying to send message to ${peerRank}`);
     const trySend = () => {
       while (queue.length > 0 && channel.bufferedAmount < MAX_BUFFER) {
         const obj = queue.shift();
@@ -1096,6 +1097,7 @@ export class WebRTCCommUtils {
         channel.send(msgString);
         const sizeInBytes = new TextEncoder().encode(msgString).length;
         this.comm_cost_sent += sizeInBytes;
+        this.log(`Sent message to ${peerRank}: ${sizeInBytes} bytes`);
       }
   
       if (queue.length > 0) {
@@ -1236,7 +1238,7 @@ export class WebRTCCommUtils {
    * @returns {Promise<void>}
    */
   aggregate_layer(layer_name, peer_layer_weights, sender) {
-    this.log("Aggregating model weights");    
+    this.log(`Aggregating model weights ${layer_name} from peer ${sender}`);    
     // this.log(`Peer weights: ${peer_layer_weights}`);
     try {
       // Create a reverse mapping from Python layer names to JS layer names
@@ -1278,7 +1280,7 @@ export class WebRTCCommUtils {
       for (let i = 0; i < layers.length; i++) {
         const layer = layers[i];
         if (layer.name === jsName) { // name sure that resnet is using js layer names?
-          this.log(`FOUND LAYER: ${layer.name}`);
+          // this.log(`FOUND LAYER: ${layer.name}`);
           layerIndex = i;
           const layerWeights = layer.getWeights();
           for (let j = 0; j < layerWeights.length; j++) {
@@ -1295,7 +1297,7 @@ export class WebRTCCommUtils {
       // this.log(`Peer weights length: ${peer_layer_weights.length}`);
 
       // Only proceed if we have peers to aggregate with
-      this.log("Starting weight aggregation with peer");
+      // this.log("Starting weight aggregation with peer");
 
       let weight_index = undefined;
       try {
@@ -1380,7 +1382,7 @@ export class WebRTCCommUtils {
         
         try {
           // Try to reshape
-          this.log(`Attempting to reshape tensor ${jsLayerName} from ${aggregatedWeight.shape} to ${originalShape}`);
+          // this.log(`Attempting to reshape tensor ${jsLayerName} from ${aggregatedWeight.shape} to ${originalShape}`);
           const reshapedWeight = aggregatedWeight.reshape(originalShape);
           this.log(`Reshape succeeded!`);
           weightsList[weight_index] = reshapedWeight;

@@ -761,6 +761,7 @@ class RTCCommUtils(CommunicationInterface):
     def handle_data_channel_message(self, peer_rank: int, message: str):
         try:
             if isinstance(message, str):
+                self.comm_cost_received += len(message.encode('utf-8'))
                 data = json.loads(message)
             else:
                 data = message  # Assume it's already a dictionary
@@ -868,7 +869,6 @@ class RTCCommUtils(CommunicationInterface):
 
                 size_received = chunk.numel() * chunk.element_size()
                 # self.comm_cost_received += size_received
-                self.comm_cost_received += len(data.encode('utf-8'))
 
                 # Check if all chunks are received for this layer for this peer
                 if self.received_chunks[peer_rank][layer_name] == self.expected_chunks[peer_rank][layer_name]:
