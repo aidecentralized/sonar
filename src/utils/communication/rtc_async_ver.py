@@ -117,6 +117,8 @@ class RTCCommUtils(CommunicationInterface):
         self.received_chunks: Dict[int, Dict[str, int]] = {}  # {peer_rank: {layer_name: current_num_chunks}}
         self.all_chunks_received: Dict[int, bool] = {}  # Track completion per peer
 
+        print(f"RTCCommunication Node {self.rank} initialized with config: {self.config}")
+
     def setup_logger(self) -> logging.Logger:
         # Create logs directory if it doesn't exist
         os.makedirs("logs", exist_ok=True)
@@ -761,10 +763,12 @@ class RTCCommUtils(CommunicationInterface):
     def handle_data_channel_message(self, peer_rank: int, message: str):
         try:
             if isinstance(message, str):
-                self.comm_cost_received += len(message.encode('utf-8'))
                 data = json.loads(message)
             else:
                 data = message  # Assume it's already a dictionary
+
+            msg_str = json.dumps(data)
+            self.comm_cost_received += len(msg_str.encode('utf-8'))
             msg_type = data["type"]
 
             if msg_type == "round_update":
