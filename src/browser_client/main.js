@@ -95,7 +95,8 @@ export function displayMessage(message) {
     const newLog = document.createElement("div");
     newLog.textContent = message;
     consoleOutput.appendChild(newLog);
-    consoleOutput.scrollTop = consoleOutput.scrollHeight; // Auto-scroll to bottom
+
+    consoleOutput.scrollTop = consoleOutput.scrollHeight;
 }
 
 saveConfigButton.addEventListener('click', function() {
