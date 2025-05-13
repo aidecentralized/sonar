@@ -415,6 +415,16 @@ class WebRTCCommUtils {
         const newNeighbors = data.neighbors;
         this.log(`Received topology. Rank: ${this.rank}, Neighbors: ${JSON.stringify(newNeighbors)}`);
 
+        // Track if this is a dynamic join to an active session
+        const isActiveSession = data.isActiveSession || false;
+        
+        if (isActiveSession) {
+            this.log('Joining active session - will synchronize with current state after connections are established');
+            
+            // Set a flag to request model state after connections are established
+            this.needModelStateSync = true;
+        }
+
         if (this.neighbors) {
             const oldNeighbors = new Set(Object.values(this.neighbors));
             const newNeighborSet = new Set(Object.values(newNeighbors));
@@ -640,12 +650,6 @@ class WebRTCCommUtils {
   handleDataChannelMessage(peerRankStr, data) {
     try {
       const peerRank = parseInt(peerRankStr);
-      // Track bytes received (approximately) - using the stringified data size
-      const dataSize = JSON.stringify(data).length;
-      this.bytesReceived += dataSize;
-      // Don't log every message, we'll log the total at the end of the round
-      
-      // this.log(`Received message from peer ${peerRank}: ${data.type}`);
 
       switch (data.type) {
 

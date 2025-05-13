@@ -494,33 +494,56 @@ class WebRTCCommUtils {
     }
 
   // ------------------------ WebRTC Peer Connection ------------------------
-
   /**
    * createPeerConnection - Creates an RTCPeerConnection with the STUN servers.
    */
     createPeerConnection(otherRank) {
-        const config = {
-            iceServers: [{
-                urls: [
-                    'stun:stun.l.google.com:19302',
-                    'stun:stun1.l.google.com:19302'
-                ]
-            }]
+        const pc = new wrtc.RTCPeerConnection({
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' }
+          ],
+          iceCandidatePoolSize: 10,
+          iceTransportPolicy: 'all',
+          bundlePolicy: 'max-bundle'
+        });
+
+        pc.oniceconnectionstatechange = () => {
+          this.log(`ICE connection state with ${otherRank}: ${pc.iceConnectionState}`);
+          if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'closed') {
+            this.handleConnectionFailure(otherRank);
+          } else if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+            // Track successful connections
+            this.log(`ICE connection established with ${otherRank}`);
+          }
         };
 
-        const pc = new wrtc.RTCPeerConnection(config);
-        
-        pc.oniceconnectionstatechange = () => {
-            this.log(`ICE state change for ${otherRank}: ${pc.iceConnectionState}`);
-            if (pc.iceConnectionState === 'failed') {
-              this.log('ICE failed. You may want to handle retries here.');
-            }
-          };
+        pc.onconnectionstatechange = () => {
+          this.log(`Connection state with ${otherRank}: ${pc.connectionState}`);
+          if (pc.connectionState === 'failed') {
+            this.handleConnectionFailure(otherRank);
+          }
+        };
 
         pc.onicecandidate = (event) => {
-            if (event.candidate) {
-                this.log('ICE candidate generated');
-            }
+          if (event.candidate) {
+            // Optionally send individual ICE candidates to the peer
+            // Uncomment this if you want to send candidates separately
+            /*
+            this.sendSignalingMessage(otherRank, {
+              type: 'candidate',
+              candidate: event.candidate.candidate,
+              sdpMid: event.candidate.sdpMid,
+              sdpMLineIndex: event.candidate.sdpMLineIndex
+            });
+            */
+            this.log(`ICE candidate generated for ${otherRank}`);
+          } else {
+            this.log(`ICE candidate gathering completed for ${otherRank}`);
+          }
         };
 
         return pc;
@@ -532,64 +555,110 @@ class WebRTCCommUtils {
    */
     async initiateConnection(targetRank) {
         try {
+            // Track this connection attempt
+            this.pendingConnections.add(targetRank);
+            
             const pc = this.createPeerConnection(targetRank);
             this.connections.set(targetRank, pc);
 
-            // Create data channel
-            const channel = pc.createDataChannel(`chat-${this.rank}-${targetRank}`);
+            // Create data channel with reliability options
+            const channel = pc.createDataChannel(`chat-${this.rank}-${targetRank}`, {
+                ordered: true,           // Guarantee message order
+                maxRetransmits: 3        // Retry sending failed messages up to 3 times
+            });
             this.setupDataChannel(channel, targetRank);
 
             // Create and set local description
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
 
-            // Wait for ICE gathering
-            await new Promise(resolve => {
-                const checkState = () => {
-                    if (pc.iceGatheringState === 'complete') {
-                        resolve();
-                    } else {
-                        setTimeout(checkState, 10000);
-                    }
-                };
-                checkState();
-            });
-            // await this.waitForIceGathering(pc, this.ICE_GATHERING_TIMEOUT);
-            // Send offer
+            // Set a reasonable timeout for ICE gathering (30 seconds)
+            const ICE_GATHERING_TIMEOUT = 30000;
+            
+            // Use the improved waitForIceGathering method with proper timeout
+            try {
+                await this.waitForIceGathering(pc, ICE_GATHERING_TIMEOUT);
+                this.log(`ICE gathering completed for ${targetRank}`);
+            } catch (iceError) {
+                // If ICE gathering times out, we'll still send what we have
+                this.log(`ICE gathering timed out for ${targetRank}, proceeding with available candidates`, 'warn');
+            }
+            
+            // Send offer with current SDP (which includes gathered ICE candidates)
             await this.sendSignalingMessage(targetRank, {
                 type: 'offer',
                 sdp: pc.localDescription.sdp
             });
             this.log(`Sent offer to ${targetRank}`);
+            
+            // Set a connection timeout to detect and handle stalled connections
+            setTimeout(() => {
+                // Check if we're still pending (not connected) after timeout
+                if (this.pendingConnections.has(targetRank) && !this.connectedPeers.has(targetRank)) {
+                    this.log(`Connection to ${targetRank} timed out`, 'warn');
+                    this.handleConnectionFailure(targetRank);
+                }
+            }, 60000); // 60 second timeout
 
         } catch (error) {
             this.log(`Failed to initiate connection to ${targetRank}: ${error}`, 'error');
             await this.handleConnectionFailure(targetRank);
         }
     }
+
     /**
-     * Wait for the ICE gathering to complete or time out.
-     */
+   * Wait for the ICE gathering to complete or time out.
+   */
     waitForIceGathering(pc, timeoutMs) {
         return new Promise((resolve, reject) => {
+        // If already complete, resolve immediately
         if (pc.iceGatheringState === 'complete') {
             resolve();
-        } else {
-            let timedOut = false;
-            const timeout = setTimeout(() => {
+            return;
+        }
+        
+        // Set up timeout
+        let timedOut = false;
+        const timeout = setTimeout(() => {
             timedOut = true;
-            reject('ICE gathering timed out');
-            }, timeoutMs);
-
-            pc.onicegatheringstatechange = () => {
-            if (!timedOut && pc.iceGatheringState === 'complete') {
-                clearTimeout(timeout);
+            reject(new Error('ICE gathering timed out'));
+        }, timeoutMs);
+        
+        // Listen for state changes
+        const onIceGatheringStateChange = () => {
+            this.log(`ICE gathering state changed to: ${pc.iceGatheringState}`);
+            if (pc.iceGatheringState === 'complete') {
+                cleanup();
                 resolve();
             }
-            };
-        }
-        });
-    }
+        };
+        
+        // Listen for ICE candidates
+        let candidateCount = 0;
+        const onIceCandidate = (event) => {
+            if (event.candidate) {
+                candidateCount++;
+                this.log(`ICE candidate gathered (${candidateCount}): ${event.candidate.candidate.substr(0, 50)}...`);
+            } else {
+                // null candidate means end of candidates
+                this.log('End of ICE candidates');
+                cleanup();
+                resolve();
+            }
+        };
+        
+        // Clean up event listeners
+        const cleanup = () => {
+            clearTimeout(timeout);
+            pc.removeEventListener('icegatheringstatechange', onIceGatheringStateChange);
+            pc.removeEventListener('icecandidate', onIceCandidate);
+        };
+        
+        // Set up event listeners
+        pc.addEventListener('icegatheringstatechange', onIceGatheringStateChange);
+        pc.addEventListener('icecandidate', onIceCandidate);
+    });
+}
 
   /**
    * setupDataChannel - Called when we create the channel, or when the peer
@@ -2089,61 +2158,96 @@ class WebRTCCommUtils {
    * handleSignalingMessage - React to "offer", "answer", or "candidate" from the server.
    */
     async handleSignalingMessage(message) {
-        const senderRank = message.senderRank;
-        const data = message.data;
-        let pc = this.connections.get(senderRank);
-        this.log(`Received signaling message from ${senderRank}: ${data.type}`);
-        try {
-            // If we don't have a PeerConnection yet, create one (the "answerer" side).
-            if (!pc) {
-                this.log(`Creating new PeerConnection for ${senderRank}`);
-                pc = this.createPeerConnection(senderRank);
-                this.connections.set(senderRank, pc);
+      const senderRank = message.senderRank;
+      const data = message.data;
+      let pc = this.connections.get(senderRank);
+      this.log(`Received signaling message from ${senderRank}: ${data.type}`);
+      
+      try {
+          // If we don't have a PeerConnection yet, create one (the "answerer" side).
+          if (!pc) {
+              this.log(`Creating new PeerConnection for ${senderRank}`);
+              pc = this.createPeerConnection(senderRank);
+              this.connections.set(senderRank, pc);
 
-                pc.ondatachannel = (event) => {
-                    this.setupDataChannel(event.channel, senderRank);
-                };
-            }
+              // Set up data channel handler for the answering peer
+              pc.ondatachannel = (event) => {
+                  this.log(`Received data channel from ${senderRank}`);
+                  this.setupDataChannel(event.channel, senderRank);
+              };
+              
+              // Track this as a pending connection
+              this.pendingConnections.add(senderRank);
+          }
 
-            if (data.type === 'offer') {
-                await pc.setRemoteDescription(new wrtc.RTCSessionDescription({
-                    type: 'offer',
-                    sdp: data.sdp
-                }));
-                const answer = await pc.createAnswer();
-                await pc.setLocalDescription(answer);
-                await this.sendSignalingMessage(senderRank, {
-                    type: 'answer',
-                    sdp: answer.sdp,
-                });
+          if (data.type === 'offer') {
+              this.log(`Processing offer from ${senderRank}`);
+              
+              // Set the remote description (the offer)
+              await pc.setRemoteDescription(new wrtc.RTCSessionDescription({
+                  type: 'offer',
+                  sdp: data.sdp
+              }));
+              
+              // Create an answer
+              const answer = await pc.createAnswer();
+              await pc.setLocalDescription(answer);
+              
+              // Wait for our ICE candidates to be gathered
+              try {
+                  await this.waitForIceGathering(pc, 30000); // 30 second timeout
+                  this.log(`ICE gathering completed for answer to ${senderRank}`);
+              } catch (iceError) {
+                  this.log(`ICE gathering timed out for answer to ${senderRank}, proceeding with available candidates`, 'warn');
+              }
+              
+              // Send the answer with all gathered ICE candidates
+              await this.sendSignalingMessage(senderRank, {
+                  type: 'answer',
+                  sdp: pc.localDescription.sdp,
+              });
+              this.log(`Sent answer to ${senderRank}`);
+              
+              // Set a connection timeout
+              setTimeout(() => {
+                  if (this.pendingConnections.has(senderRank) && !this.connectedPeers.has(senderRank)) {
+                      this.log(`Connection to ${senderRank} timed out after answering`, 'warn');
+                      this.handleConnectionFailure(senderRank);
+                  }
+              }, 60000); // 60 second timeout
 
-                ///////////////////////////////////////////
-                // await this.waitForIceGathering(pc, this.ICE_GATHERING_TIMEOUT);
-                // Send answer back
-                // this.sendSignalingMessage(senderRank, {
-                //     type: 'answer',
-                //     // sdp: pc.localDescription.sdp,
-                //     sdp: answer.sdp
-                // });
-                ///////////////////////////////////////////
-
-            } else if (data.type === 'answer') {
-                await pc.setRemoteDescription(new wrtc.RTCSessionDescription({
-                    type: 'answer',
-                    sdp: data.sdp
-                }));
-            } else if (data.type === 'candidate') {
-                this.log(`?? should we get here??? Adding ICE candidate for ${senderRank}`);
-                await pc.addIceCandidate({
-                    candidate: data.candidate,
-                    sdpMLineIndex: 0,
-                    sdpMid: '0'
-                });
-            }
-        } catch (error) {
-            this.log(`handleSignalingMessage error: ${error}`);
-        }
-    }
+          } else if (data.type === 'answer') {
+              this.log(`Processing answer from ${senderRank}`);
+              
+              // Set the remote description (the answer)
+              await pc.setRemoteDescription(new wrtc.RTCSessionDescription({
+                  type: 'answer',
+                  sdp: data.sdp
+              }));
+              
+              this.log(`Successfully set remote description (answer) from ${senderRank}`);
+              
+          } else if (data.type === 'candidate') {
+              // This handles individual ICE candidates if you choose to send them separately
+              this.log(`Adding ICE candidate from ${senderRank}`);
+              
+              try {
+                  await pc.addIceCandidate(new wrtc.RTCIceCandidate({
+                      candidate: data.candidate,
+                      sdpMLineIndex: data.sdpMLineIndex,
+                      sdpMid: data.sdpMid
+                  }));
+                  this.log(`Successfully added ICE candidate from ${senderRank}`);
+              } catch (iceCandidateError) {
+                  this.log(`Failed to add ICE candidate from ${senderRank}: ${iceCandidateError}`, 'error');
+              }
+          }
+      } catch (error) {
+          this.log(`handleSignalingMessage error with ${senderRank}: ${error}`, 'error');
+          await this.handleConnectionFailure(senderRank);
+      }
+  }
+    // }
 
     async sendSignalingMessage(targetRank, data) {
         if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
@@ -2202,7 +2306,7 @@ class WebRTCCommUtils {
    * cleanupConnection - Close data channel & PeerConnection, remove references.
    */
     async cleanupConnection(rankStr) {
-      const rank = Number(rank)
+      const rank = Number(rankStr)
         try {
             const pc = this.connections.get(rank);
             if (pc) {
@@ -2358,7 +2462,7 @@ let config = {
     session_id: SESSION_ID,
     epochs: 200,
     num_collaborators: 1,
-    log_folder_name: 'iid_baseline',
+    log_folder_name: 'iid_baseline_7',
 }
 
 // const filePath = path.resolve(__dirname, './datasets/imgs/cifar10/cifar10_test_small.json');
