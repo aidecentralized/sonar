@@ -282,7 +282,9 @@ export class ResNet10 extends Model {
 				metrics.testAcc = history.history.val_acc[0];
 				metrics.testLoss = history.history.val_loss[0];
 			}
-			
+
+
+			history = null; // free references early
 			return metrics;
 		} catch (error) {
 			console.error('Error during training: ', error);
