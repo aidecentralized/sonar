@@ -387,7 +387,11 @@ export class WebRTCCommUtils {
         ['test_acc', 'test_loss', 'test_time', 
          'train_acc', 'train_loss', 'train_time',
          'time_elapsed', 'bytes_sent', 'bytes_received',
-         'peak_dram', 'peak_gpu', 'neighbors'].forEach(metric => {
+         'peak_dram', 'peak_gpu', 'neighbors',
+         'tf_mem_before_train', 'tf_mem_after_train', 
+         'tf_tensors_before_train', 'tf_tensors_after_train',
+         'tf_data_buffers_before_train', 'tf_data_buffers_after_train',
+         'browser_tab_memory'].forEach(metric => {
             this.metricsLogger.initializeMetric(metric);
         });
     
@@ -1929,8 +1933,10 @@ export class WebRTCCommUtils {
 
   async startTraining() {
     this.log('started training, loading dataset...');
-  
+
     try {
+      // Log TensorFlow memory metrics before training
+      this.updateTensorflowMemoryMetrics(true);
       // Simple check for dataset existence
       if (!this.trainDataset) {
         throw new Error('Training dataset is undefined');
@@ -2020,6 +2026,10 @@ export class WebRTCCommUtils {
       }
 
       this.log("finished training");
+      
+      // Log TensorFlow memory metrics after training
+      this.updateTensorflowMemoryMetrics(false);
+      
       this.exportLogs();
     } catch (error) {
       this.log(`Error in training: ${error.message}`);
@@ -2035,6 +2045,30 @@ export class WebRTCCommUtils {
     this.logMetric('train_acc', trainAcc);
     this.logMetric('train_loss', trainLoss);
     this.logMetric('train_time', trainTime);
+  }
+
+  // Log TensorFlow memory metrics
+  updateTensorflowMemoryMetrics(beforeTraining = false) {
+    try {
+      const memInfo = tf.memory();
+      
+      if (beforeTraining) {
+        this.logMetric('tf_mem_before_train', memInfo.numBytes);
+        this.logMetric('tf_tensors_before_train', memInfo.numTensors);
+        this.logMetric('tf_data_buffers_before_train', memInfo.numDataBuffers);
+      } else {
+        this.logMetric('tf_mem_after_train', memInfo.numBytes);
+        this.logMetric('tf_tensors_after_train', memInfo.numTensors);
+        this.logMetric('tf_data_buffers_after_train', memInfo.numDataBuffers);
+      }
+      
+      // Log browser tab memory if available
+      if (window.performance && window.performance.memory) {
+        this.logMetric('browser_tab_memory', window.performance.memory.usedJSHeapSize);
+      }
+    } catch (error) {
+      this.log(`Error logging memory metrics: ${error.message}`);
+    }
   }
   
   // Update testing metrics
