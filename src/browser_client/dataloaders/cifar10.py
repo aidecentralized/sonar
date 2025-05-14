@@ -424,6 +424,7 @@ def partition_cifar10_unique_labels(output_dir: str, num_clients: int = 10, test
         save_partition(client_idx, train_partition_indices[client_idx], test_partition_indices[client_idx])
 
     print(f"✅ Partitioning completed: {num_clients} clients with unique-label training and IID test sets.")
+
 if __name__ == "__main__":
 #     import argparse
 

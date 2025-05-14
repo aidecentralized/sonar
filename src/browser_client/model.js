@@ -1,20 +1,5 @@
 import * as tf from '@tensorflow/tfjs'
 
-export const supportedDatasets = {
-	'cifar10': {
-		'imageShape': [32, 32, 3],
-		'imageClasses': 10
-	},
-	// 'bloodmnist': {
-	// 	'imageShape': [28, 28, 3],
-	// 	'imageClasses': 8
-	// },
-	'mnist': {
-		'imageShape': [28, 28, 1],
-		'imageClasses': 10
-	}
-}
-
 class Model {
 	constructor() {
 	}
@@ -33,14 +18,11 @@ class Model {
 
 // resnet
 export class ResNet10 extends Model {
-	constructor(dataset) {
+	constructor() {
 		super()
 		console.log("Initializing ResNet10 instance...")
-		if (!(dataset in supportedDatasets)) {
-			throw new Error('Dataset not supported.')
-		}
-		this.imageShape = supportedDatasets[dataset]['imageShape']
-		this.imageClasses = supportedDatasets[dataset]['imageClasses']
+		this.imageShape = [32, 32, 3]
+		this.imageClasses = 10
 		this.imageFlattenSize = this.imageShape.reduce((prod, num) => prod * num, 1)
 
 		this.model = this.buildModel()

@@ -24,7 +24,11 @@ def partition_mnist_dirichlet_fixed(output_dir: str, num_clients: int = 10, alph
 
     os.makedirs(output_dir, exist_ok=True)
 
-    transform = transforms.Compose([transforms.ToTensor()])
+    transform = transforms.Compose([
+        transforms.Resize(32),
+        transforms.ToTensor(),
+        lambda x: x.repeat(3, 1, 1),
+    ])
 
     # Load CIFAR-10 dataset
     train_dataset = torchvision.datasets.MNIST(root='./rawdata', train=True, download=True, transform=transform)
@@ -111,7 +115,9 @@ def convert_mnist_to_json(output_dir: str):
 
         # Define transformation to normalize the images and convert to tensors
         transform = transforms.Compose([
-            transforms.ToTensor()  # Converts to [0, 1] float tensors
+            transforms.Resize(32),
+            transforms.ToTensor(), # Converts to [0, 1] float tensors
+            lambda x: x.repeat(3, 1, 1),
         ])
 
         # Download mnist dataset
@@ -177,7 +183,11 @@ def partition_mnist_to_json(output_dir: str, num_clients: int, iid: bool = True,
 
     os.makedirs(output_dir, exist_ok=True)
 
-    transform = transforms.Compose([transforms.ToTensor()])
+    transform = transforms.Compose([
+        transforms.Resize(32),
+        transforms.ToTensor(), # Converts to [0, 1] float tensors
+        lambda x: x.repeat(3, 1, 1),
+    ])
 
     # Load CIFAR-10 dataset
     train_dataset = torchvision.datasets.MNIST(root='./rawdata', train=True, download=True, transform=transform)
@@ -303,7 +313,11 @@ def partition_mnist_unique_labels(output_dir: str, num_clients: int = 10, test_s
 
     os.makedirs(output_dir, exist_ok=True)
 
-    transform = transforms.Compose([transforms.ToTensor()])
+    transform = transforms.Compose([
+        transforms.Resize(32),
+        transforms.ToTensor(), # Converts to [0, 1] float tensors
+        lambda x: x.repeat(3, 1, 1),
+    ])
 
     # Load CIFAR-10 dataset
     train_dataset = torchvision.datasets.MNIST(root='./rawdata', train=True, download=True, transform=transform)
@@ -370,8 +384,8 @@ if __name__ == "__main__":
     #                           num_clients=10, iid=False, non_iid_strategy="label_skew", classes_per_client=3)
     
     # Example usage for non-IID Dirichlet partitioning
-    # partition_mnist_to_json("../public/datasets/imgs/mnist_dirichlet/", 
-    #                           num_clients=5, iid=False, non_iid_strategy="dirichlet", alpha=0.5)
+    partition_mnist_to_json("../public/datasets/imgs/mnist_dirichlet/", 
+                              num_clients=10, iid=False, non_iid_strategy="dirichlet", alpha=0.5)
 
     # BOTH iid and non-iid test sets:
     # partition_mnist_to_json(output_dir="../public/datasets/imgs/mnist_non_iid_10clients_2classes/", num_clients=10, iid=False, 
@@ -382,12 +396,12 @@ if __name__ == "__main__":
     # partition_mnist_dirichlet_fixed(output_dir="../public/datasets/imgs/mnist_non_iid_dirichlet/", num_clients=10, alpha=0.5, test_size_per_client=200)
 
         # Example usage for IID partitioning
-    partition_mnist_to_json("../public/datasets/imgs/mnist/mnist_iid_split10/", num_clients=10, iid=True, generate_both_tests=False)
+    # partition_mnist_to_json("../public/datasets/imgs/mnist/mnist_iid_split10/", num_clients=10, iid=True, generate_both_tests=False)
     
     # Example usage for non-IID label-skewed partitioning
-    partition_mnist_to_json("../public/datasets/imgs/mnist/mnist_label_skew_3/", 
-                              num_clients=10, iid=False, non_iid_strategy="label_skew", classes_per_client=3, generate_both_tests=True)
+    # partition_mnist_to_json("../public/datasets/imgs/mnist/mnist_label_skew_3/", 
+    #                           num_clients=10, iid=False, non_iid_strategy="label_skew", classes_per_client=3, generate_both_tests=True)
     
     # Example usage for non-IID Dirichlet partitioning
-    partition_mnist_to_json("../public/datasets/imgs/mnist/mnist_dirichlet_0.5/", 
-                              num_clients=10, iid=False, non_iid_strategy="dirichlet", alpha=0.5, generate_both_tests=True)
+    # partition_mnist_to_json("../public/datasets/imgs/mnist/mnist_dirichlet_0.5/", 
+    #                           num_clients=10, iid=False, non_iid_strategy="dirichlet", alpha=0.5, generate_both_tests=True)

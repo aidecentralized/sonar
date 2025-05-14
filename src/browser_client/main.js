@@ -1,6 +1,5 @@
 import { data } from '@tensorflow/tfjs';
 import { processData, WebRTCCommUtils } from './client.js'
-import { supportedDatasets } from './model.js';
 
 const trainDataInput = document.getElementById('train-data-input');
 const testDataInput = document.getElementById('test-data-input');
@@ -8,7 +7,6 @@ const startButton = document.getElementById('start-button');
 const consoleOutput = document.getElementById('console-output');
 const saveConfigButton = document.getElementById('save-config-button');
 const fileDropdown = document.getElementById('fileDropdown');
-const datasetDropdown = document.getElementById('datasetDropdown');
 
 // ** Set your session parameters here **
 const SESSION_ID = "1111"; // Change this to a fixed or generated session ID
@@ -19,26 +17,26 @@ const IS_CREATOR = false; // Set to true if this should create a session
 const signalingServer = 'ws://localhost:8765'; // Your WebSocket server
 
 const samplePartitions = [
-    'cifar10_client_0_test.json', 
-    'cifar10_client_1_test.json',
-    'cifar10_client_2_test.json',
-    'cifar10_client_3_test.json',
-    'cifar10_client_4_test.json',
-    'cifar10_client_5_test.json',
-    'cifar10_client_6_test.json',
-    'cifar10_client_7_test.json',
-    'cifar10_client_8_test.json',
-    'cifar10_client_9_test.json',
-    'mnist_client_0_test.json', 
-    'mnist_client_1_test.json',
-    'mnist_client_2_test.json',
-    'mnist_client_3_test.json',
-    'mnist_client_4_test.json',
-    'mnist_client_5_test.json',
-    'mnist_client_6_test.json',
-    'mnist_client_7_test.json',
-    'mnist_client_8_test.json',
-    'mnist_client_9_test.json'
+    'cifar10_client_0_train.json', 
+    'cifar10_client_1_train.json',
+    'cifar10_client_2_train.json',
+    'cifar10_client_3_train.json',
+    'cifar10_client_4_train.json',
+    'cifar10_client_5_train.json',
+    'cifar10_client_6_train.json',
+    'cifar10_client_7_train.json',
+    'cifar10_client_8_train.json',
+    'cifar10_client_9_train.json',
+    'mnist_client_0_train.json', 
+    'mnist_client_1_train.json',
+    'mnist_client_2_train.json',
+    'mnist_client_3_train.json',
+    'mnist_client_4_train.json',
+    'mnist_client_5_train.json',
+    'mnist_client_6_train.json',
+    'mnist_client_7_train.json',
+    'mnist_client_8_train.json',
+    'mnist_client_9_train.json'
 ];
 
 // Add sample partitions to dropdown
@@ -47,13 +45,6 @@ samplePartitions.forEach(file => {
     option.value = file;
     option.textContent = file;
     fileDropdown.appendChild(option);
-});
-
-Object.keys(supportedDatasets).forEach(dataset => {
-    const option = document.createElement('option');
-    option.value = dataset;
-    option.textContent = dataset;
-    datasetDropdown.appendChild(option);
 });
 
 let config = {
@@ -67,7 +58,6 @@ let config = {
     seed: 2,
 };
 
-let datasetType = '';
 let trainDataset = null;
 let testDataset = null;
 
@@ -78,7 +68,6 @@ function disableButtons() {
     startButton.disabled = true;
     saveConfigButton.disabled = true;
     fileDropdown.disabled = true;
-    datasetDropdown.disabled = true;
 }
 
 function enableButtons() {
@@ -88,7 +77,6 @@ function enableButtons() {
     startButton.disabled = trainDataset === null; // Only enable if training data exists
     saveConfigButton.disabled = false;
     fileDropdown.disabled = false;
-    datasetDropdown.disabled = false;
 }
 
 export function displayMessage(message) {
@@ -189,11 +177,6 @@ fileDropdown.addEventListener('change', async (e) => {
     }
 });
 
-datasetDropdown.addEventListener('change', (e) => {
-    datasetType = e.target.value;
-    displayMessage('Selected dataset: ' + datasetType)
-});
-
 // Helper function to split a dataset into training and testing portions
 function splitDataset(dataset, trainRatio = 0.8) {
     // Create copies of the arrays to avoid modifying the original
@@ -234,12 +217,6 @@ startButton.addEventListener('click', function() {
         enableButtons();
         return;
     }
-
-    if (!datasetType) {
-        displayMessage('Error: No dataset type selected');
-        enableButtons();
-        return;
-    }
     
     let finalTrainDataset = trainDataset;
     let finalTestDataset = testDataset;
@@ -254,5 +231,5 @@ startButton.addEventListener('click', function() {
     }
     
     displayMessage(`Starting training with ${finalTrainDataset.images.length} training samples and ${finalTestDataset.images.length} testing samples`);
-    const node = new WebRTCCommUtils(config, datasetType, finalTrainDataset, finalTestDataset);
+    const node = new WebRTCCommUtils(config, finalTrainDataset, finalTestDataset);
 });
