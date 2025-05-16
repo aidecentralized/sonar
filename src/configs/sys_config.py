@@ -89,7 +89,7 @@ CIAR10_DPATH = "./datasets/imgs/cifar10/"
 NUM_COLLABORATORS = 1
 DUMP_DIR = "/mas/camera/Experiments/SONAR/jyuan/_tmp/"
 
-num_users = 2
+num_users = 5
 dropout_dict = {}
 dropout_dicts = {"node_0": {}}
 for i in range(1, num_users + 1):
@@ -97,15 +97,15 @@ for i in range(1, num_users + 1):
 
 # for swift or fedavgpush, just modify the algo_configs list
 # for swift, synchronous should preferable be False
-gpu_ids = [2, 3, 7]
+gpu_ids = [0, 1]
 rtc_config: ConfigType = {
-    "exp_id": "test_mnist4",
+    "exp_id": "3p2js_try3",
     "num_users": num_users,
     "session_id": "1111",
     "num_collaborators": NUM_COLLABORATORS,
     "comm": {"type": "RTC"},
-    # "dset": CIFAR10_DSET,
-    "dset": "mnist",
+    "dset": CIFAR10_DSET,
+    # "dset": "mnist",
     "dump_dir": DUMP_DIR,
     "dpath": CIAR10_DPATH,
     "seed": 2,
@@ -113,10 +113,11 @@ rtc_config: ConfigType = {
     # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
     "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
     "samples_per_user": 50000 // num_users,  # distributed equally
-    "train_label_distribution": "iid",
+    "train_label_distribution": "non_iid",
     "test_label_distribution": "iid",
     "dropout_dicts": dropout_dicts,
     "exp_keys": [],
+    "signaling_server": "ws://localhost:8886",
 }
 
 current_config = rtc_config

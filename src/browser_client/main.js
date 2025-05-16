@@ -37,6 +37,16 @@ const samplePartitions = [
     'mnist_client_7_train.json',
     'mnist_client_8_train.json',
     'mnist_client_9_train.json'
+    // 'mnist_client_0_test.json', 
+    // 'mnist_client_1_test.json',
+    // 'mnist_client_2_test.json',
+    // 'mnist_client_3_test.json',
+    // 'mnist_client_4_test.json',
+    // 'mnist_client_5_test.json',
+    // 'mnist_client_6_test.json',
+    // 'mnist_client_7_test.json',
+    // 'mnist_client_8_test.json',
+    // 'mnist_client_9_test.json'
 ];
 
 // Add sample partitions to dropdown
@@ -161,7 +171,7 @@ fileDropdown.addEventListener('change', async (e) => {
     if (!filename) return;
   
     try {
-        const res = await fetch(`/datasets/imgs/${filename.split('_')[0]}/${filename}`);
+        const res = await fetch(`/datasets/imgs/${filename.split('_')[0]}_non_iid_dirichlet/${filename}`);
         const json = await res.json();
         trainDataset = processData(json);
         enableButtons(); // Enable start button when training data is loaded
@@ -174,6 +184,8 @@ fileDropdown.addEventListener('change', async (e) => {
         testDataset = null;
     } catch (err) {
         displayMessage(`Error loading file: ${err.message}`);
+        displayMessage(`Trying to load /datasets/imgs/${filename.split('_')[0]}_non_iid_dirichlet/${filename}`);
+        
     }
 });
 

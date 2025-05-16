@@ -70,7 +70,7 @@ def deserialize_message(json_str: str) -> Dict[str, Any]:
 class RTCCommUtils(CommunicationInterface):
     def __init__(self, config: Dict[str, Dict[str, Any]]):
         self.config = config
-        self.signaling_server = config.get("signaling_server", "ws://10.29.253.135:8888")
+        self.signaling_server = config.get("signaling_server", "ws://localhost:8888")
         self.websocket = None
         self.connections: Dict[int, RTCPeerConnection] = {}
         self.data_channels: Dict[int, RTCDataChannel] = {}
@@ -595,12 +595,12 @@ class RTCCommUtils(CommunicationInterface):
         for neighbor_rank in self.neighbors:
             if neighbor_rank is None:
                 continue
-            # if neighbor_rank > self.rank:
-            if (neighbor_rank not in self.connections and 
-                neighbor_rank not in self.pending_connections):
-                self.logger.info(f"Node {self.rank} queueing connection to {neighbor_rank}")
-                await self.connection_queue.put(neighbor_rank)
-                self.pending_connections.add(neighbor_rank)
+            if neighbor_rank > self.rank:
+                if (neighbor_rank not in self.connections and 
+                    neighbor_rank not in self.pending_connections):
+                    self.logger.info(f"Node {self.rank} queueing connection to {neighbor_rank}")
+                    await self.connection_queue.put(neighbor_rank)
+                    self.pending_connections.add(neighbor_rank)
 
     async def send_signaling(self, target_rank: int, data: dict):
         if self.websocket:
@@ -763,8 +763,13 @@ class RTCCommUtils(CommunicationInterface):
     def handle_data_channel_message(self, peer_rank: int, message: str):
         try:
             if isinstance(message, str):
+                self.comm_cost_received += len(message.encode('utf-8'))  # measure before json.loads
                 data = json.loads(message)
+            elif isinstance(message, bytes):
+                self.comm_cost_received += len(message)
+                data = json.loads(message.decode('utf-8'))
             else:
+                self.comm_cost_received += len(json.dumps(message).encode('utf-8'))
                 data = message  # Assume it's already a dictionary
 
             msg_str = json.dumps(data)

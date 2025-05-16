@@ -437,15 +437,15 @@ if __name__ == "__main__":
     # convert_cifar10_to_json("../public/datasets/imgs/cifar10/")
     
     # Example usage for IID partitioning
-    # partition_cifar10_to_json("../public/datasets/imgs/cifar10_iid_split10/", num_clients=10, iid=True)
+    # partition_cifar10_to_json("../public/datasets/imgs/cifar10_iid/", num_clients=20, iid=True, generate_both_tests=False)
     
     # Example usage for non-IID label-skewed partitioning
-    # partition_cifar10_to_json("../public/datasets/imgs/cifar10_non_iid/", 
-    #                           num_clients=10, iid=False, non_iid_strategy="label_skew", classes_per_client=3)
+    partition_cifar10_to_json("../public/datasets/imgs/cifar10_label_skew_3/", 
+                              num_clients=10, iid=False, non_iid_strategy="label_skew", classes_per_client=3, generate_both_tests=True)
     
     # Example usage for non-IID Dirichlet partitioning
-    # partition_cifar10_to_json("../public/datasets/imgs/cifar10_dirichlet/", 
-    #                           num_clients=5, iid=False, non_iid_strategy="dirichlet", alpha=0.5)
+    partition_cifar10_to_json("../public/datasets/imgs/cifar10_dirichlet_0.5/", 
+                              num_clients=10, iid=False, non_iid_strategy="dirichlet", alpha=0.5, generate_both_tests=True)
 
     # BOTH iid and non-iid test sets:
     # partition_cifar10_to_json(output_dir="../public/datasets/imgs/cifar10_non_iid_10clients_2classes/", num_clients=10, iid=False, 
@@ -453,5 +453,5 @@ if __name__ == "__main__":
 
     # partition_cifar10_unique_labels(output_dir="../public/datasets/imgs/cifar10_non_iid_unique_labels/", num_clients=10, test_size_per_client=200)
 
-    partition_cifar10_dirichlet_fixed(output_dir="../public/datasets/imgs/cifar10_non_iid_dirichlet/", num_clients=10, alpha=0.5, test_size_per_client=200)
+    # partition_cifar10_dirichlet_fixed(output_dir="../public/datasets/imgs/cifar10_non_iid_dirichlet/", num_clients=10, alpha=0.5, test_size_per_client=200)
 

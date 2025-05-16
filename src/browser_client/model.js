@@ -180,8 +180,13 @@ export class ResNet10 extends Model {
 		verbose: 1
 	}, logFunc = console.log) {
 		// take raw array of values and turn to tensor
-		const trainImages = tf.tensor2d(trainDataSet.images, [trainDataSet.images.length, this.imageFlattenSize])
-		const trainLabels = tf.oneHot(tf.tensor1d(trainDataSet.labels, 'int32'), this.imageClasses)
+		const [trainImages, trainLabels] = tf.tidy(() => {
+			const img = tf.tensor2d(trainDataSet.images, [trainDataSet.images.length, this.imageFlattenSize]);
+			const lbl = tf.oneHot(tf.tensor1d(trainDataSet.labels, 'int32'), this.imageClasses);
+			return [img, lbl];
+		  });
+		// const trainImages = tf.tensor2d(trainDataSet.images, [trainDataSet.images.length, this.imageFlattenSize])
+		// const trainLabels = tf.oneHot(tf.tensor1d(trainDataSet.labels, 'int32'), this.imageClasses)
 		
 		// prepare test data if provided
 		let testImages = null;
@@ -229,8 +234,13 @@ export class ResNet10 extends Model {
 
 		// If testDataSet is provided, use it as validation data instead of using validationSplit
 		if (testDataSet) {
-			testImages = tf.tensor2d(testDataSet.images, [testDataSet.images.length, this.imageFlattenSize]);
-			testLabels = tf.oneHot(tf.tensor1d(testDataSet.labels, 'int32'), this.imageClasses);
+			const [testImages, testLabels] = tf.tidy(() => {
+				const img = tf.tensor2d(testDataSet.images, [testDataSet.images.length, this.imageFlattenSize]);
+				const lbl = tf.oneHot(tf.tensor1d(testDataSet.labels, 'int32'), this.imageClasses);
+				return [img, lbl];
+			  });
+			// testImages = tf.tensor2d(testDataSet.images, [testDataSet.images.length, this.imageFlattenSize]);
+			// testLabels = tf.oneHot(tf.tensor1d(testDataSet.labels, 'int32'), this.imageClasses);
 			
 			// Remove validationSplit since we're using separate validation data
 			delete trainingConfig.validationSplit;
@@ -308,8 +318,13 @@ export class ResNet10 extends Model {
 		}
 	
 		// Convert test data to tensors
-		const testImages = tf.tensor2d(testDataSet.images, [testDataSet.images.length, this.imageFlattenSize]);
-		const testLabels = tf.oneHot(tf.tensor1d(testDataSet.labels, 'int32'), this.imageClasses);
+		const [testImages, testLabels] = tf.tidy(() => {
+			const img = tf.tensor2d(testDataSet.images, [testDataSet.images.length, this.imageFlattenSize]);
+			const lbl = tf.oneHot(tf.tensor1d(testDataSet.labels, 'int32'), this.imageClasses);
+			return [img, lbl];
+		});
+		// const testImages = tf.tensor2d(testDataSet.images, [testDataSet.images.length, this.imageFlattenSize]);
+		// const testLabels = tf.oneHot(tf.tensor1d(testDataSet.labels, 'int32'), this.imageClasses);
 	
 		try {
 			console.log("Evaluating model on test data...");
