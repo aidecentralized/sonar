@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Project SONAR - Model Test</title>
+  <link rel="stylesheet" href="styling/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <style>
+    .model-container {
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 2rem;
+      background-color: #f8f9fa;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .model-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+    
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.3s ease;
+    }
+    
+    .initialize-btn {
+      background-color: #4CAF50;
+      color: white;
+    }
+    
+    .download-btn {
+      background-color: #2196F3;
+      color: white;
+    }
+    
+    .test-train-btn {
+      background-color: #FF9800;
+      color: white;
+    }
+    
+    .btn:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+    
+    .status-container {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background-color: #e9ecef;
+      border-radius: 4px;
+      min-height: 50px;
+    }
+  </style>
+</head>
+
+<body>
+  <header class="top-bar">
+    <div class="logo-container">
+      <img src="assets/logo.png" alt="Logo" class="logo" />
+      <span class="project-name">Project SONAR</span>
+    </div>
+
+    <div class="hamburger-menu" id="hamburger-menu">
+      <div class="line"></div>
+      <div class="line"></div>
+      <div class="line"></div>
+    </div>
+  </header>
+
+  <nav class="mobile-nav" id="mobile-nav">
+    <ul>
+      <li><a href="./index.html">Home</a></li>
+      <li><a href="./about.html">About</a></li>
+      <li><a href="./browser.html">Session</a></li>
+      <li><a href="./sessions.html">Explore Sessions</a></li>
+      <li><a href="./test_model.html">Test Model</a></li>
+    </ul>
+  </nav>
+
+  <div class="model-container">
+    <h1>ResNet10 Model Test</h1>
+    <p>This page allows you to initialize and download a ResNet10 model.</p>
+    
+    <div class="model-controls">
+      <div>
+        <label for="dataset-select">Select Dataset:</label>
+        <select id="dataset-select">
+          <option value="cifar10">CIFAR-10</option>
+          <option value="mnist">MNIST</option>
+        </select>
+      </div>
+      
+      <button id="init-btn" class="btn initialize-btn">Initialize Model</button>
+      <button id="download-btn" class="btn download-btn" disabled>Download Model</button>
+      <button id="test-train-btn" class="btn test-train-btn" disabled>Test Train</button>
+      
+      <div class="status-container">
+        <p id="model-status">Model not initialized</p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    // Import the functions from the module
+    import { initializeModel, downloadModel, testTrain } from './test_mode.js';
+    
+    // Set up button event listeners when DOM is loaded
+    document.addEventListener('DOMContentLoaded', () => {
+      // Mobile navigation toggle
+      const hamburger = document.getElementById("hamburger-menu");
+      const mobileNav = document.getElementById("mobile-nav");
+
+      hamburger.addEventListener("click", function () {
+        mobileNav.classList.toggle("active");
+      });
+      
+      // Set up model initialization button
+      document.getElementById('init-btn').addEventListener('click', async () => {
+        const dataset = document.getElementById('dataset-select').value;
+        await initializeModel(dataset);
+        // Enable test train button after model is initialized
+        document.getElementById('test-train-btn').disabled = false;
+      });
+      
+      // Set up model download button
+      document.getElementById('download-btn').addEventListener('click', async () => {
+        await downloadModel();
+      });
+      
+      // Set up test train button
+      document.getElementById('test-train-btn').addEventListener('click', async () => {
+        await testTrain();
+      });
+    });
+  </script>
+</body>
+
+</html>
