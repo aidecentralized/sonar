@@ -88,16 +88,26 @@
   </nav>
 
   <div class="model-container">
-    <h1>ResNet10 Model Test</h1>
-    <p>This page allows you to initialize and download a ResNet10 model.</p>
+    <h1>Model Testing Environment</h1>
+    <p>This page allows you to initialize, train, and download various ResNet model variants.</p>
     
     <div class="model-controls">
-      <div>
-        <label for="dataset-select">Select Dataset:</label>
-        <select id="dataset-select">
-          <option value="cifar10">CIFAR-10</option>
-          <option value="mnist">MNIST</option>
-        </select>
+      <div class="select-container" style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+        <div>
+          <label for="model-select">Select Model:</label>
+          <select id="model-select">
+            <option value="MiniResNet">MiniResNet</option>
+            <option value="MediumResNet">MediumResNet</option>
+            <option value="ResNet10">ResNet10</option>
+          </select>
+        </div>
+        <div>
+          <label for="dataset-select">Select Dataset:</label>
+          <select id="dataset-select">
+            <option value="cifar10">CIFAR-10</option>
+            <option value="mnist">MNIST</option>
+          </select>
+        </div>
       </div>
       
       <button id="init-btn" class="btn initialize-btn">Initialize Model</button>
@@ -126,8 +136,9 @@
       
       // Set up model initialization button
       document.getElementById('init-btn').addEventListener('click', async () => {
+        const modelType = document.getElementById('model-select').value;
         const dataset = document.getElementById('dataset-select').value;
-        await initializeModel(dataset);
+        await initializeModel(modelType, dataset);
         // Enable test train button after model is initialized
         document.getElementById('test-train-btn').disabled = false;
       });

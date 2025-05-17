@@ -1,6 +1,6 @@
-import { ResNet10 } from './model.js'
+import { ResNet10 as OriginalResNet10 } from './model.js'
 import { MiniResNet20 } from './mini_model.js'
-import { MiniResNet } from './mini_model2.js'
+import { MiniResNet, MediumResNet, ResNet10 } from './mini_model2.js'
 import * as tf from '@tensorflow/tfjs'
 import JSZip from 'jszip';
 
@@ -8,15 +8,30 @@ import JSZip from 'jszip';
 let model;
 
 /**
- * Initialize the ResNet10 model with the specified dataset
+ * Initialize the model with the specified model type and dataset
+ * @param {string} modelType - The model type to initialize (e.g., 'MiniResNet', 'MediumResNet', 'ResNet10')
  * @param {string} dataset - The dataset to use (e.g., 'cifar10', 'mnist')
  * @returns {Promise<void>}
  */
-async function initializeModel(dataset = 'cifar10') {
+async function initializeModel(modelType = 'MiniResNet', dataset = 'cifar10') {
   try {
-    model = new MiniResNet();
-    console.log("Model initialized successfully");
-    document.getElementById('model-status').textContent = 'Model initialized successfully';
+    // Initialize the appropriate model based on selection
+    switch (modelType) {
+      case 'MiniResNet':
+        model = new MiniResNet();
+        break;
+      case 'MediumResNet':
+        model = new MediumResNet();
+        break;
+      case 'ResNet10':
+        model = new ResNet10();
+        break;
+      default:
+        model = new MiniResNet();
+    }
+    
+    console.log(`${modelType} initialized successfully`);
+    document.getElementById('model-status').textContent = `${modelType} initialized successfully`;
     document.getElementById('download-btn').disabled = false;
     return model;
   } catch (error) {
@@ -41,8 +56,9 @@ async function downloadModel() {
     document.getElementById('model-status').textContent = 'Downloading model...';
     document.getElementById('download-btn').disabled = true;
     
-    // Save the model to downloads
-    await model.model.save('downloads://mini_resnet');
+    // Save the model to downloads with the model's name
+    const modelName = model.name.toLowerCase().replace(/\s+/g, '_');
+    await model.model.save(`downloads://${modelName}`);
     
     document.getElementById('model-status').textContent = 'Model downloaded successfully';
     document.getElementById('download-btn').disabled = false;

@@ -16,44 +16,41 @@ class Model {
     }
 }
 
-export class MiniResNet extends Model {
-	constructor() {
-		super()
-		console.log("Initializing MiniResNet instance...")
-		this.imageShape = [32, 32, 3]
-		this.imageClasses = 10
-		this.imageFlattenSize = this.imageShape.reduce((prod, num) => prod * num, 1)
+export class BaseResNet extends Model {
+	constructor(config) {
+		super();
+		this.name = config.name || 'BaseResNet';
+		console.log(`Initializing ${this.name}...`);
 
-		this.model = this.buildModel()
+		this.imageShape = [32, 32, 3];
+		this.imageClasses = 10;
+		this.imageFlattenSize = this.imageShape.reduce((prod, num) => prod * num, 1);
+		this.filtersPerBlock = config.filtersPerBlock;  // e.g., [16, 32, 64, 128]
+		this.model = this.buildModel();
 	}
 
-	// Build the model
 	buildModel() {
 		const inputs = tf.input({ shape: [this.imageFlattenSize] });
-
 		let x = tf.layers.reshape({ targetShape: this.imageShape }).apply(inputs);
 
-		// Initial Conv Layer with fewer filters
+		// Initial Conv Layer
 		x = tf.layers.conv2d({
-			filters: 16,  // ↓ from 64
+			filters: this.filtersPerBlock[0],
 			kernelSize: 3,
 			strides: 1,
 			padding: 'same',
 			useBias: false
 		}).apply(x);
-
 		x = tf.layers.batchNormalization().apply(x);
 		x = tf.layers.reLU().apply(x);
 
-		// Residual Blocks with reduced filters
-		x = this.residualBlock(x, 16);
-		x = this.residualBlock(x, 32, true);
-		x = this.residualBlock(x, 64, true);
-		x = this.residualBlock(x, 128, true);
+		// Residual blocks
+		for (let i = 0; i < this.filtersPerBlock.length; i++) {
+			const downsample = i !== 0;
+			x = this.residualBlock(x, this.filtersPerBlock[i], downsample);
+		}
 
-		// Global Average Pooling
 		x = tf.layers.globalAveragePooling2d({ dataFormat: 'channelsLast' }).apply(x);
-
 		x = tf.layers.dense({ units: this.imageClasses, activation: 'softmax' }).apply(x);
 
 		const model = tf.model({ inputs, outputs: x });
@@ -62,81 +59,51 @@ export class MiniResNet extends Model {
 			optimizer: 'adam',
 			loss: 'categoricalCrossentropy',
 			metrics: ['accuracy']
-		})
+		});
 
-		console.log('MiniResNet initialized.')
-
+		console.log(`${this.name} initialized.`);
 		return model;
 	}
 
-	// Function to create a residual block
-    residualBlock(x, filters, downsample = false) {
-        let shortcut = x;
-    
-        // Project shortcut if either downsampling OR filter dimension changes
-        // const inputChannels = x.shape[3];
-        // const needsProjection = downsample || inputChannels !== filters;
-    
-        // if (needsProjection) {
-        //     shortcut = tf.layers.conv2d({
-        //         filters: filters,
-        //         kernelSize: 1,
-        //         strides: downsample ? 2 : 1,
-        //         padding: 'same',
-        //         useBias: false
-        //     }).apply(shortcut);
-    
-        //     shortcut = tf.layers.batchNormalization().apply(shortcut);
-        // }
+	residualBlock(x, filters, downsample = false) {
+		let shortcut = x;
+		const inCh = (x.shape[x.shape.length - 1] ?? -1);
+		const needsProj = downsample || inCh !== filters;
 
-        const inputShape   = x.shape;                  // [null, 32, 32, ?] at build time
-        const inCh         = inputShape[inputShape.length - 1] ?? -1;  // safe fallback
-        const needsProj    = downsample || inCh !== filters;
+		if (needsProj) {
+			shortcut = tf.layers.conv2d({
+				filters,
+				kernelSize: 1,
+				strides: downsample ? 2 : 1,
+				padding: 'same',
+				useBias: false
+			}).apply(shortcut);
+			shortcut = tf.layers.batchNormalization().apply(shortcut);
+		}
 
-        if (needsProj) {
-            shortcut = tf.layers.conv2d({
-              filters,
-              kernelSize: 1,
-              strides: downsample ? 2 : 1,
-              padding: 'same',
-              useBias: false
-            }).apply(shortcut);
-            shortcut = tf.layers.batchNormalization().apply(shortcut);
-          }
-    
-        let out = tf.layers.conv2d({
-            filters: filters,
-            kernelSize: 3,
-            strides: downsample ? 2 : 1,
-            padding: 'same',
-            useBias: false
-        }).apply(x);
-    
-        out = tf.layers.batchNormalization().apply(out);
-        out = tf.layers.reLU().apply(out);
-    
-        out = tf.layers.conv2d({
-            filters: filters,
-            kernelSize: 3,
-            strides: 1,
-            padding: 'same',
-            useBias: false
-        }).apply(out);
-    
-        out = tf.layers.batchNormalization().apply(out);
-    
-        // Add the shortcut connection
-        out = tf.layers.add().apply([out, shortcut]);
-        tf.util.assert(
-        out != null,
-        () => 'Add-layer received a null tensor - shapes were ' +
-                JSON.stringify({main: out?.shape, shortcut: shortcut?.shape})
-        );
-        out = tf.layers.reLU().apply(out);
-    
-        return out;
-    }
-    
+		let out = tf.layers.conv2d({
+			filters,
+			kernelSize: 3,
+			strides: downsample ? 2 : 1,
+			padding: 'same',
+			useBias: false
+		}).apply(x);
+		out = tf.layers.batchNormalization().apply(out);
+		out = tf.layers.reLU().apply(out);
+
+		out = tf.layers.conv2d({
+			filters,
+			kernelSize: 3,
+			strides: 1,
+			padding: 'same',
+			useBias: false
+		}).apply(out);
+		out = tf.layers.batchNormalization().apply(out);
+
+		out = tf.layers.add().apply([out, shortcut]);
+		out = tf.layers.reLU().apply(out);
+		return out;
+	}    
 
     forward(x) {
         return super.forward(x, [1, this.imageShape])
@@ -375,4 +342,23 @@ export class MiniResNet extends Model {
             testLabels.dispose();
         }
     }
+}
+
+// Variants
+export class MiniResNet extends BaseResNet {
+	constructor() {
+		super({ name: 'MiniResNet', filtersPerBlock: [16, 32, 64, 128] });
+	}
+}
+
+export class MediumResNet extends BaseResNet {
+	constructor() {
+		super({ name: 'MediumResNet', filtersPerBlock: [32, 64, 128, 256] });
+	}
+}
+
+export class ResNet10 extends BaseResNet {
+	constructor() {
+		super({ name: 'ResNet10', filtersPerBlock: [64, 128, 256, 512] });
+	}
 }

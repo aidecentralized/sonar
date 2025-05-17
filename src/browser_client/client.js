@@ -1,6 +1,6 @@
 import { ResNet10 } from './model.js'
 // import { MiniResNet20 } from './mini_model.js'
-import { MiniResNet } from './mini_model2.js'
+import { MiniResNet, MediumResNet } from './mini_model2.js'
 import * as tf from '@tensorflow/tfjs'
 import js2python from './js2python.json'
 import { displayMessage } from './main.js'
