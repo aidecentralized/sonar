@@ -1,5 +1,6 @@
 import { ResNet10 } from './model.js'
-import { MiniResNet20 } from './mini_model.js'
+// import { MiniResNet20 } from './mini_model.js'
+import { MiniResNet } from './mini_model2.js'
 import * as tf from '@tensorflow/tfjs'
 import js2python from './js2python.json'
 import { displayMessage } from './main.js'
@@ -328,7 +329,8 @@ class MetricsLogger {
 
 export class WebRTCCommUtils {
     constructor(config, trainDataset, testDataset = null) {
-        this.model = new ResNet10();
+        // this.model = new ResNet10();
+        this.model = new MiniResNet();
         this.config = config;
         this.signalingServer = this.config.signaling_server || 'ws://localhost:8765';
         this.sessionId = this.config.session_id;

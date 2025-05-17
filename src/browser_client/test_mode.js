@@ -1,5 +1,6 @@
 import { ResNet10 } from './model.js'
 import { MiniResNet20 } from './mini_model.js'
+import { MiniResNet } from './mini_model2.js'
 import * as tf from '@tensorflow/tfjs'
 import JSZip from 'jszip';
 
@@ -13,7 +14,7 @@ let model;
  */
 async function initializeModel(dataset = 'cifar10') {
   try {
-    model = new MiniResNet20(dataset);
+    model = new MiniResNet();
     console.log("Model initialized successfully");
     document.getElementById('model-status').textContent = 'Model initialized successfully';
     document.getElementById('download-btn').disabled = false;
@@ -41,7 +42,7 @@ async function downloadModel() {
     document.getElementById('download-btn').disabled = true;
     
     // Save the model to downloads
-    await model.model.save('downloads://mini_resnet10');
+    await model.model.save('downloads://mini_resnet');
     
     document.getElementById('model-status').textContent = 'Model downloaded successfully';
     document.getElementById('download-btn').disabled = false;
