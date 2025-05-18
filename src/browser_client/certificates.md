@@ -5,23 +5,24 @@ We need certificates to utilize https / wss, which is necessary for cross-device
 ## Generating Certs
 
 1. Install mkcert:
-'''
+
 brew install mkcert       # macOS
+
 sudo apt install mkcert   # Ubuntu
+
 choco install mkcert      # Windows (via Chocolatey)
-'''
+
 
 2. Install local CA:
-'''
+
 mkcert -install
-'''
+
 
 3. Generate cert in working directory:
-'''
-mkcert {space-separated list of IP addresses}
-'''
-You need to specify all addresses from which you may be accessing this client/server.
 
+mkcert {space-separated list of IP addresses}
+
+You need to specify all addresses from which you may be accessing this client/server.
 
 ## Using Certs
 1. To make the browser client run on https and use wss, add certificates to src/browser_client/certs/ and add the cert & key filepaths to src/browser_client/vite.config.js (or use hosted browser clients onRender)
