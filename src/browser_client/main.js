@@ -171,7 +171,7 @@ fileDropdown.addEventListener('change', async (e) => {
     if (!filename) return;
   
     try {
-        const res = await fetch(`/datasets/imgs/${filename.split('_')[0]}_non_iid_dirichlet/${filename}`);
+        const res = await fetch(`/datasets/imgs/${filename.split('_')[0]}/${filename}`);
         const json = await res.json();
         trainDataset = processData(json);
         enableButtons(); // Enable start button when training data is loaded

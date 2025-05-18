@@ -180,3 +180,7 @@ cython_debug/
 
 node_modules/browser_client/package-lock.json
 src/browser_client/node_modules/
+
+# Certificates for https and wss
+src/certs/
+src/browser_client/certs/

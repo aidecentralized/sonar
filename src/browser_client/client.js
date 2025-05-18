@@ -332,7 +332,7 @@ export class WebRTCCommUtils {
         // this.model = new ResNet10();
         this.model = new MiniResNet();
         this.config = config;
-        this.signalingServer = this.config.signaling_server || 'ws://localhost:8765';
+        this.signalingServer = this.config.signaling_server || 'wss://localhost:8765';
         this.sessionId = this.config.session_id;
         this.rank = null;
         this.size = this.config.num_users || 2;

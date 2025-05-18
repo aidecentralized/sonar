@@ -3,6 +3,7 @@ import asyncio
 import json
 import os
 import websockets
+import ssl
 from aiortc import RTCPeerConnection, RTCSessionDescription, RTCDataChannel, RTCConfiguration, RTCIceServer
 import logging
 from collections import defaultdict, OrderedDict
@@ -70,7 +71,7 @@ def deserialize_message(json_str: str) -> Dict[str, Any]:
 class RTCCommUtils(CommunicationInterface):
     def __init__(self, config: Dict[str, Dict[str, Any]]):
         self.config = config
-        self.signaling_server = config.get("signaling_server", "ws://localhost:8888")
+        self.signaling_server = config.get("signaling_server", "wss://localhost:8888")
         self.websocket = None
         self.connections: Dict[int, RTCPeerConnection] = {}
         self.data_channels: Dict[int, RTCDataChannel] = {}
@@ -508,8 +509,14 @@ class RTCCommUtils(CommunicationInterface):
 
         network_ready_event = asyncio.Event()  # Create an event to wait for network readiness
 
+        # Create an SSL context (trusts default CAs — works with real certs)
+        # ssl_context = ssl.create_default_context()
+
+        # If you're using self-signed certs (for dev only), add this instead:
+        ssl_context = ssl._create_unverified_context()
+
         try:
-            self.websocket = await websockets.connect(self.signaling_server)
+            self.websocket = await websockets.connect(self.signaling_server, ssl=ssl_context)
             await self.change_state(NodeState.CONNECTING)
             
             if create:

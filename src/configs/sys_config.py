@@ -87,9 +87,9 @@ CIFAR10_DSET = "cifar10"
 CIAR10_DPATH = "./datasets/imgs/cifar10/"
 
 NUM_COLLABORATORS = 1
-DUMP_DIR = "/mas/camera/Experiments/SONAR/jyuan/_tmp/"
+DUMP_DIR = ""
 
-num_users = 5
+num_users = 4
 dropout_dict = {}
 dropout_dicts = {"node_0": {}}
 for i in range(1, num_users + 1):
@@ -117,7 +117,7 @@ rtc_config: ConfigType = {
     "test_label_distribution": "iid",
     "dropout_dicts": dropout_dicts,
     "exp_keys": [],
-    "signaling_server": "ws://localhost:8886",
+    "signaling_server": "wss://localhost:8886",
 }
 
 current_config = rtc_config
