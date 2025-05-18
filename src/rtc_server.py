@@ -355,9 +355,16 @@ class SignalingServer:
                     print(neighbor_dict)
                 else:
                     print(info.rank)
+
+                    # Hack for having both JS and Python to work
+                    _topo = {}
+                    if "name" in session.config["algos"]["node_0"]["topology"]:
+                        _topo = session.config["algos"]["node_0"]["topology"]
+                    else:
+                        _topo = {"name": session.config["algos"]["node_0"]["topology"]}
                     topology_config = {
-                        "topology": session.config["algos"]["node_0"]["topology"],
-                        "num_users": session.config["num_users"],
+                        "topology": _topo,
+                        "num_users": int(session.config["num_users"]),
                         "seed": session.config["seed"]
                     }
                     # num_collaborators = session.config["num_collaborators"]
