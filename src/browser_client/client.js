@@ -2013,6 +2013,10 @@ export class WebRTCCommUtils {
             testMetrics.testTime
           );
         }
+        // To send data to Graph
+        if (window.updateTrainingGraph) {
+          window.updateTrainingGraph(i + 1, trainMetrics.trainAcc);
+        }
         
         // Update current round for metrics logging
         this.currentRound = i + 1;
