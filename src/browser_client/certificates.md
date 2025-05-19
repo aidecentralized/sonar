@@ -32,3 +32,5 @@ You need to specify all addresses from which you may be accessing this client/se
 3. The python clients don't need their own certs, but for them to validate these certs and communicate with the signaling server / browser clients, add the CA Root filepath (directory is found using mkcert -CAROOT, filename is typically 'rootCA.pem') to the cafile argument in ssl.create_default_context() in src/utils/communication/rtc_async_ver.py
 
 4. Make sure all websocket addresses (src/configs/sys_config.py, config form in browser client) use wss:// not ws:// 
+
+5. To run any client on a different device, you need to install the CA Root certificate (found at mkcert -CAROOT under rootCA.pem) on each device for it to authenticate the generated certificates above. For windows you need to rename it from .pem to .crt
