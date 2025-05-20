@@ -295,7 +295,12 @@ class RTCCommUtils(CommunicationInterface):
             RTCIceServer(urls=[
                 "stun:stun.l.google.com:19302",
                 "stun:stun1.l.google.com:19302"
-            ])
+            ]),
+            RTCIceServer(
+                urls="turn:openrelay.metered.ca:80",
+                username="openrelayproject",
+                credential="openrelayproject"
+            )
         ])
         # Create peer connection with the configuration
         pc = RTCPeerConnection(configuration=config)
@@ -510,10 +515,10 @@ class RTCCommUtils(CommunicationInterface):
         network_ready_event = asyncio.Event()  # Create an event to wait for network readiness
 
         # Create an SSL context (trusts default CAs — works with real certs)
-        # ssl_context = ssl.create_default_context()
+        ssl_context = ssl.create_default_context(cafile='/Users/brianle/Library/Application Support/mkcert/rootCA.pem')
 
         # If you're using self-signed certs (for dev only), add this instead:
-        ssl_context = ssl._create_unverified_context()
+        # ssl_context = ssl._create_unverified_context()
 
         try:
             self.websocket = await websockets.connect(self.signaling_server, ssl=ssl_context)
