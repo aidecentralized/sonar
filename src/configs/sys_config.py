@@ -87,7 +87,7 @@ CIFAR10_DSET = "cifar10"
 CIAR10_DPATH = "./datasets/imgs/cifar10/"
 
 NUM_COLLABORATORS = 1
-DUMP_DIR = "/mas/camera/Experiments/SONAR/jyuan/_tmp/"
+DUMP_DIR = ""
 
 num_users = 5
 dropout_dict = {}
@@ -99,7 +99,7 @@ for i in range(1, num_users + 1):
 # for swift, synchronous should preferable be False
 gpu_ids = [0, 1]
 rtc_config: ConfigType = {
-    "exp_id": "3p2js_try3",
+    "exp_id": "2python_3web",
     "num_users": num_users,
     "session_id": "1111",
     "num_collaborators": NUM_COLLABORATORS,

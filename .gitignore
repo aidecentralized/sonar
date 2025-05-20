@@ -8,6 +8,7 @@ data/
 notes.txt
 removeme*.png
 **/rawdata/
+cifar10_*/
 
 # Byte-compiled / optimized / DLL files
 **/__pycache__/

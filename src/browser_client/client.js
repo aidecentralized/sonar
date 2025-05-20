@@ -332,7 +332,7 @@ export class WebRTCCommUtils {
         // this.model = new ResNet10();
         this.model = new MiniResNet();
         this.config = config;
-        this.signalingServer = this.config.signaling_server || 'ws://localhost:8765';
+        this.signalingServer = this.config.signaling_server || 'ws://10.29.253.135:8886';
         this.sessionId = this.config.session_id;
         this.rank = null;
         this.size = this.config.num_users || 2;
@@ -1104,7 +1104,7 @@ export class WebRTCCommUtils {
         channel.send(msgString);
         const sizeInBytes = new TextEncoder().encode(msgString).length;
         this.comm_cost_sent += sizeInBytes;
-        this.log(`Sent message to ${peerRank}: ${sizeInBytes} bytes`);
+        // this.log(`Sent message to ${peerRank}: ${sizeInBytes} bytes`);
       }
   
       if (queue.length > 0) {
@@ -1938,8 +1938,6 @@ export class WebRTCCommUtils {
     this.log('started training, loading dataset...');
 
     try {
-      // Log TensorFlow memory metrics before training
-      this.updateTensorflowMemoryMetrics(true);
       // Simple check for dataset existence
       if (!this.trainDataset) {
         throw new Error('Training dataset is undefined');
@@ -1954,6 +1952,8 @@ export class WebRTCCommUtils {
       this.trainingStartTime = performance.now();
 
       for (let i = 0; i < this.config.epochs; i++) {
+        // Log TensorFlow memory metrics before training
+        this.updateTensorflowMemoryMetrics(true);
         // Use both training and testing datasets if available
         let trainMetrics;
         if (this.testDataset) {
@@ -2013,6 +2013,8 @@ export class WebRTCCommUtils {
             testMetrics.testTime
           );
         }
+        // Log TensorFlow memory metrics after training
+        this.updateTensorflowMemoryMetrics(false);
         
         // Update current round for metrics logging
         this.currentRound = i + 1;
@@ -2029,9 +2031,6 @@ export class WebRTCCommUtils {
       }
 
       this.log("finished training");
-      
-      // Log TensorFlow memory metrics after training
-      this.updateTensorflowMemoryMetrics(false);
       
       this.exportLogs();
     } catch (error) {
@@ -2054,6 +2053,7 @@ export class WebRTCCommUtils {
   updateTensorflowMemoryMetrics(beforeTraining = false) {
     try {
       const memInfo = tf.memory();
+      console.log("memInfo: ", memInfo);
       
       if (beforeTraining) {
         this.logMetric('tf_mem_before_train', memInfo.numBytes);
@@ -2300,6 +2300,7 @@ export class WebRTCCommUtils {
     // }
       
 
+  
   logMetric(metricName, value) {
     if (this.metricsLogger) {
       this.metricsLogger.logMetric(metricName, this.currentRound, value);
