@@ -2,6 +2,7 @@ const WebSocket = require('ws');
 const wrtc = require('wrtc');  // Import WebRTC for Node.js
 // const { ResNet10 } = require('./browser_client/model.js');
 const { ResNet10 } = require('./model_archive.js');
+import { MiniResNet, MediumResNet } from './mini_model_node.js'
 const path = require('path');
 const fs = require('fs');const tf = require('@tensorflow/tfjs-node');
 // TODO: this can be replaced by just the browser-side without wrtc once we use browser
