@@ -2,7 +2,7 @@ const WebSocket = require('ws');
 const wrtc = require('wrtc');  // Import WebRTC for Node.js
 // const { ResNet10 } = require('./browser_client/model.js');
 const { ResNet10 } = require('./model_archive.js');
-import { MiniResNet, MediumResNet } from './mini_model_node.js'
+const { MiniResNet, MediumResNet } = require('./mini_model_node.js')
 const path = require('path');
 const fs = require('fs');const tf = require('@tensorflow/tfjs-node');
 // TODO: this can be replaced by just the browser-side without wrtc once we use browser
@@ -234,9 +234,9 @@ const NodeState = {
 
 class WebRTCCommUtils {
     constructor(config, trainDataset, testDataset = null) {
-        this.expName = "non_iid"
+        this.expName = "noniid_ring_05-20_4"
         this.startTime = Date.now(  );
-        this.model = new ResNet10();
+        this.model = new MiniResNet();
         this.config = config || {};
         this.signalingServer = this.config.signaling_server || 'ws://localhost:8765';
         this.trainDataset = trainDataset;
@@ -255,6 +255,7 @@ class WebRTCCommUtils {
         this.dataChannels = new Map();                // peerRank -> RTCDataChannel
         this.connectedPeers = new Set();
         this.pendingConnections = new Set();
+        this.broadcasted = false;                // Flag to indicate if we've broadcasted our readiness
     
         // Connection management
         this.connectionRetries = new Map();           // peerRank -> retryCount
@@ -354,10 +355,14 @@ class WebRTCCommUtils {
                 this.metricsLogger = new MetricsLogger(path.join('logs', `${this.expName}`, `node_${this.rank}`));
                 
                 // Initialize metrics files
-                ['test_acc_noniid', 'test_loss', 'test_time', 
-                 'train_acc', 'train_loss', 'train_time',
-                 'time_elapsed', 'bytes_sent', 'bytes_received',
-                 'peak_dram', 'peak_gpu', 'neighbors', 'test_acc_iid_post_agg', 'test_acc_iid'].forEach(metric => {
+                ['test_acc', 'test_loss', 'test_time', 
+                'train_acc', 'train_loss', 'train_time',
+                'time_elapsed', 'bytes_sent', 'bytes_received',
+                'peak_dram', 'peak_gpu', 'neighbors',
+                'tf_mem_before_train', 'tf_mem_after_train', 
+                'tf_tensors_before_train', 'tf_tensors_after_train',
+                'tf_data_buffers_before_train', 'tf_data_buffers_after_train',
+                'process_memory_before_train', 'process_memory_after_train'].forEach(metric => {
                     this.metricsLogger.initializeMetric(metric);
                 });
                 
@@ -440,9 +445,9 @@ class WebRTCCommUtils {
         this.expectedConnections = Object.keys(newNeighbors).length;
 
         // If we have zero neighbors, we can signal "node_ready" right away
-        if (this.expectedConnections === 0) {
+        if (this.expectedConnections === 0 && !this.broadcasted) {
             this.broadcastNodeReady();
-
+            this.broadcasted = true;
         }
 
         // Initiate connections to higher-ranked neighbors
@@ -585,6 +590,9 @@ class WebRTCCommUtils {
 
                 // Try to parse the buffer as JSON
                 const data = JSON.parse(messageBuffer);
+                const dataStr = JSON.stringify(data);
+                const sizeInBytes = new TextEncoder().encode(dataStr).length; 
+                this.comm_cost_received += sizeInBytes;
 
                 // If successful, handle the complete message
                 // console.log(`Received message from ${peerRank}: ${data.type}`);
@@ -629,8 +637,9 @@ class WebRTCCommUtils {
              `Connected: ${this.connectedPeers.size}/${this.expectedConnections}`);
 
     // If we've reached the expected number, let the server know
-    if (this.connectedPeers.size >= this.expectedConnections) {
+    if (this.connectedPeers.size >= this.expectedConnections && !this.broadcasted) {
       this.broadcastNodeReady();
+      this.broadcasted = true;
     }
 
     // Let the server know
@@ -1344,7 +1353,7 @@ class WebRTCCommUtils {
     this.log('started training, loading dataset...');
 
     // DATASET HACK START
-    const filePath = path.resolve(__dirname, `./browser_client/public/datasets/imgs/cifar10_non_iid_unique_labels/cifar10_client_${this.rank - 1}_train.json`);
+     const filePath = path.resolve(__dirname, `./browser_client/public/datasets/imgs/cifar10_dirichlet_20_alpha1/cifar10_client_${this.rank - 1}_train.json`);
     this.log(`Loading training dataset from ${filePath}`);
     const rawData = fs.readFileSync(filePath, 'utf8');
     const data = JSON.parse(rawData);
@@ -1354,7 +1363,7 @@ class WebRTCCommUtils {
     this.trainDataset = trainData;
     this.testDataset = testData;
 
-    const valFilePath = path.resolve(__dirname, `./browser_client/public/datasets/imgs/cifar10_non_iid_unique_labels/cifar10_client_${this.rank - 1}_test.json`);
+    const valFilePath = path.resolve(__dirname, `./browser_client/public/datasets/imgs/cifar10_dirichlet_20_alpha1/cifar10_client_${this.rank - 1}_test_iid.json`);
     const valRawData = fs.readFileSync(valFilePath, 'utf8');
     const valData = JSON.parse(valRawData);
     this.valDataset = processData(valData);
@@ -1375,21 +1384,24 @@ class WebRTCCommUtils {
       this.log(`Starting round ${i} of training`);
       
       // Initialize byte counters for this round
-      this.bytesReceived = 0;
-      this.bytesSent = 0;
+      // this.bytesReceived = 0;
+      // this.bytesSent = 0;
+
+      // Log TensorFlow memory metrics before training
+      this.updateTensorflowMemoryMetrics(true);
       
       // Record start time for this training round
       const roundStartTime = Date.now();
       
-      // Train for one epoch and get the history object
-      const history = await this.model.local_train_one(this.trainDataset, this.testDataset, undefined, this.log.bind(this));
+      // Train for one epoch and get the metrics
+      const metrics = await this.model.local_train_one(this.trainDataset, this.testDataset, undefined, this.log.bind(this));
       
       // Calculate training time
       const trainTime = Date.now() - roundStartTime;
       
       // Log training metrics
-      const trainLoss = history.history.loss[0];
-      const trainAcc = history.history.acc[0];
+      const trainLoss = metrics.trainLoss;
+      const trainAcc = metrics.trainAcc;
       
       this.metricsLogger.logMetric('train_time', i, trainTime);
       this.metricsLogger.logMetric('train_loss', i, trainLoss);
@@ -1399,9 +1411,9 @@ class WebRTCCommUtils {
       let sendStartTime = Date.now();
 
       // Log test metrics if validation data was used
-      if (history.history.val_loss && history.history.val_acc) {
-        const testLoss = history.history.val_loss[0];
-        const testAcc = history.history.val_acc[0];
+      if (metrics.testAcc && metrics.testLoss) {
+        const testLoss = metrics.testLoss;
+        const testAcc = metrics.testAcc;
         const testStartTime = Date.now();
         
         // Evaluate on validation set to get IID metrics
@@ -1419,6 +1431,7 @@ class WebRTCCommUtils {
         this.metricsLogger.logMetric('test_loss', i, testLoss);
         this.metricsLogger.logMetric('test_acc_noniid', i, testAcc);
         this.metricsLogger.logMetric('test_acc_iid', i, iidAcc);
+        this.metricsLogger.logMetric('test_acc', i, iidAcc);
         
         this.log(`Round ${i}: Test metrics - Loss: ${testLoss.toFixed(4)}, Accuracy: ${(testAcc * 100).toFixed(2)}%`);
         this.log(`Round ${i}: IID Test Accuracy: ${(iidAcc * 100).toFixed(2)}%`);
@@ -1435,8 +1448,8 @@ class WebRTCCommUtils {
         this.metricsLogger.logMetric('peak_gpu', i, 0);
         
         // Log the total bytes sent and received for this round
-        this.metricsLogger.logMetric('bytes_sent', i, this.bytesSent);
-        this.metricsLogger.logMetric('bytes_received', i, this.bytesReceived);
+        this.metricsLogger.logMetric('bytes_sent', i, this.comm_cost_sent);
+        this.metricsLogger.logMetric('bytes_received', i, this.comm_cost_received);
         
         this.log(`finished round ${i} training`);
 
@@ -1464,7 +1477,10 @@ class WebRTCCommUtils {
           this.metricsLogger.logMetric('test_acc_iid_post_agg', i, testResult.testAcc);
           this.log(`Test Accuracy Post Aggregation: ${(testResult.testAcc * 100).toFixed(2)}%`);
         }
-        
+
+        // Log TensorFlow memory metrics after training
+        this.updateTensorflowMemoryMetrics(false);
+
         this.currentRound = i + 1;
     }
 
@@ -1475,6 +1491,28 @@ class WebRTCCommUtils {
     this.log(`Total training time: ${totalTime / 1000} seconds: RoundTrainTime: ${trainTime / 1000} seconds, RoundSendTime: ${(Date.now() - sendStartTime) / 1000} seconds, RoundTime: ${(Date.now() - roundStartTime) / 1000} seconds`);
   }
 }
+
+  updateTensorflowMemoryMetrics(beforeTraining = false) {
+    try {
+      const memInfo = tf.memory();
+      console.log("memInfo: ", memInfo);
+      const memoryUsage = process.memoryUsage();
+      
+      if (beforeTraining) {
+        this.logMetric('tf_mem_before_train', memInfo.numBytes);
+        this.logMetric('tf_tensors_before_train', memInfo.numTensors);
+        this.logMetric('tf_data_buffers_before_train', memInfo.numDataBuffers);
+        this.logMetric('process_memory_before_train', memoryUsage.heapUsed);
+      } else {
+        this.logMetric('tf_mem_after_train', memInfo.numBytes);
+        this.logMetric('tf_tensors_after_train', memInfo.numTensors);
+        this.logMetric('tf_data_buffers_after_train', memInfo.numDataBuffers);
+        this.logMetric('process_memory_after_train', memoryUsage.heapUsed);
+      }
+    } catch (error) {
+      this.log(`Error logging memory metrics: ${error.message}`);
+    }
+  }
 
   // -------------------------- Signaling & ICE Handling --------------------------
 
@@ -1615,6 +1653,12 @@ class WebRTCCommUtils {
         }
     }
 
+    logMetric(metricName, value) {
+    if (this.metricsLogger) {
+      this.metricsLogger.logMetric(metricName, this.currentRound, value);
+    }
+  }
+
     // sendModelWeights(model, chunkSize, sendToPeer) {
     //     // model is an object: { layerName: tensor, ... }
     //     console.log("Sending model weights. Keys:", Object.keys(model));
@@ -1741,7 +1785,7 @@ const MAX_CLIENTS = 10;
 const IS_CREATOR = false; // Set to true if this should create a session
 
 // ** Start WebRTC Comm Utils **
-const signalingServer = 'ws://localhost:8765'; // Your WebSocket server
+const signalingServer = 'ws://localhost:8886'; // Your WebSocket server
 
 // TODO: fill in config
 let config = {

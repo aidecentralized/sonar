@@ -9,6 +9,7 @@ notes.txt
 removeme*.png
 **/rawdata/
 cifar10_*/
+logs/
 
 # Byte-compiled / optimized / DLL files
 **/__pycache__/

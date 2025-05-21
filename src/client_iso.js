@@ -2,6 +2,7 @@ const WebSocket = require('ws');
 const wrtc = require('wrtc');  // Import WebRTC for Node.js
 // const { ResNet10 } = require('./browser_client/model.js');
 const { ResNet10 } = require('./model_archive.js');
+const { MiniResNet, MediumResNet } = require('./mini_model_node.js')
 const path = require('path');
 const fs = require('fs');const tf = require('@tensorflow/tfjs-node');
 // TODO: this can be replaced by just the browser-side without wrtc once we use browser
@@ -233,16 +234,16 @@ const NodeState = {
 
 class WebRTCCommUtils {
     constructor(config, trainDataset, testDataset = null) {
-        this.expName = "non_iid_iso"
+        this.expName = "noniid_iso_5-20"
         this.startTime = Date.now();
-        this.model = new ResNet10();
+        this.model = new MiniResNet();
         this.config = config || {};
         this.signalingServer = this.config.signaling_server || 'ws://localhost:8765';
         this.trainDataset = trainDataset;
         this.testDataset = testDataset;
 
         // Validation Data
-        const filePath = path.resolve(__dirname, `./browser_client/public/datasets/imgs/cifar10_non_iid_unique_labels/cifar10_client_0_test.json`);
+        const filePath = path.resolve(__dirname, `./browser_client/public/datasets/imgs/cifar10_dirichlet_20_alpha1/cifar10_client_0_test_iid.json`);
         const rawData = fs.readFileSync(filePath, 'utf8');
         const data = JSON.parse(rawData);
         this.valDataset = processData(data);
@@ -302,9 +303,13 @@ class WebRTCCommUtils {
 
         // Initialize metrics files
         ['test_acc', 'test_loss', 'test_time', 
-            'train_acc_noniid', 'train_loss', 'train_time',
-            'time_elapsed', 'bytes_sent', 'bytes_received',
-            'peak_dram', 'peak_gpu', 'neighbors', 'test_acc_iid'].forEach(metric => {
+        'train_acc', 'train_loss', 'train_time',
+        'time_elapsed', 'bytes_sent', 'bytes_received',
+        'peak_dram', 'peak_gpu', 'neighbors',
+        'tf_mem_before_train', 'tf_mem_after_train', 
+        'tf_tensors_before_train', 'tf_tensors_after_train',
+        'tf_data_buffers_before_train', 'tf_data_buffers_after_train',
+        'process_memory_before_train', 'process_memory_after_train'].forEach(metric => {
             this.metricsLogger.initializeMetric(metric);
         });
 
@@ -347,19 +352,22 @@ class WebRTCCommUtils {
       // Initialize byte counters for this round
       this.bytesReceived = 0;
       this.bytesSent = 0;
+
+      // Log TensorFlow memory metrics before training
+      this.updateTensorflowMemoryMetrics(true);
       
       // Record start time for this training round
       const roundStartTime = Date.now();
       
       // Train for one epoch and get the history object
-      const history = await this.model.local_train_one(this.trainDataset, this.testDataset, undefined, this.log.bind(this));
+      const metrics = await this.model.local_train_one(this.trainDataset, this.testDataset, undefined, this.log.bind(this));
       
       // Calculate training time
       const trainTime = Date.now() - roundStartTime;
       
       // Log training metrics
-      const trainLoss = history.history.loss[0];
-      const trainAcc = history.history.acc[0];
+      const trainLoss = metrics.trainLoss;
+      const trainAcc = metrics.trainAcc;
       
       this.metricsLogger.logMetric('train_time', i, trainTime);
       this.metricsLogger.logMetric('train_loss', i, trainLoss);
@@ -368,9 +376,9 @@ class WebRTCCommUtils {
       this.log(`Round ${i}: Training completed - Loss: ${trainLoss.toFixed(4)}, Accuracy: ${(trainAcc * 100).toFixed(2)}%`);
       
       // Log test metrics if validation data was used
-      if (history.history.val_loss && history.history.val_acc) {
-        const testLoss = history.history.val_loss[0];
-        const testAcc = history.history.val_acc[0];
+      if (metrics.testAcc && metrics.testLoss) {
+        const testLoss = metrics.testLoss;
+        const testAcc = metrics.testAcc;
         const testStartTime = Date.now();
         
         // Evaluate on validation set to get IID metrics
@@ -388,6 +396,7 @@ class WebRTCCommUtils {
         this.metricsLogger.logMetric('test_loss', i, testLoss);
         this.metricsLogger.logMetric('test_acc_noniid', i, testAcc);
         this.metricsLogger.logMetric('test_acc_iid', i, iidAcc);
+        this.metricsLogger.logMetric('test_acc', i, iidAcc);
         
         this.log(`Round ${i}: Test metrics - Loss: ${testLoss.toFixed(4)}, Accuracy: ${(testAcc * 100).toFixed(2)}%`);
         this.log(`Round ${i}: IID Test Accuracy: ${(iidAcc * 100).toFixed(2)}%`);
@@ -406,6 +415,9 @@ class WebRTCCommUtils {
         // Log the total bytes sent and received for this round
         this.metricsLogger.logMetric('bytes_sent', i, this.bytesSent);
         this.metricsLogger.logMetric('bytes_received', i, this.bytesReceived);
+        
+        // Log TensorFlow memory metrics after training
+        this.updateTensorflowMemoryMetrics(false);
         
         this.log(`finished round ${i} training`);
 
@@ -444,6 +456,33 @@ class WebRTCCommUtils {
     this.log(`Total training time: ${totalTime / 1000} seconds: RoundTrainTime: ${trainTime / 1000} seconds, RoundSendTime: ${(Date.now() - roundStartTime) / 1000} seconds`);
   }
 }
+  updateTensorflowMemoryMetrics(beforeTraining = false) {
+    try {
+      const memInfo = tf.memory();
+      console.log("memInfo: ", memInfo);
+      const memoryUsage = process.memoryUsage();
+      
+      if (beforeTraining) {
+        this.logMetric('tf_mem_before_train', memInfo.numBytes);
+        this.logMetric('tf_tensors_before_train', memInfo.numTensors);
+        this.logMetric('tf_data_buffers_before_train', memInfo.numDataBuffers);
+        this.logMetric('process_memory_before_train', memoryUsage.heapUsed);
+      } else {
+        this.logMetric('tf_mem_after_train', memInfo.numBytes);
+        this.logMetric('tf_tensors_after_train', memInfo.numTensors);
+        this.logMetric('tf_data_buffers_after_train', memInfo.numDataBuffers);
+        this.logMetric('process_memory_after_train', memoryUsage.heapUsed);
+      }
+    } catch (error) {
+      this.log(`Error logging memory metrics: ${error.message}`);
+    }
+  }
+
+  logMetric(metricName, value) {
+    if (this.metricsLogger) {
+      this.metricsLogger.logMetric(metricName, this.currentRound, value);
+    }
+  }
       
 }
 
@@ -488,7 +527,7 @@ class MetricsLogger {
 }
 
 // ** Set your session parameters here **
-const SESSION_ID = 1111; // Change this to a fixed or generated session ID
+const SESSION_ID = 1112; // Change this to a fixed or generated session ID
 const MAX_CLIENTS = 10;
 const IS_CREATOR = false; // Set to true if this should create a session
 
@@ -546,7 +585,7 @@ function splitDataset(dataset, trainRatio = 0.8) {
   return { trainData, testData };
 }
 
-const filePath = path.resolve(__dirname, `./browser_client/public/datasets/imgs/cifar10_non_iid_unique_labels/cifar10_client_0_train.json`);
+const filePath = path.resolve(__dirname, `./browser_client/public/datasets/imgs/cifar10_dirichlet_20_alpha1/cifar10_client_0_train.json`);
 const rawData = fs.readFileSync(filePath, 'utf8');
 const data = JSON.parse(rawData);
 const dataset = processData(data);
