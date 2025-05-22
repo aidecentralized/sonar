@@ -87,7 +87,7 @@ CIFAR10_DSET = "cifar10"
 CIAR10_DPATH = "./datasets/imgs/cifar10/"
 
 NUM_COLLABORATORS = 1
-DUMP_DIR = ""
+DUMP_DIR = "./logs/"
 
 num_users = 5
 dropout_dict = {}
@@ -97,9 +97,9 @@ for i in range(1, num_users + 1):
 
 # for swift or fedavgpush, just modify the algo_configs list
 # for swift, synchronous should preferable be False
-gpu_ids = [0, 1]
+gpu_ids = [0]
 rtc_config: ConfigType = {
-    "exp_id": "2python_3web",
+    "exp_id": "5-20_3p2web_split20_3",
     "num_users": num_users,
     "session_id": "1111",
     "num_collaborators": NUM_COLLABORATORS,
@@ -112,12 +112,34 @@ rtc_config: ConfigType = {
     "device_ids": get_device_ids(num_users, gpu_ids),
     # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
     "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
-    "samples_per_user": 50000 // num_users,  # distributed equally
+    "samples_per_user": 50000 // 20,  # distributed equally
     "train_label_distribution": "non_iid",
     "test_label_distribution": "iid",
     "dropout_dicts": dropout_dicts,
     "exp_keys": [],
     "signaling_server": "ws://localhost:8886",
+}
+
+grpc_system_config: ConfigType = {
+    "exp_id": "noniid_star_5-20_grpc_split10",
+    "num_users": num_users,
+    "num_collaborators": NUM_COLLABORATORS,
+    "comm": {"type": "GRPC", "synchronous": True, "peer_ids": ["matlaber10.media.mit.edu:5555"]},  # The super-node
+    "dset": CIFAR10_DSET,
+    "dump_dir": DUMP_DIR,
+    "dpath": CIAR10_DPATH,
+    "seed": 2,
+    "device_ids": get_device_ids(num_users, gpu_ids),
+    "assign_based_on_host": False,
+    # "algos": get_algo_configs(num_users=num_users, algo_configs=default_config_list),  # type: ignore
+    "algos": get_algo_configs(num_users=num_users, algo_configs=[fedstatic]),  # type: ignore
+    "samples_per_user": 50000 // 10,  # distributed equally
+    "train_label_distribution": "non_iid",
+    "alpha_data": 0.5,
+    "test_label_distribution": "iid",
+    "exp_keys": [],
+    "dropout_dicts": dropout_dicts,
+    "log_memory": True,
 }
 
 current_config = rtc_config

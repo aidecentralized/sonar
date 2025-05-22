@@ -21,9 +21,9 @@ fedstatic: ConfigType = {
     "rounds": 200,
 
     # Model parameters
-    "model": "resnet10",
+    "model": "mini_resnet",
     "model_lr": 3e-4,
-    "batch_size": 64,
+    "batch_size": 16,
 }
 
 # List of algorithm configurations

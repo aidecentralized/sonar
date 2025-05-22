@@ -171,6 +171,11 @@ class ResNet(nn.Module):
                 return x, feature
         return x # type: ignore
 
+def mini_resnet(num_channels: int = 3, num_classes: int = 10) -> ResNet:
+    """
+    Constructs a ResNet model matching MiniResNet: [16, 32, 64, 128] filters.
+    """
+    return ResNet(BasicBlock, [1, 1, 1, 1], num_classes, num_channels, in_planes=16)
 
 def resnet6(num_channels: int = 3, num_classes: int = 10) -> ResNet:
     """

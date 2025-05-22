@@ -44,6 +44,10 @@ class ModelUtils:
             if pretrained:
                 raise ValueError("Pretrained model not available for resnet6")
             model = resnet.resnet6(**kwargs)
+        elif model_name == "mini_resnet":
+            if pretrained:
+                raise ValueError("Pretrained model not available for mini_resnet")
+            model = resnet.mini_resnet(**kwargs)
         elif model_name == "resnet10":
             if pretrained:
                 raise ValueError("Pretrained model not available for resnet10")

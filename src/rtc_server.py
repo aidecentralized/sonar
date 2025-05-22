@@ -374,7 +374,7 @@ class SignalingServer:
                     # do we only want 1 neighbor?
                     # neighbors = topology.sample_neighbours(num_collaborators) #type: ignore
                     neighbors = topology.get_all_neighbours()
-                    neighbor_dict.update({f"neighbor{info.rank}": [neighbor for neighbor in neighbors if neighbor < info.rank]})
+                    neighbor_dict.update({f"neighbor{info.rank}": [neighbor for neighbor in neighbors if neighbor > info.rank]})
                     print(neighbor_dict)
                 await ws.send(json.dumps({
                     'type': 'topology',

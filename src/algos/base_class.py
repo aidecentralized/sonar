@@ -901,7 +901,11 @@ class BaseFedAvgClient(BaseClient):
                     elif not is_init:
                         agg_wts[key] = coeff * model[key].to(self.device)
                     else:
-                        agg_wts[key] += coeff * model[key].to(self.device)
+                        try:
+                            agg_wts[key] += coeff * model[key].to(self.device)
+                        except:
+                            agg_wts[key] = coeff * model[key].to(self.device)
+                            print(f"Error: {key} | Model keys: {list(model.keys())} | In model: {key in model}")
                 except KeyError as e:
                     if key.endswith('.num_batches_tracked'):
                         print(f"KeyError: {e} | Key: {key} | Skipping num_batches_tracked")
