@@ -234,7 +234,7 @@ const NodeState = {
 
 class WebRTCCommUtils {
     constructor(config, trainDataset, testDataset = null) {
-        this.expName = "noniid_ring_05-20_4"
+        this.expName = "noniid_er_05-20_split10_all_colab"
         this.startTime = Date.now(  );
         this.model = new MiniResNet();
         this.config = config || {};
@@ -1353,7 +1353,7 @@ class WebRTCCommUtils {
     this.log('started training, loading dataset...');
 
     // DATASET HACK START
-     const filePath = path.resolve(__dirname, `./browser_client/public/datasets/imgs/cifar10_dirichlet_20_alpha1/cifar10_client_${this.rank - 1}_train.json`);
+     const filePath = path.resolve(__dirname, `./browser_client/public/datasets/imgs/cifar10_non_iid_dirichlet/cifar10_client_${this.rank - 1}_train.json`);
     this.log(`Loading training dataset from ${filePath}`);
     const rawData = fs.readFileSync(filePath, 'utf8');
     const data = JSON.parse(rawData);
@@ -1363,7 +1363,7 @@ class WebRTCCommUtils {
     this.trainDataset = trainData;
     this.testDataset = testData;
 
-    const valFilePath = path.resolve(__dirname, `./browser_client/public/datasets/imgs/cifar10_dirichlet_20_alpha1/cifar10_client_${this.rank - 1}_test_iid.json`);
+    const valFilePath = path.resolve(__dirname, `./browser_client/public/datasets/imgs/cifar10_non_iid_dirichlet/cifar10_client_${this.rank - 1}_test.json`);
     const valRawData = fs.readFileSync(valFilePath, 'utf8');
     const valData = JSON.parse(valRawData);
     this.valDataset = processData(valData);
@@ -1793,7 +1793,7 @@ let config = {
     num_users: MAX_CLIENTS,
     session_id: SESSION_ID,
     epochs: 200,
-    num_collaborators: 1,
+    num_collaborators: 10,
 }
 
 // const filePath = path.resolve(__dirname, './datasets/imgs/cifar10/cifar10_test_small.json');

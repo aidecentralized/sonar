@@ -234,7 +234,7 @@ const NodeState = {
 
 class WebRTCCommUtils {
     constructor(config, trainDataset, testDataset = null) {
-        this.expName = "noniid_iso_5-20"
+        this.expName = "noniid_iso_5-20_split10"
         this.startTime = Date.now();
         this.model = new MiniResNet();
         this.config = config || {};
@@ -243,7 +243,7 @@ class WebRTCCommUtils {
         this.testDataset = testDataset;
 
         // Validation Data
-        const filePath = path.resolve(__dirname, `./browser_client/public/datasets/imgs/cifar10_dirichlet_20_alpha1/cifar10_client_0_test_iid.json`);
+        const filePath = path.resolve(__dirname, `./browser_client/public/datasets/imgs/cifar10_non_iid_dirichlet/cifar10_client_0_test.json`);
         const rawData = fs.readFileSync(filePath, 'utf8');
         const data = JSON.parse(rawData);
         this.valDataset = processData(data);
@@ -585,7 +585,7 @@ function splitDataset(dataset, trainRatio = 0.8) {
   return { trainData, testData };
 }
 
-const filePath = path.resolve(__dirname, `./browser_client/public/datasets/imgs/cifar10_dirichlet_20_alpha1/cifar10_client_0_train.json`);
+const filePath = path.resolve(__dirname, `./browser_client/public/datasets/imgs/cifar10_non_iid_dirichlet/cifar10_client_0_train.json`);
 const rawData = fs.readFileSync(filePath, 'utf8');
 const data = JSON.parse(rawData);
 const dataset = processData(data);
