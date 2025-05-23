@@ -595,7 +595,7 @@ class RTCCommUtils(CommunicationInterface):
         for neighbor_rank in self.neighbors:
             if neighbor_rank is None:
                 continue
-            if neighbor_rank > self.rank:
+            if neighbor_rank < self.rank:
                 if (neighbor_rank not in self.connections and 
                     neighbor_rank not in self.pending_connections):
                     self.logger.info(f"Node {self.rank} queueing connection to {neighbor_rank}")
