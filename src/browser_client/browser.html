@@ -12,6 +12,10 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
   <link rel="stylesheet" href="./styling/browser.css" />
+
+  <!-- Chart.js for graphing -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
     .notification {
       background-color: rgba(42, 127, 255, 0.1);
@@ -25,42 +29,92 @@
       gap: 10px;
       transition: opacity 0.5s ease;
     }
-    
+
     .notification i {
       color: #2a7fff;
     }
-    
+
     .pre-filled {
       animation: highlight 2s ease;
     }
-    
+
     @keyframes highlight {
-      0% { background-color: rgba(42, 127, 255, 0.1); }
-      100% { background-color: transparent; }
+      0% {
+        background-color: rgba(42, 127, 255, 0.1);
+      }
+
+      100% {
+        background-color: transparent;
+      }
     }
-    
+
     .pre-filled .form-group {
       position: relative;
     }
-    
-    .pre-filled input, 
+
+    .pre-filled input,
     .pre-filled select {
       border-left: 3px solid #2a7fff !important;
     }
-    
+
     .checkbox-group {
       display: flex;
       align-items: center;
       gap: 10px;
     }
-    
+
     .checkbox-group input[type="checkbox"] {
       width: auto;
       margin: 0;
     }
-    
+
     .checkbox-group label {
       margin-bottom: 0;
+    }
+
+    /* Graph overlay styles */
+    .graph-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.95);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .graph-overlay.active {
+      display: flex;
+    }
+
+    .graph-container {
+      position: relative;
+      width: 80%;
+      max-width: 800px;
+      height: 60vh;
+      background: #111;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+    }
+
+    .close-graph {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+
+    #trainingChart {
+      width: 100% !important;
+      height: 100% !important;
     }
   </style>
 </head>
@@ -107,7 +161,8 @@
           </div>
           <div class="form-group">
             <label for="signaling_server">Signaling Server</label>
-            <input type="text" id="signaling_server" name="signaling_server" value="ws://18.27.79.107:8888" required>
+            <input type="text" id="signaling_server" name="signaling_server"
+              value="ws://18.27.79.107:8888" required>
           </div>
           <div class="form-group">
             <label for="num_users">Number of Users</label>
@@ -127,7 +182,8 @@
           </div>
           <div class="form-group">
             <label for="num_collaborators">Num Collaborators</label>
-            <input type="text" id="num_collaborators" name="num_collaborators" value="1" required>
+            <input type="text" id="num_collaborators" name="num_collaborators" value="1"
+              required>
           </div>
           <button type="button" id="save-config-button">Save Config</button>
           <button type="button" id="start-button" class="connect-button" disabled>Connect</button>
@@ -136,16 +192,6 @@
 
       <div class="right-column">
         <section class="card dark-card">
-
-          <!-- <div class="data-section">
-            <div class="data-block">
-              <h2>Dataset Type</h2>
-              <select id="datasetDropdown">
-                <option value="">-- Choose Dataset Type --</option>
-              </select>
-            </div>
-          </div> -->
-
           <div class="data-section">
             <div class="data-block">
               <h2>Training Data</h2>
@@ -156,7 +202,7 @@
                 </div>
               </div>
             </div>
-            
+
             <div class="data-block">
               <h2>Testing Data (Optional)</h2>
               <div class="data-input-container">
@@ -165,7 +211,8 @@
                   <input id="test-data-input" type="file" accept=".json">
                 </div>
               </div>
-              <p class="input-note">If not provided, 20% of training data will be used for validation</p>
+              <p class="input-note">If not provided, 20% of training data will be used for
+                validation</p>
             </div>
           </div>
 
@@ -177,8 +224,18 @@
               </select>
             </div>
           </div>
-        
-        </section>        
+        </section>
+
+        <button id="show-graph-btn" class="connect-button" style="margin: 1rem 0;">
+          Show Training Graph
+        </button>
+
+        <div id="graphOverlay" class="graph-overlay">
+          <div class="graph-container">
+            <button id="closeGraph" class="close-graph">&times;</button>
+            <canvas id="trainingChart"></canvas>
+          </div>
+        </div>
 
         <section class="card logs-card">
           <h2>Logs</h2>
@@ -189,6 +246,115 @@
   </main>
 
   <script type="module" src="main.js"></script>
+
+  <!-- Chart.js graph setup -->
+  <script>
+    const showBtn = document.getElementById('show-graph-btn');
+    const overlay = document.getElementById('graphOverlay');
+    const closeBtn = document.getElementById('closeGraph');
+    const canvas = document.getElementById('trainingChart');
+    const ctx = canvas.getContext('2d');
+
+    // gradient for dataset fill
+    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    gradient.addColorStop(0, 'rgba(42, 127, 255, 0.4)');
+    gradient.addColorStop(1, 'rgba(42, 127, 255, 0)');
+
+    const trainingChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Accuracy',
+          data: [],
+          borderColor: '#2a7fff',
+          backgroundColor: gradient,
+          borderWidth: 3,
+          pointRadius: 0,
+          pointHoverRadius: 6,
+          tension: 0.4,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        layout: { padding: 16 },
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Epoch',
+              color: '#AAA',
+              font: { family: 'Montserrat', size: 14 }
+            },
+            ticks: {
+              color: '#CCC',
+              font: { family: 'Montserrat', size: 12 }
+            },
+            grid: {
+              color: 'rgba(255,255,255,0.05)'
+            }
+          },
+          y: {
+            suggestedMin: 0,
+            suggestedMax: 1,
+            title: {
+              display: true,
+              text: 'Accuracy',
+              color: '#AAA',
+              font: { family: 'Montserrat', size: 14 }
+            },
+            ticks: {
+              color: '#CCC',
+              font: { family: 'Montserrat', size: 12 },
+              callback: v => `${(v * 100).toFixed(0)}%`
+            },
+            grid: {
+              color: 'rgba(255,255,255,0.05)'
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            labels: {
+              color: '#2a7fff',
+              usePointStyle: true,
+              pointStyle: 'rectRounded',
+              padding: 20,
+              font: { family: 'Montserrat', size: 13 }
+            }
+          },
+          tooltip: {
+            backgroundColor: '#2a7fff',
+            titleColor: '#fff',
+            bodyColor: '#fff',
+            titleFont: { family: 'Montserrat', weight: '600' },
+            bodyFont: { family: 'Montserrat' },
+            borderRadius: 6,
+            padding: 10,
+            displayColors: false,
+            callbacks: {
+              label: ctx => ` ${(ctx.parsed.y * 100).toFixed(2)}%`
+            }
+          }
+        }
+      }
+    });
+
+    // overlay controls
+    showBtn.addEventListener('click', () => overlay.classList.add('active'));
+    closeBtn.addEventListener('click', () => overlay.classList.remove('active'));
+
+    // call from your training loop:
+    // window.updateTrainingGraph(epochNumber, accuracyValue);
+    window.updateTrainingGraph = (epoch, acc) => {
+      trainingChart.data.labels.push(`Epoch ${epoch}`);
+      trainingChart.data.datasets[0].data.push(acc);
+      trainingChart.update('none');
+    };
+  </script>
+
   <script>
     const hamburger = document.getElementById("hamburger-menu");
     const mobileNav = document.getElementById("mobile-nav");
@@ -207,65 +373,43 @@
       const epochsInput = document.getElementById('epochs');
       const numCollaboratorsInput = document.getElementById('num_collaborators');
       const joinActiveSessionCheckbox = document.getElementById('join_active_session');
-      
+
       // Check if we have session configuration in localStorage
       const sessionId = localStorage.getItem('sessionId');
-      
+
       if (sessionId) {
         // Set session ID
         sessionIdInput.value = sessionId;
-        
-        // Set other fields if available
+
+        // Restore other fields...
         if (localStorage.getItem('topology')) {
-          // Find the option with the matching value and select it
-          const topologyValue = localStorage.getItem('topology');
+          const val = localStorage.getItem('topology');
           for (let i = 0; i < topologySelect.options.length; i++) {
-            if (topologySelect.options[i].value === topologyValue) {
+            if (topologySelect.options[i].value === val) {
               topologySelect.selectedIndex = i;
               break;
             }
           }
         }
-        
-        if (localStorage.getItem('signalingServer')) {
-          signalingServerInput.value = localStorage.getItem('signalingServer');
-        }
-        
-        if (localStorage.getItem('numUsers')) {
-          numUsersInput.value = localStorage.getItem('numUsers');
-        }
-        
-        if (localStorage.getItem('epochs')) {
-          epochsInput.value = localStorage.getItem('epochs');
-        }
-        
-        if (localStorage.getItem('numCollaborators')) {
-          numCollaboratorsInput.value = localStorage.getItem('numCollaborators');
-        }
-        
-        if (localStorage.getItem('joinActiveSession')) {
-          joinActiveSessionCheckbox.checked = localStorage.getItem('joinActiveSession') === 'true';
-        }
-        
-        // Highlight the form to indicate it's been pre-filled
+        if (localStorage.getItem('signalingServer')) signalingServerInput.value = localStorage.getItem('signalingServer');
+        if (localStorage.getItem('numUsers')) numUsersInput.value = localStorage.getItem('numUsers');
+        if (localStorage.getItem('epochs')) epochsInput.value = localStorage.getItem('epochs');
+        if (localStorage.getItem('numCollaborators')) numCollaboratorsInput.value = localStorage.getItem('numCollaborators');
+        if (localStorage.getItem('joinActiveSession')) joinActiveSessionCheckbox.checked = localStorage.getItem('joinActiveSession') === 'true';
+
         const configForm = document.getElementById('config-form');
         configForm.classList.add('pre-filled');
-        
-        // Add a notification that the form was pre-filled from session
+
         const notification = document.createElement('div');
         notification.className = 'notification';
-        notification.innerHTML = `<i class="fas fa-info-circle"></i> Form pre-filled from session ${sessionId}`;
-        
-        // Insert notification before the form
+        notification.innerHTML =
+          `<i class="fas fa-info-circle"></i> Form pre-filled from session ${sessionId}`;
         configForm.parentNode.insertBefore(notification, configForm);
-        
-        // Auto-hide notification after 5 seconds
+
         setTimeout(() => {
           notification.style.opacity = '0';
           setTimeout(() => {
-            if (notification.parentNode) {
-              notification.parentNode.removeChild(notification);
-            }
+            if (notification.parentNode) notification.parentNode.removeChild(notification);
           }, 500);
         }, 5000);
       }
