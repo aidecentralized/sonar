@@ -2015,7 +2015,7 @@ export class WebRTCCommUtils {
         }
         // To send data to Graph
         if (window.updateTrainingGraph) {
-          window.updateTrainingGraph(i + 1, trainMetrics.trainAcc);
+          window.updateTrainingGraph(i + 1, testMetrics.trainAcc);
         }
         
         // Update current round for metrics logging
