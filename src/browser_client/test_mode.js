@@ -47,12 +47,19 @@ async function initializeModel(modelType = 'MiniResNet', dataset = 'cifar10') {
  */
 async function downloadModel() {
   if (!model) {
+    
     console.error("Model not initialized");
     document.getElementById('model-status').textContent = 'Error: Model not initialized';
     return;
   }
 
   try {
+    const numTrainableParams = model.model.trainableWeights
+    .map(w => w.shape.reduce((a, b) => a * b, 1))
+    .reduce((a, b) => a + b, 0);
+
+    console.log(`Trainable parameters: ${numTrainableParams}`);
+
     document.getElementById('model-status').textContent = 'Downloading model...';
     document.getElementById('download-btn').disabled = true;
     

@@ -83,7 +83,7 @@ def copy_source_code(config: ConfigType) -> None:
         "./toy_exp.py",
         "./toy_exp_ml.py",
         "./node_modules/",
-        "./logs/"
+        "./logs/",
         "/".join(path.split("/")[:-1]) + "/",
     ]
     folders = glob(r"./*/")

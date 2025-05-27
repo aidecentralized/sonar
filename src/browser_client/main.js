@@ -171,7 +171,7 @@ fileDropdown.addEventListener('change', async (e) => {
     if (!filename) return;
   
     try {
-        const res = await fetch(`/datasets/imgs/${filename.split('_')[0]}_non_iid_dirichlet/${filename}`);
+        const res = await fetch(`/datasets/imgs/${filename.split('_')[0]}_dirichlet_20_alpha1/${filename}`);
         const json = await res.json();
         trainDataset = processData(json);
         enableButtons(); // Enable start button when training data is loaded
@@ -184,7 +184,7 @@ fileDropdown.addEventListener('change', async (e) => {
         testDataset = null;
     } catch (err) {
         displayMessage(`Error loading file: ${err.message}`);
-        displayMessage(`Trying to load /datasets/imgs/${filename.split('_')[0]}_non_iid_dirichlet/${filename}`);
+        displayMessage(`Trying to load /datasets/imgs/${filename.split('_')[0]}_dirichlet_20_alpha1/${filename}`);
         
     }
 });
