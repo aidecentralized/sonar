@@ -424,6 +424,7 @@ class SignalingServer:
 app = FastAPI()
 
 @app.get("/")
+@app.head("/")
 def health_check():
     return {"status": "ok"}
 
