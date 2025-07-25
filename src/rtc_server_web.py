@@ -66,6 +66,7 @@ class SignalingServer:
         # return {'neighbor': (rank + 1) % len(session.clients)}
 
     async def handle_client(self, websocket: websockets.WebSocketServerProtocol):
+        await websocket.accept()
         try:
             message = await websocket.recv()
             data = json.loads(message)
