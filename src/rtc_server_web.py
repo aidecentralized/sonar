@@ -8,7 +8,7 @@ from collections import defaultdict
 import secrets
 from algos.topologies.collections import select_topology
 
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 import uvicorn
 import threading
 
@@ -66,10 +66,11 @@ class SignalingServer:
 
     async def handle_client(self, websocket: WebSocket):
         await websocket.accept()
-        while True:
-            try:
-                message = await websocket.receive_text()
-                data = json.loads(message)
+        try:
+            while True:
+                try:
+                    message = await websocket.receive_text()
+                    data = json.loads(message)
                 
                 if data['type'] == 'create_session':
                     # Generate a unique 6-character session ID if there was no given session id
@@ -280,7 +281,21 @@ class SignalingServer:
                 
                 elif data['type'] == 'signal':
                     session_id = data['sessionId']
+                    if session_id not in self.sessions:
+                        await websocket.send_text(json.dumps({
+                            'type': 'error',
+                            'message': f'Session {session_id} not found'
+                        }))
+                        continue
+                    
                     session = self.sessions[session_id]
+                    if websocket not in session.clients:
+                        await websocket.send_text(json.dumps({
+                            'type': 'error',
+                            'message': 'Client not found in session'
+                        }))
+                        continue
+                    
                     sender_rank = session.clients[websocket].rank
                     target_rank = data['targetRank']
                     
@@ -305,7 +320,21 @@ class SignalingServer:
                     pass
                 elif data['type'] == "node_ready":
                     session_id = data['sessionId']
+                    if session_id not in self.sessions:
+                        await websocket.send_text(json.dumps({
+                            'type': 'error',
+                            'message': f'Session {session_id} not found'
+                        }))
+                        continue
+                    
                     session = self.sessions[session_id]
+                    if websocket not in session.clients:
+                        await websocket.send_text(json.dumps({
+                            'type': 'error',
+                            'message': 'Client not found in session'
+                        }))
+                        continue
+                    
                     session.num_ready += 1
                     print("Updating num_ready to ", session.num_ready)
                     
@@ -326,31 +355,69 @@ class SignalingServer:
                         await self.check_session_ready(session)
                 
 
-            except Exception as e:
-                print("Error in handle_client:", e)
-                # Find and clean up the client's session
-                for session in self.sessions.values():
-                    if websocket in session.clients:
-                        await self.handle_disconnect(websocket, session)
-                        break
+                except json.JSONDecodeError as e:
+                    print(f"JSON decode error: {e}")
+                    await websocket.send_text(json.dumps({
+                        'type': 'error',
+                        'message': 'Invalid JSON format'
+                    }))
+                except KeyError as e:
+                    print(f"Missing required field: {e}")
+                    await websocket.send_text(json.dumps({
+                        'type': 'error',
+                        'message': f'Missing required field: {e}'
+                    }))
+                except Exception as e:
+                    print(f"Error processing message: {e}")
+                    # Only disconnect on critical errors, not on message processing errors
+                    await websocket.send_text(json.dumps({
+                        'type': 'error',
+                        'message': 'Internal server error'
+                    }))
+        except WebSocketDisconnect:
+            print("WebSocket client disconnected")
+            # Clean up the client's session on disconnect
+            for session in self.sessions.values():
+                if websocket in session.clients:
+                    client_info = session.clients[websocket]
+                    print(f"Cleaning up disconnected client: rank {client_info.rank} from session {session.session_id}")
+                    await self.handle_disconnect(websocket, session)
+                    break
+        except Exception as e:
+            print(f"WebSocket connection error: {e}")
+            # Clean up the client's session on connection error
+            for session in self.sessions.values():
+                if websocket in session.clients:
+                    await self.handle_disconnect(websocket, session)
+                    break
 
     async def handle_disconnect(self, websocket: WebSocket, session: SessionInfo):
-        if websocket in session.clients:
-            disconnected_rank = session.clients[websocket].rank
-            del session.clients[websocket]
-            
-            # Reset connection state for affected neighbors
-            for _, info in session.clients.items():
-                if disconnected_rank in info.connected_peers:
-                    info.connected_peers.remove(disconnected_rank)
-                    info.ready = False
-            
-            # If session is empty, remove it
-            if not session.clients:
+        try:
+            if websocket in session.clients:
+                disconnected_rank = session.clients[websocket].rank
+                print(f"Handling disconnect for client rank {disconnected_rank} in session {session.session_id}")
+                del session.clients[websocket]
+                
+                # Reset connection state for affected neighbors
+                for _, info in session.clients.items():
+                    if disconnected_rank in info.connected_peers:
+                        info.connected_peers.remove(disconnected_rank)
+                        info.ready = False
+                
+                # If session is empty, remove it
+                if not session.clients:
+                    del self.sessions[session.session_id]
+                    logging.info(f"Session {session.session_id} removed (no clients left)")
+                else:
+                    print(f"Broadcasting updated topology after disconnect. Remaining clients: {len(session.clients)}")
+                    await self.broadcast_topology(session)
+        except Exception as e:
+            print(f"Error in handle_disconnect: {e}")
+            # Try to clean up the session anyway
+            if websocket in session.clients:
+                del session.clients[websocket]
+            if not session.clients and session.session_id in self.sessions:
                 del self.sessions[session.session_id]
-                logging.info(f"Session {session.session_id} removed")
-            else:
-                await self.broadcast_topology(session)
 
     async def broadcast_topology(self, session: SessionInfo):
         for ws, info in session.clients.items():
