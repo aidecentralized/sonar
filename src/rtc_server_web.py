@@ -1,6 +1,5 @@
 import asyncio
 import json
-import websockets
 import math
 from dataclasses import dataclass
 from typing import Dict, Set, Optional, Any
@@ -9,7 +8,7 @@ from collections import defaultdict
 import secrets
 from algos.topologies.collections import select_topology
 
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket
 import uvicorn
 import threading
 
@@ -31,7 +30,7 @@ class SessionInfo:
     session_id: str
     max_clients: int
     config: Dict[str, Any]
-    clients: Dict[websockets.WebSocketServerProtocol, ClientInfo] = None
+    clients: Dict[WebSocket, ClientInfo] = None
     num_ready: int = 0
     metadata: Optional[str] = None
     
@@ -65,224 +64,223 @@ class SignalingServer:
         return {'neighbor1': neighbor}
         # return {'neighbor': (rank + 1) % len(session.clients)}
 
-    async def handle_client(self, websocket: websockets.WebSocketServerProtocol):
+    async def handle_client(self, websocket: WebSocket):
         await websocket.accept()
-        try:
-            message = await websocket.recv()
-            data = json.loads(message)
-            
-            if data['type'] == 'create_session':
-                # Generate a unique 6-character session ID if there was no given session id
-                session_id = data.get('sessionId', secrets.token_hex(3)) # 6 characters
-                # session_id = secrets.token_hex(3)  # 6 characters
-                max_clients = int(data['maxClients'])
+        while True:
+            try:
+                message = await websocket.receive_text()
+                data = json.loads(message)
                 
-                # Create new session
-                self.sessions[session_id] = SessionInfo(
-                    session_id=session_id,
-                    max_clients=max_clients,
-                    config=data.get('config', {}),
-                    metadata=data.get('metadata')
-                )
-                
-                # Add first client to session
-                self.sessions[session_id].clients[websocket] = ClientInfo(
-                    rank=0,
-                    client_type=data.get('clientType', 'javascript'),
-                    session_id=session_id
-                )
-                
-                # Send session ID back to creator
-                await websocket.send(json.dumps({
-                    'type': 'session_created',
-                    'sessionId': session_id,
-                    'rank': 0
-                }))
-                
-                logging.info(f"Created session {session_id} for {max_clients} clients")
-                
-            elif data['type'] == 'join_session':
-                session_id = int(data['sessionId'])
-                if session_id not in self.sessions:
-                    print(f"Session ID {session_id} not found, creating new session")
-                    # await websocket.send(json.dumps({
-                    #     'type': 'error',
-                    #     'message': 'Invalid session ID'
-                    # }))
-                    # return
-                    
-
-                    # Create new session if it doesn't exist
+                if data['type'] == 'create_session':
+                    # Generate a unique 6-character session ID if there was no given session id
+                    session_id = data.get('sessionId', secrets.token_hex(3)) # 6 characters
+                    # session_id = secrets.token_hex(3)  # 6 characters
                     max_clients = int(data['maxClients'])
-                    config = data["config"]
+                    
+                    # Create new session
                     self.sessions[session_id] = SessionInfo(
                         session_id=session_id,
                         max_clients=max_clients,
-                        config=config,
+                        config=data.get('config', {}),
                         metadata=data.get('metadata')
                     )
-
+                    
                     # Add first client to session
-                    rank = 0
                     self.sessions[session_id].clients[websocket] = ClientInfo(
                         rank=0,
                         client_type=data.get('clientType', 'javascript'),
                         session_id=session_id
                     )
-                    session = self.sessions[session_id]
+                    
+                    # Send session ID back to creator
+                    await websocket.send_text(json.dumps({
+                        'type': 'session_created',
+                        'sessionId': session_id,
+                        'rank': 0
+                    }))
+                    
+                    logging.info(f"Created session {session_id} for {max_clients} clients")
+                    
+                elif data['type'] == 'join_session':
+                    session_id = int(data['sessionId'])
+                    if session_id not in self.sessions:
+                        print(f"Session ID {session_id} not found, creating new session")
+                        # await websocket.send(json.dumps({
+                        #     'type': 'error',
+                        #     'message': 'Invalid session ID'
+                        # }))
+                        # return
+                        
 
-                else:
-                    session = self.sessions[session_id]
-                    if len(session.clients) > session.max_clients:
-                        await websocket.send(json.dumps({
+                        # Create new session if it doesn't exist
+                        max_clients = int(data['maxClients'])
+                        config = data["config"]
+                        self.sessions[session_id] = SessionInfo(
+                            session_id=session_id,
+                            max_clients=max_clients,
+                            config=config,
+                            metadata=data.get('metadata')
+                        )
+
+                        # Add first client to session
+                        rank = 0
+                        self.sessions[session_id].clients[websocket] = ClientInfo(
+                            rank=0,
+                            client_type=data.get('clientType', 'javascript'),
+                            session_id=session_id
+                        )
+                        session = self.sessions[session_id]
+
+                    else:
+                        session = self.sessions[session_id]
+                        if len(session.clients) > session.max_clients:
+                            await websocket.send_text(json.dumps({
+                                'type': 'error',
+                                'message': 'Session is full'
+                            }))
+                            return
+                        
+                        # Add client to session
+                        rank = len(session.clients)
+                        session.clients[websocket] = ClientInfo(
+                            rank=rank,
+                            client_type=data.get('clientType', 'javascript'),
+                            session_id=session_id
+                        )
+                    
+                    await websocket.send_text(json.dumps({
+                        'type': 'session_joined',
+                        'sessionId': session_id,
+                        'rank': rank
+                    }))
+                    
+                    logging.info(f"Client joined session {session_id} with rank {rank}")
+                    
+                    # If session is full, broadcast topology to all clients
+                    if len(session.clients) == session.max_clients + 1:
+                        logging.info(f"Session {session_id} is full, broadcasting topology")
+                        await self.broadcast_session_ready(session)
+                        await self.broadcast_topology(session)
+                
+                elif data['type'] == 'join_active_session':
+                    session_id = int(data['sessionId'])
+                    if session_id not in self.sessions:
+                        await websocket.send_text(json.dumps({
                             'type': 'error',
-                            'message': 'Session is full'
+                            'message': 'Session not found or not active'
                         }))
                         return
                     
-                    # Add client to session
-                    rank = len(session.clients)
+                    session = self.sessions[session_id]
+                    
+                    # Check if there are any active clients in the session
+                    if len(session.clients) == 0:
+                        await websocket.send_text(json.dumps({
+                            'type': 'error',
+                            'message': 'Session exists but has no active clients'
+                        }))
+                        return
+                    
+                    # Determine the current training round from an existing client
+                    # We'll assume the first client has the most up-to-date round info
+                    current_round = 0
+                    
+                    # Add the new client to the session with the next available rank
+                    new_rank = max([info.rank for info in session.clients.values()], default=-1) + 1
                     session.clients[websocket] = ClientInfo(
-                        rank=rank,
+                        rank=new_rank,
                         client_type=data.get('clientType', 'javascript'),
                         session_id=session_id
                     )
-                
-                await websocket.send(json.dumps({
-                    'type': 'session_joined',
-                    'sessionId': session_id,
-                    'rank': rank
-                }))
-                
-                logging.info(f"Client joined session {session_id} with rank {rank}")
-                
-                # If session is full, broadcast topology to all clients
-                if len(session.clients) == session.max_clients + 1:
-                    logging.info(f"Session {session_id} is full, broadcasting topology")
-                    await self.broadcast_session_ready(session)
-                    await self.broadcast_topology(session)
-            
-            elif data['type'] == 'join_active_session':
-                session_id = int(data['sessionId'])
-                if session_id not in self.sessions:
-                    await websocket.send(json.dumps({
-                        'type': 'error',
-                        'message': 'Session not found or not active'
-                    }))
-                    return
-                
-                session = self.sessions[session_id]
-                
-                # Check if there are any active clients in the session
-                if len(session.clients) == 0:
-                    await websocket.send(json.dumps({
-                        'type': 'error',
-                        'message': 'Session exists but has no active clients'
-                    }))
-                    return
-                
-                # Determine the current training round from an existing client
-                # We'll assume the first client has the most up-to-date round info
-                current_round = 0
-                
-                # Add the new client to the session with the next available rank
-                new_rank = max([info.rank for info in session.clients.values()], default=-1) + 1
-                session.clients[websocket] = ClientInfo(
-                    rank=new_rank,
-                    client_type=data.get('clientType', 'javascript'),
-                    session_id=session_id
-                )
-                
-                # Send active session joined confirmation
-                await websocket.send(json.dumps({
-                    'type': 'active_session_joined',
-                    'sessionId': session_id,
-                    'rank': new_rank,
-                    'currentRound': current_round
-                }))
-                
-                logging.info(f"Client joined active session {session_id} with rank {new_rank}")
-                client_config = data["config"]
-                print("client_config", client_config)
-                
-                # Immediately send topology to the new client
-                # We need to mark this as an active session so the client knows to sync model state
-                topology_config = {
-                    "topology": {"name": client_config["algos"]["node_0"]["topology"]},
-                    "num_users": int(client_config["num_users"]),
-                    "seed": int(client_config.get("seed", 2))
-                }
-
-                print("topology_config", topology_config)
-                try:
-                    topology = select_topology(topology_config, new_rank)
-                    topology.initialize()
-                    all_neighbors = topology.get_all_neighbours()
-                    neighbor_dict = {}
-                    neighbor_dict.update({f"neighbor{new_rank}": [neighbor for neighbor in all_neighbors]})
-                    print("neighbor_dict of rank", new_rank, "is", neighbor_dict)
                     
-                    await websocket.send(json.dumps({
-                        'type': 'topology',
+                    # Send active session joined confirmation
+                    await websocket.send_text(json.dumps({
+                        'type': 'active_session_joined',
+                        'sessionId': session_id,
                         'rank': new_rank,
-                        'neighbors': neighbor_dict,
-                        'totalClients': len(session.clients),
-                        'isActiveSession': True
+                        'currentRound': current_round
                     }))
-                except Exception as e:
-                    print("Failed to select topology:", e)
-                    await websocket.send(json.dumps({
-                        'type': 'error',
-                        'message': 'Failed to select topology'
-                    }))
-                    return
-            
-            elif data['type'] == 'list_sessions':
-                # Return information about all available sessions
-                sessions_info = []
-                for session_id, session in self.sessions.items():
-                    sessions_info.append({
-                        'session_id': session_id,
-                        'max_clients': session.max_clients,
-                        'current_clients': len(session.clients),
-                        'metadata': session.metadata
-                    })
-                
-                await websocket.send(json.dumps({
-                    'type': 'sessions_list',
-                    'sessions': sessions_info
-                }))
-                logging.info(f"Sent list of {len(sessions_info)} sessions")
-                
-            elif data['type'] == 'list_session_details':
-                # Return detailed information about a specific session
-                session_id = data['sessionId']
-                if session_id in self.sessions:
-                    session = self.sessions[session_id]
-                    # Convert client websockets to ranks for serialization
-                    client_ranks = [info.rank for info in session.clients.values()]
                     
-                    await websocket.send(json.dumps({
-                        'type': 'session_details',
-                        'session_id': session_id,
-                        'max_clients': session.max_clients,
-                        'current_clients': len(session.clients),
-                        'client_ranks': client_ranks,
-                        'metadata': session.metadata,
-                        'config': session.config
-                    }))
-                    logging.info(f"Sent details for session {session_id}")
-                else:
-                    await websocket.send(json.dumps({
-                        'type': 'error',
-                        'message': f'Session {session_id} not found'
-                    }))
-            
-            async for message in websocket:
-                data = json.loads(message)
-                session = self.sessions[data['sessionId']]
+                    logging.info(f"Client joined active session {session_id} with rank {new_rank}")
+                    client_config = data["config"]
+                    print("client_config", client_config)
+                    
+                    # Immediately send topology to the new client
+                    # We need to mark this as an active session so the client knows to sync model state
+                    topology_config = {
+                        "topology": {"name": client_config["algos"]["node_0"]["topology"]},
+                        "num_users": int(client_config["num_users"]),
+                        "seed": int(client_config.get("seed", 2))
+                    }
+
+                    print("topology_config", topology_config)
+                    try:
+                        topology = select_topology(topology_config, new_rank)
+                        topology.initialize()
+                        all_neighbors = topology.get_all_neighbours()
+                        neighbor_dict = {}
+                        neighbor_dict.update({f"neighbor{new_rank}": [neighbor for neighbor in all_neighbors]})
+                        print("neighbor_dict of rank", new_rank, "is", neighbor_dict)
+                        
+                        await websocket.send_text(json.dumps({
+                            'type': 'topology',
+                            'rank': new_rank,
+                            'neighbors': neighbor_dict,
+                            'totalClients': len(session.clients),
+                            'isActiveSession': True
+                        }))
+                    except Exception as e:
+                        print("Failed to select topology:", e)
+                        await websocket.send_text(json.dumps({
+                            'type': 'error',
+                            'message': 'Failed to select topology'
+                        }))
+                        return
                 
-                if data['type'] == 'signal':
+                elif data['type'] == 'list_sessions':
+                    # Return information about all available sessions
+                    sessions_info = []
+                    for session_id, session in self.sessions.items():
+                        sessions_info.append({
+                            'session_id': session_id,
+                            'max_clients': session.max_clients,
+                            'current_clients': len(session.clients),
+                            'metadata': session.metadata
+                        })
+                    
+                    await websocket.send_text(json.dumps({
+                        'type': 'sessions_list',
+                        'sessions': sessions_info
+                    }))
+                    logging.info(f"Sent list of {len(sessions_info)} sessions")
+                    
+                elif data['type'] == 'list_session_details':
+                    # Return detailed information about a specific session
+                    session_id = data['sessionId']
+                    if session_id in self.sessions:
+                        session = self.sessions[session_id]
+                        # Convert client websockets to ranks for serialization
+                        client_ranks = [info.rank for info in session.clients.values()]
+                        
+                        await websocket.send_text(json.dumps({
+                            'type': 'session_details',
+                            'session_id': session_id,
+                            'max_clients': session.max_clients,
+                            'current_clients': len(session.clients),
+                            'client_ranks': client_ranks,
+                            'metadata': session.metadata,
+                            'config': session.config
+                        }))
+                        logging.info(f"Sent details for session {session_id}")
+                    else:
+                        await websocket.send_text(json.dumps({
+                            'type': 'error',
+                            'message': f'Session {session_id} not found'
+                        }))
+                
+                elif data['type'] == 'signal':
+                    session_id = data['sessionId']
+                    session = self.sessions[session_id]
                     sender_rank = session.clients[websocket].rank
                     target_rank = data['targetRank']
                     
@@ -292,7 +290,7 @@ class SignalingServer:
                             None
                         )
                         if target_ws:
-                            await target_ws.send(json.dumps({
+                            await target_ws.send_text(json.dumps({
                                 'type': 'signal',
                                 'senderRank': sender_rank,
                                 'senderType': session.clients[websocket].client_type,
@@ -306,6 +304,8 @@ class SignalingServer:
                     # await self.check_session_ready(session)
                     pass
                 elif data['type'] == "node_ready":
+                    session_id = data['sessionId']
+                    session = self.sessions[session_id]
                     session.num_ready += 1
                     print("Updating num_ready to ", session.num_ready)
                     
@@ -318,22 +318,23 @@ class SignalingServer:
                         
                         # For nodes joining an active session, we only need to notify this specific node
                         # that it's ready to start training, without waiting for all nodes to be ready
-                        await websocket.send(json.dumps({
+                        await websocket.send_text(json.dumps({
                             'type': 'network_ready'
                         }))
                     else:
                         # For normal session setup, check if all nodes are ready
                         await self.check_session_ready(session)
-            
+                
 
-        except websockets.exceptions.ConnectionClosed:
-            # Find and clean up the client's session
-            for session in self.sessions.values():
-                if websocket in session.clients:
-                    await self.handle_disconnect(websocket, session)
-                    break
+            except Exception as e:
+                print("Error in handle_client:", e)
+                # Find and clean up the client's session
+                for session in self.sessions.values():
+                    if websocket in session.clients:
+                        await self.handle_disconnect(websocket, session)
+                        break
 
-    async def handle_disconnect(self, websocket: websockets.WebSocketServerProtocol, session: SessionInfo):
+    async def handle_disconnect(self, websocket: WebSocket, session: SessionInfo):
         if websocket in session.clients:
             disconnected_rank = session.clients[websocket].rank
             del session.clients[websocket]
@@ -381,15 +382,15 @@ class SignalingServer:
                     neighbors = topology.get_all_neighbours()
                     neighbor_dict.update({f"neighbor{info.rank}": [neighbor for neighbor in neighbors if neighbor < info.rank]})
                     print(neighbor_dict)
-                await ws.send(json.dumps({
+                await ws.send_text(json.dumps({
                     'type': 'topology',
                     'rank': info.rank,
                     'neighbors': neighbor_dict,
                     'totalClients': len(session.clients),
                     'isActiveSession': False  # Default to false for normal topology broadcasts
                 }))
-            except websockets.exceptions.ConnectionClosed:
-                logging.error(f"Failed to send topology to client {info.rank}")
+            except Exception as e:
+                logging.error(f"Failed to send topology to client {info.rank}: {e}")
                 pass
     
     async def broadcast_session_ready(self, session: SessionInfo):
@@ -398,7 +399,7 @@ class SignalingServer:
             'message': f'All {len(session.clients)} clients connected'
         })
         await asyncio.gather(*[
-            ws.send(message) for ws in session.clients
+            ws.send_text(message) for ws in session.clients
         ])
             
     async def check_session_ready(self, session: SessionInfo):
@@ -418,7 +419,7 @@ class SignalingServer:
     async def broadcast_network_ready(self, session: SessionInfo):
         message = json.dumps({'type': 'network_ready'})
         await asyncio.gather(*[
-            ws.send(message) for ws in session.clients
+            ws.send_text(message) for ws in session.clients
         ])
 
 # === FastAPI HTTP server for health check ===
@@ -433,7 +434,7 @@ server = SignalingServer()
 
 # WebSocket route (same as websockets.serve)
 @app.websocket("/ws")
-async def websocket_endpoint(websocket):
+async def websocket_endpoint(websocket: WebSocket):
     await server.handle_client(websocket)
 
 # Run app
