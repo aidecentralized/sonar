@@ -3,25 +3,64 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Documentation Status](https://readthedocs.org/projects/markdown-guide/badge/?version=latest)](https://aidecentralized.github.io/sonar/)
 
-# Project SONAR - Self-Organizing Network of Aggregated Representations
+# Project SONAR Web - Self-Organizing Network of Aggregated Representations
 
 ![Architecture Diagram](https://github.com/aidecentralized/sonar/blob/main/docs/arch.png)
 
 Documentation: https://aidecentralized.github.io/sonar/
 
-A collaborative learning project where users self-organize to improve their ML models by sharing representations of their data or model.
+A modular framework for decentralized training of neural networks across Python, web, and mobile platforms, enabling real-time peer-to-peer model training without centralized infrastructure.
 
-⚠️**Warning:** This project is currently under a major revamp and may contain bugs.
+## Overview
 
-## Main
-The application currently uses MPI and GRPC (experimental) to enable communication between different nodes in the network. The goal of the framework to organize everything in a modular manner. That way a researcher or engineer can easily swap out different components of the framework to test their hypothesis or a new algorithm
+SONAR Web introduces a modular framework for decentralized training of neural networks across Python, web, and mobile platforms. We develop and release a cross-platform open-source implementation with TensorFlow.js-based browser and Node.js clients, enabling real-time peer-to-peer model training without centralized infrastructure.
 
-### Framework Rewrite Objective
-- [ ] O1: Benchmark existing configurations and algorithms.
-- [ ] O2: Separate the communication layer (topology) from collaborative learning algorithms.
-- [ ] O3: Implement a few more collaborative learning algorithms.
-- [ ] O4: Improve telemetry and logging for visualization of the network. See https://github.com/aidecentralized/sonar/issues/11
-- [ ] O5: Fault tolerance and rogue clients simulation.
-- [ ] O6: Eliminate the need to add a BaseServer module, keep it backward compatible by instantiating the server as yet another node.
-- [ ] O7: Build testing suite. See https://github.com/aidecentralized/sonar/issues/21
-- [ ] O8: Set up milestones for transition to full API like interface and then launch on `pip`
+SONAR Web demonstrates practical, cross-platform decentralized training across real-world devices, benchmarking the viability of on-device collaborative learning in constrained and heterogeneous settings. It takes a step towards enabling decentralized learning over resource-constrained devices on the edge, contributing to a more inclusive, heterogeneous AI ecosystem.
+
+## System Design
+
+SONAR Web is designed as a modular framework for real-time, privacy-preserving, and fully decentralized collaborative learning across heterogeneous environments—including mobile devices, web browsers, and Python-based clients. Our system supports dynamic, on-the-fly participation from diverse clients with minimal setup and strict data locality.
+
+### Core Components
+
+SONAR Web is composed of four core modules:
+1. **Lightweight peer registration and discovery mechanism**
+2. **Unified communication layer** abstracting platform differences
+3. **Platform-agnostic configuration interface**
+4. **Training and monitoring framework** for collaborative learning across devices
+
+### Design Goals
+
+- **Modularity:** Each component is decoupled and independently replaceable, enabling flexible experimentation and extensibility
+- **Interoperability:** Real-time communication and learning across diverse platforms, including web browsers, mobile devices, and Python environments
+- **Decentralization:** No centralized coordinator or aggregator, relying instead on peer-to-peer communication and local control
+- **Minimal Setup and Accessibility:** Participation requires no specialized infrastructure, lowering the barrier to entry
+
+## Quick Start
+
+### Server Setup
+```bash
+pip install -r requirements.txt
+python src/rtc_server.py
+```
+
+### Client Setup
+```bash
+cd src/browser_client
+npm install
+npm run dev
+```
+Then navigate to the provided link in your browser.
+
+## Features
+
+- Real-time peer-to-peer model training
+- Cross-platform support (Web, Node.js, Python)
+- TensorFlow.js integration for browser-based learning
+- Privacy-preserving decentralized architecture
+- Minimal setup requirements
+- Dynamic peer discovery and registration
+
+## Contributing
+
+This project is actively developed and welcomes contributions. Please check the documentation for development guidelines and contribution instructions.
