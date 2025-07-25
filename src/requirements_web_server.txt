@@ -1,0 +1,5 @@
+websockets
+numpy
+networkx
+fastapi
+uvicorn
