@@ -1,4 +1,4 @@
-![Warning](https://img.shields.io/badge/Warning-This%20project%20is%20in%20beta-yellow)
+<!-- ![Warning](https://img.shields.io/badge/Warning-This%20project%20is%20in%20beta-yellow) -->
 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Documentation Status](https://readthedocs.org/projects/markdown-guide/badge/?version=latest)](https://aidecentralized.github.io/sonar/)

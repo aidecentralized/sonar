@@ -231,6 +231,83 @@
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
+
+    /* Backend Status Banner */
+    .backend-status-banner {
+      background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      margin: 1rem 0;
+      padding: 1rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .backend-status-content {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .backend-status-icon {
+      font-size: 1.2rem;
+    }
+
+    .backend-status-icon.online {
+      color: #2aff7f;
+    }
+
+    .backend-status-icon.offline {
+      color: #f44336;
+    }
+
+    .backend-status-icon.loading {
+      color: #ff9800;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .backend-status-info {
+      flex: 1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .backend-status-link {
+      color: #2a7fff;
+      text-decoration: none;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: color 0.2s ease;
+    }
+
+    .backend-status-link:hover {
+      color: #5599ff;
+    }
+
+    .backend-status-note {
+      font-size: 0.85rem;
+      color: #aaa;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding-top: 0.5rem;
+      margin-top: 0.5rem;
+    }
+
+    .backend-status-note a {
+      color: #2a7fff;
+      text-decoration: none;
+    }
+
+    .backend-status-note a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 
@@ -259,12 +336,29 @@
   <div class="session-title">
     <h1>Explore Sessions</h1>
   </div>
+  
+  <!-- Backend Status Indicator -->
+  <div id="backend-status-banner" class="backend-status-banner" style="display: none;">
+    <div class="backend-status-content">
+      <div class="backend-status-icon">
+        <i id="backend-status-icon" class="fas fa-circle"></i>
+      </div>
+      <div class="backend-status-info">
+        <span id="backend-status-text">Checking backend status...</span>
+      </div>
+    </div>
+    <div class="backend-status-note">
+      <i class="fas fa-info-circle"></i>
+      If our backend is down, dev docs to run your own backend are 
+      <a href="https://anonymous.4open.science/status/sonar-web-25" target="_blank">here</a>
+    </div>
+  </div>
 
   <main>
     <div class="card dark-card">
       <div class="server-settings">
         <label for="signaling-server">Signaling Server URL:</label>
-        <input type="text" id="signaling-server" value="ws://18.27.79.107:8888">
+        <input type="text" id="signaling-server" value="wss://sonar-web-backend.onrender.com/ws">
         <button id="save-server-button" class="save-button">
           <i class="fas fa-save"></i> Save
         </button>
@@ -307,6 +401,8 @@
     let refreshInterval;
     let isRefreshing = false;
     let expandedSessions = new Set(); // Track expanded sessions
+    let backendStatusInterval;
+    let backendOnline = false;
 
     // Default signaling server URL - can be updated from localStorage if available
     let signalingServerUrl = localStorage.getItem('signalingServer') || 'ws://localhost:8888';
@@ -624,6 +720,7 @@
 
     // Initial load
     refreshSessions();
+    startBackendStatusCheck();
 
     // Set up refresh button
     refreshButton.addEventListener('click', refreshSessions);
@@ -642,9 +739,67 @@
     // Initial setup of auto-refresh
     setupAutoRefresh();
 
+    // Backend status checking functionality
+    function updateBackendStatus(status, message) {
+      const banner = document.getElementById('backend-status-banner');
+      const icon = document.getElementById('backend-status-icon');
+      const text = document.getElementById('backend-status-text');
+      
+      if (!banner || !icon || !text) return;
+      
+      banner.style.display = 'block';
+      text.textContent = message;
+      
+      // Update icon and styling
+      icon.className = 'fas fa-circle';
+      
+      switch (status) {
+        case 'online':
+          icon.classList.add('online');
+          backendOnline = true;
+          break;
+        case 'offline':
+          icon.classList.add('offline');
+          backendOnline = false;
+          break;
+        case 'loading':
+          icon.classList.add('loading');
+          backendOnline = false;
+          break;
+      }
+    }
+
+    // Function to check backend status
+    async function checkBackendStatus() {
+      try {
+        const response = await fetch('https://sonar-web-backend.onrender.com/', {
+          method: 'GET',
+          signal: AbortSignal.timeout(5000)
+        });
+        
+        if (response.ok) {
+          updateBackendStatus('online', 'Backend server is online and ready');
+        } else {
+          updateBackendStatus('offline', 'Backend server is responding but with errors');
+        }
+      } catch (error) {
+        updateBackendStatus('offline', 'Backend server is offline or starting up');
+      }
+    }
+
+    // Start backend status checking
+    function startBackendStatusCheck() {
+      updateBackendStatus('loading', 'Checking backend status...');
+      checkBackendStatus();
+      
+      // Check every 30 seconds
+      backendStatusInterval = setInterval(checkBackendStatus, 30000);
+    }
+
     // Clean up on page unload
     window.addEventListener('beforeunload', () => {
       clearInterval(refreshInterval);
+      clearInterval(backendStatusInterval);
     });
     
   </script>
