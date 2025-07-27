@@ -5,11 +5,18 @@
 
 # Project SONAR Web - Self-Organizing Network of Aggregated Representations
 
-![Architecture Diagram](https://github.com/aidecentralized/sonar/blob/main/docs/arch.png)
+![SONAR Web System Diagram](docs/sonar_web_system_diagram.pdf)
 
 Documentation: https://aidecentralized.github.io/sonar/
 
 A modular framework for decentralized training of neural networks across Python, web, and mobile platforms, enabling real-time peer-to-peer model training without centralized infrastructure.
+
+## Demo
+![SONAR UI](docs/sonar_ui.png)
+
+Want to see SONAR Web in action? Check out our live demo at [https://sonar-web.onrender.com/](https://sonar-web.onrender.com/)
+
+> ⚠️ **Note:** The demo server may have spin-up times and occasional downtime periods.
 
 ## Overview
 
@@ -60,6 +67,10 @@ Then navigate to the provided link in your browser.
 - Privacy-preserving decentralized architecture
 - Minimal setup requirements
 - Dynamic peer discovery and registration
+
+## Architecture
+
+![Architecture Diagram](https://github.com/aidecentralized/sonar/blob/main/docs/arch.png)
 
 ## Contributing
 
