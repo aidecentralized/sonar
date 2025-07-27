@@ -3,7 +3,7 @@
 
 # SONAR Web: A Framework for Cross-Platform Decentralized Learning  
 **FLEdge-AI 2025 Submission Branch**  
-This branch (`fledge2025-submission`) corresponds to our paper submission to the FLEdge-AI 2025 workshop. It includes the implementation and demo environment used for evaluation.
+This branch (`fledge25`) corresponds to our paper submission to the FLEdge-AI 2025 workshop. It includes the implementation and demo environment used for evaluation.
 
 ---
 
