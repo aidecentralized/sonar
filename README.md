@@ -1,77 +1,104 @@
-<!-- ![Warning](https://img.shields.io/badge/Warning-This%20project%20is%20in%20beta-yellow) -->
-
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Documentation Status](https://readthedocs.org/projects/markdown-guide/badge/?version=latest)](https://aidecentralized.github.io/sonar/)
 
-# Project SONAR Web - Self-Organizing Network of Aggregated Representations
+# SONAR Web: A Framework for Cross-Platform Decentralized Learning  
+**FLEdge-AI 2025 Submission Branch**  
+This branch (`fledge2025-submission`) corresponds to our paper submission to the FLEdge-AI 2025 workshop. It includes the implementation and demo environment used for evaluation.
 
-![SONAR Web System Diagram](docs/sonar_web_system_diagram.png)
-
-Documentation: https://aidecentralized.github.io/sonar/
-
-A modular framework for decentralized training of neural networks across Python, web, and mobile platforms, enabling real-time peer-to-peer model training without centralized infrastructure.
-
-## Demo
-![SONAR UI](docs/sonar_ui.png)
-
-Want to see SONAR Web in action? Check out our live demo at [https://sonar-web.onrender.com/](https://sonar-web.onrender.com/)
-
-> ⚠️ **Note:** The demo server may have spin-up times and occasional downtime periods.
+---
 
 ## Overview
 
-SONAR Web introduces a modular framework for decentralized training of neural networks across Python, web, and mobile platforms. We develop and release a cross-platform open-source implementation with TensorFlow.js-based browser and Node.js clients, enabling real-time peer-to-peer model training without centralized infrastructure.
+**SONAR Web** (Self-Organizing Network of Aggregated Representations) is an open-source framework that enables real-time, privacy-preserving, decentralized training of neural networks across heterogeneous platforms, including:
 
-SONAR Web demonstrates practical, cross-platform decentralized training across real-world devices, benchmarking the viability of on-device collaborative learning in constrained and heterogeneous settings. It takes a step towards enabling decentralized learning over resource-constrained devices on the edge, contributing to a more inclusive, heterogeneous AI ecosystem.
+- Web browsers (TensorFlow.js)
+- Python-based desktop clients
+- Mobile devices (via browser interface)
 
-## System Design
+The system operates without a centralized server or coordinator, relying on peer-to-peer communication to enable learning over edge devices while preserving strict data locality.
 
-SONAR Web is designed as a modular framework for real-time, privacy-preserving, and fully decentralized collaborative learning across heterogeneous environments—including mobile devices, web browsers, and Python-based clients. Our system supports dynamic, on-the-fly participation from diverse clients with minimal setup and strict data locality.
+Full documentation: [https://aidecentralized.github.io/sonar/](https://aidecentralized.github.io/sonar/)
 
-### Core Components
+---
 
-SONAR Web is composed of four core modules:
-1. **Lightweight peer registration and discovery mechanism**
-2. **Unified communication layer** abstracting platform differences
-3. **Platform-agnostic configuration interface**
-4. **Training and monitoring framework** for collaborative learning across devices
+## Live Demo
 
-### Design Goals
+Try SONAR Web in action:  
+https://sonar-web.onrender.com/
 
-- **Modularity:** Each component is decoupled and independently replaceable, enabling flexible experimentation and extensibility
-- **Interoperability:** Real-time communication and learning across diverse platforms, including web browsers, mobile devices, and Python environments
-- **Decentralization:** No centralized coordinator or aggregator, relying instead on peer-to-peer communication and local control
-- **Minimal Setup and Accessibility:** Participation requires no specialized infrastructure, lowering the barrier to entry
+Note: This server may experience spin-up latency or downtime due to free-tier hosting.
 
-## Quick Start
+![SONAR UI](docs/sonar_ui.png)
 
-### Server Setup
+---
+
+## Quick Start Instructions
+
+### 1. Run Python Signaling Server
 ```bash
 pip install -r requirements.txt
 python src/rtc_server.py
 ```
 
-### Client Setup
+### 2. Launch Browser Client
 ```bash
 cd src/browser_client
 npm install
 npm run dev
 ```
-Then navigate to the provided link in your browser.
+Then open the provided `localhost` link in your browser.
 
-## Features
+---
 
-- Real-time peer-to-peer model training
-- Cross-platform support (Web, Node.js, Python)
-- TensorFlow.js integration for browser-based learning
-- Privacy-preserving decentralized architecture
-- Minimal setup requirements
-- Dynamic peer discovery and registration
+## System Architecture
 
-## Architecture
+![System Diagram](docs/sonar_web_system_diagram.png)
 
-![Architecture Diagram](https://github.com/aidecentralized/sonar/blob/main/docs/arch.png)
+SONAR Web is built with modularity and extensibility in mind. It consists of the following core modules:
 
-## Contributing
+1. Lightweight peer discovery and session coordination
+2. Unified communication layer abstracting WebRTC/WebSocket differences
+3. Platform-agnostic configuration interface
+4. Federated-style training and monitoring pipeline across clients
 
-This project is actively developed and welcomes contributions. Please check the documentation for development guidelines and contribution instructions.
+### Design Goals
+
+- **Modular and Extensible** — Plug-and-play components for rapid research iteration  
+- **Cross-Platform** — Browser, Node.js, and Python-based client support  
+- **Fully Decentralized** — No centralized coordinator; only peer-to-peer  
+- **Low Barrier to Entry** — Lightweight dependencies and minimal setup  
+
+---
+
+## Key Features
+
+- Real-time peer-to-peer model training using WebRTC
+- Seamless interoperability between Python, browser, and mobile clients
+- TensorFlow.js support for in-browser neural network training
+- Dynamic peer registration and session-based coordination
+- Simple setup and deployment for research or demo use
+
+---
+
+## Contribution
+
+We welcome feedback and contributions.
+
+To contribute:
+1. Clone this repo and create a new branch
+2. Follow the system modularity guide in the [documentation](https://aidecentralized.github.io/sonar/)
+3. Submit a pull request with a brief explanation
+
+---
+
+## Directory Reference (For Reviewers)
+
+| Path | Description |
+|------|-------------|
+| `src/rtc_server.py` | Python signaling and orchestration server |
+| `src/browser_client/` | Browser client built with TensorFlow.js |
+| `docs/` | Architecture diagrams and system overview assets |
+
+---
+
+For questions, please open an issue on this repo: https://github.com/aidecentralized/sonar/issues
