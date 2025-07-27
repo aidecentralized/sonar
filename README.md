@@ -5,7 +5,7 @@
 
 # Project SONAR Web - Self-Organizing Network of Aggregated Representations
 
-![SONAR Web System Diagram](docs/sonar_web_system_diagram.pdf)
+![SONAR Web System Diagram](docs/sonar_web_system_diagram.png)
 
 Documentation: https://aidecentralized.github.io/sonar/
 
