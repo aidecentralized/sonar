@@ -59,6 +59,104 @@
     .backend-status-container.error .backend-spinner {
       border-top-color: #f44336;
     }
+
+    .features-section {
+      padding: 60px 20px;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      margin-top: 40px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 30px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .feature-card {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .feature-icon {
+      font-size: 2.5rem;
+      margin-bottom: 20px;
+      color: #2aff7f;
+    }
+
+    .feature-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 15px;
+      color: #fff;
+    }
+
+    .feature-description {
+      color: rgba(255, 255, 255, 0.8);
+      line-height: 1.6;
+    }
+
+    .about-section {
+      padding: 60px 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .about-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      align-items: center;
+    }
+
+    .about-text h2 {
+      font-size: 2.5rem;
+      margin-bottom: 20px;
+      color: #fff;
+    }
+
+    .about-text p {
+      color: rgba(255, 255, 255, 0.8);
+      line-height: 1.7;
+      margin-bottom: 20px;
+      font-size: 1.1rem;
+    }
+
+    .highlight-box {
+      background: rgba(42, 255, 127, 0.1);
+      border: 1px solid rgba(42, 255, 127, 0.3);
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+
+    .highlight-box h3 {
+      color: #2aff7f;
+      margin-bottom: 10px;
+      font-size: 1.2rem;
+    }
+
+    @media (max-width: 768px) {
+      .about-content {
+        grid-template-columns: 1fr;
+        gap: 30px;
+      }
+      
+      .features-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 
@@ -89,10 +187,10 @@
 
   <section class="hero">
     <div class="hero-text">
-      <h1>What’s our <span class="highlight">plan?</span></h1>
+      <h1>Self-Organizing Network of <span class="highlight">Aggregated Representations</span></h1>
       <p>
-        Project SONAR aims to create a collaborative framework for training
-        and fine-tuning ML models over decentralized datasets.
+        A modular framework for decentralized training of neural networks across Python, web, and mobile platforms, 
+        enabling real-time peer-to-peer model training without centralized infrastructure.
       </p>
       <div class="button-group">
         <a href="./about.html" class="btn about-btn">About Us</a>
@@ -108,6 +206,112 @@
     </div>
   </section>
 
+  <section class="about-section">
+    <div class="about-content">
+      <div class="about-text">
+        <h2>What is SONAR Web?</h2>
+        <p>
+          SONAR Web introduces a modular framework for decentralized training of neural networks across Python, web, and mobile platforms. 
+          We develop and release a cross-platform open-source implementation with TensorFlow.js-based browser and Node.js clients, 
+          enabling real-time peer-to-peer model training without centralized infrastructure.
+        </p>
+        <p>
+          SONAR Web demonstrates practical, cross-platform decentralized training across real-world devices, 
+          benchmarking the viability of on-device collaborative learning in constrained and heterogeneous settings. 
+          It takes a step towards enabling decentralized learning over resource-constrained devices on the edge, 
+          contributing to a more inclusive, heterogeneous AI ecosystem.
+        </p>
+        
+        <div class="highlight-box">
+          <h3>🎯 Our Mission</h3>
+          <p>
+            Enable privacy-preserving, fully decentralized collaborative learning across heterogeneous environments—including 
+            mobile devices, web browsers, and Python-based clients with minimal setup and strict data locality.
+          </p>
+        </div>
+      </div>
+      
+      <div class="about-text">
+        <h2>System Design</h2>
+        <p>
+          SONAR Web is designed as a modular framework for real-time, privacy-preserving, and fully decentralized 
+          collaborative learning across heterogeneous environments.
+        </p>
+        <p>
+          Our system supports dynamic, on-the-fly participation from diverse clients with minimal setup and strict data locality, 
+          ensuring that your data never leaves your device while still enabling collaborative learning.
+        </p>
+        
+        <div class="highlight-box">
+          <h3>🔧 Core Components</h3>
+          <ul style="color: rgba(255, 255, 255, 0.8); line-height: 1.6;">
+            <li>Lightweight peer registration and discovery mechanism</li>
+            <li>Unified communication layer abstracting platform differences</li>
+            <li>Platform-agnostic configuration interface</li>
+            <li>Training and monitoring framework for collaborative learning</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="features-section">
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🌐</div>
+        <div class="feature-title">Real-time Peer-to-Peer Training</div>
+        <div class="feature-description">
+          Train neural networks collaboratively in real-time without centralized infrastructure. 
+          Each device contributes to the learning process while maintaining data privacy.
+        </div>
+      </div>
+      
+      <div class="feature-card">
+        <div class="feature-icon">📱</div>
+        <div class="feature-title">Cross-Platform Support</div>
+        <div class="feature-description">
+          Seamlessly work across Web browsers, Node.js servers, and Python environments. 
+          Our unified communication layer abstracts platform differences.
+        </div>
+      </div>
+      
+      <div class="feature-card">
+        <div class="feature-icon">🔒</div>
+        <div class="feature-title">Privacy-Preserving Architecture</div>
+        <div class="feature-description">
+          Your data never leaves your device. SONAR Web enables collaborative learning 
+          while maintaining strict data locality and privacy.
+        </div>
+      </div>
+      
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <div class="feature-title">Minimal Setup Requirements</div>
+        <div class="feature-description">
+          Get started with collaborative learning in minutes. No specialized infrastructure 
+          required - just join a session and start training.
+        </div>
+      </div>
+      
+      <div class="feature-card">
+        <div class="feature-icon">🤖</div>
+        <div class="feature-title">TensorFlow.js Integration</div>
+        <div class="feature-description">
+          Leverage the power of TensorFlow.js for browser-based machine learning. 
+          Train models directly in your web browser with real-time collaboration.
+        </div>
+      </div>
+      
+      <div class="feature-card">
+        <div class="feature-icon">🔍</div>
+        <div class="feature-title">Dynamic Peer Discovery</div>
+        <div class="feature-description">
+          Automatically discover and connect with other training peers. 
+          Join active sessions or create new ones with ease.
+        </div>
+      </div>
+    </div>
+  </section>
 
   <script>
     const hamburger = document.getElementById("hamburger-menu");
