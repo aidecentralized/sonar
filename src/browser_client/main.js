@@ -17,26 +17,31 @@ const IS_CREATOR = false; // Set to true if this should create a session
 const signalingServer = 'ws://localhost:8765'; // Your WebSocket server
 
 const samplePartitions = [
-    'cifar10_client_0_train.json', 
-    'cifar10_client_1_train.json',
-    'cifar10_client_2_train.json',
-    'cifar10_client_3_train.json',
-    'cifar10_client_4_train.json',
-    'cifar10_client_5_train.json',
-    'cifar10_client_6_train.json',
-    'cifar10_client_7_train.json',
-    'cifar10_client_8_train.json',
-    'cifar10_client_9_train.json',
-    'mnist_client_0_train.json', 
-    'mnist_client_1_train.json',
-    'mnist_client_2_train.json',
-    'mnist_client_3_train.json',
-    'mnist_client_4_train.json',
-    'mnist_client_5_train.json',
-    'mnist_client_6_train.json',
-    'mnist_client_7_train.json',
-    'mnist_client_8_train.json',
-    'mnist_client_9_train.json'
+    // Small datasets for frontend (recommended < 5MB each)
+    // 'cifar10_client_0_train.json', 
+    // 'cifar10_client_1_train.json',
+    // 'cifar10_client_2_train.json',
+    // 'cifar10_client_3_train.json',
+    // 'cifar10_client_4_train.json',
+    // 'cifar10_client_5_train.json',
+    // 'cifar10_client_6_train.json',
+    // 'cifar10_client_7_train.json',
+    // 'cifar10_client_8_train.json',
+    // 'cifar10_client_9_train.json',
+    // 'mnist_client_0_train.json', 
+    // 'mnist_client_1_train.json',
+    // 'mnist_client_2_train.json',
+    // 'mnist_client_3_train.json',
+    // 'mnist_client_4_train.json',
+    // 'mnist_client_5_train.json',
+    // 'mnist_client_6_train.json',
+    // 'mnist_client_7_train.json',
+    // 'mnist_client_8_train.json',
+    // 'mnist_client_9_train.json',
+    // New smaller CIFAR-10 dataset (2.91 MB)
+    'cifar10_tiny_dataset_0.json',
+    'cifar10_tiny_dataset_1.json',
+    // Note: Large datasets (30MB+) should be hosted externally
     // 'mnist_client_0_test.json', 
     // 'mnist_client_1_test.json',
     // 'mnist_client_2_test.json',
@@ -171,7 +176,7 @@ fileDropdown.addEventListener('change', async (e) => {
     if (!filename) return;
   
     try {
-        const res = await fetch(`/datasets/imgs/${filename.split('_')[0]}_dirichlet_20_alpha1/${filename}`);
+        const res = await fetch(`/datasets/imgs/${filename}`);
         const json = await res.json();
         trainDataset = processData(json);
         enableButtons(); // Enable start button when training data is loaded
