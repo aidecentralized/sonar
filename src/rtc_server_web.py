@@ -9,6 +9,7 @@ import secrets
 from algos.topologies.collections import select_topology
 
 from fastapi import FastAPI, WebSocket
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import threading
 
@@ -424,6 +425,21 @@ class SignalingServer:
 
 # === FastAPI HTTP server for health check ===
 app = FastAPI()
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://sonar-web.onrender.com",
+        "http://localhost:10000",
+        "http://localhost:3000",
+        "http://127.0.0.1:10000",
+        "http://127.0.0.1:3000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 @app.head("/")
